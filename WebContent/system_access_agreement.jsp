@@ -1,8 +1,20 @@
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
+<script type="text/javascript" src="datepickercontrol/datepickercontrol.js"></script>
+<script type="text/javascript" src="static/kumc/heron.js"></script>
+<link type="text/css" rel="stylesheet" href="datepickercontrol/datepickercontrol.css"> 
+<noscript>
+Oh shit !!!! Javascript is disabled!!!!   Redirecting....
+<META HTTP-EQUIV="Refresh" CONTENT="0;URL=js_disabled.html">
+</noscript>
 </head>
 <body>
+<input type="hidden" id="DPC_TODAY_TEXT" value="today">
+<input type="hidden" id="DPC_BUTTON_TITLE" value="Open calendar...">
+<input type="hidden" id="DPC_MONTH_NAMES" value="['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']">
+<input type="hidden" id="DPC_DAY_NAMES" value="['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']">
+
 <form id="frmSysAccess" action="/raven/SysAccessServlet">
 <h3 align="center">UNIVERSITY OF KANSAS MEDICAL CENTER</h3> <p></p>
 <h3 align="center">HERON SYSTEM ACCESS AGREEMENT</h3><p></p>
@@ -20,7 +32,7 @@ System User understands that the access to the HERON system authorized by this A
 2.	the determination of study feasibility (in terms of the available number and eligibility of potential study participants); and
 <p></p>
 3.	the development of eligibility (inclusion and exclusion) criteria
-Access to other HERON data or use of HERON data for other purposes shall be permitted by KUMC only for qualified faculty and collaborating researchers specifically approved by the HERON Data Request Oversight Committee after submission of a project-specific information request, research proposal and executed data use agreement, in a format acceptable to Committee.  All forms required for access to the HERON system may be obtained from ______________ and should be submitted to the HERON Data Request Oversight Committee at least _____ days prior to the desired date of system access. 
+Access to other HERON data or use of HERON data for other purposes shall be permitted by KUMC only for qualified faculty and collaborating researchers specifically approved by the HERON Data Request Oversight Committee after submission of a project-specific information request, research proposal and executed data use agreement, in a format acceptable to Committee.  All forms required for access to the HERON system may be obtained from Division of Medical Informatics, Department of Biostatistics and should be submitted to the HERON Data Request Oversight Committee at least 7 days prior to the desired date of system access. 
 KUMC, the University of Kansas Hospital Authority and Kansas University Physicians, Inc. disclaim all warranties as to the accuracy of the data in HERON or the acceptable performance or fitness of the data for any particular purpose.  As such, the System User acknowledges that KUMC, KUH and UKP do not and cannot warrant the results that may be obtained by viewing data included in the Data Set, and System User accepts the Data Set AS IS WITH ALL FAULTS.
 <p></p>
 <h3>2.	SYSTEM USER HEREBY AGREES:</h3>
@@ -53,19 +65,18 @@ J.	To not, under any circumstance, sell the Data Set, or any data obtained from 
 <p></p>
 <h3>AGREED TO AND ACCEPTED BY:</h3>
 <p></p>
-<h3>System User:</h3>
-
-<input type="text" maxlength="40" name="txtName"/><p></p>
-
+<h3>System User:</h3><input type="text" maxlength="40" id="txtName" name="txtName"/> Date: <input type="text" name="txtSignDate" id="txtSignDate" datepicker="true" datepicker_format="MM/DD/YYYY" maxlength="12" readonly />  
+<p></p>
 Name:	<p></p>
 Title: 	<p></p>
-Date: 	<p></p>
+
 <input type="hidden" name="accepted" id="accepted"/>
-<button onclick="accepted.value='T';form.submit();">Accept</button> <button onclick="accepted.value='F';form.submit();">Decline</button>
+<button onclick="return doAcceptAgreement()">Accept</button> <button onclick="accepted.value='F';form.submit();">Decline</button>
 <p></p>
 (Original to be filed with HERON)
 (System User to retain copy for research file)
-
+<p></p>
+For further assistance email heron-admin@kumc.edu
 </form>
 </body>
 </html>

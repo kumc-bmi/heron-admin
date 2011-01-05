@@ -1,9 +1,11 @@
 <%@ page import="edu.ku.biostatistics.heron.util.*" %> 
 <%@ page import="edu.ku.biostatistics.heron.base.*" %>
 <%@ page import="java.util.*" %> 
+<%@ page errorPage="error_page.jsp"%>
 <%
 Properties prop = StaticDataUtil.getSoleInstance().getProperties();
 %>
+
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -18,46 +20,8 @@ Properties prop = StaticDataUtil.getSoleInstance().getProperties();
 
 </head>
 <body>
-<div id="kumc_accessibilty_skip"><a href="#maincontent" name="top"><img
-	src="static/kumc/spacer.gif" alt="Skip redundant pieces" width="1"
-	height="1" border="0" /></a></div>
-<div id="kumc_container"><!--  Header -->
-<div id="kumc_intro">
-<div id="kumc_topmostheader">
-<div id="kumc_header_links"><a href="http://www.ku.edu/"
-	title="University of Kansas">KU</a>&#160; |&#160; <a
-	href="http://www.kumc.edu/" title="University of Kansas Medical Center"
-	class="kumc_homelink">Medical Center</a>&#160;</div>
-<div id="kumc_header_logo"><a href="http://www.kumc.edu/"><img
-	src="static/kumc/masthead_logo.gif"
-	alt="The University of Kansas Medical Center"
-	title="The University of Kansas Medical Center" hspace="0" vspace="0"
-	width="143" height="53" align="right" border="0" /></a></div>
-</div>
-<div id="kumc_topbar"></div>
+<%@ include file="header.html" %>
 
-<div id="kumc_titlebar">
-<div id="kumc_kuaffiliation">Biostatistics Department</div>
-<div id="kumc_searchbar">
-<div id="kumc_searchform" align="right">
-<form class="search" method="get"
-	action="http://www.kumc.edu/cgi-bin/advsearch">
-<div><label for="searchtype" accesskey="S"> <select
-	name="location" id="searchtype">
-	<option value="1" selected="selected">Search KUMC web site</option>
-	<option value="23">Search phone directory</option>
-</select></label><label for="searchtext" accesskey="I"><input id="searchtext"
-	name="search" size="11" alt="enter search terms"
-	class="kumc_searchform input" value="keyword/name "
-	onfocus="this.value='';" /></label>&#160;<input class="kumc_searchbutton"
-	name="Search" type="image" src="static/kumc/searcharrow.gif"
-	alt="Search" /></div>
-</form>
-</div>
-</div>
-</div>
-
-</div>
 <div id="kumc_frame"><!-- ***************************************** Navigation ***************************************** -->
 <div id="kumc_contentleft">
 
@@ -174,53 +138,7 @@ of page</a></div>
 </div>
 <br clear="all" />
 
-<!--  Footer  -->
-
-<div id="kumc_footercontainer">
-<div id="kumc_contentbottom"></div>
-<div id="kumc_footer">
-<div id="kumc_footerframe">
-<div id="kumc_contactinfo">
-<div style="padding-bottom: 3px;"><a
-	href="http://www.kumc.edu/Pulse/howtocontact.html"
-	class="kumc_grey_u_link">Contact Us</a><br />
-</div>
-<address>The University of Kansas<br />
-Medical Center<br />
-3901 Rainbow Boulevard<br />
-Kansas City, KS 66160<br />
-913-588-5000<br />
-913-588-7963 TDD</address>
-</div>
-
-<div id="kumc_copyright"><img class="kumc_jayhawk"
-	src="static/kumc/footer_jayhawk.gif" border="0" align="right"
-	hspace="0" vspace="0" alt="KU Jayhawk" title="KU Jayhawk" height="37"
-	width="37" />&#160;<a href="http://www.kumc.edu/Pulse/copyright.html"
-	class="kumc_grey_u_link">&#169; <script language="JavaScript"
-	type="text/javascript">
-	var d = new Date();
-	yr = d.getFullYear();
-	if (yr != 1863)
-		document.write(yr);
-</script> </a>&#160;The University of Kansas Medical Center<br />
-<a href="http://www.kumc.edu/Pulse/aboutthissite.html"
-	title="About the University of Kansas Medical Center web site"
-	class="kumc_grey_u_link">About this Site</a>&#160;|&#160;<a
-	href="http://www.kumc.edu/Pulse/eo_statement.html"
-	title="The University of Kansas Medical Center's Equal Opportunity Statement"
-	class="kumc_grey_u_link">An EO/AA/Title IX Institution</a>&#160;|&#160;<a
-	href="http://www.kumc.edu/Pulse/privacy.html"
-	title="The University of Kansas Medical Center's Privacy Statement"
-	class="kumc_grey_u_link">Privacy Statement</a>&#160;|&#160;<a
-	href="http://www2.kumc.edu/directory/KUMCSiteIndex.aspx?Id=ALL"
-	title="Index of University of Kansas Medical Center web sites"
-	class="kumc_grey_u_link">Site Index</a>&#160;|&#160;<a
-	href="http://www.kumc.edu/Pulse/help.html"
-	title="Help using this web site and general KUMC campus assistance"
-	class="kumc_grey_u_link">Help</a></div>
-
-</div>
+<%@ include file="footer.html" %>
 </div>
 </div>
 </body>
