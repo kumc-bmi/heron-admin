@@ -1,5 +1,5 @@
 /**
- * auth. flow controller
+ * authentication. flow controller
  * dongsheng zhu
  */
 package edu.ku.biostatistics.heron.servlet;
@@ -14,25 +14,24 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import static edu.ku.biostatistics.heron.base.StaticValues.*;
-import edu.ku.biostatistics.heron.dao.HeronDBDao;
+import edu.ku.biostatistics.heron.util.DBUtil;
 import edu.ku.biostatistics.heron.util.StaticDataUtil;
 
 public class AuthServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
     private Properties props = StaticDataUtil.getSoleInstance().getProperties();
+    private DBUtil dbUtil = new DBUtil();
     /**
      * @see HttpServlet#HttpServlet()
      */
     public AuthServlet() {
         super();
-        // TODO Auto-generated constructor stub
     }
 
 	/**
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		// TODO Auto-generated method stub
 		doPost(request,response);
 	}
 
@@ -40,29 +39,28 @@ public class AuthServlet extends HttpServlet {
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		// TODO Auto-generated method stub
-		boolean ok = false;
-		boolean saSigned = false;
-		try{
-			new HeronDBDao().getUserData("Dongsheng Zhu");
-		}catch(Exception ex){
-			
-		}
-		if(!saSigned)
-		{
-			//response.sendRedirect("system_access_agreement.jsp");
-			RequestDispatcher rd = request.getRequestDispatcher("system_access_agreement.jsp");
-			rd.forward(request, response);
+		boolean isQualifiedFaculty = true;//TODO check ldap?
 
+		if(!isQualifiedFaculty){
+			RequestDispatcher rd = request.getRequestDispatcher(NOT_QUALIFIED_URL);
+			rd.forward(request, response);
 		}
-		else if(ok)
-		{
-			//response.sendRedirect(props.getProperty(CAS_URL));
-		}
-		else
-		{
-			response.sendRedirect(props.getProperty(CHALK_URL));
+		else{
+			boolean trained = true;
+			if(!trained){
+				RequestDispatcher rd = request.getRequestDispatcher(NOT_TRAINED_URL);
+				rd.forward(request, response);
+			}
+			else{
+				boolean saSigned = dbUtil.isUserAgreementSigned(request.getRemoteUser());
+				if(!saSigned){
+					RequestDispatcher rd = request.getRequestDispatcher(SAA_URL);
+					rd.forward(request, response);
+				}
+				else{
+					response.sendRedirect(props.getProperty(I2B2_CLIENT_SERVICE));
+				}
+			}
 		}
 	}
-
 }
