@@ -1,50 +1,55 @@
+/**
+ * Dao class for HERON data access/update.
+ * Dongsheng Zhu
+ */
 package edu.ku.biostatistics.heron.dao;
 
-import java.util.List;
-
-import javax.sql.DataSource;
-
+import java.sql.Timestamp;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.simple.SimpleJdbcTemplate;
-import org.springframework.jdbc.core.support.JdbcDaoSupport;
 
-import edu.harvard.i2b2.common.exception.I2B2DAOException;
-import edu.harvard.i2b2.common.exception.I2B2Exception;
-import edu.ku.biostatistics.heron.util.ServiceLocator;
-
-public class HeronDBDao extends JdbcDaoSupport{
-
-
+public class HeronDBDao extends DBBaseDao{
 	private static Log log = LogFactory.getLog(HeronDBDao.class);
-	private ServiceLocator serviceLocator = ServiceLocator.getInstance();
 
-	private SimpleJdbcTemplate jt;
-
-	public HeronDBDao() throws Exception{
-		DataSource ds = null;
-		try {
-			ds = serviceLocator.getAppServerDataSource("java:PMBootStrapDS");
-			log.debug(ds.toString());
-		} catch (Exception e2) {
-			log.error("bootstrap ds failure: " + e2.getMessage());
-			throw e2;
-		} 
-		this.jt = new SimpleJdbcTemplate(ds);
+	public HeronDBDao(){
+		super("java:PMBootStrapDS");
 	}
 	
-	@SuppressWarnings("unchecked")
-	public List getUserData(String userId) throws I2B2Exception, I2B2DAOException { 
-		String sql =  "select * from pm_user_data where user_id=?";
-		//		log.info(sql + domainId + projectId + ownerId);
-		List queryResult = null;
-		try {
-			queryResult = jt.queryForList(sql, userId);
-		} catch (DataAccessException e) {
-			log.error(e.getMessage());
-			throw new I2B2DAOException("Database error");
+	/**
+	 * check if user has signed system access agreement.
+	 * @param userId
+	 * @return true if yes, false otherwise
+	 */
+	public boolean isUserAgreementSigned(String userId){
+		boolean isSigned = false;
+		try{
+			String sql = "select count(1) as tot from heron.system_access_users where user_id=?";
+			
+			int count = this.getSJdbcTemplate().queryForInt(sql, userId);
+			isSigned = count>0?true:false;
+		}catch(DataAccessException ex){
+			log.error("error in isUserAgreementSigned()");
 		}
-		return queryResult;	
+		return isSigned;
+		
+	}
+	
+	/**
+	 * add one entry to system_access_users table.
+	 * @param userId
+	 * @param userName
+	 * @param sigature
+	 * @param signDate
+	 */
+	public void insertSystemAccessUser(String userId,String userName,String sigature,Timestamp signDate){
+		String sql = "insert into heron.system_access_users(USER_ID,USER_FULL_NAME,SIGNATURE,SIGNED_DATE,LAST_UPDT_TMST) values(?,?,?,?,sysdate)";
+
+		try{
+			this.getSJdbcTemplate().update(sql,  userId, userName, sigature, signDate);
+		}catch(DataAccessException ex)
+		{
+			log.error("error in insertSystemAccessUser()");
+		}
 	}
 }
