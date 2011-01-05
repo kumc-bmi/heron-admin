@@ -8,6 +8,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import edu.ku.biostatistics.heron.util.DBUtil;
 import edu.ku.biostatistics.heron.util.StaticDataUtil;
 import static edu.ku.biostatistics.heron.base.StaticValues.*;
 
@@ -17,6 +18,7 @@ import static edu.ku.biostatistics.heron.base.StaticValues.*;
 public class SysAccessServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private Properties props = StaticDataUtil.getSoleInstance().getProperties();    
+	 private DBUtil dbUtil = new DBUtil();
     /**
      * @see HttpServlet#HttpServlet()
      */
@@ -39,11 +41,12 @@ public class SysAccessServlet extends HttpServlet {
 		String type = request.getParameter("accepted");
 		if("T".equals(type))
 		{
+			dbUtil.insertSystemAccessUser(request);
 			response.sendRedirect(props.getProperty(I2B2_CLIENT_SERVICE));
 		}
 		else
 		{
-			response.sendRedirect("http://www.kumc.edu/");
+			response.sendRedirect(DENIED_URL);
 		}
 	}
 
