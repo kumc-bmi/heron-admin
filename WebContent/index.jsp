@@ -3,7 +3,7 @@
 <%@ page import="java.util.*" %> 
 <%@ page errorPage="error_page.jsp"%>
 <%
-Properties prop = StaticDataUtil.getSoleInstance().getProperties();
+	Properties prop = StaticDataUtil.getSoleInstance().getProperties();
 %>
 
 <!DOCTYPE html>
