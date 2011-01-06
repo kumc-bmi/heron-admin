@@ -96,4 +96,14 @@
     <servlet-name>SysAccessServlet</servlet-name>
     <url-pattern>/SysAccessServlet</url-pattern>
   </servlet-mapping>
+  <servlet>
+    <description></description>
+    <display-name>SystemAccessNoJsServlet</display-name>
+    <servlet-name>SystemAccessNoJsServlet</servlet-name>
+    <servlet-class>edu.ku.biostatistics.heron.servlet.SystemAccessNoJsServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>SystemAccessNoJsServlet</servlet-name>
+    <url-pattern>/SystemAccessNoJsServlet</url-pattern>
+  </servlet-mapping>
 </web-app>
