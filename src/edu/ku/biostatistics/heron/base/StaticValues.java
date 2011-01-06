@@ -9,4 +9,7 @@ public interface StaticValues {
 	String NOT_TRAINED_URL = "not_trained.jsp";
 	String SAA_URL = "system_access_agreement.jsp";
 	String DENIED_URL = "http://www.kumc.edu/";
+	String VAL_MESSAGE = "VAL_MESSAGE";
+	String VAL_ERR_URL = "validation_error.jsp";
+	String SAA_NOJS_URL = "system_access_agreement_nojs.jsp";
 }
