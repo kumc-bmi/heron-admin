@@ -18,7 +18,7 @@ import static edu.ku.biostatistics.heron.base.StaticValues.*;
 public class SysAccessServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private Properties props = StaticDataUtil.getSoleInstance().getProperties();    
-	 private DBUtil dbUtil = new DBUtil();
+	private DBUtil dbUtil = new DBUtil();
     /**
      * @see HttpServlet#HttpServlet()
      */
