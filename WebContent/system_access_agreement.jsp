@@ -1,12 +1,17 @@
+<%@ page import="edu.ku.biostatistics.heron.base.*" %>
+<% String val = request.getAttribute(StaticValues.VAL_MESSAGE)+""; 
+   String message = val!=null && !val.equals("null")?(val+" Note: Turn on Javascript for better user experience !"):"";
+   String sigVal = request.getParameter("txtName");
+   String sigDate = request.getParameter("txtSignDate");
+   String sigValDisplay = sigVal!=null?sigVal:"";
+   String sigDateDisplay = sigDate!=null?sigDate:"";
+%>
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <script type="text/javascript" src="datepickercontrol/datepickercontrol.js"></script>
 <script type="text/javascript" src="static/kumc/heron.js"></script>
 <link type="text/css" rel="stylesheet" href="datepickercontrol/datepickercontrol.css"> 
-<noscript>
-<META HTTP-EQUIV="Refresh" CONTENT="0;URL=system_access_agreement_nojs.jsp">
-</noscript>
 </head>
 <body>
 <input type="hidden" id="DPC_TODAY_TEXT" value="today">
@@ -14,7 +19,8 @@
 <input type="hidden" id="DPC_MONTH_NAMES" value="['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']">
 <input type="hidden" id="DPC_DAY_NAMES" value="['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']">
 
-<form id="frmSysAccess" action="/raven/SysAccessServlet">
+<div align="center"><blink><font color="red"><%=message%></font></blink></div>
+<form id="frmSysAccess" action="SysAccessServlet">
 <h3 align="center">UNIVERSITY OF KANSAS MEDICAL CENTER</h3> <p></p>
 <h3 align="center">HERON SYSTEM ACCESS AGREEMENT</h3><p></p>
 <h3 align="center">(PREPARATORY TO RESEARCH)</h3><p></p>
@@ -64,13 +70,25 @@ J.	To not, under any circumstance, sell the Data Set, or any data obtained from 
 <p></p>
 <h3>AGREED TO AND ACCEPTED BY:</h3>
 <p></p>
-<h3>System User:</h3><input type="text" maxlength="40" id="txtName" name="txtName"/> Date: <input type="text" name="txtSignDate" id="txtSignDate" datepicker="true" datepicker_format="MM/DD/YYYY" maxlength="12" readonly />  
+<h3>System User:</h3><input type="text" maxlength="40" id="txtName" name="txtName" value="<%=sigValDisplay %>"/> Date(MM/DD/YYYY): <input type="text" name="txtSignDate" id="txtSignDate" maxlength="10" value="<%=sigDateDisplay %>" />  
 <p></p>
 Name:	<p></p>
 Title: 	<p></p>
 
 <input type="hidden" name="accepted" id="accepted"/>
-<button onclick="return doAcceptAgreement()">Accept</button> <button onclick="accepted.value='F';form.submit();">Decline</button>
+<input type="submit" name="agreementbtn" id="accept" value="Accept"/> <input type="submit" id="decline" name="agreementbtn" value="Decline"/>
+<script type="text/javascript">
+	document.getElementById('accept').onclick = function(){
+		return doAcceptAgreement();
+	}
+
+	document.getElementById('decline').onclick = function(){
+		accepted.value='F';
+		form.submit();
+	}
+	document.getElementById("txtSignDate").datepicker = true;
+	document.getElementById("txtSignDate").datepicker_format="MM/DD/YYYY";
+</script>
 <p></p>
 (Original to be filed with HERON)
 (System User to retain copy for research file)

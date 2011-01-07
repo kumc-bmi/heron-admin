@@ -4,7 +4,15 @@ function doAcceptAgreement()
 	var msg="";
 	
 	if(isEmpty(frm.txtName)) msg = "Signature required!\n";
-	if(isEmpty(frm.txtSignDate)) msg += "Signature Date required!\n";
+	if(isEmpty(frm.txtSignDate)) 
+		msg += "Signature Date required!\n";
+	else
+	{
+		if(!isValidDate(frm.txtSignDate.value))
+		{
+			msg += "Date format wrong.";
+		}
+	}
 	if(msg!="")
 	{
 		alert(msg);
@@ -15,6 +23,11 @@ function doAcceptAgreement()
 		frm.accepted.value='T';
 		frm.submit();
 	}
+}
+
+function isValidDate(sText) {
+    var reDate = /(?:0[1-9]|1[0-2])\/(?:0[1-9]|[12][0-9]|3[01])\/(?:19|20\d{2})/;
+    return reDate.test(sText);
 }
 
 function isEmpty(field)
