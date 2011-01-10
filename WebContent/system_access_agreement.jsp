@@ -9,15 +9,31 @@
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<script type="text/javascript" src="datepickercontrol/datepickercontrol.js"></script>
+<link rel="stylesheet" type="text/css" media="all" href="datepicker/jsDatePick_ltr.min.css" />
 <script type="text/javascript" src="static/kumc/heron.js"></script>
-<link type="text/css" rel="stylesheet" href="datepickercontrol/datepickercontrol.css"> 
+<script type="text/javascript" src="datepicker/jsDatePick.min.1.3.js"></script>
+<script type="text/javascript">
+	window.onload = function(){
+		new JsDatePick({
+			useMode:2,
+			target:"txtSignDate",
+			dateFormat:"%m/%d/%Y"
+			/*selectedDate:{				This is an example of what the full configuration offers.
+				day:5,						For full documentation about these settings please see the full version of the code.
+				month:9,
+				year:2006
+			},
+			yearsRange:[1978,2020],
+			limitToToday:false,
+			cellColorScheme:"beige",
+			dateFormat:"%m-%d-%Y",
+			imgPath:"img/",
+			weekStartDay:1*/
+		});
+	};
+</script>
 </head>
 <body>
-<input type="hidden" id="DPC_TODAY_TEXT" value="today">
-<input type="hidden" id="DPC_BUTTON_TITLE" value="Open calendar...">
-<input type="hidden" id="DPC_MONTH_NAMES" value="['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']">
-<input type="hidden" id="DPC_DAY_NAMES" value="['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']">
 
 <div align="center"><blink><font color="red"><%=message%></font></blink></div>
 <form id="frmSysAccess" action="SysAccessServlet">
@@ -80,14 +96,12 @@ Title: 	<p></p>
 <script type="text/javascript">
 	document.getElementById('accept').onclick = function(){
 		return doAcceptAgreement();
-	}
+	};
 
 	document.getElementById('decline').onclick = function(){
-		accepted.value='F';
-		form.submit();
-	}
-	document.getElementById("txtSignDate").datepicker = true;
-	document.getElementById("txtSignDate").datepicker_format="MM/DD/YYYY";
+		document.getElementById("accepted").value='F';
+		document.getElementById("frmSysAccess").submit();
+	};
 </script>
 <p></p>
 (Original to be filed with HERON)

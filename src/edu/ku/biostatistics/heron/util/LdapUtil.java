@@ -19,7 +19,10 @@ public class LdapUtil {
 	public List getAllPersonNames() {
 		Hashtable env = new Hashtable();
 		env.put(Context.INITIAL_CONTEXT_FACTORY,"com.sun.jndi.ldap.LdapCtxFactory");
-		env.put(Context.PROVIDER_URL, "ldap://localhost:389/dc=jayway,dc=se");
+		env.put(Context.PROVIDER_URL, "ldap://idvauth.kumc.edu:389");
+		env.put(Context.SECURITY_AUTHENTICATION, "simple");
+		env.put(Context.SECURITY_PRINCIPAL, "uid=biostats,ou=system");
+		env.put(Context.SECURITY_CREDENTIALS, "P@ssw0rd");
 
 		DirContext ctx;
 		try {
@@ -64,5 +67,9 @@ public class LdapUtil {
 			}
 		}
 		return list;
+	}
+
+	public static void main(String[] args) {
+		new LdapUtil().getAllPersonNames();
 	}
 }

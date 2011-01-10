@@ -6,10 +6,8 @@
  */
 package edu.ku.biostatistics.heron.util;
 
-import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.sql.Timestamp;
 
 import javax.servlet.http.HttpServletRequest;
@@ -18,7 +16,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import edu.ku.biostatistics.heron.dao.DBBaseDao;
 import edu.ku.biostatistics.heron.dao.HeronDBDao;
 import static edu.ku.biostatistics.heron.base.StaticValues.*;
 
@@ -61,5 +58,25 @@ public class DBUtil {
 		catch(ParseException ex){
 			log.error("error in insertSystemAccessUser() parsing date");
 		}
+	}
+	
+	/**
+	 * check if user already in i2b2.
+	 * @param userId
+	 * @return true if exist, false otherwise.
+	 */
+	public boolean isUserInI2b2Database(String userId){
+		return heronDao.isUserInI2b2Database(userId);
+	}
+	
+	/**
+	 * Insert user and project info into i2b2 database
+	 * @param request
+	 */
+	public void insertPMUser(HttpServletRequest request){
+		String projId = StaticDataUtil.getSoleInstance().getProperties().getProperty(USER_PROJ);
+		String userId = request.getRemoteUser();
+		String fullName = request.getSession().getAttribute(USER_FULL_NAME)+"";
+		heronDao.insertPMUser(projId, userId, fullName);
 	}
 }

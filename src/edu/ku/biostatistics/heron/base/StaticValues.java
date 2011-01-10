@@ -11,4 +11,7 @@ public interface StaticValues {
 	String DENIED_URL = "http://www.kumc.edu/";
 	String VAL_MESSAGE = "VAL_MESSAGE";
 	String VAL_ERR_URL = "validation_error.jsp";
+	String USER_PROJ = "user_project";
+	String USER_FULL_NAME = "full_name";
+	String[] userRoles = new String[]{"USER","DATA_LDS","DATA_OBFSC","DATA_AGG"};
 }

@@ -1,5 +1,5 @@
 /**
- * extra servlet to handle non-javascript support.
+ *  servlet to handle system access page request
  * 
  * Dongsheng Zhu
  */
@@ -47,25 +47,34 @@ public class SysAccessServlet extends HttpServlet {
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		String message = validateInput(request);
+		String type = request.getParameter("agreementbtn");
 		
-		if("".equals(message)){
-			String type = request.getParameter("agreementbtn");
-			if("Accept".equals(type)){
+		if("Accept".equals(type)){
+			String message = validateInput(request);
+		
+			if("".equals(message)){
 				dbUtil.insertSystemAccessUser(request);
+				if(!dbUtil.isUserInI2b2Database(request.getRemoteUser())){
+					dbUtil.insertPMUser(request);
+				}
 				response.sendRedirect(props.getProperty(I2B2_CLIENT_SERVICE));
 			}
 			else{
-				response.sendRedirect(DENIED_URL);
+				request.setAttribute(VAL_MESSAGE, message);
+				RequestDispatcher rd = request.getRequestDispatcher(SAA_URL);
+				rd.forward(request, response);
 			}
 		}
 		else{
-			request.setAttribute(VAL_MESSAGE, message);
-			RequestDispatcher rd = request.getRequestDispatcher(SAA_URL);
-			rd.forward(request, response);
+			response.sendRedirect(DENIED_URL);
 		}
 	}
 	
+	/**
+	 * client data validation
+	 * @param request
+	 * @return error message in a String.
+	 */
 	private String validateInput(HttpServletRequest request){
 		String msg = "";
 		String sigName = request.getParameter("txtName");

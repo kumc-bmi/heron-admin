@@ -9,6 +9,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.dao.DataAccessException;
 
+import edu.ku.biostatistics.heron.base.StaticValues;
+
 public class HeronDBDao extends DBBaseDao{
 	private static Log log = LogFactory.getLog(HeronDBDao.class);
 
@@ -49,7 +51,49 @@ public class HeronDBDao extends DBBaseDao{
 			this.getSJdbcTemplate().update(sql,  userId, userName, sigature, signDate);
 		}catch(DataAccessException ex)
 		{
-			log.error("error in insertSystemAccessUser()");
+			log.error("error in insertSystemAccessUser()" + ex.getMessage());
 		}
 	}
+	
+	/**
+	 * Insert user and project info into i2b2 database
+	 * @param projId
+	 * @param userId
+	 * @param userRole
+	 * @param fullName
+	 */
+	public void insertPMUser(String projId, String userId,String fullName){
+		 String sql1 = "INSERT INTO PM_PROJECT_USER_ROLES(PROJECT_ID, USER_ID, USER_ROLE_CD, STATUS_CD) VALUES(?, ?, ?, 'A')";
+		 String sql2 = "INSERT INTO PM_USER_DATA (USER_ID, FULL_NAME, PASSWORD, STATUS_CD) VALUES(?, ?, 'CAS', 'A')";
+		 try{
+			 this.getSJdbcTemplate().update(sql2, userId,fullName);
+			
+			 for(String userRole:StaticValues.userRoles){
+				 this.getSJdbcTemplate().update(sql1, projId, userId, userRole);
+			 }
+		 }catch(DataAccessException ex)
+		{
+			log.error("error in insertPMUser()"+ex.getMessage());
+		}
+	}
+	
+	/**
+	 * check if user already in i2b2.
+	 * @param userId
+	 * @return true if exist, false otherwise.
+	 */
+	public boolean isUserInI2b2Database(String userId){
+		boolean isSigned = false;
+		try{
+			String sql = "select count(1) as tot from PM_USER_DATA where user_id=? and status_cd='A'";
+			
+			int count = this.getSJdbcTemplate().queryForInt(sql, userId);
+			isSigned = count>0?true:false;
+		}catch(DataAccessException ex){
+			log.error("error in isUserInI2b2Database()");
+		}
+		return isSigned;
+		
+	}
+	
 }
