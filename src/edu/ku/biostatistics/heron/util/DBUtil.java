@@ -1,6 +1,6 @@
 /**
  * utility or service layer class to handle db related tasks.
- * Not limited to one database/schema.
+ * Not limited to one database/schema. GUI/Data related business logic goes here.
  * 
  * Dongsheng Zhu
  */
@@ -8,6 +8,8 @@ package edu.ku.biostatistics.heron.util;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.GregorianCalendar;
+import java.sql.Date;
 import java.sql.Timestamp;
 
 import javax.servlet.http.HttpServletRequest;
@@ -16,16 +18,19 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import edu.ku.biostatistics.heron.dao.ChalkDBDao;
 import edu.ku.biostatistics.heron.dao.HeronDBDao;
 import static edu.ku.biostatistics.heron.base.StaticValues.*;
 
 public class DBUtil {
 	private HeronDBDao heronDao;
+	private ChalkDBDao chalkDao;
 	//can have other dao too...
 	private static Log log = LogFactory.getLog(DBUtil.class);
 	
 	public DBUtil(){
 		heronDao = new HeronDBDao();
+		chalkDao = new ChalkDBDao();
 	}
 	
 	/**
@@ -71,12 +76,37 @@ public class DBUtil {
 	
 	/**
 	 * Insert user and project info into i2b2 database
-	 * @param request
+	 * @param request a HttpServletRequest
 	 */
 	public void insertPMUser(HttpServletRequest request){
 		String projId = StaticDataUtil.getSoleInstance().getProperties().getProperty(USER_PROJ);
 		String userId = request.getRemoteUser();
 		String fullName = request.getSession().getAttribute(USER_FULL_NAME)+"";
 		heronDao.insertPMUser(projId, userId, fullName);
+	}
+	
+	/**
+	 * check if a user has been properly trained in CHALK 
+	 * @param request a HttpServletRequest
+	 * @return true if trained and not expired; false otherwise
+	 */
+	public boolean checkChalkTraining(HttpServletRequest request){
+		Date expireDate = chalkDao.checkChalkTraining(request.getRemoteUser());
+		if(expireDate == null || new GregorianCalendar().after(expireDate))
+				return false;
+		else
+			return true;
+	}
+	
+	public void insertSponsorships(HttpServletRequest request){
+		String resTitle = request.getParameter("txtRTitle");
+		String resDesc = request.getParameter("resDesc");
+		String empIds = request.getParameter("empIds");
+		String nonempIds = request.getParameter("nonempIds");
+		String expDate = request.getParameter("expDate");
+		String uid = request.getRemoteUser();
+		String[] empIdArray = empIds.split(";");
+		String[] nonEmpIdArray = nonempIds.split(";");
+		heronDao.insertSponsorships(resTitle,resDesc,empIdArray,nonEmpIdArray,expDate,uid);
 	}
 }

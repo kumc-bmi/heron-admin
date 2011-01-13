@@ -96,4 +96,14 @@
     <servlet-name>SysAccessServlet</servlet-name>
     <url-pattern>/SysAccessServlet</url-pattern>
   </servlet-mapping>
+  <servlet>
+    <description></description>
+    <display-name>SponsorshipServlet</display-name>
+    <servlet-name>SponsorshipServlet</servlet-name>
+    <servlet-class>edu.ku.biostatistics.heron.servlet.SponsorshipServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>SponsorshipServlet</servlet-name>
+    <url-pattern>/SponsorshipServlet</url-pattern>
+  </servlet-mapping>
 </web-app>

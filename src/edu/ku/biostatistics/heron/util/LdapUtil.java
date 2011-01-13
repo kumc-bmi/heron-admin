@@ -1,8 +1,12 @@
+/**
+ * Utility to access ldap and grab info.
+ * 
+ * Dongsheng Zhu
+ */
 package edu.ku.biostatistics.heron.util;
 
 import java.util.Hashtable;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.Properties;
 
 import javax.naming.Context;
 import javax.naming.NameNotFoundException;
@@ -15,42 +19,69 @@ import javax.naming.directory.InitialDirContext;
 import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
 
-public class LdapUtil {
-	public List getAllPersonNames() {
-		Hashtable env = new Hashtable();
-		env.put(Context.INITIAL_CONTEXT_FACTORY,"com.sun.jndi.ldap.LdapCtxFactory");
-		env.put(Context.PROVIDER_URL, "ldap://idvauth.kumc.edu:389");
-		env.put(Context.SECURITY_AUTHENTICATION, "simple");
-		env.put(Context.SECURITY_PRINCIPAL, "uid=biostats,ou=system");
-		env.put(Context.SECURITY_CREDENTIALS, "P@ssw0rd");
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
-		DirContext ctx;
+import static edu.ku.biostatistics.heron.base.StaticValues.*;
+
+public class LdapUtil {
+	private static Hashtable<String,String> env = new Hashtable<String,String>();
+	private static Properties props = StaticDataUtil.getSoleInstance().getProperties();
+	private static Log log = LogFactory.getLog(LdapUtil.class);
+	
+	static {
+		env.put(Context.INITIAL_CONTEXT_FACTORY,"com.sun.jndi.ldap.LdapCtxFactory");
+		env.put(Context.PROVIDER_URL, props.getProperty(LDAP_PROV_URL));
+		env.put(Context.SECURITY_AUTHENTICATION, "simple");
+		env.put(Context.SECURITY_PROTOCOL, "ssl");
+		env.put(Context.SECURITY_PRINCIPAL, props.getProperty(LDAP_PRINCIPAL));
+		env.put(Context.SECURITY_CREDENTIALS, props.getProperty(LDAP_CREDENTIAL));
+	}
+
+	/**
+	 * retrieve user info from ldap using userid/cn
+	 * @param userId
+	 * @return string[] of user info
+	 */
+	@SuppressWarnings("rawtypes")
+	public String[] getUserInfo(String userId)
+	{
+		String[] info = new String[4];
+		DirContext ctx = null;
+		NamingEnumeration results = null;
+		
 		try {
 			ctx = new InitialDirContext(env);
-		} catch (NamingException e) {
-			throw new RuntimeException(e);
-		}
-
-		LinkedList list = new LinkedList();
-		NamingEnumeration results = null;
-		try {
 			SearchControls controls = new SearchControls();
 			controls.setSearchScope(SearchControls.SUBTREE_SCOPE);
-			results = ctx.search("", "(objectclass=person)", controls);
+			results = ctx.search("", "(cn=" + userId + ")", controls);
 
-			while (results.hasMore()) {
+			if (results.hasMore()) {
 				SearchResult searchResult = (SearchResult) results.next();
 				Attributes attributes = searchResult.getAttributes();
-				Attribute attr = attributes.get("cn");
-				String cn = (String) attr.get();
-				list.add(cn);
+				NamingEnumeration attrs = attributes.getAll();
+				while(attrs.hasMore()){
+					Attribute attr = (Attribute)attrs.next();
+					System.out.println(attr.toString());
+				}
+					
+				String fname = (String) attributes.get("givenname").get();
+				String lname = (String) attributes.get("sn").get();
+				String fac = (String) attributes.get("kumcPersonFaculty").get();
+				String jobCode = (String) attributes.get("kumcPersonJobCode").get();
+				String title = (String) attributes.get("title").get();
+				info[0] = fname + " " + lname;
+				info[1] = fac;
+				info[2] = title;
+				info[3] = jobCode;
 			}
 		} catch (NameNotFoundException e) {
-			// The base context was not found.
-			// Just clean up and exit.
+			log.error("NameNotFoundException in getUserInfo():"+e.getMessage());
 		} catch (NamingException e) {
-			throw new RuntimeException(e);
-		} finally {
+			log.error("NamingException in getUserInfo():"+e.getMessage());
+		} catch(Exception e){
+			log.error("Other exception in getUserInfo():"+e.getMessage());
+		}finally {
 			if (results != null) {
 				try {
 					results.close();
@@ -66,10 +97,10 @@ public class LdapUtil {
 				}
 			}
 		}
-		return list;
+		return info;
 	}
 
 	public static void main(String[] args) {
-		new LdapUtil().getAllPersonNames();
+		new LdapUtil().getUserInfo("dzhu");
 	}
 }

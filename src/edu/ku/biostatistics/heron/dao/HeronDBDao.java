@@ -1,5 +1,6 @@
 /**
  * Dao class for HERON data access/update.
+ * Avoid putting business logic especially gui related logic here.
  * Dongsheng Zhu
  */
 package edu.ku.biostatistics.heron.dao;
@@ -8,8 +9,7 @@ import java.sql.Timestamp;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.dao.DataAccessException;
-
-import edu.ku.biostatistics.heron.base.StaticValues;
+import static edu.ku.biostatistics.heron.base.StaticValues.*;
 
 public class HeronDBDao extends DBBaseDao{
 	private static Log log = LogFactory.getLog(HeronDBDao.class);
@@ -68,7 +68,7 @@ public class HeronDBDao extends DBBaseDao{
 		 try{
 			 this.getSJdbcTemplate().update(sql2, userId,fullName);
 			
-			 for(String userRole:StaticValues.userRoles){
+			 for(String userRole:userRoles){
 				 this.getSJdbcTemplate().update(sql1, projId, userId, userRole);
 			 }
 		 }catch(DataAccessException ex)
@@ -96,4 +96,37 @@ public class HeronDBDao extends DBBaseDao{
 		
 	}
 	
+	public void insertSponsorships(String resTitle, String resDesc,String empIds[], String nonempIds[],String expDate,String uid){
+		if(empIds.length>0){
+			String[] empSqls = buildQueries(resTitle,  resDesc, empIds, expDate, uid, "Y");
+			this.getJdbcTemplate().batchUpdate(empSqls);
+		}
+		if(nonempIds.length>0){
+			String[] nonEmpSqls = buildQueries(resTitle,  resDesc, nonempIds, expDate, uid, "N");
+			this.getJdbcTemplate().batchUpdate(nonEmpSqls);
+		}
+	}
+	
+	private String[] buildQueries(String resTitle, String resDesc,String ids[],String expDate,String uid, String empFlag){
+		String[] sqls = new String[ids.length];
+		for(int i=0;i<ids.length;i++){
+			StringBuffer bf = new StringBuffer("insert into heron.SPONSORSHIP(USER_ID,SPONSOR_ID,LAST_UPDT_TMST,ACCESS_TYPE,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE,KUMC_EMPL_FLAG) values('");
+			bf.append(ids[i]);
+			bf.append("','");
+			bf.append(uid);
+			bf.append("',sysdate,'");
+			bf.append(VIEW_ONLY);
+			bf.append("','");
+			bf.append(resTitle);
+			bf.append("','");
+			bf.append(resDesc);
+			bf.append("',to_date('");
+			bf.append(expDate);
+			bf.append("','mm/dd/yyyy'),'");
+			bf.append(empFlag);
+			bf.append("')");
+			sqls[i] = bf.toString();
+		}
+		return sqls;
+	}
 }

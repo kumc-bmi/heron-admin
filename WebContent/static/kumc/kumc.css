@@ -58,7 +58,7 @@
 		margin:0px 0px 0px 0px;
 	}
 	h5{
-		color: red;
+		color: #444444;
 		font-size: .65em;
 		font-weight: bold;
 		padding:0px 0px 0px 0px;
@@ -80,7 +80,16 @@
 		border-left:0px;
 		border-right:0px;
 		border-bottom:0px;		
-	}		
+	}	
+	
+	.h5red{
+		color: red;
+		font-size: .65em;
+		font-weight: bold;
+		padding:10px 10px 10px 10px;
+		margin:0px 0px 0px 0px;
+	}
+		
 	.kumc_greyline{
 		padding-bottom:2px;
 		padding-top: 2px;

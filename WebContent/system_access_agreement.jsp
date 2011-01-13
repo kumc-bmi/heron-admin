@@ -88,9 +88,8 @@ J.	To not, under any circumstance, sell the Data Set, or any data obtained from 
 <p></p>
 <h3>System User:</h3><input type="text" maxlength="40" id="txtName" name="txtName" value="<%=sigValDisplay %>"/> Date(MM/DD/YYYY): <input type="text" name="txtSignDate" id="txtSignDate" maxlength="10" value="<%=sigDateDisplay %>" />  
 <p></p>
-Name:	<p></p>
-Title: 	<p></p>
-
+Name: <%=session.getAttribute(StaticValues.USER_FULL_NAME) %><p></p>
+Title: <%=session.getAttribute(StaticValues.USER_TITLE) %><p></p>
 <input type="hidden" name="accepted" id="accepted"/>
 <input type="submit" name="agreementbtn" id="accept" value="Accept"/> <input type="submit" id="decline" name="agreementbtn" value="Decline"/>
 <script type="text/javascript">
