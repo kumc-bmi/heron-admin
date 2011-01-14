@@ -99,6 +99,48 @@ public class LdapUtil {
 		}
 		return info;
 	}
+	
+	/**
+	 * check if a user is in ldap
+	 * @param userId
+	 * @return true if yet in ldap
+	 */
+	public boolean isUserInLdap(String userId)
+	{
+		DirContext ctx = null;
+		@SuppressWarnings("rawtypes")
+		NamingEnumeration results = null;
+		boolean found = false;
+		try {
+			ctx = new InitialDirContext(env);
+			SearchControls controls = new SearchControls();
+			controls.setSearchScope(SearchControls.SUBTREE_SCOPE);
+			results = ctx.search("", "(cn=" + userId + ")", controls);
+			found = results.hasMore();
+		} catch (NameNotFoundException e) {
+			log.error("NameNotFoundException in getUserInfo():"+e.getMessage());
+		} catch (NamingException e) {
+			log.error("NamingException in getUserInfo():"+e.getMessage());
+		} catch(Exception e){
+			log.error("Other exception in getUserInfo():"+e.getMessage());
+		}finally {
+			if (results != null) {
+				try {
+					results.close();
+				} catch (Exception e) {
+					// Never mind this.
+				}
+			}
+			if (ctx != null) {
+				try {
+					ctx.close();
+				} catch (Exception e) {
+					// Never mind this.
+				}
+			}
+		}
+		return found;
+	}
 
 	public static void main(String[] args) {
 		new LdapUtil().getUserInfo("dzhu");

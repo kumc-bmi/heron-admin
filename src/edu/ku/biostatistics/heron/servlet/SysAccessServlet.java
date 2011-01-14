@@ -9,14 +9,13 @@ import static edu.ku.biostatistics.heron.base.StaticValues.DENIED_URL;
 import static edu.ku.biostatistics.heron.base.StaticValues.I2B2_CLIENT_SERVICE;
 import java.io.IOException;
 import java.util.Properties;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import edu.ku.biostatistics.heron.util.BasicUtil;
 import edu.ku.biostatistics.heron.util.DBUtil;
 import edu.ku.biostatistics.heron.util.StaticDataUtil;
 import static edu.ku.biostatistics.heron.base.StaticValues.*;
@@ -28,7 +27,8 @@ public class SysAccessServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private Properties props = StaticDataUtil.getSoleInstance().getProperties();    
 	private DBUtil dbUtil = new DBUtil();
-       
+	private BasicUtil bUtil = new BasicUtil();
+	
     /**
      * @see HttpServlet#HttpServlet()
      */
@@ -84,14 +84,8 @@ public class SysAccessServlet extends HttpServlet {
 			msg += "Signature is required. ";
 		if(sigDate==null || sigDate.trim().equals(""))
 			msg += "Date is required. ";
-		else{
-			String expression = "[01][0-2][/](0[1-9]|[12][0-9]|3[01])[/]\\d{4}"; 
-			Pattern p = Pattern.compile(expression);
-		    Matcher m = p.matcher(sigDate);
-		  
-		    if(!m.matches())
+		else if(!bUtil.checkDateFormat(sigDate))
 		    	msg += "Date format is wrong.";
-		}
 	    return msg;
 	}
 }

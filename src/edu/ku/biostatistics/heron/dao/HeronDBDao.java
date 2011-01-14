@@ -96,36 +96,66 @@ public class HeronDBDao extends DBBaseDao{
 		
 	}
 	
+	/**
+	 * Insert sponsorship data into database.
+	 * @param resTitle
+	 * @param resDesc
+	 * @param empIds
+	 * @param nonempIds
+	 * @param expDate
+	 * @param uid
+	 */
 	public void insertSponsorships(String resTitle, String resDesc,String empIds[], String nonempIds[],String expDate,String uid){
 		if(empIds.length>0){
 			String[] empSqls = buildQueries(resTitle,  resDesc, empIds, expDate, uid, "Y");
-			this.getJdbcTemplate().batchUpdate(empSqls);
+			if(empSqls!=null && empSqls.length>0)
+				this.getJdbcTemplate().batchUpdate(empSqls);
 		}
 		if(nonempIds.length>0){
 			String[] nonEmpSqls = buildQueries(resTitle,  resDesc, nonempIds, expDate, uid, "N");
-			this.getJdbcTemplate().batchUpdate(nonEmpSqls);
+			if(nonEmpSqls!=null && nonEmpSqls.length>0)
+				this.getJdbcTemplate().batchUpdate(nonEmpSqls);
 		}
 	}
 	
+	/**
+	 * build batch exec sqls.
+	 * @param resTitle
+	 * @param resDesc
+	 * @param ids
+	 * @param expDate
+	 * @param uid
+	 * @param empFlag
+	 * @return string[] of sql statements.
+	 */
 	private String[] buildQueries(String resTitle, String resDesc,String ids[],String expDate,String uid, String empFlag){
 		String[] sqls = new String[ids.length];
 		for(int i=0;i<ids.length;i++){
-			StringBuffer bf = new StringBuffer("insert into heron.SPONSORSHIP(USER_ID,SPONSOR_ID,LAST_UPDT_TMST,ACCESS_TYPE,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE,KUMC_EMPL_FLAG) values('");
-			bf.append(ids[i]);
-			bf.append("','");
-			bf.append(uid);
-			bf.append("',sysdate,'");
-			bf.append(VIEW_ONLY);
-			bf.append("','");
-			bf.append(resTitle);
-			bf.append("','");
-			bf.append(resDesc);
-			bf.append("',to_date('");
-			bf.append(expDate);
-			bf.append("','mm/dd/yyyy'),'");
-			bf.append(empFlag);
-			bf.append("')");
-			sqls[i] = bf.toString();
+			if(ids[i]!=null && !ids[i].trim().equals("")){
+				StringBuffer bf = new StringBuffer("insert into heron.SPONSORSHIP(USER_ID,SPONSOR_ID,LAST_UPDT_TMST,ACCESS_TYPE,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE,KUMC_EMPL_FLAG) values('");
+				bf.append(ids[i]);
+				bf.append("','");
+				bf.append(uid);
+				bf.append("',sysdate,'");
+				bf.append(VIEW_ONLY);
+				bf.append("','");
+				bf.append(resTitle);
+				bf.append("','");
+				bf.append(resDesc);
+				bf.append("',");
+				if(expDate!=null && !expDate.trim().equals("")){
+					bf.append("to_date('");
+					bf.append(expDate);
+					bf.append("','mm/dd/yyyy')");
+				}
+				else{
+					bf.append("null");
+				}
+				bf.append(",'");
+				bf.append(empFlag);
+				bf.append("')");
+				sqls[i] = bf.toString();
+			}
 		}
 		return sqls;
 	}
