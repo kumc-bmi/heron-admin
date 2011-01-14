@@ -105,15 +105,15 @@ public class HeronDBDao extends DBBaseDao{
 	 * @param expDate
 	 * @param uid
 	 */
-	public void insertSponsorships(String resTitle, String resDesc,String empIds[], String nonempIds[],String expDate,String uid){
+	public void insertSponsorships(String resTitle, String resDesc,String empIds[], String nonempIds[],String expDate,String uid,String spnsrType){
 		if(empIds.length>0){
-			String[] empSqls = buildQueries(resTitle,  resDesc, empIds, expDate, uid, "Y");
-			if(empSqls!=null && empSqls.length>0)
+			String[] empSqls = buildQueries(resTitle,  resDesc, empIds, expDate, uid, "Y",spnsrType);
+			if(empSqls!=null && empSqls.length>0 && empSqls[0]!=null)
 				this.getJdbcTemplate().batchUpdate(empSqls);
 		}
 		if(nonempIds.length>0){
-			String[] nonEmpSqls = buildQueries(resTitle,  resDesc, nonempIds, expDate, uid, "N");
-			if(nonEmpSqls!=null && nonEmpSqls.length>0)
+			String[] nonEmpSqls = buildQueries(resTitle,  resDesc, nonempIds, expDate, uid, "N",spnsrType);
+			if(nonEmpSqls!=null && nonEmpSqls.length>0 && nonEmpSqls[0]!=null)
 				this.getJdbcTemplate().batchUpdate(nonEmpSqls);
 		}
 	}
@@ -128,7 +128,7 @@ public class HeronDBDao extends DBBaseDao{
 	 * @param empFlag
 	 * @return string[] of sql statements.
 	 */
-	private String[] buildQueries(String resTitle, String resDesc,String ids[],String expDate,String uid, String empFlag){
+	private String[] buildQueries(String resTitle, String resDesc,String ids[],String expDate,String uid, String empFlag,String spnsrType){
 		String[] sqls = new String[ids.length];
 		for(int i=0;i<ids.length;i++){
 			if(ids[i]!=null && !ids[i].trim().equals("")){
@@ -137,7 +137,7 @@ public class HeronDBDao extends DBBaseDao{
 				bf.append("','");
 				bf.append(uid);
 				bf.append("',sysdate,'");
-				bf.append(VIEW_ONLY);
+				bf.append(spnsrType);
 				bf.append("','");
 				bf.append(resTitle);
 				bf.append("','");

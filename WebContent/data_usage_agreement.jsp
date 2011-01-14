@@ -19,7 +19,7 @@ String expDateDisplay = expDate==null?"":expDate;
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
-<title>sponsor users</title>
+<title>data usage agreement</title>
 <link href="static/kumc/kumc.css" rel="stylesheet" type="text/css"
 	title="KUMC Style" />
 <script type="text/javascript" language="JavaScript"
@@ -29,10 +29,10 @@ String expDateDisplay = expDate==null?"":expDate;
 <%@ include file="header.html" %>
 	<div align="center" class="h5red"><blink><%=message%></blink></div>
 	<form id="frmSponsor" action="SponsorshipServlet">
-	<input type="hidden" name="spnsr_type" value="<%=StaticValues.VIEW_ONLY %>"/>
+	<input type="hidden" name="spnsr_type" id="spnsr_type" value="<%=StaticValues.DATA_ACCESS %>"/>
 	<p></p>
 	<table>
-		<tr><th colspan=2><h4>Sponsor Heron System Usage Users</h4></th></tr>
+		<tr><th colspan=2><h4>Sponsor HERON Data Usage Users</h4></th></tr>
 		<tr><td>&nbsp;</td></tr>
 		<tr><td><h5>Title of the Research: </h5></td><td><input type="text" name="txtRTitle" id="txtRTitle" value="<%=txtRTitleDisplay %>" size="66" maxlength="500"></td></tr>
 		<tr><td><h5>Description of the Research: </h5></td><td><textarea rows="" cols="50" name="resDesc" id="resDesc"><%=resDescDisplay %></textarea></td></tr>
