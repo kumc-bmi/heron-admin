@@ -111,6 +111,13 @@ public class HeronDBDao extends DBBaseDao{
 		String[] sqls = new String[ids.length];
 		for(int i=0;i<ids.length;i++){
 			StringBuffer bf = new StringBuffer("insert into heron.SPONSORSHIP(USER_ID,SPONSOR_ID,LAST_UPDT_TMST,ACCESS_TYPE,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE,KUMC_EMPL_FLAG) values('");
+			// prevent SQL injection
+			// TODO: consider using JDBC ? params
+			assert(!ids[i].contains("'"));
+			assert(!uid.contains("'"));
+			assert(!resTitle.contains("'"));
+			assert(!resDesc.contains("'"));
+			assert(!empFlag.contains("'"));
 			bf.append(ids[i]);
 			bf.append("','");
 			bf.append(uid);
