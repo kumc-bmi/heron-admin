@@ -22,4 +22,5 @@ public interface StaticValues {
 	String LDAP_CREDENTIAL = "ldap_credential";
 	String VIEW_ONLY = "VIEW_ONLY";
 	String DATA_ACCESS = "DATA_ACCESS";
+	String EXCLUDED_JOBCODE="excluded_jobcode";
 }

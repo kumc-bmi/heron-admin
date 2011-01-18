@@ -68,7 +68,8 @@ public class LdapUtil {
 				String fname = (String) attributes.get("givenname").get();
 				String lname = (String) attributes.get("sn").get();
 				String fac = (String) attributes.get("kumcPersonFaculty").get();
-				String jobCode = (String) attributes.get("kumcPersonJobCode").get();
+				Attribute attr = attributes.get("kumcPersonJobcode");
+				String jobCode = attr!=null?(String) attr.get():null;
 				String title = (String) attributes.get("title").get();
 				info[0] = fname + " " + lname;
 				info[1] = fac;
@@ -141,8 +142,8 @@ public class LdapUtil {
 		}
 		return found;
 	}
-
+	/*
 	public static void main(String[] args) {
-		new LdapUtil().getUserInfo("dzhu");
-	}
+		new LdapUtil().getUserInfo("myid");
+	}*/
 }

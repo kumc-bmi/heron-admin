@@ -49,7 +49,7 @@ public class AuthServlet extends HttpServlet {
 		HttpSession session = request.getSession();
 		session.setAttribute(USER_FULL_NAME, info[0]);
 		session.setAttribute(USER_TITLE, info[2]);
-		boolean isQualifiedFaculty = true;//checkQualification(info[1],info[3]);
+		boolean isQualifiedFaculty = checkQualification(info[1],info[3]);
 		
 		if(!isQualifiedFaculty){
 			String msg = "Sorry, It seems you are not a qualified faculty. <p></p>"+
@@ -64,7 +64,8 @@ public class AuthServlet extends HttpServlet {
 			boolean trained = (chalkExpDate == null || new GregorianCalendar().after(chalkExpDate))?false:true;
 				
 			if(!trained){
-				String msg = "Sorry, It seems you are not HSC/HIPPA trained, or your training has expired. <p></p>"+
+				String trainingDetailMsg = chalkExpDate==null?"you are not HSC/HIPPA trained. ":"your training has expired at "+chalkExpDate.toString();
+				String msg = "Sorry, It seems "+trainingDetailMsg+" <p></p>"+
 					"Please contact heron support team (heron-admin@kumc.edu) if you believe this info is not correct. <p>"+
 					"For HSC/HIPPA training, please go to <a href=\"http://www2.kumc.edu/chalk3/default.aspx\">CHALK</a><p></p>"+
 					"Thanks.";
@@ -93,7 +94,7 @@ public class AuthServlet extends HttpServlet {
 	 */
 	private boolean checkQualification(String facFlag,String jobCode){
 		boolean qual = false;
-		if(facFlag!=null && facFlag.equals("Y") && !jobCode.equals("24600"))
+		if(facFlag!=null && facFlag.equals("Y") && !jobCode.equals(props.getProperty(EXCLUDED_JOBCODE)))
 			qual = true;
 		return qual;
 	}
