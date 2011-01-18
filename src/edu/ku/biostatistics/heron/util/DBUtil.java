@@ -88,25 +88,26 @@ public class DBUtil {
 	/**
 	 * check if a user has been properly trained in CHALK 
 	 * @param request a HttpServletRequest
-	 * @return true if trained and not expired; false otherwise
+	 * @return training expiration date.
 	 */
-	public boolean checkChalkTraining(HttpServletRequest request){
-		Date expireDate = chalkDao.checkChalkTraining(request.getRemoteUser());
-		if(expireDate == null || new GregorianCalendar().after(expireDate))
-				return false;
-		else
-			return true;
+	public Date checkChalkTraining(HttpServletRequest request){
+		return chalkDao.getChalkTrainingExpireDate(request.getRemoteUser());
 	}
 	
+	/**
+	 * insert sponsorship data into database.
+	 * @param request a HttpServletRequest.
+	 */
 	public void insertSponsorships(HttpServletRequest request){
 		String resTitle = request.getParameter("txtRTitle");
 		String resDesc = request.getParameter("resDesc");
 		String empIds = request.getParameter("empIds");
 		String nonempIds = request.getParameter("nonempIds");
 		String expDate = request.getParameter("expDate");
+		String spnsrType = request.getParameter("spnsr_type");
 		String uid = request.getRemoteUser();
 		String[] empIdArray = empIds.split(";");
 		String[] nonEmpIdArray = nonempIds.split(";");
-		heronDao.insertSponsorships(resTitle,resDesc,empIdArray,nonEmpIdArray,expDate,uid);
+		heronDao.insertSponsorships(resTitle,resDesc,empIdArray,nonEmpIdArray,expDate,uid,spnsrType);
 	}
 }

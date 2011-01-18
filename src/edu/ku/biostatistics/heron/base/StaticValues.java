@@ -9,6 +9,7 @@ public interface StaticValues {
 	String NOT_TRAINED_URL = "not_trained.jsp";
 	String SAA_URL = "system_access_agreement.jsp";
 	String GEN_DISPLAY_URL = "gen_display.jsp";
+	String SPONSOR_URL = "sponsorship.jsp";
 	String DENIED_URL = "http://www.kumc.edu/";
 	String VAL_MESSAGE = "VAL_MESSAGE";
 	String VAL_ERR_URL = "validation_error.jsp";
@@ -21,4 +22,5 @@ public interface StaticValues {
 	String LDAP_CREDENTIAL = "ldap_credential";
 	String VIEW_ONLY = "VIEW_ONLY";
 	String DATA_ACCESS = "DATA_ACCESS";
+	String EXCLUDED_JOBCODE="excluded_jobcode";
 }

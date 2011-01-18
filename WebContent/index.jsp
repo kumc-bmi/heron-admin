@@ -32,6 +32,7 @@
 	href="http://biostatistics.kumc.edu/bio_proj_cris.shtml">CRIS</a></p>
 <p class="indent_half"><a href="AuthServlet">HERON</a></p>
 <p class="indent_half"><a href="sponsorship.jsp">HERON Sponsoring</a></p>
+<p class="indent_half"><a href="data_usage_agreement.jsp">HERON Data Usage</a></p>
 <p class="indent_half"><a href="http://bmidev1.kumc.edu/trac">trac</a></p>
 <p class="indent_half"><a
 	href="http://biostat-pts.kumc.edu/eres/jsp/kumcpr.jsp">project
