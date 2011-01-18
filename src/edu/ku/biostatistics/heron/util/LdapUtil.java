@@ -59,11 +59,11 @@ public class LdapUtil {
 			if (results.hasMore()) {
 				SearchResult searchResult = (SearchResult) results.next();
 				Attributes attributes = searchResult.getAttributes();
-				NamingEnumeration attrs = attributes.getAll();
+				/*NamingEnumeration attrs = attributes.getAll();
 				while(attrs.hasMore()){
 					Attribute attr = (Attribute)attrs.next();
 					System.out.println(attr.toString());
-				}
+				}*/
 					
 				String fname = (String) attributes.get("givenname").get();
 				String lname = (String) attributes.get("sn").get();
@@ -104,7 +104,7 @@ public class LdapUtil {
 	/**
 	 * check if a user is in ldap
 	 * @param userId
-	 * @return true if yet in ldap
+	 * @return true if yes in ldap
 	 */
 	public boolean isUserInLdap(String userId)
 	{
