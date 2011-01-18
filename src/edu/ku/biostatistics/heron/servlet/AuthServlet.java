@@ -5,6 +5,8 @@
 package edu.ku.biostatistics.heron.servlet;
 
 import java.io.IOException;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.Properties;
 
 import javax.servlet.RequestDispatcher;
@@ -58,7 +60,9 @@ public class AuthServlet extends HttpServlet {
 			rd.forward(request, response);
 		}
 		else{
-			boolean trained = true;//dbUtil.checkChalkTraining(request);
+			Date chalkExpDate = dbUtil.checkChalkTraining(request);
+			boolean trained = (chalkExpDate == null || new GregorianCalendar().after(chalkExpDate))?false:true;
+				
 			if(!trained){
 				String msg = "Sorry, It seems you are not HSC/HIPPA trained, or your training has expired. <p></p>"+
 					"Please contact heron support team (heron-admin@kumc.edu) if you believe this info is not correct. <p>"+

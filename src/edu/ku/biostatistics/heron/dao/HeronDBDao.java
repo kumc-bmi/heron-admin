@@ -1,14 +1,24 @@
 /**
  * Dao class for HERON data access/update.
  * Avoid putting business logic especially gui related logic here.
+ * 
  * Dongsheng Zhu
  */
 package edu.ku.biostatistics.heron.dao;
 
 import java.sql.Timestamp;
+import java.sql.Types;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+
+import javax.sql.DataSource;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.SqlParameter;
+import org.springframework.jdbc.object.BatchSqlUpdate;
+
 import static edu.ku.biostatistics.heron.base.StaticValues.*;
 
 public class HeronDBDao extends DBBaseDao{
@@ -106,57 +116,57 @@ public class HeronDBDao extends DBBaseDao{
 	 * @param uid
 	 */
 	public void insertSponsorships(String resTitle, String resDesc,String empIds[], String nonempIds[],String expDate,String uid,String spnsrType){
-		if(empIds.length>0){
-			String[] empSqls = buildQueries(resTitle,  resDesc, empIds, expDate, uid, "Y",spnsrType);
-			if(empSqls!=null && empSqls.length>0 && empSqls[0]!=null)
-				this.getJdbcTemplate().batchUpdate(empSqls);
-		}
-		if(nonempIds.length>0){
-			String[] nonEmpSqls = buildQueries(resTitle,  resDesc, nonempIds, expDate, uid, "N",spnsrType);
-			if(nonEmpSqls!=null && nonEmpSqls.length>0 && nonEmpSqls[0]!=null)
-				this.getJdbcTemplate().batchUpdate(nonEmpSqls);
-		}
+		if(empIds.length>0)
+			insertDataInBatch(resTitle,  resDesc, empIds, expDate, uid, "Y",spnsrType);
+		if(nonempIds.length>0)
+			insertDataInBatch(resTitle,  resDesc, nonempIds, expDate, uid, "N",spnsrType);
 	}
 	
+
 	/**
-	 * build batch exec sqls.
+	 * insert data into table in batch.
 	 * @param resTitle
 	 * @param resDesc
 	 * @param ids
 	 * @param expDate
 	 * @param uid
 	 * @param empFlag
-	 * @return string[] of sql statements.
+	 * @param spnsrType
+	 * @throws ParseException 
 	 */
-	private String[] buildQueries(String resTitle, String resDesc,String ids[],String expDate,String uid, String empFlag,String spnsrType){
-		String[] sqls = new String[ids.length];
-		for(int i=0;i<ids.length;i++){
-			if(ids[i]!=null && !ids[i].trim().equals("")){
-				StringBuffer bf = new StringBuffer("insert into heron.SPONSORSHIP(USER_ID,SPONSOR_ID,LAST_UPDT_TMST,ACCESS_TYPE,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE,KUMC_EMPL_FLAG) values('");
-				bf.append(ids[i]);
-				bf.append("','");
-				bf.append(uid);
-				bf.append("',sysdate,'");
-				bf.append(spnsrType);
-				bf.append("','");
-				bf.append(resTitle);
-				bf.append("','");
-				bf.append(resDesc);
-				bf.append("',");
-				if(expDate!=null && !expDate.trim().equals("")){
-					bf.append("to_date('");
-					bf.append(expDate);
-					bf.append("','mm/dd/yyyy')");
-				}
-				else{
-					bf.append("null");
-				}
-				bf.append(",'");
-				bf.append(empFlag);
-				bf.append("')");
-				sqls[i] = bf.toString();
+	private void insertDataInBatch(String resTitle, String resDesc,String ids[],String expDate,String uid, String empFlag,String spnsrType){
+		BatchInsert batchInsert = new BatchInsert(this.getDataSource());
+		java.util.Date expDt = null;
+		
+		try{
+			if(expDate!=null && !expDate.trim().equals("")){
+				SimpleDateFormat fmt = new SimpleDateFormat("mm/dd/yyyy");
+				expDt = fmt.parse(expDate);
 			}
+			for(int i=0;i<ids.length;i++){
+				if(ids[i]!=null && !ids[i].trim().equals(""))
+					batchInsert.update(new Object[]{ids[i],uid,spnsrType,resTitle,resDesc,expDt,empFlag});
+			}
+			batchInsert.flush();
+		}catch(Exception ex){
+			log.error("error in insertDataInBatch():"+ex.getMessage());
 		}
-		return sqls;
+	}
+	
+	class BatchInsert extends BatchSqlUpdate {
+		  private static final String SQL = "insert into heron.SPONSORSHIP(USER_ID,SPONSOR_ID,LAST_UPDT_TMST,ACCESS_TYPE,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE,KUMC_EMPL_FLAG) "+
+		  	"values (?, ?, sysdate, ?, ?,?,?,?)";
+
+		  BatchInsert(DataSource dataSource) {
+		    super(dataSource, SQL);
+		    declareParameter(new SqlParameter(Types.VARCHAR));
+		    declareParameter(new SqlParameter(Types.VARCHAR));
+		    declareParameter(new SqlParameter(Types.VARCHAR));
+		    declareParameter(new SqlParameter(Types.VARCHAR));
+		    declareParameter(new SqlParameter(Types.VARCHAR));
+		    declareParameter(new SqlParameter(Types.DATE));
+		    declareParameter(new SqlParameter(Types.VARCHAR));
+		    setBatchSize(100);
+		  }
 	}
 }

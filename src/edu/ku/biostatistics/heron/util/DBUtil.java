@@ -88,16 +88,16 @@ public class DBUtil {
 	/**
 	 * check if a user has been properly trained in CHALK 
 	 * @param request a HttpServletRequest
-	 * @return true if trained and not expired; false otherwise
+	 * @return training expiration date.
 	 */
-	public boolean checkChalkTraining(HttpServletRequest request){
-		Date expireDate = chalkDao.checkChalkTraining(request.getRemoteUser());
-		if(expireDate == null || new GregorianCalendar().after(expireDate))
-				return false;
-		else
-			return true;
+	public Date checkChalkTraining(HttpServletRequest request){
+		return chalkDao.getChalkTrainingExpireDate(request.getRemoteUser());
 	}
 	
+	/**
+	 * insert sponsorship data into database.
+	 * @param request a HttpServletRequest.
+	 */
 	public void insertSponsorships(HttpServletRequest request){
 		String resTitle = request.getParameter("txtRTitle");
 		String resDesc = request.getParameter("resDesc");

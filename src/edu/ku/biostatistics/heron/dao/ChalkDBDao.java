@@ -6,10 +6,22 @@
 package edu.ku.biostatistics.heron.dao;
 
 import java.sql.Date;
+import java.sql.Types;
+import java.util.HashMap;
+import java.util.Map;
 
+import javax.sql.DataSource;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.SqlOutParameter;
+import org.springframework.jdbc.core.SqlParameter;
+import org.springframework.jdbc.object.StoredProcedure;
 
 public class ChalkDBDao extends DBBaseDao{
+	private static Log log = LogFactory.getLog(ChalkDBDao.class);
+	
 	public ChalkDBDao()
 	{
 		super("java:ChalkDS");
@@ -20,16 +32,21 @@ public class ChalkDBDao extends DBBaseDao{
 	 * @param userId
 	 * @return
 	 */
-	public Date checkChalkTraining(String userId){
-		boolean isSigned = false;
-		try{
-			String sql = "select count(1) as tot from heron.system_access_users where user_id=?";
-			
-			int count = this.getSJdbcTemplate().queryForInt(sql, userId);
-			isSigned = count>0?true:false;
-		}catch(DataAccessException ex){
-			//log.error("error in isUserAgreementSigned()");
+	@SuppressWarnings("unchecked")
+	public Date getChalkTrainingExpireDate(String userId){
+		Map paraMap = new HashMap();
+		paraMap.put("Username", userId);
+		Map aMap = new ChalkStoredProcedure(this.getDataSource()).execute(paraMap);
+		return ((Date)aMap.get("HSExpirationDate"));
+	}
+	
+	private class ChalkStoredProcedure extends StoredProcedure{
+		private static final String SQL = "CheckHumanSubjectsStatus";
+
+		ChalkStoredProcedure(DataSource dataSource) {
+		      super(dataSource, SQL);
+		      declareParameter(new SqlParameter("Username", Types.VARCHAR));
+		      declareParameter(new SqlOutParameter("HSExpirationDate", Types.DATE));
 		}
-		return null;
 	}
 }

@@ -86,7 +86,7 @@ public class SponsorshipServlet extends HttpServlet {
 		if(resDesc==null || resDesc.trim().equals(""))
 			msg += "Description of the Research is required. ";
 		if((empls==null || empls.trim().equals("")) && (nonEmpls==null || nonEmpls.trim().equals("")))
-			msg += "Must enter employee Id(s) and/or non-KUMC employee Id(s). ";
+			msg += "Must enter employee Id(s) or non-KUMC employee Id(s). ";
 		if((expDate!=null&& !expDate.trim().equals("")) && !bUtil.checkDateFormat(expDate))
 			msg += "Date format invalid. ";
 		String emplIdLdapMsg =  bUtil.ldapCheck(empls);
