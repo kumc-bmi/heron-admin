@@ -105,9 +105,11 @@ public class DBUtil {
 		String nonempIds = request.getParameter("nonempIds");
 		String expDate = request.getParameter("expDate");
 		String spnsrType = request.getParameter("spnsr_type");
+		String sigName = request.getParameter("txtName");
+		String sigDate = request.getParameter("txtSignDate");
 		String uid = request.getRemoteUser();
 		String[] empIdArray = empIds.split(";");
 		String[] nonEmpIdArray = nonempIds.split(";");
-		heronDao.insertSponsorships(resTitle,resDesc,empIdArray,nonEmpIdArray,expDate,uid,spnsrType);
+		heronDao.insertSponsorships(resTitle,resDesc,empIdArray,nonEmpIdArray,expDate,uid,spnsrType,sigName,sigDate);
 	}
 }

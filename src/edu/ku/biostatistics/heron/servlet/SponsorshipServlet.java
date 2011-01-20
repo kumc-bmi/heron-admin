@@ -44,10 +44,12 @@ public class SponsorshipServlet extends HttpServlet {
 		String type = request.getParameter("agreementbtn");
 		
 		if("Accept and Submit".equals(type)){
+			String spnsrType = request.getParameter("spnsr_type");
+			String backUrl = spnsrType.equals(VIEW_ONLY)?SPONSOR_URL:DATA_USAGE_URL;
 			String message = validateInput(request);
 			
 			if("".equals(message)){
-				String result = "User(s) Sponsored Successfully !";
+				String result = spnsrType.equals(VIEW_ONLY)?"User(s) Sponsored Successfully !":"Data Usage Agreement Submitted Successfully!";
 				try{
 					dbUtil.insertSponsorships(request);
 				}catch(Exception ex){
@@ -59,7 +61,7 @@ public class SponsorshipServlet extends HttpServlet {
 			}
 			else{
 				request.setAttribute(VAL_MESSAGE, message);
-				RequestDispatcher rd = request.getRequestDispatcher(SPONSOR_URL);
+				RequestDispatcher rd = request.getRequestDispatcher(backUrl);
 				rd.forward(request, response);
 			}
 		}
@@ -88,13 +90,26 @@ public class SponsorshipServlet extends HttpServlet {
 		if((empls==null || empls.trim().equals("")) && (nonEmpls==null || nonEmpls.trim().equals("")))
 			msg += "Must enter employee Id(s) or non-KUMC employee Id(s). ";
 		if((expDate!=null&& !expDate.trim().equals("")) && !bUtil.checkDateFormat(expDate))
-			msg += "Date format invalid. ";
+			msg += "Expiration Date format invalid. ";
 		String emplIdLdapMsg =  bUtil.ldapCheck(empls);
 		if(!"".equals(emplIdLdapMsg))
 			msg += "The following employee id not in LDAP: "+emplIdLdapMsg+". ";
 		String nonEmplIdLdapMsg =  bUtil.ldapCheck(nonEmpls);
 		if(!"".equals(nonEmplIdLdapMsg))
 			msg += "The following non-employee id not in LDAP: "+nonEmplIdLdapMsg;
+		String spnsrType = request.getParameter("spnsr_type");
+		
+		if(spnsrType.equals(DATA_ACCESS)){
+			String sigName = request.getParameter("txtName");
+			String sigDate = request.getParameter("txtSignDate");
+			
+			if(sigName==null || sigName.trim().equals(""))
+				msg += "Signature is required. ";
+			if(sigDate==null || sigDate.trim().equals(""))
+				msg += "Signature Date is required. ";
+			else if(!bUtil.checkDateFormat(sigDate))
+			    	msg += "Signature Date format is wrong.";
+		}
 	    return msg;
 	}
 

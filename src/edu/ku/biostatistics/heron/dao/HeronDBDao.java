@@ -10,9 +10,11 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.List;
 
 import javax.sql.DataSource;
 
+import org.apache.commons.collections.map.ListOrderedMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.dao.DataAccessException;
@@ -115,11 +117,12 @@ public class HeronDBDao extends DBBaseDao{
 	 * @param expDate
 	 * @param uid
 	 */
-	public void insertSponsorships(String resTitle, String resDesc,String empIds[], String nonempIds[],String expDate,String uid,String spnsrType){
+	public void insertSponsorships(String resTitle, String resDesc,String empIds[], String nonempIds[],
+			String expDate,String uid,String spnsrType,String sigName,String sigDate){
 		if(empIds.length>0)
-			insertDataInBatch(resTitle,  resDesc, empIds, expDate, uid, "Y",spnsrType);
+			insertDataInBatch(resTitle,  resDesc, empIds, expDate, uid, "Y",spnsrType,sigName,sigDate);
 		if(nonempIds.length>0)
-			insertDataInBatch(resTitle,  resDesc, nonempIds, expDate, uid, "N",spnsrType);
+			insertDataInBatch(resTitle,  resDesc, nonempIds, expDate, uid, "N",spnsrType,sigName,sigDate);
 		}
 	
 
@@ -134,18 +137,24 @@ public class HeronDBDao extends DBBaseDao{
 	 * @param spnsrType
 	 * @throws ParseException 
 	 */
-	private void insertDataInBatch(String resTitle, String resDesc,String ids[],String expDate,String uid, String empFlag,String spnsrType){
+	private void insertDataInBatch(String resTitle, String resDesc,String ids[],String expDate,String uid, 
+			String empFlag,String spnsrType,String sigName,String sigDate){
 		BatchInsert batchInsert = new BatchInsert(this.getDataSource());
 		java.util.Date expDt = null;
+		java.util.Date signDt = null;
 		
 		try{
 			if(expDate!=null && !expDate.trim().equals("")){
 				SimpleDateFormat fmt = new SimpleDateFormat("mm/dd/yyyy");
 				expDt = fmt.parse(expDate);
 			}
+			if(sigDate!=null && !sigDate.trim().equals("")){
+				SimpleDateFormat fmt = new SimpleDateFormat("mm/dd/yyyy");
+				signDt = fmt.parse(sigDate);
+			}
 			for(int i=0;i<ids.length;i++){
 				if(ids[i]!=null && !ids[i].trim().equals(""))
-					batchInsert.update(new Object[]{ids[i],uid,spnsrType,resTitle,resDesc,expDt,empFlag});
+					batchInsert.update(new Object[]{ids[i],uid,spnsrType,resTitle,resDesc,expDt,empFlag,sigName,signDt});
 			}
 			batchInsert.flush();
 		}catch(Exception ex){
@@ -154,8 +163,9 @@ public class HeronDBDao extends DBBaseDao{
 	}
 	
 	class BatchInsert extends BatchSqlUpdate {
-		  private static final String SQL = "insert into heron.SPONSORSHIP(USER_ID,SPONSOR_ID,LAST_UPDT_TMST,ACCESS_TYPE,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE,KUMC_EMPL_FLAG) "+
-		  	"values (?, ?, sysdate, ?, ?,?,?,?)";
+		  private static final String SQL = "insert into heron.SPONSORSHIP(USER_ID,SPONSOR_ID,LAST_UPDT_TMST,"+
+		  	"ACCESS_TYPE,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE,KUMC_EMPL_FLAG,SIGNATURE,SIGNED_DATE) "+
+		  	"values (?, ?, sysdate, ?, ?,?,?,?,?,?)";
 
 		  BatchInsert(DataSource dataSource) {
 		    super(dataSource, SQL);
@@ -166,7 +176,47 @@ public class HeronDBDao extends DBBaseDao{
 		    declareParameter(new SqlParameter(Types.VARCHAR));
 		    declareParameter(new SqlParameter(Types.DATE));
 		    declareParameter(new SqlParameter(Types.VARCHAR));
+		    declareParameter(new SqlParameter(Types.VARCHAR));
+		    declareParameter(new SqlParameter(Types.DATE));
 		    setBatchSize(100);
 		}
+	}
+	
+	/**
+	 * get approver's group/org id
+	 * @param uid
+	 * @return string (approver's group/org id
+	 */
+	public String getApproverGroup(String uid){
+		String grp = null;
+		try{
+			String sql = "select org from heron.DROC_REVIEWERS where user_id=? and status='A'";
+			
+			List aList = this.getSJdbcTemplate().queryForList(sql, uid);
+			if(aList!=null && aList.size()>0)
+				grp =  ((ListOrderedMap)aList.get(0)).get("ORG")+"";
+		}catch(DataAccessException ex){
+			log.error("error in getApprovalGroup()");
+		}
+		return grp;
+	}
+	
+	/**
+	 * get a list of sponsorship info from database.
+	 * @param type
+	 * @param org
+	 * @return a list of sponsorship info from database
+	 */
+	public List getSponsorshipForApproval(String type,String org){
+		String sql = "select USER_ID,SPONSOR_ID,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE from HERON.sponsorship s"+
+			" where ACCESS_TYPE='"+type+"' and s.expire_date>sysdate ";
+		if(org.equals("KUMC"))
+			sql += " and (KUMC_APPROVAL_STATUS is null or KUMC_APPROVAL_STATUS<>'A')";
+		else if(org.equals("UKP"))
+			sql += " and (UKP_APPROVAL_STATUS is null or  UKP_APPROVAL_STATUS<>'A')";
+		else if(org.equals("KUH"))
+			sql += " and (KUH_APPROVAL_STATUS is null or KUH_APPROVAL_STATUS<>'A')"+
+			" order by research_title";
+		return this.getJdbcTemplate().queryForList(sql);
 	}
 }

@@ -1,0 +1,26 @@
+.h5red {
+	color: red;
+	font-size: .65em;
+	font-weight: bold;
+	padding: 10px 10px 10px 10px;
+	margin: 0px 0px 0px 0px;
+}
+
+table.heron {
+	border: 6px inset #8B8378;
+	-moz-border-radius: 6px;
+}
+
+table.heron td {
+	border: 1px solid black;
+	padding: 0.2em 2ex 0.2em 2ex;
+	color: black;
+}
+
+table.heron tr.d0 td {
+	background-color: #FCF6CF;
+}
+
+table.heron tr.d1 td {
+	background-color: #FEFEF2;
+}
