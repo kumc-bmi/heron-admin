@@ -163,9 +163,9 @@ public class HeronDBDao extends DBBaseDao{
 	}
 	
 	class BatchInsert extends BatchSqlUpdate {
-		  private static final String SQL = "insert into heron.SPONSORSHIP(USER_ID,SPONSOR_ID,LAST_UPDT_TMST,"+
+		  private static final String SQL = "insert into heron.SPONSORSHIP(UNIQ_ID,USER_ID,SPONSOR_ID,LAST_UPDT_TMST,"+
 		  	"ACCESS_TYPE,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE,KUMC_EMPL_FLAG,SIGNATURE,SIGNED_DATE) "+
-		  	"values (?, ?, sysdate, ?, ?,?,?,?,?,?)";
+		  	"values (heron.seq_sponsorship.nextval,?, ?, sysdate, ?, ?,?,?,?,?,?)";
 
 		  BatchInsert(DataSource dataSource) {
 		    super(dataSource, SQL);
@@ -208,7 +208,7 @@ public class HeronDBDao extends DBBaseDao{
 	 * @return a list of sponsorship info from database
 	 */
 	public List getSponsorshipForApproval(String type,String org){
-		String sql = "select USER_ID,SPONSOR_ID,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE from HERON.sponsorship s"+
+		String sql = "select UNIQ_ID,USER_ID,SPONSOR_ID,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE from HERON.sponsorship s"+
 			" where ACCESS_TYPE='"+type+"' and s.expire_date>sysdate ";
 		if(org.equals("KUMC"))
 			sql += " and (KUMC_APPROVAL_STATUS is null or KUMC_APPROVAL_STATUS<>'A')";

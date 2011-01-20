@@ -7,13 +7,11 @@
 }
 
 table.heron {
-	border: 6px inset #8B8378;
-	-moz-border-radius: 6px;
+	border: 1px;
 }
 
 table.heron td {
 	border: 1px solid black;
-	padding: 0.2em 2ex 0.2em 2ex;
 	color: black;
 }
 

@@ -32,17 +32,19 @@ public class GuiUtil {
 			List spnsrList = heronDao.getSponsorshipForApproval(type,org);
 			String prevTitle ="";
 			String curTitle ="";
-			
+			if(spnsrList==null || spnsrList.size()==0)
+				return "<div align=center>There is no users need to be approved at this time.</div>";
 			for(int i=0;i<spnsrList.size();i++){
 				Object aMap = spnsrList.get(i);
 				curTitle = ((ListOrderedMap)aMap).get("RESEARCH_TITLE")+"";
+				String uniqId = ((ListOrderedMap)aMap).get("UNIQ_ID")+"";
 				String userId = ((ListOrderedMap)aMap).get("USER_ID")+"";
 				String sponsorId = ((ListOrderedMap)aMap).get("SPONSOR_ID")+"";
 				String[] userInfo = lUtil.getUserInfo(userId);
 				String[] spnsrInfo = lUtil.getUserInfo(sponsorId);
-				
+				String rowStyle = i%2==0?"<tr class=\"d0\"><td>":"<tr class=\"d1\"><td>";
 				if(!prevTitle.equals(curTitle)){
-					bf.append("<div>Research Title: ");
+					bf.append("<p></p><div>Research Title: ");
 					bf.append(curTitle);
 					bf.append("</div>");
 					bf.append("<div>Research Description: ");
@@ -50,7 +52,7 @@ public class GuiUtil {
 					bf.append("</div><table class=\"heron\"><tr><th>User Id</th><th>User Name</th><th>User Title</th>");
 					bf.append("<th>Sponsor Id</th><th>Sponsor Name</th><th>Sponsor Title</th><th>Approve</th></tr>");
 				}
-				bf.append("<tr><td>");
+				bf.append(rowStyle);
 				bf.append(userId);
 				bf.append("</td><td>");
 				bf.append(userInfo[0]);
@@ -63,13 +65,13 @@ public class GuiUtil {
 				bf.append("</td><td>");
 				bf.append(spnsrInfo[2]);
 				bf.append("</td><td>");
-				bf.append("<input type=radio name=\"");
-				bf.append(curTitle+"_"+userId+"_"+sponsorId);
-				bf.append("\" value=\"Approve\">Approve<input type=radio name=\"");
-				bf.append(curTitle+"_"+userId+"_"+sponsorId);
-				bf.append("\" value=\"Decline\">Decline<input type=radio name=\"");
-				bf.append(curTitle+"_"+userId+"_"+sponsorId);
-				bf.append("\" value=\"Defer\">Defer decision</td></tr>");
+				bf.append("<input type=radio name=\"rad_");
+				bf.append(uniqId);
+				bf.append("\" value=\"A\">Approve<input type=radio name=\"rad_");
+				bf.append(uniqId);
+				bf.append("\" value=\"R\">Reject<input type=radio name=\"rad_");
+				bf.append(uniqId);
+				bf.append("\" value=\"D\">Defer</td></tr>");
 				
 				if(i<spnsrList.size()-1){
 					Object nextMap = spnsrList.get(i+1);
@@ -80,6 +82,7 @@ public class GuiUtil {
 				}
 				else if(i==spnsrList.size()-1)
 					bf.append("</table>");
+				prevTitle = curTitle;
 			}
 		}
 		
