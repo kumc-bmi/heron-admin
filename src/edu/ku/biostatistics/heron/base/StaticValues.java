@@ -24,4 +24,5 @@ public interface StaticValues {
 	String VIEW_ONLY = "VIEW_ONLY";
 	String DATA_ACCESS = "DATA_ACCESS";
 	String EXCLUDED_JOBCODE="excluded_jobcode";
+	String HOME_URL = "index.jsp";
 }

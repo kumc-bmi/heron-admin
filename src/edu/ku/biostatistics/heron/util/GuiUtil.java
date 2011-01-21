@@ -34,6 +34,8 @@ public class GuiUtil {
 			String curTitle ="";
 			if(spnsrList==null || spnsrList.size()==0)
 				return "<div align=center>There is no users need to be approved at this time.</div>";
+			bf.append("<input type=hidden name=\"hidOrg\" value=\"" + org + "\">");
+			
 			for(int i=0;i<spnsrList.size();i++){
 				Object aMap = spnsrList.get(i);
 				curTitle = ((ListOrderedMap)aMap).get("RESEARCH_TITLE")+"";
@@ -50,7 +52,7 @@ public class GuiUtil {
 					bf.append("<div>Research Description: ");
 					bf.append(((ListOrderedMap)aMap).get("RESEARCH_DESC"));
 					bf.append("</div><table class=\"heron\"><tr><th>User Id</th><th>User Name</th><th>User Title</th>");
-					bf.append("<th>Sponsor Id</th><th>Sponsor Name</th><th>Sponsor Title</th><th>Approve</th></tr>");
+					bf.append("<th>Sponsor Id</th><th>Sponsor Name</th><th>Sponsor Title</th><th>Action</th></tr>");
 				}
 				bf.append(rowStyle);
 				bf.append(userId);

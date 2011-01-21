@@ -79,12 +79,12 @@ a supplemental research protocol):</h5>
 <h5>&nbsp;&nbsp;Description of the Research:</h5>
 </td>
 <td><textarea rows="" cols="50" name="resDesc" id="resDesc"><%=resDescDisplay%></textarea>
-</div>
+</div><h5>
 Data Recipient certifies that the research to be conducted is in an area
 of Data Recipient's scientific expertise and that the data request is
 limited in scope to the minimum information necessary to conduct the
 research project described above (the "Research Project").
-<p></p>
+</h5><p></p>
 <h5>B. The individuals, or classes of individuals, employed by KUMC
 who shall be permitted by Data Recipient to use or receive the Limited
 Data Set for purposes of the Research Project shall be limited to:

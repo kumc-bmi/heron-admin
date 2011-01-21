@@ -54,7 +54,7 @@ I <%=uname %>, will be responsible for my research team members and hereby agree
  <p></p>
 A.    To comply with state and federal confidentiality laws, including but not limited to, the Health Insurance Portability and Accountability Act of 1996 ("HIPAA"") and its implementing regulations, as amended from time to time, and to comply with KUMC privacy rules and policies and HERON system policies and procedures;
 <p></p>
-B.     To reinforce to my research team members that they are prohibited from sharing or disclosing his/her HERON user ID and password and the Data Sets resulting from System User’s queries with other individuals or entities, except as required by law. 
+B.     To reinforce to my research team members that they are prohibited from sharing or disclosing his/her HERON user ID and password and the Data Sets resulting from System User's queries with other individuals or entities, except as required by law. 
 <p></p>
 C.     That the Data Set(s) resulting from System User's queries shall only be viewed by System User within the HERON system/environment.  No Data Sets or data accessed by System User hereunder may be extracted from the HERON system via printing, downloading, screenshots, saving webpages or other methods. 
 <p></p>

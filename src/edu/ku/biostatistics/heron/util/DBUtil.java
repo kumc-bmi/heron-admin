@@ -8,7 +8,9 @@ package edu.ku.biostatistics.heron.util;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Enumeration;
 import java.util.GregorianCalendar;
+import java.util.Vector;
 import java.sql.Date;
 import java.sql.Timestamp;
 
@@ -111,5 +113,39 @@ public class DBUtil {
 		String[] empIdArray = empIds.split(";");
 		String[] nonEmpIdArray = nonempIds.split(";");
 		heronDao.insertSponsorships(resTitle,resDesc,empIdArray,nonEmpIdArray,expDate,uid,spnsrType,sigName,sigDate);
+	}
+	
+	/**
+	 * approve sponsorships.
+	 * @param request
+	 * @return empty string if success, else a warning message.
+	 */
+	public String approveSponsorship(HttpServletRequest request){
+		String result = "Approved Successfully.";
+		boolean anyChecked = false;
+		Vector<String> ids = new Vector<String>();
+		Vector<String> vals = new Vector<String>();
+		@SuppressWarnings("unchecked")
+		Enumeration<String> names = request.getParameterNames();
+		String org = request.getParameter("hidOrg");
+		String uid = request.getRemoteUser();
+		
+		while(names.hasMoreElements()){
+			String param = names.nextElement()+"";
+			if(param.startsWith("rad_")){
+				String id = param.substring(4);
+				String val = request.getParameter(param);
+				if(val!=null){
+					anyChecked = true;
+					ids.add(id);
+					vals.add(val);
+				}
+			}
+		}
+		if(anyChecked)
+			heronDao.approveSponsorship(org, ids, vals, uid);
+		else
+			result = "you did not check anyone to approve.";
+		return  result;
 	}
 }

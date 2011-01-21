@@ -1,19 +1,21 @@
 package edu.ku.biostatistics.heron.servlet;
 
+import static edu.ku.biostatistics.heron.base.StaticValues.*;
 import java.io.IOException;
-import java.util.Enumeration;
-
+import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import edu.ku.biostatistics.heron.util.DBUtil;
 
 /**
  * Servlet implementation class SponsorshipApprovalServlet
  */
 public class SponsorshipApprovalServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-       
+    private DBUtil dUtil = new DBUtil();
     /**
      * @see HttpServlet#HttpServlet()
      */
@@ -33,14 +35,16 @@ public class SponsorshipApprovalServlet extends HttpServlet {
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		Enumeration names = request.getParameterNames();
-		while(names.hasMoreElements()){
-			String param = names.nextElement()+"";
-			if(param.startsWith("rad_")){
-				String val = request.getParameter(param);
-				System.out.print(param + ":" + val);
-			}
+		String action = request.getParameter("submitbtn");
+		
+		if("Submit".equals(action)){
+			String result = dUtil.approveSponsorship(request);
+			request.setAttribute(VAL_MESSAGE, result);
+			RequestDispatcher rd = request.getRequestDispatcher(GEN_DISPLAY_URL);
+			rd.forward(request, response);
+		}
+		else{
+			response.sendRedirect(HOME_URL);
 		}
 	}
-
 }

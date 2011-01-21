@@ -11,6 +11,7 @@ import java.sql.Types;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.List;
+import java.util.Vector;
 
 import javax.sql.DataSource;
 
@@ -139,7 +140,7 @@ public class HeronDBDao extends DBBaseDao{
 	 */
 	private void insertDataInBatch(String resTitle, String resDesc,String ids[],String expDate,String uid, 
 			String empFlag,String spnsrType,String sigName,String sigDate){
-		BatchInsert batchInsert = new BatchInsert(this.getDataSource());
+		SponsorshipBatchInsert batchInsert = new SponsorshipBatchInsert(this.getDataSource());
 		java.util.Date expDt = null;
 		java.util.Date signDt = null;
 		
@@ -159,26 +160,6 @@ public class HeronDBDao extends DBBaseDao{
 			batchInsert.flush();
 		}catch(Exception ex){
 			log.error("error in insertDataInBatch():"+ex.getMessage());
-		}
-	}
-	
-	class BatchInsert extends BatchSqlUpdate {
-		  private static final String SQL = "insert into heron.SPONSORSHIP(UNIQ_ID,USER_ID,SPONSOR_ID,LAST_UPDT_TMST,"+
-		  	"ACCESS_TYPE,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE,KUMC_EMPL_FLAG,SIGNATURE,SIGNED_DATE) "+
-		  	"values (heron.seq_sponsorship.nextval,?, ?, sysdate, ?, ?,?,?,?,?,?)";
-
-		  BatchInsert(DataSource dataSource) {
-		    super(dataSource, SQL);
-		    declareParameter(new SqlParameter(Types.VARCHAR));
-		    declareParameter(new SqlParameter(Types.VARCHAR));
-		    declareParameter(new SqlParameter(Types.VARCHAR));
-		    declareParameter(new SqlParameter(Types.VARCHAR));
-		    declareParameter(new SqlParameter(Types.VARCHAR));
-		    declareParameter(new SqlParameter(Types.DATE));
-		    declareParameter(new SqlParameter(Types.VARCHAR));
-		    declareParameter(new SqlParameter(Types.VARCHAR));
-		    declareParameter(new SqlParameter(Types.DATE));
-		    setBatchSize(100);
 		}
 	}
 	
@@ -211,12 +192,30 @@ public class HeronDBDao extends DBBaseDao{
 		String sql = "select UNIQ_ID,USER_ID,SPONSOR_ID,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE from HERON.sponsorship s"+
 			" where ACCESS_TYPE='"+type+"' and s.expire_date>sysdate ";
 		if(org.equals("KUMC"))
-			sql += " and (KUMC_APPROVAL_STATUS is null or KUMC_APPROVAL_STATUS<>'A')";
+			sql += " and (KUMC_APPROVAL_STATUS is null or KUMC_APPROVAL_STATUS='D')";
 		else if(org.equals("UKP"))
-			sql += " and (UKP_APPROVAL_STATUS is null or  UKP_APPROVAL_STATUS<>'A')";
+			sql += " and (UKP_APPROVAL_STATUS is null or  UKP_APPROVAL_STATUS='D')";
 		else if(org.equals("KUH"))
-			sql += " and (KUH_APPROVAL_STATUS is null or KUH_APPROVAL_STATUS<>'A')"+
+			sql += " and (KUH_APPROVAL_STATUS is null or KUH_APPROVAL_STATUS='D')"+
 			" order by research_title";
 		return this.getJdbcTemplate().queryForList(sql);
+	}
+	
+	public void approveSponsorship(String org, Vector<String> ids, Vector<String> vals, String uid){
+		String SQL = "update heron.SPONSORSHIP set LAST_UPDT_TMST=sysdate,";
+		if("KUMC".equals(org))
+			SQL += "KUMC_APPROVAL_STATUS=?,KUMC_APPROVED_BY=?,KUMC_APPROVAL_TMST ";
+		else if("UKP".equals(org))
+			SQL += "UKP_APPROVAL_STATUS=?,UKP_APPROVED_BY=?,UKP_APPROVAL_TMST ";
+		else if("KUH".equals(org))
+			SQL += "KUH_APPROVAL_STATUS=?,KUH_APPROVED_BY=?,KUH_APPROVAL_TMST ";	  
+		SQL += "=sysdate where UNIQ_ID =?";
+		SponsorshipApprovalBatchUpdate batchUpdate = new SponsorshipApprovalBatchUpdate(this.getDataSource(),SQL);
+		
+		for(int i=0;i<ids.size();i++){
+				batchUpdate.update(new Object[]{vals.get(i),uid,ids.get(i)});
+		}
+		batchUpdate.flush();
+		
 	}
 }
