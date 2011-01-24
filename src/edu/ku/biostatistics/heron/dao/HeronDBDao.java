@@ -201,6 +201,13 @@ public class HeronDBDao extends DBBaseDao{
 		return this.getJdbcTemplate().queryForList(sql);
 	}
 	
+	/**
+	 * approve sponsorships
+	 * @param org
+	 * @param ids
+	 * @param vals
+	 * @param uid
+	 */
 	public void approveSponsorship(String org, Vector<String> ids, Vector<String> vals, String uid){
 		String SQL = "update heron.SPONSORSHIP set LAST_UPDT_TMST=sysdate,";
 		if("KUMC".equals(org))
@@ -217,5 +224,26 @@ public class HeronDBDao extends DBBaseDao{
 		}
 		batchUpdate.flush();
 		
+	}
+	
+	/**
+	 * retrieve users from DROC committe  and with admin  roles.
+	 * @param uid
+	 * @return a list of user ids
+	 */
+	public List getUserValidRoles(String uid){
+		String sql = "select user_id from heron.DROC_REVIEWERS where user_id='" + uid 
+			+ "' and status='A' union select user_id from pm_project_user_roles where user_id='"+
+			uid + "' and user_role_cd='ADMIN' and status_cd ='A' ";
+		return this.getJdbcTemplate().queryForList(sql);
+	}
+	
+	/**
+	 * get all users signed system access agreement
+	 * @return a list of users
+	 */
+	public List getHeronSystemUsers(){
+		String sql = "select user_id, user_full_name from heron.system_access_users";
+		return this.getJdbcTemplate().queryForList(sql);
 	}
 }
