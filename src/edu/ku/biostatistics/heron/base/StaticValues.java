@@ -11,7 +11,7 @@ public interface StaticValues {
 	String GEN_DISPLAY_URL = "gen_display.jsp";
 	String SPONSOR_URL = "sponsorship.jsp";
 	String DATA_USAGE_URL = "data_usage_agreement.jsp";
-	String DENIED_URL = "http://www.kumc.edu/";
+	String DENIED_URL = "index.jsp";
 	String VAL_MESSAGE = "VAL_MESSAGE";
 	String VAL_ERR_URL = "validation_error.jsp";
 	String USER_PROJ = "user_project";
