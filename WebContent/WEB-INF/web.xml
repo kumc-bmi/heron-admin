@@ -106,4 +106,14 @@
     <servlet-name>SponsorshipServlet</servlet-name>
     <url-pattern>/SponsorshipServlet</url-pattern>
   </servlet-mapping>
+  <servlet>
+    <description></description>
+    <display-name>SponsorshipApprovalServlet</display-name>
+    <servlet-name>SponsorshipApprovalServlet</servlet-name>
+    <servlet-class>edu.ku.biostatistics.heron.servlet.SponsorshipApprovalServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>SponsorshipApprovalServlet</servlet-name>
+    <url-pattern>/SponsorshipApprovalServlet</url-pattern>
+  </servlet-mapping>
 </web-app>
