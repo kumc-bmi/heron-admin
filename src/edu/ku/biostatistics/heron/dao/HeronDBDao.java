@@ -237,13 +237,4 @@ public class HeronDBDao extends DBBaseDao{
 			uid + "' and user_role_cd='ADMIN' and status_cd ='A' ";
 		return this.getJdbcTemplate().queryForList(sql);
 	}
-	
-	/**
-	 * get all users signed system access agreement
-	 * @return a list of users
-	 */
-	public List getHeronSystemUsers(){
-		String sql = "select user_id, user_full_name from heron.system_access_users";
-		return this.getJdbcTemplate().queryForList(sql);
-	}
 }

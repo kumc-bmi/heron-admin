@@ -34,7 +34,8 @@
 <p class="indent_half"><a href="sponsorship.jsp">HERON Sponsoring</a></p>
 <p class="indent_half"><a href="data_usage_agreement.jsp">HERON Data Usage</a></p>
 <p class="indent_half"><a href="approve_sponsorship.jsp">Approve Sponsored HERON Users</a></p>
-<p class="indent_half"><a href="users_report.jsp">HERON Users Report</a></p>
+<p class="indent_half"><a href="system_users_report.jsp">HERON System Users Report</a></p>
+<p class="indent_half"><a href="approved_users_report.jsp">HERON Approved Users Report</a></p>
 <p class="indent_half"><a href="http://bmidev1.kumc.edu/trac">trac</a></p>
 <p class="indent_half"><a
 	href="http://biostat-pts.kumc.edu/eres/jsp/kumcpr.jsp">project
@@ -93,7 +94,7 @@ connect informatics to our customers.</p>
 <ul>
 	<li><a href="http://biostatistics.kumc.edu/bio_proj_cris.shtml">CRIS</a>:
 	a Comprehensive Research Information System</li>
-	<li><a href="<%=prop.getProperty(StaticValues.CAS_LOGIN_URL)%>?service=<%=prop.getProperty(StaticValues.I2B2_CLIENT_SERVICE) %>">HICTR / i2b2</a>: the
+	<li><a href="AuthServlet">HICTR / i2b2</a>: the
 	HICTR participant registry accessed through <a
 		href="http://www.i2b2.org">i2b2</a></li>
 	<li><a href="http://bmidev1.kumc.edu/trac">trac</a>: our current

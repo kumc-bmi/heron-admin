@@ -6,6 +6,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.collections.map.ListOrderedMap;
 import edu.ku.biostatistics.heron.dao.HeronDBDao;
+import edu.ku.biostatistics.heron.dao.HeronReportsDao;
 
 /**
  * build gui components. 
@@ -15,12 +16,14 @@ import edu.ku.biostatistics.heron.dao.HeronDBDao;
  */
 public class GuiUtil {
 	private HeronDBDao heronDao;
+	private HeronReportsDao rptDao;
 	private LdapUtil lUtil;
 	private static Log log = LogFactory.getLog(DBUtil.class);
 	
 	public GuiUtil(){
 		heronDao = new HeronDBDao();
 		lUtil = new LdapUtil();
+		rptDao = new HeronReportsDao();
 	}
 	
 	/**
@@ -106,11 +109,12 @@ public class GuiUtil {
 	public String getHeronSystemUsers(String uid){
 		StringBuffer bf = new StringBuffer("");
 		List roles = heronDao.getUserValidRoles(uid);
+		
 		if(roles.size()<1){
 			bf.append("<div class=\"h5red\">Sorry, seems you are not allowed to use this functionality.</div>");
 		}
 		else{
-			List usersList = heronDao.getHeronSystemUsers();
+			List usersList = rptDao.getHeronSystemUsers();
 			if(usersList==null || usersList.size()==0)
 				return "<div align=center>There is no users at this time.</div>";
 			bf.append("<div align=center>Total Users Count: "+usersList.size()+"</div>");
@@ -125,6 +129,49 @@ public class GuiUtil {
 				bf.append(userId);
 				bf.append("</td><td>");
 				bf.append(name);
+				bf.append("</td></tr>");
+			}
+			bf.append("</table></div>");
+		}
+		return bf.toString();
+	}
+	
+	/**
+	 * build approved users' display html/string
+	 * @param type type of users
+	 * @param uid User id of the current user
+	 * @return a String/html with users' info
+	 */
+	public String getApprovedUsers(String type,String uid){
+		StringBuffer bf = new StringBuffer("");
+		List roles = heronDao.getUserValidRoles(uid);
+		
+		if(roles.size()<1){
+			bf.append("<div class=\"h5red\">Sorry, seems you are not allowed to use this functionality.</div>");
+		}
+		else{
+			List usersList = rptDao.getApprovedUsers(type);
+			if(usersList==null || usersList.size()==0)
+				return "<div align=center>There is no users at this time.</div>";
+			bf.append("<div align=center>Total Users Count: "+usersList.size()+"</div>");
+			bf.append("<div align=center><table class=\"heron\"><tr><th>User Id</th><th>Research Project</th>");
+			bf.append("<th>Expiration</th><th>KUMC Employee</th></tr>");
+			
+			for(int i=0;i<usersList.size();i++){
+				Object aMap = usersList.get(i);
+				String userId = ((ListOrderedMap)aMap).get("USER_ID")+"";
+				String project = ((ListOrderedMap)aMap).get("research_title")+"";
+				String exp = ((ListOrderedMap)aMap).get("expire_date")+"";
+				String employee = ((ListOrderedMap)aMap).get("kumc_empl_flag")+"";
+				String rowStyle = i%2==0?"<tr class=\"d0\"><td>":"<tr class=\"d1\"><td>";
+				bf.append(rowStyle);
+				bf.append(userId);
+				bf.append("</td><td>");
+				bf.append(project);
+				bf.append("</td><td>");
+				bf.append(exp);
+				bf.append("</td><td>");
+				bf.append(employee);
 				bf.append("</td></tr>");
 			}
 			bf.append("</table></div>");
