@@ -55,7 +55,7 @@ public class DBUtil {
 	{		
 		String userId = request.getRemoteUser();
 		HttpSession session = request.getSession();
-		String userName = session.getAttribute(USER_NAME)+"";
+		String userName = session.getAttribute(USER_FULL_NAME)+"";
 		String signature = request.getParameter("txtName");
 		String signDate = request.getParameter("txtSignDate");
 		try{
