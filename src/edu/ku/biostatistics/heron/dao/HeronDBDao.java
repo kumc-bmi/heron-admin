@@ -190,7 +190,7 @@ public class HeronDBDao extends DBBaseDao{
 	 */
 	public List getSponsorshipForApproval(String type,String org){
 		String sql = "select UNIQ_ID,USER_ID,SPONSOR_ID,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE from HERON.sponsorship s"+
-			" where ACCESS_TYPE='"+type+"' and s.expire_date>sysdate ";
+			" where ACCESS_TYPE='"+type+"' and (s.expire_date is null or s.expire_date>sysdate) ";
 		if(org.equals("KUMC"))
 			sql += " and (KUMC_APPROVAL_STATUS is null or KUMC_APPROVAL_STATUS='D')";
 		else if(org.equals("UKP"))
@@ -236,5 +236,17 @@ public class HeronDBDao extends DBBaseDao{
 			+ "' and status='A' union select user_id from pm_project_user_roles where user_id='"+
 			uid + "' and user_role_cd='ADMIN' and status_cd ='A' ";
 		return this.getJdbcTemplate().queryForList(sql);
+	}
+	
+	/**
+	 * check if a view_only user is sponsored and approved.
+	 * @param uid
+	 * @return true if  sponsored and approved.
+	 */
+	public boolean isViewOnlyUserApproved(String uid){
+		String sql = "select user_id from heron.SPONSORSHIP where user_id='" +
+			uid + "' and (expire_date is null or expire_date>sysdate) and access_type='VIEW_ONLY' " +
+			" and (kuh_approval_status ='A' or kumc_approval_status ='A' or ukp_approval_status ='A')";
+		return this.getJdbcTemplate().queryForList(sql).size()>0;
 	}
 }

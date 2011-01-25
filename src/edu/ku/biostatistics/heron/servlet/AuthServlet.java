@@ -45,14 +45,15 @@ public class AuthServlet extends HttpServlet {
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		String[] info = ldapUtil.getUserInfo(request.getRemoteUser());	
+		String uid = request.getRemoteUser();
+		String[] info = ldapUtil.getUserInfo(uid);	
 		HttpSession session = request.getSession();
 		session.setAttribute(USER_FULL_NAME, info[0]);
 		session.setAttribute(USER_TITLE, info[2]);
-		boolean isQualifiedFaculty = true;//checkQualification(info[1],info[3]);
+		boolean isQualified = checkQualification(info[1],info[3],uid);
 		
-		if(!isQualifiedFaculty){
-			String msg = "Sorry, It seems you are not a qualified faculty. <p></p>"+
+		if(!isQualified){
+			String msg = "Sorry, It seems you are not a qualified faculty. If you are a sponsored user, please make sure it is approved by DROC and not expired.<p></p>"+
 				"Please contact heron support team (heron-admin@kumc.edu)or HR/identity management team if you believe you are qualified. <p>"+
 				"Thanks.";
 			request.setAttribute(VAL_MESSAGE, msg);
@@ -87,15 +88,15 @@ public class AuthServlet extends HttpServlet {
 	}
 	
 	/**
-	 * check if user is a qualified faculty.
+	 * check if user is a qualified faculty or approved view_only user.
 	 * @param facFlag
 	 * @param jobCode
+	 * @param uid
 	 * @return true if yes, false otherwise.
 	 */
-	private boolean checkQualification(String facFlag,String jobCode){
-		boolean qual = false;
+	private boolean checkQualification(String facFlag,String jobCode,String uid){
 		if(facFlag!=null && facFlag.equals("Y") && !jobCode.equals(props.getProperty(EXCLUDED_JOBCODE)))
-			qual = true;
-		return qual;
+			return true;
+		return dbUtil.isViewOnlyUserApproved(uid);
 	}
 }

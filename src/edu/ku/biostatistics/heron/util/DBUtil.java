@@ -148,4 +148,13 @@ public class DBUtil {
 			result = "you did not check anyone to approve.";
 		return  result;
 	}
+	
+	/**
+	 * check if a user is sponsored and approved
+	 * @param uid
+	 * @return true if yes, false otherwise
+	 */
+	public boolean isViewOnlyUserApproved(String uid){
+		return heronDao.isViewOnlyUserApproved(uid);
+	}
 }
