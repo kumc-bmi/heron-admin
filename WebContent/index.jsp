@@ -94,7 +94,7 @@ Currently, we provide the following tools:
 	<li><a href="https://redcap.kumc.edu/">REDCap</a>:
 	 a web-based application to support case report form data capture for research studies 
 	</li>
-	<li><a href="AuthServlet">HICTR / i2b2</a>: the HICTR participant
+	<li><a href="AuthServlet">HERON</a>: the HICTR participant
 	registry accessed through <a href="http://www.i2b2.org">i2b2</a></li>
 	<li><a href="http://bmidev1.kumc.edu/trac">TRAC</a>: our current
 	development process</li>
