@@ -1,0 +1,43 @@
+# Apache configuration for raven site
+# using JBoss for the main portal
+# and JBoss-via-php for i2b2
+
+<VirtualHost *:80>
+    RedirectMatch permanent ^/$ https://raven.kumc.edu/
+</VirtualHost>
+
+Listen 443
+<VirtualHost *:443>
+        ServerName raven.kumc.edu
+
+Include conf/apps/i2b2-webclient-cas
+
+# connect to JBoss
+        <Location /raven/>
+         ProxyPass http://localhost:8080/raven/
+         ProxyPassReverse http://localhost:8080/raven/
+        </Location>
+
+       
+       RedirectMatch permanent ^/$ /raven/
+
+        <Location /web-console/>
+         ProxyPass http://localhost:8080/web-console/
+         ProxyPassReverse http://localhost:8080/web-console/
+        </Location>
+
+        <Location /jmx-console/>
+         ProxyPass http://localhost:8080/jmx-console/
+         ProxyPassReverse http://localhost:8080/jmx-console/
+        </Location>
+
+	SSLEngine on
+	SSLCertificateFile    conf/raven-ssl.crt
+	SSLCertificateKeyFile conf/raven-ssl.key
+
+	BrowserMatch "MSIE [2-6]" 		nokeepalive ssl-unclean-shutdown 		downgrade-1.0 force-response-1.0
+	# MSIE 7 and newer should be able to use keepalive
+	BrowserMatch "MSIE [17-9]" ssl-unclean-shutdown
+
+	ServerAdmin heron-admin@kumc.edu
+</VirtualHost>

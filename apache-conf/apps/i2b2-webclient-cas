@@ -1,0 +1,13 @@
+# i2b2 web client
+
+# http://httpd.apache.org/docs/2.2/mod/mod_alias.html#alias
+Alias /i2b2webclient/ /home/i2b2client/i2b2-webclient-cas/webclient/
+
+<Directory /home/i2b2client/i2b2-webclient-cas/webclient>
+    <FilesMatch "\.php$">
+        SetHandler application/x-httpd-php
+    </FilesMatch>
+
+   Order allow,deny
+   Allow from all
+</Directory>
