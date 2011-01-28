@@ -462,6 +462,12 @@ padding-left: 10px;
 		width:139px;	
 		color:#333333;
 	}
+	#kumc_contentleft #kumc_leftlinks_bc {
+		padding-top:8px;
+		width:139px;	
+		color:#333333;
+		background-color: #EAE9E4;
+	}
 	#kumc_contentleft #kumc_leftlinks a {
 		color:#0049AE;
 		text-decoration:none;
@@ -772,6 +778,10 @@ padding-left: 10px;
 	#kumc_feature_text{
 		margin:0px 0px 15px 0px;
 		background-color:#dddddd;
+	}
+	#kumc_feature_text2{
+		margin:0px 0px 15px 0px;
+		background-color:#EAE9E4;
 	}
 	#kumc_lightgrey {
 		padding:6px 6px 6px 6px;
