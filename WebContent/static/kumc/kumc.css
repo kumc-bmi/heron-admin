@@ -10,6 +10,9 @@
 	a{
 		color:#0049AE;
 		text-decoration:none;
+	}
+	a:hover{
+		color: #FF3300;
 	}	
 	a:visited{
 		color: #0049AE;

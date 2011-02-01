@@ -18,8 +18,10 @@ public class HeronReportsDao extends HeronDBDao{
 	}
 	
 	public List getApprovedUsers(String type){
-		String sql = "select user_id, research_title,expire_date,kumc_empl_flag from HERON.sponsorship"+
-			" where access_type ='" + type + "' order by user_id";
+		String sql = "select user_id, research_title,expire_date,kumc_empl_flag,kuh_approval_tmst,"+
+			" kumc_approval_tmst,ukp_approval_tmst from HERON.sponsorship"+
+			" where access_type ='" + type + "' and kumc_approval_status='A' and kuh_approval_status='A' "+
+			" and ukp_approval_status='A' order by user_id";
 		return this.getJdbcTemplate().queryForList(sql);
 	}
 }

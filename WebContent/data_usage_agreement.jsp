@@ -218,7 +218,7 @@ data obtained from HERON.
 <h3>3. Term; Termination</h3>
 <p></p>
 <h5>A. Term. This Agreement shall be effective as of the date last
-signed below and shall continue until 
+signed below and shall continue until (MM/DD/YYYY)
 <input type="text" name="expDate" id="expDate" size="30" value="<%=expDateDisplay %>" maxlength="10"> 
 or until the Agreement is terminated in accordance with the provisions for
 termination below.
@@ -273,17 +273,19 @@ D. Third Party Beneficiaries. The University of Kansas Hospital
 Authority and Kansas University Physicians, Inc. are third-party
 beneficiaries of this Agreement and shall be entitled to enforce any
 obligation, responsibility or claim of KUMC pursuant to this Agreement.
-</h5><p></p><p></p><h4>
+</h5><p></p>
+<h5>By typing my name below, I agree to the foregoing and confirm my electronic signature to this Agreement.</h5>
+<p></p><h4>
 AGREED TO AND ACCEPTED BY:</h4>
-<p></p>
-<h4>Principal Investigator:<input type="text" maxlength="40" id="txtName" name="txtName" value="<%=sigValDisplay %>"/> 
-Date(MM/DD/YYYY): <input type="text" name="txtSignDate" id="txtSignDate" maxlength="10" value="<%=sigDateDisplay %>" />  
-</h4>
 <p></p>
 <h5>
 Name: <%=uName%><p></p>
 Title: <%=uTitle %><p></p>
 </h5>
+<h4>Principal Investigator Signature:<input type="text" maxlength="40" id="txtName" name="txtName" value="<%=sigValDisplay %>"/> 
+Date(MM/DD/YYYY): <input type="text" name="txtSignDate" id="txtSignDate" maxlength="10" value="<%=sigDateDisplay %>" />  
+</h4>
+<p></p>
 <div align="center"><input type="submit" name="agreementbtn"
 	id="accept" value="Accept and Submit" /><input type="submit"
 	id="cancel" name="agreementbtn" value="Cancel" /></div>

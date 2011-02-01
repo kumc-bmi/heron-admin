@@ -49,7 +49,7 @@ public class GuiUtil {
 			for(int i=0;i<spnsrList.size();i++){
 				Object aMap = spnsrList.get(i);
 				curTitle = ((ListOrderedMap)aMap).get("RESEARCH_TITLE")+"";
-				String uniqId = ((ListOrderedMap)aMap).get("UNIQ_ID")+"";
+				String uniqId = ((ListOrderedMap)aMap).get("SPONSORSHIP_ID")+"";
 				String userId = ((ListOrderedMap)aMap).get("USER_ID")+"";
 				String sponsorId = ((ListOrderedMap)aMap).get("SPONSOR_ID")+"";
 				String[] userInfo = lUtil.getUserInfo(userId);
@@ -155,7 +155,7 @@ public class GuiUtil {
 				return "<div align=center>There is no users at this time.</div>";
 			bf.append("<div align=center>Total Users Count: "+usersList.size()+"</div>");
 			bf.append("<div align=center><table class=\"heron\"><tr><th>User Id</th><th>Research Project</th>");
-			bf.append("<th>Expiration</th><th>KUMC Employee</th></tr>");
+			bf.append("<th>Expiration</th><th>KUMC Employee</th><th>KUH Approved at</th><th>KUMC Approved at</th><th>UKP Approved at</th></tr>");
 			
 			for(int i=0;i<usersList.size();i++){
 				Object aMap = usersList.get(i);
@@ -163,6 +163,9 @@ public class GuiUtil {
 				String project = ((ListOrderedMap)aMap).get("research_title")+"";
 				String exp = ((ListOrderedMap)aMap).get("expire_date")+"";
 				String employee = ((ListOrderedMap)aMap).get("kumc_empl_flag")+"";
+				String kuhTime = ((ListOrderedMap)aMap).get("kuh_approval_tmst")+"";
+				String kumcTime = ((ListOrderedMap)aMap).get("kumc_approval_tmst")+"";
+				String ukpTime = ((ListOrderedMap)aMap).get("ukp_approval_tmst")+"";
 				String rowStyle = i%2==0?"<tr class=\"d0\"><td>":"<tr class=\"d1\"><td>";
 				bf.append(rowStyle);
 				bf.append(userId);
@@ -172,6 +175,12 @@ public class GuiUtil {
 				bf.append("null".equals(exp)?"":exp);
 				bf.append("</td><td>");
 				bf.append(employee);
+				bf.append("</td><td>");
+				bf.append(kuhTime);
+				bf.append("</td><td>");
+				bf.append(kumcTime);
+				bf.append("</td><td>");
+				bf.append(ukpTime);
 				bf.append("</td></tr>");
 			}
 			bf.append("</table></div>");

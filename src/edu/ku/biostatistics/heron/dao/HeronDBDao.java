@@ -189,7 +189,7 @@ public class HeronDBDao extends DBBaseDao{
 	 * @return a list of sponsorship info from database
 	 */
 	public List getSponsorshipForApproval(String type,String org){
-		String sql = "select UNIQ_ID,USER_ID,SPONSOR_ID,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE from HERON.sponsorship s"+
+		String sql = "select SPONSORSHIP_ID,USER_ID,SPONSOR_ID,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE from HERON.sponsorship s"+
 			" where ACCESS_TYPE='"+type+"' and (s.expire_date is null or s.expire_date>sysdate) ";
 		if(org.equals("KUMC"))
 			sql += " and (KUMC_APPROVAL_STATUS is null or KUMC_APPROVAL_STATUS='D')";
@@ -216,7 +216,7 @@ public class HeronDBDao extends DBBaseDao{
 			SQL += "UKP_APPROVAL_STATUS=?,UKP_APPROVED_BY=?,UKP_APPROVAL_TMST ";
 		else if("KUH".equals(org))
 			SQL += "KUH_APPROVAL_STATUS=?,KUH_APPROVED_BY=?,KUH_APPROVAL_TMST ";	  
-		SQL += "=sysdate where UNIQ_ID =?";
+		SQL += "=sysdate where SPONSORSHIP_ID =?";
 		SponsorshipApprovalBatchUpdate batchUpdate = new SponsorshipApprovalBatchUpdate(this.getDataSource(),SQL);
 		
 		for(int i=0;i<ids.size();i++){
