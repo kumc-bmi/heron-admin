@@ -3,14 +3,19 @@ package edu.ku.biostatistics.heron.servlet;
 import static edu.ku.biostatistics.heron.base.StaticValues.*;
 
 import java.io.IOException;
+import java.util.Properties;
+
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 import edu.ku.biostatistics.heron.util.BasicUtil;
 import edu.ku.biostatistics.heron.util.DBUtil;
+import edu.ku.biostatistics.heron.util.LdapUtil;
+import edu.ku.biostatistics.heron.util.StaticDataUtil;
 
 /**
  * Servlet implementation class SponsorshipServlet to handle user sponsorship.
@@ -21,6 +26,8 @@ public class SponsorshipServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private DBUtil dbUtil = new DBUtil();   
 	private BasicUtil bUtil = new BasicUtil();
+	private LdapUtil ldapUtil = new LdapUtil();
+	private Properties props = StaticDataUtil.getSoleInstance().getProperties();
 	
     /**
      * @see HttpServlet#HttpServlet()
@@ -42,8 +49,30 @@ public class SponsorshipServlet extends HttpServlet {
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		String type = request.getParameter("agreementbtn");
+		String initType = request.getParameter("init_type");
 		
-		if("Accept and Submit".equals(type)){
+		//initial display
+		if(initType!=null){
+			String uid = request.getRemoteUser();
+			String[] info = ldapUtil.getUserInfo(uid);	
+			HttpSession session = request.getSession();
+			session.setAttribute(USER_FULL_NAME, info[0]);
+			session.setAttribute(USER_TITLE, info[2]);
+			boolean isQualified = true;//checkQualification(info[1],info[3],uid);
+			
+			if(!isQualified){
+				String message = "sorry, only qualified falcuties can use this functionality.";
+				request.setAttribute(VAL_MESSAGE, message);
+				RequestDispatcher rd = request.getRequestDispatcher(GEN_DISPLAY_URL);
+				rd.forward(request, response);
+			}
+			else{
+				String url = initType.equals(VIEW_ONLY)?SPONSOR_URL:DATA_USAGE_URL;
+				RequestDispatcher rd = request.getRequestDispatcher(url);
+				rd.forward(request, response);
+			}
+		}
+		else if("Accept and Submit".equals(type)){//submit sponsorship
 			String spnsrType = request.getParameter("spnsr_type");
 			String backUrl = spnsrType.equals(VIEW_ONLY)?SPONSOR_URL:DATA_USAGE_URL;
 			String message = validateInput(request);
@@ -65,7 +94,7 @@ public class SponsorshipServlet extends HttpServlet {
 				rd.forward(request, response);
 			}
 		}
-		else{
+		else{//deny/cancel sponsorship
 			response.sendRedirect(DENIED_URL);
 		}
 	}
@@ -113,4 +142,19 @@ public class SponsorshipServlet extends HttpServlet {
 	    return msg;
 	}
 
+	/**
+	 * For now, check if user is a qualified faculty.
+	 * aware of the rules will change. Otherwise, build/use a common util method.
+	 * @param facFlag
+	 * @param jobCode
+	 * @param uid
+	 * @return true if yes, false otherwise.
+	 */
+	private boolean checkQualification(String facFlag,String jobCode,String uid){
+		if(facFlag!=null && facFlag.equals("Y") && !jobCode.equals(props.getProperty(EXCLUDED_JOBCODE)))
+			return true;
+		else 
+			return false;
+		//return dbUtil.isSpecialSponsor(uid); TODO: future logic.
+	}
 }

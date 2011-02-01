@@ -33,9 +33,9 @@
 <p class="indent_half"><a
 	href="https://redcap.kumc.edu/">REDCap</a></p>
 <p class="indent_half"><a href="AuthServlet">HERON</a></p>
-<p class="indent_half"><a href="sponsorship.jsp">HERON
+<p class="indent_half"><a href="SponsorshipServlet?init_type=VIEW_ONLY">HERON
 Sponsoring</a></p>
-<p class="indent_half"><a href="data_usage_agreement.jsp">HERON
+<p class="indent_half"><a href="SponsorshipServlet?init_type=DATA_ACCESS">HERON
 Data Usage</a></p>
 <p class="indent_half"><a href="approve_sponsorship.jsp">Approve
 Sponsored HERON Users</a></p>
