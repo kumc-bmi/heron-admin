@@ -58,7 +58,7 @@ public class SponsorshipServlet extends HttpServlet {
 			HttpSession session = request.getSession();
 			session.setAttribute(USER_FULL_NAME, info[0]);
 			session.setAttribute(USER_TITLE, info[2]);
-			boolean isQualified = true;//checkQualification(info[1],info[3],uid);
+			boolean isQualified = checkQualification(info[1],info[3],uid);
 			
 			if(!isQualified){
 				String message = "sorry, only qualified falcuties can use this functionality.";
