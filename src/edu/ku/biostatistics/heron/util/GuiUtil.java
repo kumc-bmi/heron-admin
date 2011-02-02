@@ -172,7 +172,7 @@ public class GuiUtil {
 				bf.append("</td><td>");
 				bf.append(project);
 				bf.append("</td><td>");
-				bf.append("null".equals(exp)?"":exp);
+				bf.append("null".equals(exp)?"&nbsp;":exp);
 				bf.append("</td><td>");
 				bf.append(employee);
 				bf.append("</td><td>");
