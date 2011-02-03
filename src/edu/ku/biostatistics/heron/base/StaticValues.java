@@ -17,7 +17,7 @@ public interface StaticValues {
 	String USER_PROJ = "user_project";
 	String USER_FULL_NAME = "full_name";
 	String USER_TITLE = "user_title";
-	String[] userRoles = new String[]{"USER","DATA_LDS","DATA_OBFSC","DATA_AGG"};
+	String[] userRoles = new String[]{"USER","DATA_OBFSC"};
 	String LDAP_PROV_URL = "ldap_prov_url";
 	String LDAP_PRINCIPAL = "ldap_principal";
 	String LDAP_CREDENTIAL = "ldap_credential";
