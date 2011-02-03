@@ -142,6 +142,68 @@ public class LdapUtil {
 		}
 		return found;
 	}
+	
+	/**
+	 * retrieve ldap attribute value by name
+	 * @param userId
+	 * @param attr
+	 * @return value of the attribute
+	 */
+	public String getLdapAttributeByName(String userId, String attr){
+		DirContext ctx = null;
+		NamingEnumeration results = null;
+		String attrValue = "";
+		try {
+			ctx = new InitialDirContext(env);
+			SearchControls controls = new SearchControls();
+			controls.setSearchScope(SearchControls.SUBTREE_SCOPE);
+			results = ctx.search("", "(cn=" + userId + ")", controls);
+
+			if (results.hasMore()) {
+				SearchResult searchResult = (SearchResult) results.next();
+				Attributes attributes = searchResult.getAttributes();
+				attrValue = (String) attributes.get(attr).get();
+			}
+		} catch (NameNotFoundException e) {
+			log.error("NameNotFoundException in getUserInfo():"+e.getMessage());
+		} catch (NamingException e) {
+			log.error("NamingException in getUserInfo():"+e.getMessage());
+		} catch(Exception e){
+			log.error("Other exception in getUserInfo():"+e.getMessage());
+		}finally {
+			if (results != null) {
+				try {
+					results.close();
+				} catch (Exception e) {
+					// Never mind this.
+				}
+			}
+			if (ctx != null) {
+				try {
+					ctx.close();
+				} catch (Exception e) {
+					// Never mind this.
+				}
+			}
+		}
+		return attrValue;
+	
+	}
+	
+	/**
+	 * get emails of the droc
+	 * @param ids
+	 * @return emails separated by ,
+	 */
+	public String getDrocEmails(String[] ids){
+		StringBuffer bf = new StringBuffer();
+		
+		for(String id : ids){
+			bf.append(getLdapAttributeByName(id,"mail"));
+			bf.append(",");
+		}
+		return bf.toString();
+	}
 	/*
 	public static void main(String[] args) {
 		new LdapUtil().getUserInfo("myid");
