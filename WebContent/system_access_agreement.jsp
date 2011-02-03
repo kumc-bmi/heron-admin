@@ -41,7 +41,7 @@
 <h3 align="center">HERON SYSTEM ACCESS AGREEMENT</h3><p></p>
 <h3 align="center">(PREPARATORY TO RESEARCH)</h3><p></p>
 
-I, <u><%=session.getAttribute("full_name") %></u> ("<%=request.getRemoteUser() %>"), acknowledge that as a condition of viewing any data component(s) from the University of Kansas Medical Center (KUMC) Healthcare Enterprise Repository for Ontological Narration ("HERON"), I must comply with the terms and conditions of this HERON System Access Agreement ("Agreement"). 
+I, <u><%=session.getAttribute("full_name") %></u> ("System User"), acknowledge that as a condition of viewing any data component(s) from the University of Kansas Medical Center (KUMC) Healthcare Enterprise Repository for Ontological Narration ("HERON"), I must comply with the terms and conditions of this HERON System Access Agreement ("Agreement"). 
 <p></p>
 I acknowledge that violation of this Agreement will subject me to sanctions including but not limited to loss of system privileges and/or institutional disciplinary action.
 <p/>
