@@ -157,4 +157,8 @@ public class DBUtil {
 	public boolean isViewOnlyUserApproved(String uid){
 		return heronDao.isViewOnlyUserApproved(uid);
 	}
+	
+	public String[] getDrocIds(){
+		return heronDao.getDrocIds();
+	}
 }
