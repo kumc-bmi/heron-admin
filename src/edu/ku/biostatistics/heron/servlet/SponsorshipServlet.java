@@ -81,6 +81,9 @@ public class SponsorshipServlet extends HttpServlet {
 				String result = spnsrType.equals(VIEW_ONLY)?"User(s) Sponsored Successfully !":"Data Usage Agreement Submitted Successfully!";
 				try{
 					dbUtil.insertSponsorships(request);
+					String[] ids = dbUtil.getDrocIds();
+					String emails = ldapUtil.getDrocEmails(ids);
+					//bUtil.sendEmails(emails);
 				}catch(Exception ex){
 					result = "Sorry, unexpected error with database update: " + ex.getMessage();
 				}
