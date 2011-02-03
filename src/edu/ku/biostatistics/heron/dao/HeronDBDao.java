@@ -249,4 +249,14 @@ public class HeronDBDao extends DBBaseDao{
 			" and (kuh_approval_status ='A' or kumc_approval_status ='A' or ukp_approval_status ='A')";
 		return this.getJdbcTemplate().queryForList(sql).size()>0;
 	}
+	
+	public String[] getDrocIds(){
+		String sql = "select distinct user_id from heron.droc_reviewers where status ='A'";
+		List<Object> aList = this.getJdbcTemplate().queryForList(sql);
+		String[] results = new String[aList.size()];
+		for(int i=0;i<aList.size();i++){
+			results[i] = ((ListOrderedMap)aList.get(i)).get("USER_ID")+"";
+		}
+		return results;
+	}
 }
