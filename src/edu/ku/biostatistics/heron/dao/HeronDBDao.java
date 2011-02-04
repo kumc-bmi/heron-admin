@@ -119,7 +119,7 @@ public class HeronDBDao extends DBBaseDao{
 	 * @param uid
 	 */
 	public void insertSponsorships(String resTitle, String resDesc,String empIds[], String nonempIds[],
-			String expDate,String uid,String spnsrType,String sigName,String sigDate){
+			String expDate,String uid,String spnsrType,String sigName,String sigDate) throws Exception{
 		if(empIds.length>0)
 			insertDataInBatch(resTitle,  resDesc, empIds, expDate, uid, "Y",spnsrType,sigName,sigDate);
 		if(nonempIds.length>0)
@@ -139,7 +139,7 @@ public class HeronDBDao extends DBBaseDao{
 	 * @throws ParseException 
 	 */
 	private void insertDataInBatch(String resTitle, String resDesc,String ids[],String expDate,String uid, 
-			String empFlag,String spnsrType,String sigName,String sigDate){
+			String empFlag,String spnsrType,String sigName,String sigDate) throws Exception{
 		SponsorshipBatchInsert batchInsert = new SponsorshipBatchInsert(this.getDataSource());
 		java.util.Date expDt = null;
 		java.util.Date signDt = null;
@@ -160,6 +160,7 @@ public class HeronDBDao extends DBBaseDao{
 			batchInsert.flush();
 		}catch(Exception ex){
 			log.error("error in insertDataInBatch():"+ex.getMessage());
+			throw ex;
 		}
 	}
 	
