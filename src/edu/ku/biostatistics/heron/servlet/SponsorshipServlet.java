@@ -83,7 +83,7 @@ public class SponsorshipServlet extends HttpServlet {
 					dbUtil.insertSponsorships(request);
 					String[] ids = dbUtil.getDrocIds();
 					String emails = ldapUtil.getDrocEmails(ids);
-					//bUtil.sendEmails(emails);
+					bUtil.sendNotificationEmailToDroc(emails);
 				}catch(Exception ex){
 					result = "Sorry, unexpected error with database update: " + ex.getMessage();
 				}
