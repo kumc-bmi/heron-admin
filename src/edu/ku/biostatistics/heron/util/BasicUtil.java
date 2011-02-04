@@ -6,7 +6,6 @@ import java.util.regex.Pattern;
 
 import javax.mail.Address;
 import javax.mail.Message;
-import javax.mail.PasswordAuthentication;
 import javax.mail.Session;
 import javax.mail.Transport;
 import javax.mail.internet.InternetAddress;
@@ -53,34 +52,42 @@ public class BasicUtil {
 		return badIds.toString();
 	}
 	
-	public void sendEmails(String emails){
+	/**
+	 * common method to send email
+	 * @param fromAddr
+	 * @param toEmails
+	 * @param subj
+	 * @param contn
+	 * @param host
+	 */
+	public void sendEmails(String fromAddr, String toEmails, String subj, String contn,String host){
 		try {
 		      Properties props = new Properties();
-		      props.put("mail.smtp.host", "smtps.kumc.edu");
-		      props.put("mail.smtp.socketFactory.port", "989");
-		      props.put("mail.smtp.socketFactory.class","javax.net.ssl.SSLSocketFactory");
-		      props.put("mail.smtp.auth", "false");
-		      props.put("mail.smtp.port","989");
-		  
+		      props.put("mail.smtp.host", host);
 		      Session mailConnection = Session.getInstance(props,  null);
 		      Message msg = new MimeMessage(mailConnection);
-		      Address[] addrs = InternetAddress.parse(emails);
-		    
-		      msg.setContent("Resistance is futile. You will be assimilated!", 
-		       "text/plain");
-		      msg.setFrom(new InternetAddress("heron-admin@kumc.edu"));
+		      Address[] addrs = InternetAddress.parse(toEmails);
+		      msg.setContent(contn, "text/plain");
+		      msg.setFrom(new InternetAddress(fromAddr));
 		      msg.setRecipients(Message.RecipientType.TO, addrs);
-		      msg.setSubject("You must comply.");
-		      
-		      Transport.send(msg);
-		      
+		      msg.setSubject(subj);
+		      Transport.send(msg);  
 		}
 		catch (Exception ex) {
 		      ex.printStackTrace(); 
 		}
 	}
 	
-	public static void main(String[] args){
-		new BasicUtil().sendEmails("dzhu@kumc.edu");
+	/**
+	 * send email to droc team for heron approval
+	 * @param toEmails
+	 */
+	public void sendNotificationEmailToDroc(String toEmails){
+		String subj = "HERON Sponsorship needs your attention";
+		String contn = "Dear HERON DROC member,\n \n "+
+			"HERON request has been submitted which may need your approval. \n \n" +
+			"Thanks. \n \n"+
+			"HERON Team.";
+		this.sendEmails("heron-admin@kumc.edu", toEmails, subj, contn, "smtp.kumc.edu");
 	}
 }
