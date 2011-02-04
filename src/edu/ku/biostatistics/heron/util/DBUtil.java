@@ -100,7 +100,7 @@ public class DBUtil {
 	 * insert sponsorship data into database.
 	 * @param request a HttpServletRequest.
 	 */
-	public void insertSponsorships(HttpServletRequest request){
+	public void insertSponsorships(HttpServletRequest request)throws Exception{
 		String resTitle = request.getParameter("txtRTitle");
 		String resDesc = request.getParameter("resDesc");
 		String empIds = request.getParameter("empIds");
