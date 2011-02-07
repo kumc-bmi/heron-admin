@@ -61,7 +61,8 @@ public class SponsorshipServlet extends HttpServlet {
 			boolean isQualified = checkQualification(info[1],info[3],uid);
 			
 			if(!isQualified){
-				String message = "sorry, only qualified falcuties can use this functionality.";
+				String message = "sorry, only qualified falcuties who have signed HERON system access agreement can use this functionality."
+					+ "<p><p> Please use link <a href=\"system_access_agreement.jsp\">Sign System Access Agreement</a> if you a qualified faculty.";
 				request.setAttribute(VAL_MESSAGE, message);
 				RequestDispatcher rd = request.getRequestDispatcher(GEN_DISPLAY_URL);
 				rd.forward(request, response);
@@ -83,7 +84,7 @@ public class SponsorshipServlet extends HttpServlet {
 					dbUtil.insertSponsorships(request);
 					String[] ids = dbUtil.getDrocIds();
 					String emails = ldapUtil.getDrocEmails(ids);
-					bUtil.sendNotificationEmailToDroc(emails);
+					bUtil.sendNotificationEmailToDroc(emails,getAppUrl(request));
 				}catch(Exception ex){
 					result = "Sorry, unexpected error with database update: " + ex.getMessage();
 				}
@@ -154,10 +155,23 @@ public class SponsorshipServlet extends HttpServlet {
 	 * @return true if yes, false otherwise.
 	 */
 	private boolean checkQualification(String facFlag,String jobCode,String uid){
+		boolean result = false;
 		if(facFlag!=null && facFlag.equals("Y") && !jobCode.equals(props.getProperty(EXCLUDED_JOBCODE)))
-			return true;
-		else 
-			return false;
+			result = dbUtil.isUserAgreementSigned(uid);
 		//return dbUtil.isSpecialSponsor(uid); TODO: future logic.
+		return result;
+	}
+	
+	/**
+	 * get application's url
+	 * @param request
+	 * @return application's url in a string
+	 */
+	private String getAppUrl(HttpServletRequest request){
+		String url = request.getScheme()+"://"+request.getServerName();
+		int port = request.getLocalPort();
+		url = port!=0?(url+":"+port):url;
+		url += "/raven";
+		return url;
 	}
 }
