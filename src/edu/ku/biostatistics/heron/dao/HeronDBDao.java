@@ -146,11 +146,11 @@ public class HeronDBDao extends DBBaseDao{
 		
 		try{
 			if(expDate!=null && !expDate.trim().equals("")){
-				SimpleDateFormat fmt = new SimpleDateFormat("mm/dd/yyyy");
+				SimpleDateFormat fmt = new SimpleDateFormat("MM/dd/yyyy");
 				expDt = fmt.parse(expDate);
 			}
 			if(sigDate!=null && !sigDate.trim().equals("")){
-				SimpleDateFormat fmt = new SimpleDateFormat("mm/dd/yyyy");
+				SimpleDateFormat fmt = new SimpleDateFormat("MM/dd/yyyy");
 				signDt = fmt.parse(sigDate);
 			}
 			for(int i=0;i<ids.length;i++){
@@ -247,7 +247,7 @@ public class HeronDBDao extends DBBaseDao{
 	public boolean isViewOnlyUserApproved(String uid){
 		String sql = "select user_id from heron.SPONSORSHIP where user_id='" +
 			uid + "' and (expire_date is null or expire_date>sysdate) and access_type='VIEW_ONLY' " +
-			" and (kuh_approval_status ='A' or kumc_approval_status ='A' or ukp_approval_status ='A')";
+			" and (kuh_approval_status ='A' and kumc_approval_status ='A' and ukp_approval_status ='A')";
 		return this.getJdbcTemplate().queryForList(sql).size()>0;
 	}
 	
