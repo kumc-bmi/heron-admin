@@ -24,7 +24,7 @@ public class BasicUtil {
 	 * @return true if valid, false otherwise
 	 */
 	public boolean checkDateFormat(String aDate){
-		String expression = "[01][0-2][/](0[1-9]|[12][0-9]|3[01])[/]\\d{4}"; 
+		String expression = "(0[1-9]|1[0-2])[/](0[1-9]|[12][0-9]|3[01])[/]\\d{4}"; 
 		Pattern p = Pattern.compile(expression);
 	    Matcher m = p.matcher(aDate);
 	    return m.matches();
@@ -82,12 +82,14 @@ public class BasicUtil {
 	 * send email to droc team for heron approval
 	 * @param toEmails
 	 */
-	public void sendNotificationEmailToDroc(String toEmails){
+	public void sendNotificationEmailToDroc(String toEmails,String appUrl){
 		String subj = "HERON Sponsorship needs your attention";
 		String contn = "Dear HERON DROC member,\n \n "+
-			"HERON request has been submitted which may need your approval. \n \n" +
-			"Thanks. \n \n"+
-			"HERON Team.";
+			"A HERON request has been submitted needs to be approved by your organization. \n \n" +
+			"Please visit: \n\n" + appUrl +
+			" and follow the \"Approve Sponsored HERON Users\" link \n\n"+
+			"Sincerely, \n \n"+
+			"The HERON Team.";
 		this.sendEmails("heron-admin@kumc.edu", toEmails, subj, contn, "smtp.kumc.edu");
 	}
 }
