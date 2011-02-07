@@ -59,7 +59,7 @@ public class DBUtil {
 		String signature = request.getParameter("txtName");
 		String signDate = request.getParameter("txtSignDate");
 		try{
-			Long ms = new SimpleDateFormat("mm/dd/yyyy").parse(signDate).getTime();
+			Long ms = new SimpleDateFormat("MM/dd/yyyy").parse(signDate).getTime();
 			heronDao.insertSystemAccessUser(userId, userName, signature, new Timestamp(ms));
 		}
 		catch(ParseException ex){
@@ -158,6 +158,10 @@ public class DBUtil {
 		return heronDao.isViewOnlyUserApproved(uid);
 	}
 	
+	/**
+	 * get droc member ids
+	 * @return droc member ids as String[]
+	 */
 	public String[] getDrocIds(){
 		return heronDao.getDrocIds();
 	}
