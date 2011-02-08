@@ -67,7 +67,8 @@ public class LdapUtil {
 					
 				String fname = (String) attributes.get("givenname").get();
 				String lname = (String) attributes.get("sn").get();
-				String fac = (String) attributes.get("kumcPersonFaculty").get();
+				Attribute facAttr = attributes.get("kumcPersonFaculty");
+				String fac = facAttr!=null?(String)facAttr.get():"";
 				Attribute attr = attributes.get("kumcPersonJobcode");
 				String jobCode = attr!=null?(String) attr.get():null;
 				String title = (String) attributes.get("title").get();
