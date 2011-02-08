@@ -5,8 +5,12 @@
  */
 package edu.ku.biostatistics.heron.servlet;
 
+import static edu.ku.biostatistics.heron.base.StaticValues.DATA_USAGE_URL;
 import static edu.ku.biostatistics.heron.base.StaticValues.DENIED_URL;
 import static edu.ku.biostatistics.heron.base.StaticValues.I2B2_CLIENT_SERVICE;
+import static edu.ku.biostatistics.heron.base.StaticValues.SPONSOR_URL;
+import static edu.ku.biostatistics.heron.base.StaticValues.VIEW_ONLY;
+
 import java.io.IOException;
 import java.util.Properties;
 import javax.servlet.RequestDispatcher;
@@ -57,7 +61,16 @@ public class SysAccessServlet extends HttpServlet {
 				if(!dbUtil.isUserInI2b2Database(request.getRemoteUser())){
 					dbUtil.insertPMUser(request);
 				}
-				response.sendRedirect(props.getProperty(I2B2_CLIENT_SERVICE));
+				String sponsorIndctr = request.getParameter("SPNSR");
+				String initType = request.getParameter("init_type");
+				
+				if(sponsorIndctr!=null && !sponsorIndctr.equals("null")){//coming from sponsorship
+					String url = initType.equals(VIEW_ONLY)?SPONSOR_URL:DATA_USAGE_URL;
+					RequestDispatcher rd = request.getRequestDispatcher(url);
+					rd.forward(request, response);
+				}
+				else//normal pass of using i2b2
+					response.sendRedirect(props.getProperty(I2B2_CLIENT_SERVICE));
 			}
 			else{
 				request.setAttribute(VAL_MESSAGE, message);
