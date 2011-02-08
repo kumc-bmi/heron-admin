@@ -20,8 +20,9 @@ function doAcceptAgreement()
 	}
 	else
 	{
-		frm.accepted.value='T';
-		frm.submit();
+		//frm.accepted.value='T';
+		//frm.agreementbtn.value='Accept';
+		//frm.submit();
 	}
 }
 
