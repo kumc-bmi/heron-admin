@@ -5,6 +5,8 @@
    String sigDate = request.getParameter("txtSignDate");
    String sigValDisplay = sigVal!=null?sigVal:"";
    String sigDateDisplay = sigDate!=null?sigDate:"";
+   String sponsorIndctr = request.getParameter("SPNSR");
+   String initType = request.getParameter("init_type");
 %>
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -37,6 +39,8 @@
 
 <div align="center"><blink><font color="red"><%=message%></font></blink></div>
 <form id="frmSysAccess" action="SysAccessServlet">
+<input type="hidden" name="SPNSR" id="SPNSR" value="<%=sponsorIndctr %>">
+<input type="hidden" name="init_type" id="init_type" value="<%=initType %>">
 <h3 align="center">UNIVERSITY OF KANSAS MEDICAL CENTER</h3> <p></p>
 <h3 align="center">HERON SYSTEM ACCESS AGREEMENT</h3><p></p>
 <h3 align="center">(PREPARATORY TO RESEARCH)</h3><p></p>
