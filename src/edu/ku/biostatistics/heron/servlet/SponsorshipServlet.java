@@ -62,7 +62,8 @@ public class SponsorshipServlet extends HttpServlet {
 			
 			if(!isQualified){
 				String message = "sorry, only qualified falcuties who have signed HERON system access agreement can use this functionality."
-					+ "<p><p> Please use link <a href=\"system_access_agreement.jsp\">Sign System Access Agreement</a> if you a qualified faculty.";
+					+ "<p><p> Please use link <a href=\"AuthServlet?SPNSR=Y&init_type="+
+					initType + "\">Sign System Access Agreement</a> if you a qualified faculty.";
 				request.setAttribute(VAL_MESSAGE, message);
 				RequestDispatcher rd = request.getRequestDispatcher(GEN_DISPLAY_URL);
 				rd.forward(request, response);
