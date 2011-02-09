@@ -50,7 +50,7 @@ public class AuthServlet extends HttpServlet {
 		HttpSession session = request.getSession();
 		session.setAttribute(USER_FULL_NAME, info[0]);
 		session.setAttribute(USER_TITLE, info[2]);
-		boolean isQualified = checkQualification(info[1],info[3],uid);
+		boolean isQualified = checkQualification(info[1],info[3],uid,request.getParameter("init_type"));
 		
 		if(!isQualified){
 			String msg = "Sorry, It seems you are not a qualified faculty. If you are a sponsored user, please make sure it is approved by DROC and not expired.<p></p>"+
@@ -88,15 +88,19 @@ public class AuthServlet extends HttpServlet {
 	}
 	
 	/**
-	 * check if user is a qualified faculty or approved view_only user.
+	 * check if user is a qualified faculty or approved view_only user to use i2b2 web app.
+	 * if coming from sponsoring, only check if the user is a qualified faculty.
 	 * @param facFlag
 	 * @param jobCode
 	 * @param uid
 	 * @return true if yes, false otherwise.
 	 */
-	private boolean checkQualification(String facFlag,String jobCode,String uid){
+	private boolean checkQualification(String facFlag,String jobCode,String uid,String initType){
 		if(facFlag!=null && facFlag.equals("Y") && !jobCode.equals(props.getProperty(EXCLUDED_JOBCODE)))
 			return true;
-		return dbUtil.isViewOnlyUserApproved(uid);
+		if(initType==null||initType.equals("null"))
+			return dbUtil.isViewOnlyUserApproved(uid);
+		else
+			return false;
 	}
 }
