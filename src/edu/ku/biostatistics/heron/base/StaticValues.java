@@ -25,4 +25,5 @@ public interface StaticValues {
 	String DATA_ACCESS = "DATA_ACCESS";
 	String EXCLUDED_JOBCODE="excluded_jobcode";
 	String HOME_URL = "index.jsp";
+	String RAVEN_URL = "raven_url";
 }
