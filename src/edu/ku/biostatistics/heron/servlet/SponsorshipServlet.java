@@ -169,10 +169,10 @@ public class SponsorshipServlet extends HttpServlet {
 	 * @return application's url in a string
 	 */
 	private String getAppUrl(HttpServletRequest request){
-		String url = request.getScheme()+"://"+request.getServerName();
+		/*String url = request.getScheme()+"://"+request.getServerName();
 		int port = request.getLocalPort();
 		url = port!=0?(url+":"+port):url;
-		url += "/raven";
-		return url;
+		url += "/raven";*/
+		return props.getProperty(RAVEN_URL);
 	}
 }
