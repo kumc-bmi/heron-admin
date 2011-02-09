@@ -1,16 +1,18 @@
 <?xml version="1.0" ?>
-<project name="raven/heron" default="war">
+<project name="raven/heron" default="war"
+	 xmlns:ivy="antlib:org.apache.ivy.ant">
 	<path id="compile.classpath">
 		<fileset dir="WebContent/WEB-INF/lib">
 			<include name="*.jar" />
 		</fileset>
-		<fileset dir="/usr/share/maven-repo/javax/servlet/servlet-api/2.4/">
-			<include name="*.jar" />
-		</fileset>
-		<fileset dir="/usr/share/java/">
-			<include name="*.jar" />
-		</fileset>
+    <fileset dir="lib-ivy">
+      <include name="*.jar"/>
+    </fileset>
     </path>
+
+  <target name="resolve" description="--> retrieve dependencies with ivy">
+    <ivy:retrieve pattern="lib-ivy/[artifact]-[revision].[ext]" type="jar"/>
+  </target>
 
 	<target name="init">
 		<mkdir dir="build/classes" />

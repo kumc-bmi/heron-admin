@@ -1,0 +1,29 @@
+<!-- ivy.xml: resolve .jar dependencies over the web
+
+cribbed from https://gist.github.com/fb9f6e514aa1e18caa7b
+by shellac; see also discusison log
+http://chatlogs.planetrdf.com/swig/2011-02-09#T22-20-39
+-->
+<ivy-module version="2.0">
+  <!--
+      Is the module name supposed to match anything?
+      How about organisation?
+  -->
+  <info module="raven" organisation="informatics.kumc.edu" revision="1.0"/>
+  <configurations>
+    <!-- I'm not sure what these do, but they look useful. -->
+    <conf name="compile"/>
+    <conf name="runtime"/>
+    <conf name="compile-test"/>
+    <conf name="runtime-test"/>
+  </configurations>
+
+  <dependencies>
+    <dependency org="javax.servlet"
+		name="servlet-api" rev="2.5" conf="" />
+    <dependency org="javax.mail"
+		name="mail" rev="1.4" conf="" />
+    <dependency org="commons-collections"
+		name="commons-collections" rev="3.2.1" conf="" />
+  </dependencies>
+</ivy-module>
