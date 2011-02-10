@@ -7,21 +7,15 @@
 package edu.kumc.informatics.heron.dao;
 
 import java.sql.Timestamp;
-import java.sql.Types;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Vector;
 
-import javax.sql.DataSource;
-
 import org.apache.commons.collections.map.ListOrderedMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.SqlParameter;
-import org.springframework.jdbc.object.BatchSqlUpdate;
-
 import static edu.kumc.informatics.heron.base.StaticValues.*;
 
 public class HeronDBDao extends DBBaseDao{
@@ -251,6 +245,10 @@ public class HeronDBDao extends DBBaseDao{
 		return this.getJdbcTemplate().queryForList(sql).size()>0;
 	}
 	
+	/**
+	 * get an array of droc user ids
+	 * @return string array of ids
+	 */
 	public String[] getDrocIds(){
 		String sql = "select distinct user_id from heron.droc_reviewers where status ='A'";
 		List<Object> aList = this.getJdbcTemplate().queryForList(sql);
@@ -259,5 +257,16 @@ public class HeronDBDao extends DBBaseDao{
 			results[i] = ((ListOrderedMap)aList.get(i)).get("USER_ID")+"";
 		}
 		return results;
+	}
+	
+	/**
+	 * check if user an executive
+	 * @param uid
+	 * @return true if yes
+	 */
+	public boolean isUserExecutive(String uid){
+		String sql = "select user_id from heron.exec_group where user_id='" +
+		uid + "' and status ='A'";
+		return this.getJdbcTemplate().queryForList(sql).size()>0;
 	}
 }
