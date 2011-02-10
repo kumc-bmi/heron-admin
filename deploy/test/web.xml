@@ -22,7 +22,7 @@
     </init-param>
     <init-param>
       <param-name>service</param-name>
-      <param-value>http://10.17.8.54:8080/raven/</param-value>
+      <param-value>https://crappie.kumc.edu/</param-value>
     </init-param>
     <init-param>
       <param-name>renew</param-name>
@@ -38,7 +38,7 @@
     </init-param>
     <init-param>
       <param-name>service</param-name>
-      <param-value>http://10.17.8.54:8080/raven/</param-value>
+      <param-value>https://crappie.kumc.edu/</param-value>
     </init-param>
     <init-param>
       <param-name>redirectAfterValidation</param-name>

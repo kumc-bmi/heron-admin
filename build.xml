@@ -10,7 +10,7 @@
     </fileset>
     </path>
 
-  <property name="conf_dir" value="/home/dzhu" /><!-- temp. better use another directoty -->
+  <property name="conf_dir" value="./" />
 
   <target name="resolve" description="--> retrieve dependencies with ivy">
     <ivy:retrieve pattern="lib-ivy/[artifact]-[revision].[ext]" type="jar"/>
@@ -18,19 +18,19 @@
 
 	<target name="init">
 		<mkdir dir="build/classes" />
-		<mkdir dir="dist" />
+		<mkdir dir="dist-${env}" />
 	</target>
 
 	<target name="compile" depends="init">
-		<copy file="${conf_dir}/deploy/${env}/web.xml" todir="WebContent/WEB-INF/" overwrite="true" />
-		<copy file="${conf_dir}/deploy/${env}/configs.properties" todir="src" overwrite="true"/>
 		<javac destdir="build/classes" debug="true" srcdir="src">
 			<classpath refid="compile.classpath" />
 		</javac>
+		<copy file="${conf_dir}/deploy/${env}/web.xml" todir="WebContent/WEB-INF/" overwrite="true" />
+		<copy file="${conf_dir}/deploy/${env}/configs.properties" todir="WebContent/WEB-INF/classes" overwrite="true"/>
 	</target>
 
 	<target name="war" depends="compile">
-		<war destfile="dist/raven.war" webxml="WebContent/WEB-INF/web.xml">
+		<war destfile="dist-${env}/raven.war" webxml="WebContent/WEB-INF/web.xml">
 			<fileset dir="WebContent" />
 			<lib dir="WebContent/WEB-INF/lib" />
 			<classes dir="build/classes" />
@@ -40,5 +40,7 @@
 	<target name="clean">
 		<delete dir="dist" />
 		<delete dir="build" />
+		<delete file="WebContent/WEB-INF/web.xml" />
+		<delete file="src/configs.properties" />
 	</target>
 </project>
