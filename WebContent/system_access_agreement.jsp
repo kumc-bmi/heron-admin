@@ -1,4 +1,4 @@
-<%@ page import="edu.ku.biostatistics.heron.base.*" %>
+<%@ page import="edu.kumc.informatics.heron.base.*" %>
 <% String val = request.getAttribute(StaticValues.VAL_MESSAGE)+""; 
    String message = val!=null && !val.equals("null")?(val+" Note: Turn on Javascript for better user experience !"):"";
    String sigVal = request.getParameter("txtName");

@@ -1,5 +1,5 @@
-<%@ page import="edu.ku.biostatistics.heron.util.*"%>
-<%@ page import="edu.ku.biostatistics.heron.base.*"%>
+<%@ page import="edu.kumc.informatics.heron.util.*"%>
+<%@ page import="edu.kumc.informatics.heron.base.*"%>
 <%@ page import="java.util.*"%>
 <%@ page errorPage="error_page.jsp"%>
 <%
