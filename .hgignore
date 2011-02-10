@@ -4,4 +4,6 @@ syntax: glob
 WebContent/WEB-INF/classes/configs.properties
 WebContent/WEB-INF/classes/log4j.properties
 dist/
+dist-test/
+dist-prod/
 lib-ivy/
