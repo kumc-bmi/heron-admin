@@ -25,5 +25,9 @@ http://chatlogs.planetrdf.com/swig/2011-02-09#T22-20-39
 		name="mail" rev="1.4" conf="" />
     <dependency org="commons-collections"
 		name="commons-collections" rev="3.2.1" conf="" />
+    <dependency org="javax.ejb"
+		name="ejb-api" rev="3.0" conf="" />
+    <dependency org="javax.jms" name="jms" rev="1.1" conf="" />
+
   </dependencies>
 </ivy-module>

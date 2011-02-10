@@ -10,7 +10,7 @@
     </fileset>
     </path>
 
-  <property name="conf_dir" value="/home/dzhu" /><!-- temp. better use another directoty -->
+  <property name="conf_dir" value="./" />
 
   <target name="resolve" description="--> retrieve dependencies with ivy">
     <ivy:retrieve pattern="lib-ivy/[artifact]-[revision].[ext]" type="jar"/>
