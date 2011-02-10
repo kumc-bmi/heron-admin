@@ -157,9 +157,9 @@ public class SponsorshipServlet extends HttpServlet {
 	 */
 	private boolean checkQualification(String facFlag,String jobCode,String uid){
 		boolean result = false;
-		if(facFlag!=null && facFlag.equals("Y") && !jobCode.equals(props.getProperty(EXCLUDED_JOBCODE)))
+		if((facFlag!=null && facFlag.equals("Y") && !jobCode.equals(props.getProperty(EXCLUDED_JOBCODE)))
+				|| dbUtil.isUserExecutive(uid))
 			result = dbUtil.isUserAgreementSigned(uid);
-		//return dbUtil.isSpecialSponsor(uid); TODO: future logic.
 		return result;
 	}
 	
