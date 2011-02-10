@@ -165,4 +165,13 @@ public class DBUtil {
 	public String[] getDrocIds(){
 		return heronDao.getDrocIds();
 	}
+	
+	/**
+	 * check if user active in exec_group table
+	 * @param uid
+	 * @return true if user active in exec_group table.
+	 */
+	public boolean isUserExecutive(String uid){
+		return heronDao.isUserExecutive(uid);
+	}
 }
