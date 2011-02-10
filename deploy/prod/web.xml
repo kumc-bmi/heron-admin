@@ -80,7 +80,7 @@
     <description></description>
     <display-name>AuthServlet</display-name>
     <servlet-name>AuthServlet</servlet-name>
-    <servlet-class>edu.ku.biostatistics.heron.servlet.AuthServlet</servlet-class>
+    <servlet-class>edu.kumc.informatics.heron.servlet.AuthServlet</servlet-class>
   </servlet>
   <servlet-mapping>
     <servlet-name>AuthServlet</servlet-name>
@@ -90,7 +90,7 @@
     <description></description>
     <display-name>SysAccessServlet</display-name>
     <servlet-name>SysAccessServlet</servlet-name>
-    <servlet-class>edu.ku.biostatistics.heron.servlet.SysAccessServlet</servlet-class>
+    <servlet-class>edu.kumc.informatics.heron.servlet.SysAccessServlet</servlet-class>
   </servlet>
   <servlet-mapping>
     <servlet-name>SysAccessServlet</servlet-name>
@@ -100,7 +100,7 @@
     <description></description>
     <display-name>SponsorshipServlet</display-name>
     <servlet-name>SponsorshipServlet</servlet-name>
-    <servlet-class>edu.ku.biostatistics.heron.servlet.SponsorshipServlet</servlet-class>
+    <servlet-class>edu.kumc.informatics.heron.servlet.SponsorshipServlet</servlet-class>
   </servlet>
   <servlet-mapping>
     <servlet-name>SponsorshipServlet</servlet-name>
@@ -110,7 +110,7 @@
     <description></description>
     <display-name>SponsorshipApprovalServlet</display-name>
     <servlet-name>SponsorshipApprovalServlet</servlet-name>
-    <servlet-class>edu.ku.biostatistics.heron.servlet.SponsorshipApprovalServlet</servlet-class>
+    <servlet-class>edu.kumc.informatics.heron.servlet.SponsorshipApprovalServlet</servlet-class>
   </servlet>
   <servlet-mapping>
     <servlet-name>SponsorshipApprovalServlet</servlet-name>
