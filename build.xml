@@ -40,5 +40,7 @@
 	<target name="clean">
 		<delete dir="dist" />
 		<delete dir="build" />
+		<delete file="WebContent/WEB-INF/web.xml" />
+		<delete file="src/configs.properties" />
 	</target>
 </project>
