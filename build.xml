@@ -10,6 +10,8 @@
     </fileset>
     </path>
 
+  <property name="conf_dir" value="/home/dzhu" /><!-- temp. better use another directoty -->
+
   <target name="resolve" description="--> retrieve dependencies with ivy">
     <ivy:retrieve pattern="lib-ivy/[artifact]-[revision].[ext]" type="jar"/>
   </target>
@@ -20,6 +22,8 @@
 	</target>
 
 	<target name="compile" depends="init">
+		<copy file="${conf_dir}/deploy/${env}/web.xml" todir="WebContent/WEB-INF/" overwrite="true" />
+		<copy file="${conf_dir}/deploy/${env}/configs.properties" todir="src" overwrite="true"/>
 		<javac destdir="build/classes" debug="true" srcdir="src">
 			<classpath refid="compile.classpath" />
 		</javac>
