@@ -98,6 +98,8 @@ public class AuthServlet extends HttpServlet {
 	private boolean checkQualification(String facFlag,String jobCode,String uid,String initType){
 		if(facFlag!=null && facFlag.equals("Y") && !jobCode.equals(props.getProperty(EXCLUDED_JOBCODE)))
 			return true;
+		if(dbUtil.isUserExecutive(uid))
+			return true;
 		if(initType==null||initType.equals("null"))
 			return dbUtil.isViewOnlyUserApproved(uid);
 		else
