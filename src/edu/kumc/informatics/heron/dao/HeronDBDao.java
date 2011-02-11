@@ -113,11 +113,11 @@ public class HeronDBDao extends DBBaseDao{
 	 * @param uid
 	 */
 	public void insertSponsorships(String resTitle, String resDesc,String empIds[], String nonempIds[],
-			String expDate,String uid,String spnsrType,String sigName,String sigDate) throws Exception{
+			String expDate,String uid,String spnsrType,String sigName,String sigDate,String[] nonEmpDescArray) throws Exception{
 		if(empIds.length>0)
-			insertDataInBatch(resTitle,  resDesc, empIds, expDate, uid, "Y",spnsrType,sigName,sigDate);
+			insertDataInBatch(resTitle,  resDesc, empIds, expDate, uid, "Y",spnsrType,sigName,sigDate,null);
 		if(nonempIds.length>0)
-			insertDataInBatch(resTitle,  resDesc, nonempIds, expDate, uid, "N",spnsrType,sigName,sigDate);
+			insertDataInBatch(resTitle,  resDesc, nonempIds, expDate, uid, "N",spnsrType,sigName,sigDate,nonEmpDescArray);
 		}
 	
 
@@ -133,7 +133,7 @@ public class HeronDBDao extends DBBaseDao{
 	 * @throws ParseException 
 	 */
 	private void insertDataInBatch(String resTitle, String resDesc,String ids[],String expDate,String uid, 
-			String empFlag,String spnsrType,String sigName,String sigDate) throws Exception{
+			String empFlag,String spnsrType,String sigName,String sigDate,String[] nonEmpDescArray) throws Exception{
 		SponsorshipBatchInsert batchInsert = new SponsorshipBatchInsert(this.getDataSource());
 		java.util.Date expDt = null;
 		java.util.Date signDt = null;
@@ -148,8 +148,10 @@ public class HeronDBDao extends DBBaseDao{
 				signDt = fmt.parse(sigDate);
 			}
 			for(int i=0;i<ids.length;i++){
-				if(ids[i]!=null && !ids[i].trim().equals(""))
-					batchInsert.update(new Object[]{ids[i],uid,spnsrType,resTitle,resDesc,expDt,empFlag,sigName,signDt});
+				if(ids[i]!=null && !ids[i].trim().equals("")){
+					String nonEmpDesc = nonEmpDescArray!=null?nonEmpDescArray[i]:"null";
+					batchInsert.update(new Object[]{ids[i],uid,spnsrType,resTitle,resDesc,expDt,empFlag,sigName,signDt,nonEmpDesc});
+				}
 			}
 			batchInsert.flush();
 		}catch(Exception ex){
@@ -184,7 +186,7 @@ public class HeronDBDao extends DBBaseDao{
 	 * @return a list of sponsorship info from database
 	 */
 	public List getSponsorshipForApproval(String type,String org){
-		String sql = "select SPONSORSHIP_ID,USER_ID,SPONSOR_ID,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE from HERON.sponsorship s"+
+		String sql = "select SPONSORSHIP_ID,USER_ID,SPONSOR_ID,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE,USER_DESC from HERON.sponsorship s"+
 			" where ACCESS_TYPE='"+type+"' and (s.expire_date is null or s.expire_date>sysdate) ";
 		if(org.equals("KUMC"))
 			sql += " and (KUMC_APPROVAL_STATUS is null or KUMC_APPROVAL_STATUS='D')";
