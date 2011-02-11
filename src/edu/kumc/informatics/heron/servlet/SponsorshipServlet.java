@@ -128,9 +128,42 @@ public class SponsorshipServlet extends HttpServlet {
 		String emplIdLdapMsg =  bUtil.ldapCheck(empls);
 		if(!"".equals(emplIdLdapMsg))
 			msg += "The following employee id not in LDAP: "+emplIdLdapMsg+". ";
-		String nonEmplIdLdapMsg =  bUtil.ldapCheck(nonEmpls);
+		
+		String pureIds = "";
+		String[] pureDescArray = null;
+		String[] pureIdArray = null;
+		
+		if(nonEmpls!=null && !nonEmpls.trim().equals("")){
+			String[] tempNonEmpls = nonEmpls.split(";");
+			pureDescArray = new String[tempNonEmpls.length];
+			pureIdArray = new String[tempNonEmpls.length];
+			
+			for(int i=0;i<tempNonEmpls.length;i++){
+				if(!tempNonEmpls[i].contains("[") && !tempNonEmpls[i].contains("]")){
+					pureIdArray[i] = tempNonEmpls[i];
+					pureDescArray[i] = "null";
+				}
+				else if((tempNonEmpls[i].contains("[") && !tempNonEmpls[i].contains("]")) ||
+						(!tempNonEmpls[i].contains("[") && tempNonEmpls[i].contains("]"))){
+					msg += "The non-KUMC employee data format is incorrect.";
+					break;
+				}
+				else{
+					pureIds += tempNonEmpls[i].substring(0,tempNonEmpls[i].indexOf("["));
+					if(i<tempNonEmpls.length-1)
+						pureIds += ";";
+					pureIdArray[i] = tempNonEmpls[i].substring(0,tempNonEmpls[i].indexOf("["));
+					pureDescArray[i] = tempNonEmpls[i].substring(tempNonEmpls[i].indexOf("[")+1, tempNonEmpls[i].indexOf("]"));
+				}
+			}
+			HttpSession session = request.getSession();
+			session.setAttribute(NON_EMP_DESCS, pureDescArray);
+			session.setAttribute(NON_EMP_IDS, pureIdArray);
+		}
+		
+		String nonEmplIdLdapMsg =  bUtil.ldapCheck(pureIds);
 		if(!"".equals(nonEmplIdLdapMsg))
-			msg += "The following non-employee id not in LDAP: "+nonEmplIdLdapMsg;
+			msg += "The following non-KUMC employee id not in LDAP: "+nonEmplIdLdapMsg;
 		String spnsrType = request.getParameter("spnsr_type");
 		
 		if(spnsrType.equals(DATA_ACCESS)){
