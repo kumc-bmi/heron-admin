@@ -52,6 +52,7 @@ public class GuiUtil {
 				String uniqId = ((ListOrderedMap)aMap).get("SPONSORSHIP_ID")+"";
 				String userId = ((ListOrderedMap)aMap).get("USER_ID")+"";
 				String sponsorId = ((ListOrderedMap)aMap).get("SPONSOR_ID")+"";
+				String userDesc = ((ListOrderedMap)aMap).get("USER_DESC")+"";
 				String[] userInfo = lUtil.getUserInfo(userId);
 				String[] spnsrInfo = lUtil.getUserInfo(sponsorId);
 				String rowStyle = i%2==0?"<tr class=\"d0\"><td>":"<tr class=\"d1\"><td>";
@@ -62,7 +63,7 @@ public class GuiUtil {
 					bf.append("<div>Research Description: ");
 					bf.append(((ListOrderedMap)aMap).get("RESEARCH_DESC"));
 					bf.append("</div><table class=\"heron\"><tr><th>User Id</th><th>User Name</th><th>User Title</th>");
-					bf.append("<th>Sponsor Id</th><th>Sponsor Name</th><th>Sponsor Title</th><th>Action</th></tr>");
+					bf.append("<th>User Description</th><th>Sponsor Id</th><th>Sponsor Name</th><th>Sponsor Title</th><th>Action</th></tr>");
 				}
 				bf.append(rowStyle);
 				bf.append(userId);
@@ -70,6 +71,8 @@ public class GuiUtil {
 				bf.append(userInfo[0]);
 				bf.append("</td><td>");
 				bf.append(userInfo[2]);
+				bf.append("</td><td>");
+				bf.append("null".equals(userDesc)?"&nbsp;":userDesc);
 				bf.append("</td><td>");
 				bf.append(sponsorId);
 				bf.append("</td><td>");
