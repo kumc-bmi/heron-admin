@@ -14,8 +14,8 @@ import org.springframework.jdbc.object.BatchSqlUpdate;
  */
 public class SponsorshipBatchInsert  extends BatchSqlUpdate {
 	  private static final String SQL = "insert into heron.SPONSORSHIP(SPONSORSHIP_ID,USER_ID,SPONSOR_ID,LAST_UPDT_TMST,"+
-	  	"ACCESS_TYPE,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE,KUMC_EMPL_FLAG,SIGNATURE,SIGNED_DATE) "+
-	  	"values (heron.seq_sponsorship.nextval,?, ?, sysdate, ?, ?,?,?,?,?,?)";
+	  	"ACCESS_TYPE,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE,KUMC_EMPL_FLAG,SIGNATURE,SIGNED_DATE,USER_DESC) "+
+	  	"values (heron.seq_sponsorship.nextval,?, ?, sysdate, ?, ?,?,?,?,?,?,?)";
 
 	  SponsorshipBatchInsert(DataSource dataSource) {
 	    super(dataSource, SQL);
@@ -28,6 +28,7 @@ public class SponsorshipBatchInsert  extends BatchSqlUpdate {
 	    declareParameter(new SqlParameter(Types.VARCHAR));
 	    declareParameter(new SqlParameter(Types.VARCHAR));
 	    declareParameter(new SqlParameter(Types.DATE));
+	    declareParameter(new SqlParameter(Types.VARCHAR));
 	    setBatchSize(100);
 	}
 }
