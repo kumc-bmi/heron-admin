@@ -111,8 +111,10 @@ public class DBUtil {
 		String sigDate = request.getParameter("txtSignDate");
 		String uid = request.getRemoteUser();
 		String[] empIdArray = empIds.split(";");
-		String[] nonEmpIdArray = nonempIds.split(";");
-		heronDao.insertSponsorships(resTitle,resDesc,empIdArray,nonEmpIdArray,expDate,uid,spnsrType,sigName,sigDate);
+		HttpSession session = request.getSession();
+		String[] nonEmpIdArray = (String[])session.getAttribute(NON_EMP_IDS);
+		String[] nonEmpDescArray = (String[])session.getAttribute(NON_EMP_DESCS);
+		heronDao.insertSponsorships(resTitle,resDesc,empIdArray,nonEmpIdArray,expDate,uid,spnsrType,sigName,sigDate,nonEmpDescArray);
 	}
 	
 	/**
