@@ -43,10 +43,13 @@ if(uname.equals("null")){
 		<tr><td><h5>Title of the General Research Area: </h5></td><td><input type="text" name="txtRTitle" id="txtRTitle" value="<%=txtRTitleDisplay %>" size="66" maxlength="500"></td></tr>
 		<tr><td><h5>Description of the Preparatory to Research Activities: </h5></td><td><textarea rows="" cols="50" name="resDesc" id="resDesc"><%=resDescDisplay %></textarea></td></tr>
 		<tr><td><h5>A. Network logon Ids of KUMC employees: </h5></td><td><input type="text" name="empIds" id="empIds" value="<%=emplIdDisplay %>" size="66" maxlength="500"><h5>(Separate by ;)</h5></td></tr>
-		<tr><td><h5>B. Network logon Ids of non-KUMC employees: </h5></td><td><input type="text" name="nonempIds" id="nonempIds" value="<%=nonEmpIdDisplay %>" size="66" maxlength="500"><h5>(Separate by ;)</h5></td></tr>
+		<tr><td><h5>B. Network logon Ids of <A HREF = "#affiliation">non-KUMC employees*</A>: </h5></td><td><input type="text" name="nonempIds" id="nonempIds" value="<%=nonEmpIdDisplay %>" size="66" maxlength="500"><h5>(Separate usernames by ; and put affilations in [].  <BR> For example: <b>rwaitman;dconnolly</b> <BR><b>fsmith;lhargrove[Computer Science Professor at University of Kansas-Lawrence];afranks[Analyst at HCA Lee's Summit Medical Center]</B> )</h5></td></tr>
 		<tr><td><h5>Date of expiration (mm/dd/yyyy): </h5></td><td><input type="text" name="expDate" id="expDate" size="30" value="<%=expDateDisplay %>" maxlength="10"><h5>(Leave blank if requesting access until the user KUMC account is canceled or leaves KUMC)</h5></td></tr>
 	</table>
-	<p></p><p></p>
+	<p></p>
+<P ID=affiliation>
+* For non-KUMC employees, include the position and employer for any students or staff who employed by another institution where there may need to be clarification regarding conflict of interest or competitive concerns between their parent institution and KUMC, KUH or UKP.
+</P>	
 	<h5>
 	The individuals identified in sections A and B above shall be referred to hereinafter as the Sponsor's "Research Team Members".  They will be required to individually sign a HERON System Access Agreement reinforcing their responsibilities when using HERON for prepraratory to research activities.  
  <p></p>

@@ -97,12 +97,16 @@ Network logon Ids of KUMC employees:</h5>
 <h5>The individuals not employed by KUMC who shall be permitted by
 Data Recipient to use or receive the Limited Data Set for purposes of
 the Research Project shall be limited to:</h5>
-<h5>Network logon Ids of non-KUMC employees:</h5>
+<h5>Network logon Ids of <A HREF = "#affiliation">non-KUMC employees*</A>: </h5>
 </td>
 <td><input type="text" name="nonempIds" id="nonempIds"
 	value="<%=nonEmpIdDisplay%>" size="66" maxlength="500">
-<h5>(Separate by ;)</h5>
+<h5>(Separate usernames by ; and put affilations in [].  <BR> For example: <b>rwaitman;dconnolly</b> <BR><b>fsmith;lhargrove[Computer Science Professor at University of Kansas-Lawrence];afranks[Analyst at HCA Lee's Summit Medical Center]</B> )</h5>
 <p></p>
+<P ID=affiliation>
+* For non-KUMC employees, include the position and employer for any students or staff who employed by another institution where there may need to be clarification regarding conflict of interest or competitive concerns between their parent institution and KUMC, KUH or UKP.
+</P>
+
 <h5>The individuals identified in sections 1.A and 1.B above shall
 be referred to hereinafter as Data Recipient's "Research Team Members."
 </h5>
