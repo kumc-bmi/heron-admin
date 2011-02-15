@@ -40,11 +40,11 @@ if(uname.equals("null")){
 	<table>
 		<tr><th colspan=2><h4>Sponsor Heron System Usage Users</h4></th></tr>
 		<tr><td>&nbsp;</td></tr>
-		<tr><td><h5>Title of the General Research Area: </h5></td><td><input type="text" name="txtRTitle" id="txtRTitle" value="<%=txtRTitleDisplay %>" size="66" maxlength="500"></td></tr>
-		<tr><td><h5>Description of the Preparatory to Research Activities: </h5></td><td><textarea rows="" cols="50" name="resDesc" id="resDesc"><%=resDescDisplay %></textarea></td></tr>
-		<tr><td><h5>A. Network logon Ids of KUMC employees: </h5></td><td><input type="text" name="empIds" id="empIds" value="<%=emplIdDisplay %>" size="66" maxlength="500"><h5>(Separate by ;)</h5></td></tr>
-		<tr><td valign="top"><h5>B. Network logon Ids of <A HREF = "#affiliation">non-KUMC employees*</A>: </h5></td><td><input type="text" name="nonempIds" id="nonempIds" value="<%=nonEmpIdDisplay %>" size="66" maxlength="500"><h5>(Separate usernames by ; and put affilations in [].  <BR> For example: <b>rwaitman;dconnolly</b> <BR><b>fsmith;lhargrove[Computer Science Professor at University of Kansas-Lawrence];afranks[Analyst at HCA Lee's Summit Medical Center]</B> )</h5></td></tr>
-		<tr><td><h5>Date of expiration (mm/dd/yyyy): </h5></td><td><input type="text" name="expDate" id="expDate" size="30" value="<%=expDateDisplay %>" maxlength="10"><h5>(Leave blank if requesting access until the user KUMC account is canceled or leaves KUMC)</h5></td></tr>
+		<tr><td width="25%"><h5>Title of the General Research Area: </h5></td><td><input type="text" name="txtRTitle" id="txtRTitle" value="<%=txtRTitleDisplay %>" size="92" maxlength="500"></td></tr>
+		<tr><td width="25%"><h5>Description of the Preparatory to Research Activities: </h5></td><td><textarea rows="" cols="70" name="resDesc" id="resDesc"><%=resDescDisplay %></textarea></td></tr>
+		<tr><td width="25%"><h5>A. Network logon Ids of KUMC employees: </h5></td><td><textarea cols="70" name="empIds" id="empIds"><%=emplIdDisplay %></textarea><h5>(Separate by ;)</h5></td></tr>
+		<tr><td width="25%" valign="top"><h5>B. Network logon Ids of <A HREF = "#affiliation">non-KUMC employees*</A>: </h5></td><td><textarea rows="2" cols="70" name="nonempIds" id="nonempIds"><%=nonEmpIdDisplay %></textarea><h5>(Separate usernames by ; and put affilations in [].  <BR> For example: <b>rwaitman;dconnolly;</b><b>fsmith;lhargrove[Computer Science Professor at University of Kansas-Lawrence];afranks[Analyst at HCA Lee's Summit Medical Center]</B> )</h5></td></tr>
+		<tr><td width="25%"><h5>Date of expiration (mm/dd/yyyy): </h5></td><td><input type="text" name="expDate" id="expDate" size="30" value="<%=expDateDisplay %>" maxlength="10"><h5>(Leave blank if requesting access until the user KUMC account is canceled or leaves KUMC)</h5></td></tr>
 	</table>
 	<p></p>
 <P ID=affiliation>
