@@ -41,11 +41,30 @@ public class BasicUtil {
 		if(ids!=null && !ids.trim().equals("")){
 			String[] allIds = ids.split(";");
 			for(int i=0; i<allIds.length;i++){
-				if(allIds[i]!=null){
-					if(!ldapUtil.isUserInLdap(allIds[i])) {
+				if(allIds[i]!=null && !allIds[i].trim().equals("")){
+					if(!ldapUtil.isUserInLdap(allIds[i].trim())) {
 						badIds.append(allIds[i]);
 						badIds.append(" ");
 					}
+				}
+			}
+		}
+		return badIds.toString();
+	}
+	
+	/**
+	 * check if any id in the string[] not valid.
+	 * @param allIds
+	 * @return the ids which are not in ldap.
+	 */
+	public String ldapCheck(String[] allIds){
+		StringBuffer badIds = new StringBuffer("");
+	
+		for(int i=0; i<allIds.length;i++){
+			if(allIds[i]!=null && !allIds[i].trim().equals("")){
+				if(!ldapUtil.isUserInLdap(allIds[i].trim())) {
+					badIds.append(allIds[i]);
+					badIds.append(" ");
 				}
 			}
 		}
