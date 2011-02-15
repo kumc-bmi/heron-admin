@@ -129,7 +129,6 @@ public class SponsorshipServlet extends HttpServlet {
 		if(!"".equals(emplIdLdapMsg))
 			msg += "The following employee id not in LDAP: "+emplIdLdapMsg+". ";
 		
-		String pureIds = "";
 		String[] pureDescArray = null;
 		String[] pureIdArray = null;
 		
@@ -149,9 +148,6 @@ public class SponsorshipServlet extends HttpServlet {
 					break;
 				}
 				else{
-					pureIds += tempNonEmpls[i].substring(0,tempNonEmpls[i].indexOf("["));
-					if(i<tempNonEmpls.length-1)
-						pureIds += ";";
 					pureIdArray[i] = tempNonEmpls[i].substring(0,tempNonEmpls[i].indexOf("["));
 					pureDescArray[i] = tempNonEmpls[i].substring(tempNonEmpls[i].indexOf("[")+1, tempNonEmpls[i].indexOf("]"));
 				}
@@ -159,11 +155,11 @@ public class SponsorshipServlet extends HttpServlet {
 			HttpSession session = request.getSession();
 			session.setAttribute(NON_EMP_DESCS, pureDescArray);
 			session.setAttribute(NON_EMP_IDS, pureIdArray);
+			
+			String nonEmplIdLdapMsg =  bUtil.ldapCheck(pureIdArray);
+			if(!"".equals(nonEmplIdLdapMsg))
+				msg += "The following non-KUMC employee id not in LDAP: "+nonEmplIdLdapMsg +". ";
 		}
-		
-		String nonEmplIdLdapMsg =  bUtil.ldapCheck(pureIds);
-		if(!"".equals(nonEmplIdLdapMsg))
-			msg += "The following non-KUMC employee id not in LDAP: "+nonEmplIdLdapMsg;
 		String spnsrType = request.getParameter("spnsr_type");
 		
 		if(spnsrType.equals(DATA_ACCESS)){
