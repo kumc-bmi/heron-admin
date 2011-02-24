@@ -282,16 +282,16 @@ public class HeronDBDao extends DBBaseDao{
 	 * @return string[] of sponsorship approval info
 	 */
 	public String[] getUserApproveInfo(String spnId){
-		String sql = "select user_id, sponsor_id from HERON.sponsorship where sponsorship_id="+
+		String sql = "select user_id, sponsor_id,research_title from HERON.sponsorship where sponsorship_id="+
 			spnId + " and kuh_approval_status='A' and kumc_approval_status='A' and ukp_approval_status='A'";
 		@SuppressWarnings("rawtypes")
 		List aList =  this.getJdbcTemplate().queryForList(sql);
 		if(aList.size()>0){
 			ListOrderedMap aMap = (ListOrderedMap)aList.get(0);
-			return new String[]{"T",aMap.get("user_id")+"",aMap.get("sponsor_id")+""};
+			return new String[]{"T",aMap.get("user_id")+"",aMap.get("sponsor_id")+"",aMap.get("research_title")+""};
 		}
 		else
-			return new String[]{"F",null,null};
+			return new String[]{"F",null,null,null};
 	}
 	
 	/**
@@ -300,10 +300,10 @@ public class HeronDBDao extends DBBaseDao{
 	 * @return a string[] of user id and sponsor id
 	 */
 	public String[] getSponsorshipUserInfo(String spnId){
-		String sql = "select user_id, sponsor_id from HERON.sponsorship where sponsorship_id="+ spnId;
+		String sql = "select user_id, sponsor_id,research_title from HERON.sponsorship where sponsorship_id="+ spnId;
 		@SuppressWarnings("rawtypes")
 		List aList =  this.getJdbcTemplate().queryForList(sql);
 		ListOrderedMap aMap = (ListOrderedMap)aList.get(0);
-		return new String[]{aMap.get("user_id")+"",aMap.get("sponsor_id")+""};
+		return new String[]{aMap.get("user_id")+"",aMap.get("sponsor_id")+"",aMap.get("research_title")+""};
 	}
 }
