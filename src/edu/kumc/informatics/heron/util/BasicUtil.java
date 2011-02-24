@@ -124,23 +124,26 @@ public class BasicUtil {
 	 * @param sponsorId
 	 * @param type
 	 */
-	public void notifyUserApprovedOrRejected(String userId,String sponsorId, String type){
-		String userEmail = ldapUtil.getLdapAttributeByName(userId,"mail");
-		String spnEmail = ldapUtil.getLdapAttributeByName(sponsorId,"mail");
-		String subj = "HERON Request is ";
-		String contn = "Dear HERON User,\n \n "+ "The user id ("+ userId+ ") you sponsored has been ";
+	public void notifyUserApprovedOrRejected(String userId,String sponsorId, String type,String proj){
+		String[] userInfo = ldapUtil.getUserInfo(userId);
+		String[] spnsrInfo = ldapUtil.getUserInfo(sponsorId);
+		String subj = "HERON access request ";
+		String contn = "Dear "+spnsrInfo[0]+",\n \n "+ "The HERON Data Request Oversight Committee has ";
 		
 		if(type.equals("A")){
 			subj += "approved!";
-			contn += "approved by the DROC team. \n \n" +
-				" The approved user can visit: \n\n" + props.getProperty(RAVEN_URL) +
-				" and follow the \"HERON\" link  to use the application.\n\n";
+			contn += "approved access for " + userInfo[0]+ " for project (" + proj+ "). " 
+				+ "He/she will be required to sign a system access agreement if it has not been done so "
+				+ "already for another project. He/she can login to  " + props.getProperty(RAVEN_URL)
+				+ " and then access the HERON link on the left. If you have any questions, feel free to email heron-admin@kumc.edu.\n\n";
 		}
 		else{
-			subj += "rejected!";
-			contn += "rejected by a committee member of the DROC team. \n \n";
+			subj += "denied!";
+			contn += "denied access for " + userInfo[0]+ " for project (" + proj+ ").\n\n" 
+				+ "If you have any questions or want to voice concerns, please email heron-admin@kumc.edu and"
+				+ " we will escalate your concerns to KUMC, UKP and KUH leadership. \n \n";
 		}
 		contn += "Sincerely, \n \n"+ "The HERON Team.";
-		this.sendEmails("heron-admin@kumc.edu", spnEmail, subj, contn, "smtp.kumc.edu",userEmail);
+		this.sendEmails("heron-admin@kumc.edu", spnsrInfo[4], subj, contn, "smtp.kumc.edu",userInfo[4]);
 	}
 }
