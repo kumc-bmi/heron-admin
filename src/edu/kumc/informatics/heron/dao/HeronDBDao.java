@@ -170,6 +170,7 @@ public class HeronDBDao extends DBBaseDao{
 		try{
 			String sql = "select org from heron.DROC_REVIEWERS where user_id=? and status='A'";
 			
+			@SuppressWarnings("rawtypes")
 			List aList = this.getSJdbcTemplate().queryForList(sql, uid);
 			if(aList!=null && aList.size()>0)
 				grp =  ((ListOrderedMap)aList.get(0)).get("ORG")+"";
@@ -185,6 +186,7 @@ public class HeronDBDao extends DBBaseDao{
 	 * @param org
 	 * @return a list of sponsorship info from database
 	 */
+	@SuppressWarnings("rawtypes")
 	public List getSponsorshipForApproval(String type,String org){
 		String sql = "select SPONSORSHIP_ID,USER_ID,SPONSOR_ID,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE,USER_DESC from HERON.sponsorship s"+
 			" where ACCESS_TYPE='"+type+"' and (s.expire_date is null or s.expire_date>sysdate) ";
@@ -228,6 +230,7 @@ public class HeronDBDao extends DBBaseDao{
 	 * @param uid
 	 * @return a list of user ids
 	 */
+	@SuppressWarnings("rawtypes")
 	public List getUserValidRoles(String uid){
 		String sql = "select user_id from heron.DROC_REVIEWERS where user_id='" + uid 
 			+ "' and status='A' union select user_id from pm_project_user_roles where user_id='"+
@@ -253,6 +256,7 @@ public class HeronDBDao extends DBBaseDao{
 	 */
 	public String[] getDrocIds(){
 		String sql = "select distinct user_id from heron.droc_reviewers where status ='A'";
+		@SuppressWarnings("unchecked")
 		List<Object> aList = this.getJdbcTemplate().queryForList(sql);
 		String[] results = new String[aList.size()];
 		for(int i=0;i<aList.size();i++){
@@ -270,5 +274,36 @@ public class HeronDBDao extends DBBaseDao{
 		String sql = "select user_id from heron.exec_group where user_id='" +
 		uid + "' and status ='A'";
 		return this.getJdbcTemplate().queryForList(sql).size()>0;
+	}
+	
+	/**
+	 * retrieve sponsorship approval info
+	 * @param spnId
+	 * @return string[] of sponsorship approval info
+	 */
+	public String[] getUserApproveInfo(String spnId){
+		String sql = "select user_id, sponsor_id from HERON.sponsorship where sponsorship_id="+
+			spnId + " and kuh_approval_status='A' and kumc_approval_status='A' and ukp_approval_status='A'";
+		@SuppressWarnings("rawtypes")
+		List aList =  this.getJdbcTemplate().queryForList(sql);
+		if(aList.size()>0){
+			ListOrderedMap aMap = (ListOrderedMap)aList.get(0);
+			return new String[]{"T",aMap.get("user_id")+"",aMap.get("sponsor_id")+""};
+		}
+		else
+			return new String[]{"F",null,null};
+	}
+	
+	/**
+	 * retrieve user id and sponsor id using a sponsorship id.
+	 * @param spnId
+	 * @return a string[] of user id and sponsor id
+	 */
+	public String[] getSponsorshipUserInfo(String spnId){
+		String sql = "select user_id, sponsor_id from HERON.sponsorship where sponsorship_id="+ spnId;
+		@SuppressWarnings("rawtypes")
+		List aList =  this.getJdbcTemplate().queryForList(sql);
+		ListOrderedMap aMap = (ListOrderedMap)aList.get(0);
+		return new String[]{aMap.get("user_id")+"",aMap.get("sponsor_id")+""};
 	}
 }
