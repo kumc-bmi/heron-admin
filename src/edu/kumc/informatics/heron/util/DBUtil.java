@@ -27,6 +27,7 @@ import static edu.kumc.informatics.heron.base.StaticValues.*;
 public class DBUtil {
 	private HeronDBDao heronDao;
 	private ChalkDBDao chalkDao;
+	private BasicUtil bUtil = new BasicUtil();
 	//can have other dao too...
 	private static Log log = LogFactory.getLog(DBUtil.class);
 	
@@ -144,8 +145,10 @@ public class DBUtil {
 				}
 			}
 		}
-		if(anyChecked)
+		if(anyChecked){
 			heronDao.approveSponsorship(org, ids, vals, uid);
+			notifyUserApprovedOrRejected(ids,vals);
+		}
 		else
 			result = "you did not check anyone to approve.";
 		return  result;
@@ -175,5 +178,27 @@ public class DBUtil {
 	 */
 	public boolean isUserExecutive(String uid){
 		return heronDao.isUserExecutive(uid);
+	}
+	
+	/**
+	 * notify user and sponsor if request/sponsorship get rejected or approved
+	 * @param ids
+	 * @param vals
+	 */
+	private void notifyUserApprovedOrRejected(Vector ids, Vector vals){
+		for(int i=0;i<ids.size();i++){
+			String val = vals.get(i)+"";
+			
+			if(val.equals("A")){
+				String[] approveInfo = heronDao.getUserApproveInfo(ids.get(i)+"");
+				if(approveInfo[0]=="T"){
+					bUtil.notifyUserApprovedOrRejected(approveInfo[1],approveInfo[2],"A");
+				}
+			}
+			else if (val.equals("R")){
+				String[] spsrInfo = heronDao.getSponsorshipUserInfo(ids.get(i)+"");
+				bUtil.notifyUserApprovedOrRejected(spsrInfo[0],spsrInfo[1],"R");
+			}
+		}
 	}
 }
