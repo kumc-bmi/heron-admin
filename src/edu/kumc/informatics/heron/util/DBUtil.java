@@ -192,12 +192,12 @@ public class DBUtil {
 			if(val.equals("A")){
 				String[] approveInfo = heronDao.getUserApproveInfo(ids.get(i)+"");
 				if(approveInfo[0]=="T"){
-					bUtil.notifyUserApprovedOrRejected(approveInfo[1],approveInfo[2],"A");
+					bUtil.notifyUserApprovedOrRejected(approveInfo[1],approveInfo[2],"A",approveInfo[3]);
 				}
 			}
 			else if (val.equals("R")){
 				String[] spsrInfo = heronDao.getSponsorshipUserInfo(ids.get(i)+"");
-				bUtil.notifyUserApprovedOrRejected(spsrInfo[0],spsrInfo[1],"R");
+				bUtil.notifyUserApprovedOrRejected(spsrInfo[0],spsrInfo[1],"R",spsrInfo[2]);
 			}
 		}
 	}
