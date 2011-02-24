@@ -46,7 +46,7 @@ public class LdapUtil {
 	@SuppressWarnings("rawtypes")
 	public String[] getUserInfo(String userId)
 	{
-		String[] info = new String[4];
+		String[] info = new String[5];
 		DirContext ctx = null;
 		NamingEnumeration results = null;
 		
@@ -72,10 +72,13 @@ public class LdapUtil {
 				Attribute attr = attributes.get("kumcPersonJobcode");
 				String jobCode = attr!=null?(String) attr.get():null;
 				String title = (String) attributes.get("title").get();
+				Attribute emailAttr = attributes.get("mail");
+				String email = emailAttr!=null?(String)emailAttr.get():"";
 				info[0] = fname + " " + lname;
 				info[1] = fac;
 				info[2] = title;
 				info[3] = jobCode;
+				info[4] = email;
 			}
 		} catch (NameNotFoundException e) {
 			log.error("NameNotFoundException in getUserInfo():"+e.getMessage());
@@ -206,7 +209,7 @@ public class LdapUtil {
 		return bf.toString();
 	}
 	
-	public static void main(String[] args) {
+	/*public static void main(String[] args) {
 		LdapUtil util = new LdapUtil();
 		String[] uids = new String[]{"cowens","dzhu", "rwaitman", "dconnolly","mmayo","msmith11","kblackwe","rbarohn","tneely","jorndoff","cwittkop","trusconi"};
 		
@@ -215,5 +218,5 @@ public class LdapUtil {
 				+ util.getLdapAttributeByName(uid,"kumcPersonEntity") + ", title:"
 				+ util.getLdapAttributeByName(uid,"title")) ;
 		}
-	}
+	}*/
 }
