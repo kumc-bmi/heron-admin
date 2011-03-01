@@ -118,8 +118,8 @@ for their intelligence and predisposition to collect things.</p>
 <h2>Meet the KUMC Informatics Team</h2>
 <img src="static/KUMCInformatics.jpg" width="609" height="250"
 	alt="KUMC Informatics Team" />
-<br>Seated: Russ and Angelica; Standing: Venkata, Arvinder, Dan,
-Rick, Cathy, Kahlia
+<br>Seated: Russ, Dan and Arvinder; Standing: Dongsheng, Angelica, Cathy,
+Bhargav, and Kahlia
 
 </div>
 </div>
