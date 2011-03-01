@@ -114,13 +114,13 @@ request form</a>.</p>
 Ravens, the largest of the <a
 	href="http://en.wikipedia.org/wiki/Corvidae">corvids</a>, and are known
 for their intelligence and predisposition to collect things.</p>
-
+<div align="center">
 <h2>Meet the KUMC Informatics Team</h2>
-<img src="static/KUMCInformatics.jpg" width="609" height="250"
+<img src="static/KUMCInformatics.jpg" width="450" height="270"
 	alt="KUMC Informatics Team" />
 <br>Seated: Russ, Dan and Arvinder; Standing: Dongsheng, Angelica, Cathy,
 Bhargav, and Kahlia
-
+</div>
 </div>
 </div>
 
