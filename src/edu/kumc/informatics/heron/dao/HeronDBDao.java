@@ -114,9 +114,9 @@ public class HeronDBDao extends DBBaseDao{
 	 */
 	public void insertSponsorships(String resTitle, String resDesc,String empIds[], String nonempIds[],
 			String expDate,String uid,String spnsrType,String sigName,String sigDate,String[] nonEmpDescArray) throws Exception{
-		if(empIds.length>0)
+		if(empIds !=null && empIds.length>0)
 			insertDataInBatch(resTitle,  resDesc, empIds, expDate, uid, "Y",spnsrType,sigName,sigDate,null);
-		if(nonempIds.length>0)
+		if(nonempIds!=null && nonempIds.length>0)
 			insertDataInBatch(resTitle,  resDesc, nonempIds, expDate, uid, "N",spnsrType,sigName,sigDate,nonEmpDescArray);
 		}
 	
