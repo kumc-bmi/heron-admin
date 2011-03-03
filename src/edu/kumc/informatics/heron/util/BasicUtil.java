@@ -146,4 +146,22 @@ public class BasicUtil {
 		contn += "Sincerely, \n \n"+ "The HERON Team.";
 		this.sendEmails("heron-admin@kumc.edu", spnsrInfo[4], subj, contn, "smtp.kumc.edu",userInfo[4]);
 	}
+	
+	/**
+	 * check if a string has real value(s) (other than spaces) separated by the delimiter
+	 * @param aString
+	 * @param delimiter
+	 * @return true if has real value(s) (other than spaces) separated by the delimiter
+	 */
+	public boolean hasRealValueInString(String aString, String delimiter){
+		if(aString!=null){
+			String[] infos = aString.split(delimiter);
+			for(String val:infos){
+				if(val!=null && !val.trim().equals("")){
+					return true;
+				}
+			}
+		}
+		return false;
+	}
 }

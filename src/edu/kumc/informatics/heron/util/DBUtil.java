@@ -105,7 +105,6 @@ public class DBUtil {
 		String resTitle = request.getParameter("txtRTitle");
 		String resDesc = request.getParameter("resDesc");
 		String empIds = request.getParameter("empIds");
-		String nonempIds = request.getParameter("nonempIds");
 		String expDate = request.getParameter("expDate");
 		String spnsrType = request.getParameter("spnsr_type");
 		String sigName = request.getParameter("txtName");
@@ -200,5 +199,51 @@ public class DBUtil {
 				bUtil.notifyUserApprovedOrRejected(spsrInfo[0],spsrInfo[1],"R",spsrInfo[2]);
 			}
 		}
+	}
+	
+	/**
+	 * get a string with ids already sponsored
+	 * @param empls
+	 * @param nonempls
+	 * @param projTitle
+	 * @param projDesc
+	 * @return string with ids already sponsored in heron
+	 */
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	public String isSponsoredCheck(String emplIdString,String[] nonEmplIds,String projTitle,String projDesc){
+		String[] empIds = new String[]{};
+		if(emplIdString!=null && !emplIdString.trim().equals("")){
+			empIds = emplIdString.split(",");
+		}
+		Vector vect = new Vector();
+		for(String id : empIds){
+			if(!id.trim().equals(""))
+				vect.add(id);
+		}
+		if(nonEmplIds!=null){
+			for(String id : nonEmplIds){
+				if(!id.trim().equals(""))
+					vect.add(id);
+			}
+		}
+		return heronDao.getSponsoredIds(buildIdList(vect),projTitle,projDesc);		
+	}
+		
+	/**
+	 * build string of comma separated ids
+	 * @param ids
+	 * @return string of comma separated ids or empty string
+	 */
+	private String buildIdList(Vector ids){
+		StringBuffer bf = new StringBuffer("");
+
+		for(int i=0;i<ids.size();i++){
+			bf.append("'");
+			bf.append(ids.get(i));
+			bf.append("'");
+			if(i<ids.size()-1)
+				bf.append(",");
+		}
+		return bf.toString();
 	}
 }

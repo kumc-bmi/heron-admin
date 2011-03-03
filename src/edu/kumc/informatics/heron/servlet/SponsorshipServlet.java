@@ -121,7 +121,7 @@ public class SponsorshipServlet extends HttpServlet {
 			msg += "Title of Research is required. ";
 		if(resDesc==null || resDesc.trim().equals(""))
 			msg += "Description of the Research is required. ";
-		if((empls==null || empls.trim().equals("")) && (nonEmpls==null || nonEmpls.trim().equals("")))
+		if(!bUtil.hasRealValueInString(empls, ";") && !bUtil.hasRealValueInString(nonEmpls, ";"))
 			msg += "Must enter employee Id(s) or non-KUMC employee Id(s). ";
 		if((expDate!=null&& !expDate.trim().equals("")) && !bUtil.checkDateFormat(expDate))
 			msg += "Expiration Date format invalid. ";
@@ -159,6 +159,11 @@ public class SponsorshipServlet extends HttpServlet {
 			String nonEmplIdLdapMsg =  bUtil.ldapCheck(pureIdArray);
 			if(!"".equals(nonEmplIdLdapMsg))
 				msg += "The following non-KUMC employee id not in LDAP: "+nonEmplIdLdapMsg +". ";
+		}
+		if(bUtil.hasRealValueInString(empls, ";") || bUtil.hasRealValueInString(nonEmpls, ";")){
+			String sponsoredMsg =  dbUtil.isSponsoredCheck(empls,pureIdArray,resTitle,resDesc);
+			if(!"".equals(sponsoredMsg))
+				msg += "The following ID(s) has already been sponsored for the same research title and description: "+sponsoredMsg+". ";
 		}
 		String spnsrType = request.getParameter("spnsr_type");
 		

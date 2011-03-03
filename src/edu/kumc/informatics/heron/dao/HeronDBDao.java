@@ -306,4 +306,27 @@ public class HeronDBDao extends DBBaseDao{
 		ListOrderedMap aMap = (ListOrderedMap)aList.get(0);
 		return new String[]{aMap.get("user_id")+"",aMap.get("sponsor_id")+"",aMap.get("research_title")+""};
 	}
+	
+	/**
+	 * retrieve string with ids already sponsored in heron
+	 * @param idString
+	 * @param projTitle
+	 * @param projDesc
+	 * @return string with ids
+	 */
+	public String getSponsoredIds(String idString, String projTitle, String projDesc){
+		//TODO: not ideal. better use NamedParameterJdbcTemplate, but not available for this version of spring
+		String sql = "select distinct user_id from HERON.sponsorship where user_id in ("+
+			idString + ") and research_title=? and research_desc=?";
+		@SuppressWarnings("rawtypes")
+		List aList =  this.getJdbcTemplate().queryForList(sql,new Object[]{projTitle,projDesc});
+		StringBuffer bf = new StringBuffer();
+		
+		for(int i=0;i<aList.size();i++){
+			ListOrderedMap aMap = (ListOrderedMap)aList.get(i);
+			bf.append(aMap.get("user_id"));
+			bf.append(" ");
+		}
+		return bf.toString();
+	}
 }
