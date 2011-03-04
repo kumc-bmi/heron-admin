@@ -314,12 +314,12 @@ public class HeronDBDao extends DBBaseDao{
 	 * @param projDesc
 	 * @return string with ids
 	 */
-	public String getSponsoredIds(String idString, String projTitle, String projDesc){
+	public String getSponsoredIds(String idString, String projTitle, String projDesc,String spnsrType){
 		//TODO: not ideal. better use NamedParameterJdbcTemplate, but not available for this version of spring
 		String sql = "select distinct user_id from HERON.sponsorship where user_id in ("+
-			idString + ") and research_title=? and research_desc=?";
+			idString + ") and research_title=? and research_desc=? and access_type=?";
 		@SuppressWarnings("rawtypes")
-		List aList =  this.getJdbcTemplate().queryForList(sql,new Object[]{projTitle,projDesc});
+		List aList =  this.getJdbcTemplate().queryForList(sql,new Object[]{projTitle,projDesc,spnsrType});
 		StringBuffer bf = new StringBuffer();
 		
 		for(int i=0;i<aList.size();i++){

@@ -210,7 +210,7 @@ public class DBUtil {
 	 * @return string with ids already sponsored in heron
 	 */
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public String isSponsoredCheck(String emplIdString,String[] nonEmplIds,String projTitle,String projDesc){
+	public String isSponsoredCheck(String emplIdString,String[] nonEmplIds,String projTitle,String projDesc,String spnsrType){
 		String[] empIds = new String[]{};
 		if(emplIdString!=null && !emplIdString.trim().equals("")){
 			empIds = emplIdString.split(",");
@@ -226,7 +226,7 @@ public class DBUtil {
 					vect.add(id);
 			}
 		}
-		return heronDao.getSponsoredIds(buildIdList(vect),projTitle,projDesc);		
+		return heronDao.getSponsoredIds(buildIdList(vect),projTitle,projDesc,spnsrType);		
 	}
 		
 	/**

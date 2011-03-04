@@ -160,12 +160,12 @@ public class SponsorshipServlet extends HttpServlet {
 			if(!"".equals(nonEmplIdLdapMsg))
 				msg += "The following non-KUMC employee id not in LDAP: "+nonEmplIdLdapMsg +". ";
 		}
+		String spnsrType = request.getParameter("spnsr_type");
 		if(bUtil.hasRealValueInString(empls, ";") || bUtil.hasRealValueInString(nonEmpls, ";")){
-			String sponsoredMsg =  dbUtil.isSponsoredCheck(empls,pureIdArray,resTitle,resDesc);
+			String sponsoredMsg =  dbUtil.isSponsoredCheck(empls,pureIdArray,resTitle,resDesc,spnsrType);
 			if(!"".equals(sponsoredMsg))
 				msg += "The following ID(s) has already been sponsored for the same research title and description: "+sponsoredMsg+". ";
 		}
-		String spnsrType = request.getParameter("spnsr_type");
 		
 		if(spnsrType.equals(DATA_ACCESS)){
 			String sigName = request.getParameter("txtName");
