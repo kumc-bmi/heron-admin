@@ -78,12 +78,7 @@ Informatics at Kansas</a></p>
 <div id="kumc_feature_text2">
 <!-- below crumb trail is optional -->
 <div id="login" align="right">Welcome <%=request.getRemoteUser()%>
-<a href="https://cas.kumc.edu/cas/logout" id="logoutlink">logout</a></div>
-<script type="text/javascript">
-	document.getElementById('logoutlink').onclick = function(){
-		window.setTimeout(0);
-	};
-</script>
+<a href="logout.jsp">logout</a></div>
 <h1>Raven Research Portal</h1><p></p>
 
 <div class="kumc_middle_rows_full">
