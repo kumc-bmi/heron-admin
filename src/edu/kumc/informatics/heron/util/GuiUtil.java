@@ -190,4 +190,12 @@ public class GuiUtil {
 		}
 		return bf.toString();
 	}
+	
+	/**
+	 * get most recent Disclaimer
+	 * @return a string (most recent Disclaimer)
+	 */
+	public String getRecentDisclaimer(){
+		return heronDao.getRecentDisclaimer();
+	}
 }
