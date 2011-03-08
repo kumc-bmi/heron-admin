@@ -28,4 +28,5 @@ public interface StaticValues {
 	String RAVEN_URL = "raven_url";
 	String NON_EMP_IDS = "NON_EMP_IDS";
 	String NON_EMP_DESCS = "NON_EMP_DESCS";
+	String DISCLAIMER_URL ="disclaimer.jsp";
 }

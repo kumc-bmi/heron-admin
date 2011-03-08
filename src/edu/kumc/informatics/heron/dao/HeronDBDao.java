@@ -329,4 +329,33 @@ public class HeronDBDao extends DBBaseDao{
 		}
 		return bf.toString();
 	}
+	
+	/**
+	 * check if user has acknowledged the most recent disclaimer
+	 * @param uid
+	 * @return true if user has acknowledged the most recent disclaimer
+	 */
+	public boolean isDisclaimerRead(String uid){
+		String sql = "select count(1) from HERON.ACKNOWLEDGED_DISCLAIMERS ad, HERON.disclaimers dis "+
+			"where ad.user_id=? and ad.disclaimer_id=dis.disclaimer_id and dis.is_recent=1";
+		return this.getJdbcTemplate().queryForInt(sql, new Object[]{uid})>0;
+	}
+	
+	/**
+	 * @see DBUtil#updateDisclaimerAckowledgement
+	 */
+	public void updateDisclaimerAckowledgement(String uid){
+		String sql = "insert into HERON.ACKNOWLEDGED_DISCLAIMERS(user_id,disclaimer_id,acknowledge_tmst)"+
+			"select '"+uid+"',disclaimer_id,sysdate from HERON.DISCLAIMERS where is_recent=1";
+		this.getJdbcTemplate().execute(sql);
+	}
+	
+	/**
+	 * @see DBUtil#getRecentDisclaimer
+	 */
+	public String getRecentDisclaimer(){
+		String sql = "select disclaimer_desc from HERON.DISCLAIMERS where is_recent=1";
+		List aList = this.getJdbcTemplate().queryForList(sql);
+		return aList.size()>0?((ListOrderedMap)aList.get(0)).get("disclaimer_desc")+"":"ERROR: No Recent Disclaimer";
+	}
 }

@@ -75,13 +75,19 @@ public class AuthServlet extends HttpServlet {
 				rd.forward(request, response);
 			}
 			else{
-				boolean saSigned = dbUtil.isUserAgreementSigned(request.getRemoteUser());
+				boolean saSigned = dbUtil.isUserAgreementSigned(uid);
 				if(!saSigned){
 					RequestDispatcher rd = request.getRequestDispatcher(SAA_URL);
 					rd.forward(request, response);
 				}
 				else{
-					response.sendRedirect(props.getProperty(I2B2_CLIENT_SERVICE));
+					boolean isDisclaimerRead = dbUtil.isDisclaimerRead(uid);
+					if(!isDisclaimerRead){
+						RequestDispatcher rd = request.getRequestDispatcher(DISCLAIMER_URL);
+						rd.forward(request, response);
+					}
+					else
+						response.sendRedirect(props.getProperty(I2B2_CLIENT_SERVICE));
 				}
 			}
 		}

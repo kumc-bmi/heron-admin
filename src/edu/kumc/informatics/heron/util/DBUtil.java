@@ -246,4 +246,21 @@ public class DBUtil {
 		}
 		return bf.toString();
 	}
+	
+	/**
+	 * check if user has acknowledged the most recent disclaimer
+	 * @param uid
+	 * @return true if user has acknowledged the most recent disclaimer
+	 */
+	public boolean isDisclaimerRead(String uid){
+		return heronDao.isDisclaimerRead(uid);
+	}
+	
+	/**
+	 * update table to reflect user has ack. the disclaimer
+	 * @param uid
+	 */
+	public void updateDisclaimerAckowledgement(String uid){
+		heronDao.updateDisclaimerAckowledgement(uid);
+	}
 }
