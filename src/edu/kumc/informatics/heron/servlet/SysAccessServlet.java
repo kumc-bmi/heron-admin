@@ -7,6 +7,7 @@ package edu.kumc.informatics.heron.servlet;
 
 import static edu.kumc.informatics.heron.base.StaticValues.DATA_USAGE_URL;
 import static edu.kumc.informatics.heron.base.StaticValues.DENIED_URL;
+import static edu.kumc.informatics.heron.base.StaticValues.DISCLAIMER_URL;
 import static edu.kumc.informatics.heron.base.StaticValues.I2B2_CLIENT_SERVICE;
 import static edu.kumc.informatics.heron.base.StaticValues.SPONSOR_URL;
 import static edu.kumc.informatics.heron.base.StaticValues.VIEW_ONLY;
@@ -55,10 +56,11 @@ public class SysAccessServlet extends HttpServlet {
 		
 		if("Accept".equals(type)){
 			String message = validateInput(request);
-		
+			String uid = request.getRemoteUser();
+			
 			if("".equals(message)){
 				dbUtil.insertSystemAccessUser(request);
-				if(!dbUtil.isUserInI2b2Database(request.getRemoteUser())){
+				if(!dbUtil.isUserInI2b2Database(uid)){
 					dbUtil.insertPMUser(request);
 				}
 				String sponsorIndctr = request.getParameter("SPNSR");
@@ -69,8 +71,15 @@ public class SysAccessServlet extends HttpServlet {
 					RequestDispatcher rd = request.getRequestDispatcher(url);
 					rd.forward(request, response);
 				}
-				else//normal pass of using i2b2
-					response.sendRedirect(props.getProperty(I2B2_CLIENT_SERVICE));
+				else{//normal pass of using i2b2
+					boolean isDisclaimerRead = dbUtil.isDisclaimerRead(uid);
+					if(!isDisclaimerRead){
+						RequestDispatcher rd = request.getRequestDispatcher(DISCLAIMER_URL);
+						rd.forward(request, response);
+					}
+					else
+						response.sendRedirect(props.getProperty(I2B2_CLIENT_SERVICE));
+				}
 			}
 			else{
 				request.setAttribute(VAL_MESSAGE, message);
