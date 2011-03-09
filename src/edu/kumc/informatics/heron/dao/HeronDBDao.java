@@ -354,8 +354,8 @@ public class HeronDBDao extends DBBaseDao{
 	 * @see DBUtil#getRecentDisclaimer
 	 */
 	public String getRecentDisclaimer(){
-		String sql = "select disclaimer_desc from HERON.DISCLAIMERS where is_recent=1";
+		String sql = "select disclaimer_url from HERON.DISCLAIMERS where is_recent=1";
 		List aList = this.getJdbcTemplate().queryForList(sql);
-		return aList.size()>0?((ListOrderedMap)aList.get(0)).get("disclaimer_desc")+"":"ERROR: No Recent Disclaimer";
+		return aList.size()>0?((ListOrderedMap)aList.get(0)).get("disclaimer_url")+"":"ERROR: No Recent Disclaimer";
 	}
 }
