@@ -29,4 +29,5 @@ public interface StaticValues {
 	String NON_EMP_IDS = "NON_EMP_IDS";
 	String NON_EMP_DESCS = "NON_EMP_DESCS";
 	String DISCLAIMER_URL ="disclaimer.jsp";
+	String PROJECT_SCHEMA="project_schema";
 }
