@@ -116,4 +116,14 @@
     <servlet-name>SponsorshipApprovalServlet</servlet-name>
     <url-pattern>/SponsorshipApprovalServlet</url-pattern>
   </servlet-mapping>
+  <servlet>
+    <description></description>
+    <display-name>AcknowledgeDisclaimerServlet</display-name>
+    <servlet-name>AcknowledgeDisclaimerServlet</servlet-name>
+    <servlet-class>edu.kumc.informatics.heron.servlet.AcknowledgeDisclaimerServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>AcknowledgeDisclaimerServlet</servlet-name>
+    <url-pattern>/AcknowledgeDisclaimerServlet</url-pattern>
+  </servlet-mapping>
 </web-app>
