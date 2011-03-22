@@ -47,7 +47,7 @@ Approved Users Report</a></p>
 <p class="indent_half"><a
 	href="http://biostat-pts.kumc.edu/eres/jsp/kumcpr.jsp">Project
 Request Form</a></p>
-<p></p>
+<p>&nbsp;</p>
 <p></p>
 <p><h4>Also at KU</h4></p>
 <p class="indent_half"><a
