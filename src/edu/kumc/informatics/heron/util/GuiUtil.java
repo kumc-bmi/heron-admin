@@ -247,7 +247,7 @@ public class GuiUtil {
 				bf.append("</td><td>");
 				
 				for(int j=0;j<nList.getLength();j++){
-					bf.append("Panel "+j+": <br>");
+					bf.append("Panel "+(j+1)+": <br>");
 					Node node = nList.item(j);
 					NodeList nlist2 = node.getChildNodes();
 					for(int k=0;k<nlist2.getLength();k++){
