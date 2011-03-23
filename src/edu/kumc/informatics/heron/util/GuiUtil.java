@@ -257,7 +257,7 @@ public class GuiUtil {
 							for(int m=0;m<nList3.getLength();m++){
 								Node node3 = nList3.item(m);
 								if(node3.getNodeName().equals("item_name")){
-									bf.append("item_name: "+node3.getFirstChild().getNodeValue()+";");
+									bf.append("item_name: "+ (node3.getFirstChild()!=null?node3.getFirstChild().getNodeValue():"")+";");
 								}
 								else if(node3.getNodeName().equals("tooltip")){
 									bf.append("tooltip: "+node3.getFirstChild().getNodeValue()+";<br>");
@@ -283,6 +283,7 @@ public class GuiUtil {
 			return bf.toString();
 		}
 		catch(Exception ex){
+			//ex.printStackTrace();
 			return "Error parsing request xml";
 		}
 	}
