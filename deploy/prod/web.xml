@@ -126,4 +126,14 @@
     <servlet-name>AcknowledgeDisclaimerServlet</servlet-name>
     <url-pattern>/AcknowledgeDisclaimerServlet</url-pattern>
   </servlet-mapping>
+   <servlet>
+    <description></description>
+    <display-name>TerminateUsers</display-name>
+    <servlet-name>TerminateUsers</servlet-name>
+    <servlet-class>edu.kumc.informatics.heron.servlet.TerminateUsers</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>TerminateUsers</servlet-name>
+    <url-pattern>/TerminateUsers</url-pattern>
+  </servlet-mapping>
 </web-app>
