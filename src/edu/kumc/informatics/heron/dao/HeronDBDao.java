@@ -358,4 +358,29 @@ public class HeronDBDao extends DBBaseDao{
 		List aList = this.getJdbcTemplate().queryForList(sql);
 		return aList.size()>0?((ListOrderedMap)aList.get(0)).get("disclaimer_url")+"":"ERROR: No Recent Disclaimer";
 	}
+	
+	public List getSponsoredIdsById(String uid){
+		String sql =  "select distinct user_id from HERON.sponsorship where sponsor_id = '" + uid + "' and expire_date>sysdate";
+		return this.getJdbcTemplate().queryForList(sql);
+	}
+	
+	public List getAllActiveIds(){
+		String sql =  "select distinct user_id from HERON.sponsorship where expire_date>sysdate";
+		return this.getJdbcTemplate().queryForList(sql);
+	}
+	
+	/**
+	 * @see DBUtil#termSponsorship
+	 * @param id
+	 * @return success message
+	 */
+	public String termSponsorship(String id){
+		String sql = "update HERON.sponsorship set expire_date = sysdate,last_updt_tmst=sysdate where user_id =?"; 
+		try{
+			this.getJdbcTemplate().update(sql,new String[]{id});
+			return "User id "+ id + " is terminated successfully.";
+		}catch(Exception ex){
+			return "User termination failed.";
+		}
+	}
 }

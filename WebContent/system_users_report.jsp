@@ -29,7 +29,7 @@ String message = val!=null && !val.equals("null")?val:"";
 	<form id="frmSponsor" action="">
 	<div align="center"><h4>HERON System Usage Users</h4></div>
 	<p></p><h5>
-	<%= new GuiUtil().getHeronSystemUsers(request.getRemoteUser()) %>
+	<%= new GuiUtil().getHeronSystemUsers(request.getRemoteUser(),session) %>
 	</h5><p></p>
 	<p></p>
 	<p></p>

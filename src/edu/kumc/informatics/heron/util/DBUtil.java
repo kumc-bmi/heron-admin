@@ -263,4 +263,12 @@ public class DBUtil {
 	public void updateDisclaimerAckowledgement(String uid){
 		heronDao.updateDisclaimerAckowledgement(uid);
 	}
+	
+	/**
+	 * terminate heron user based on user id
+	 * @param id
+	 */
+	public String termSponsorship(String id){
+		return heronDao.termSponsorship(id);
+	}
 }

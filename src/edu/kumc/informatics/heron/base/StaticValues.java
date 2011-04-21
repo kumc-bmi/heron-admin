@@ -30,4 +30,6 @@ public interface StaticValues {
 	String NON_EMP_DESCS = "NON_EMP_DESCS";
 	String DISCLAIMER_URL ="disclaimer.jsp";
 	String PROJECT_SCHEMA="project_schema";
+	String USER_ROLES_LIST = "USER_ROLES_LIST";
+	String TERM_URL = "term_heron_users.jsp";
 }

@@ -2,17 +2,19 @@ package edu.kumc.informatics.heron.util;
 
 import java.util.List;
 
+import javax.servlet.http.HttpSession;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.collections.map.ListOrderedMap;
 import org.w3c.dom.Document;
-import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import edu.harvard.i2b2.common.util.xml.XMLUtil;
 import edu.kumc.informatics.heron.dao.HeronDBDao;
 import edu.kumc.informatics.heron.dao.HeronReportsDao;
+import static edu.kumc.informatics.heron.base.StaticValues.*;
 
 /**
  * build gui components. 
@@ -39,6 +41,7 @@ public class GuiUtil {
 	 * @param uid
 	 * @return a string of html
 	 */
+	@SuppressWarnings("rawtypes")
 	public String getSponsorship(String type,String uid){
 		StringBuffer bf = new StringBuffer("");
 		String org = heronDao.getApproverGroup(uid);
@@ -116,11 +119,11 @@ public class GuiUtil {
 	 * @param uid
 	 * @return String/html of the users
 	 */
-	public String getHeronSystemUsers(String uid){
+	@SuppressWarnings("rawtypes")
+	public String getHeronSystemUsers(String uid, HttpSession session){
 		StringBuffer bf = new StringBuffer("");
-		List roles = heronDao.getUserValidRoles(uid);
 		
-		if(roles.size()<1){
+		if(getUserAdminAndDROCRoles(session,uid).size()<1){
 			bf.append("<div class=\"h5red\">Sorry, seems you are not allowed to use this functionality.</div>");
 		}
 		else{
@@ -163,11 +166,11 @@ public class GuiUtil {
 	 * @param uid User id of the current user
 	 * @return a String/html with users' info
 	 */
-	public String getApprovedUsers(String type,String uid){
+	@SuppressWarnings("rawtypes")
+	public String getApprovedUsers(String type,String uid, HttpSession session){
 		StringBuffer bf = new StringBuffer("");
-		List roles = heronDao.getUserValidRoles(uid);
 		
-		if(roles.size()<1){
+		if(getUserAdminAndDROCRoles(session,uid).size()<1){
 			bf.append("<div class=\"h5red\">Sorry, seems you are not allowed to use this functionality.</div>");
 		}
 		else{
@@ -222,6 +225,7 @@ public class GuiUtil {
 	 * @param userId
 	 * @return string/html
 	 */
+	@SuppressWarnings("rawtypes")
 	public String getQueryReport(String userId){
 		List aList = rptDao.getQueryReportInfo(userId);
 		StringBuffer bf = new StringBuffer("");
@@ -286,5 +290,50 @@ public class GuiUtil {
 			//ex.printStackTrace();
 			return "Error parsing request xml";
 		}
+	}
+	
+	/**
+	 * build a list of users to be terminated
+	 * @param session
+	 * @param uid 
+	 * @return string -- html list
+	 */
+	public String getActiveHeronUsers(HttpSession session, String uid){
+		@SuppressWarnings("rawtypes")
+		List roles = getUserAdminAndDROCRoles(session,uid);
+		@SuppressWarnings("rawtypes")
+		List ids = null;
+		if(roles.size()<1){
+			ids = heronDao.getSponsoredIdsById(uid);
+		}else{
+			ids = heronDao.getAllActiveIds();
+		}
+		StringBuffer bf = new StringBuffer();
+		bf.append("select id from list: <select name='userlist' id='userlist'>");
+		for(Object id:ids){
+			bf.append("<option id='");
+			bf.append(((ListOrderedMap)id).get("USER_ID"));
+			bf.append("'>");
+			bf.append(((ListOrderedMap)id).get("USER_ID"));
+			bf.append("</option>");
+		}
+		bf.append("</select>");
+		return bf.toString();
+	}
+	
+	/**
+	 * get user admin role and DROC role
+	 * @param session a httpsession
+	 * @param uid
+	 * @return role list or empty
+	 */
+	@SuppressWarnings("rawtypes")
+	private List getUserAdminAndDROCRoles(HttpSession session, String uid){
+		List roles = (List)session.getAttribute(USER_ROLES_LIST);
+		if(roles ==null){
+			roles = heronDao.getUserValidRoles(uid);
+			session.setAttribute(USER_ROLES_LIST, roles);
+		}
+		return roles;
 	}
 }

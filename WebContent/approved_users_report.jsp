@@ -29,12 +29,12 @@ String message = val!=null && !val.equals("null")?val:"";
 	<form id="frmSponsor" action="">
 	<div align="center"><h4>Approved HERON System Usage Users</h4></div>
 	<p></p><h5>
-	<%= new GuiUtil().getApprovedUsers(StaticValues.VIEW_ONLY,request.getRemoteUser()) %>
+	<%= new GuiUtil().getApprovedUsers(StaticValues.VIEW_ONLY,request.getRemoteUser(),session) %>
 	</h5><p></p>
 	<p></p>
 	<div align="center"><h4>Approved HERON Data Usage Users</h4></div>
 	<p></p><h5>
-	<%= new GuiUtil().getApprovedUsers(StaticValues.DATA_ACCESS,request.getRemoteUser()) %>
+	<%= new GuiUtil().getApprovedUsers(StaticValues.DATA_ACCESS,request.getRemoteUser(),session) %>
 	</h5><p></p>
 	<p></p>
 </form>

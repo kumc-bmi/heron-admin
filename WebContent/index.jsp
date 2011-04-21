@@ -39,6 +39,8 @@ Sponsoring</a></p>
 Data Usage</a></p>
 <p class="indent_half"><a href="approve_sponsorship.jsp">Approve
 Sponsored HERON Users</a></p>
+<p class="indent_half"><a href="term_heron_users.jsp">Terminate
+Sponsored HERON Users</a></p>
 <p class="indent_half"><a href="system_users_report.jsp">HERON
 System Users Report</a></p>
 <p class="indent_half"><a href="approved_users_report.jsp">HERON
