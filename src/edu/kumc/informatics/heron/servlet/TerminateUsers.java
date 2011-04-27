@@ -44,13 +44,15 @@ public class TerminateUsers extends HttpServlet {
 		
 		if("Submit".equals(action)){
 			String id = request.getParameter("userlist");
+			String reason = request.getParameter("resDesc");
+			
 			if(id==null||id.trim().equals("")){
 				request.setAttribute(VAL_MESSAGE,"select an ID from the list please");
 				RequestDispatcher rd = request.getRequestDispatcher(TERM_URL);
 				rd.forward(request, response);
 			}
 			else{
-				String result = dUtil.termSponsorship(id);
+				String result = dUtil.termSponsorship(id,TERM_ACTION,reason);
 				request.setAttribute(VAL_MESSAGE, result);
 				RequestDispatcher rd = request.getRequestDispatcher(GEN_DISPLAY_URL);
 				rd.forward(request, response);

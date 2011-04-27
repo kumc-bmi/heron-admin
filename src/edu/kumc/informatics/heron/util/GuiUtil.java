@@ -309,7 +309,8 @@ public class GuiUtil {
 			ids = heronDao.getAllActiveIds();
 		}
 		StringBuffer bf = new StringBuffer();
-		bf.append("select id from list: <select name='userlist' id='userlist'>");
+		bf.append("<table border=1 bgcolor=\"#EAE9E4\"><tr><td align=\"center\">");
+		bf.append("Select Id from List to Terminate:</td><td><select name='userlist' id='userlist'>");
 		for(Object id:ids){
 			bf.append("<option id='");
 			bf.append(((ListOrderedMap)id).get("USER_ID"));
@@ -317,7 +318,9 @@ public class GuiUtil {
 			bf.append(((ListOrderedMap)id).get("USER_ID"));
 			bf.append("</option>");
 		}
-		bf.append("</select>");
+		bf.append("</select></td></tr>");
+		bf.append("<tr><td align=\"center\">Termination Reason:</td><td><textarea rows=\"4\" cols=\"30\" ");
+		bf.append("name=\"resDesc\" id=\"resDesc\"></textarea></td></tr></table>");
 		return bf.toString();
 	}
 	

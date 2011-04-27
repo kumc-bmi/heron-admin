@@ -32,4 +32,5 @@ public interface StaticValues {
 	String PROJECT_SCHEMA="project_schema";
 	String USER_ROLES_LIST = "USER_ROLES_LIST";
 	String TERM_URL = "term_heron_users.jsp";
+	String TERM_ACTION = "Terminate";
 }

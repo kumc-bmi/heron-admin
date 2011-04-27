@@ -374,10 +374,13 @@ public class HeronDBDao extends DBBaseDao{
 	 * @param id
 	 * @return success message
 	 */
-	public String termSponsorship(String id){
+	public String termSponsorship(String id,String action,String reason){
 		String sql = "update HERON.sponsorship set expire_date = sysdate,last_updt_tmst=sysdate where user_id =?"; 
+		String sql2 = "insert into HERON.sponsorship_status_change_hist(user_id,action,reason,update_timestamp)"+
+			" values(?,?,?,sysdate)";
 		try{
 			this.getJdbcTemplate().update(sql,new String[]{id});
+			this.getJdbcTemplate().update(sql2,new String[]{id,action,reason});
 			return "User id "+ id + " is terminated successfully.";
 		}catch(Exception ex){
 			return "User termination failed.";

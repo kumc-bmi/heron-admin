@@ -268,7 +268,7 @@ public class DBUtil {
 	 * terminate heron user based on user id
 	 * @param id
 	 */
-	public String termSponsorship(String id){
-		return heronDao.termSponsorship(id);
+	public String termSponsorship(String id, String action,String reason){
+		return heronDao.termSponsorship(id, action,reason);
 	}
 }
