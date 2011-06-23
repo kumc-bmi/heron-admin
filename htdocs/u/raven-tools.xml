@@ -1,0 +1,19 @@
+  <div id="rightnav">
+    <div class="span-5 last">
+	<div>
+	  {{user}}
+	  <a href="@@"><button>Logout</button></a>
+	</div>
+      <div class="header png"><!--@@??-->    
+	<h2>Tools</h2>
+      </div>
+      <div class="content png"><!--@@??-->
+	<ul class="links">
+	  <li>HERON</li>
+	  <li>CRIS</li>
+	  <li>REDCap</li>
+	</ul>
+	
+      </div>
+    </div>
+  </div>

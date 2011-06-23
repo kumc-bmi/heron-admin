@@ -1,0 +1,8 @@
+  <div id="menu">
+    <ul>
+      <li><a href="train.html">Education &amp;<br /> Training</a></li>
+      <li><a href="plan.html">Planning Your<br />Research</a></li>
+      <li><a href="data.html">Data Capture and<br />Exploration Tools</a></li>
+      <li><a href="fund.html">Funding<br />Opportunities</a></li>
+    </ul>
+  </div>

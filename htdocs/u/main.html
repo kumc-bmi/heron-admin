@@ -8,14 +8,7 @@
 </head>
 <body>
 
-  <div id="menu">
-    <ul>
-      <li><a href="train.html">Education &amp;<br /> Training</a></li>
-      <li><a href="plan.html">Planning Your<br />Research</a></li>
-      <li><a href="data.html">Data Capture and<br />Exploration Tools</a></li>
-      <li><a href="fund.html">Funding<br />Opportunities</a></li>
-    </ul>
-  </div>
+  <xi:include href="raven-menu.xml" />
 
   <div id="main">
     <div class="span-14"> <!-- @@move to layout -->
@@ -39,25 +32,7 @@
     </div>
   </div>
 
-  <div id="rightnav">
-    <div class="span-5 last">
-	<div>
-	  {{user}}
-	  <a href="@@"><button>Logout</button></a>
-	</div>
-      <div class="header png"><!--@@??-->    
-	<h2>Tools</h2>
-      </div>
-      <div class="content png"><!--@@??-->
-	<ul class="links">
-	  <li>HERON</li>
-	  <li>CRIS</li>
-	  <li>REDCap</li>
-	</ul>
-	
-      </div>
-    </div>
-  </div>
+  <xi:include href="raven-tools.xml" />
   
 </body>
 </html>

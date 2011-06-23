@@ -1,22 +1,23 @@
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head><title>Data Capture and Exploration / RAVEN</title>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      >
+<xi:include href="../kumc_layout.xml" />
+<head>
+  <title>Data Capture and Exploration / RAVEN</title>
 </head>
 <body>
+  <xi:include href="raven-menu.xml" />
+
+  <div id="main">
+    <div class="span-14"> <!-- @@move to layout -->
 <h1>Data Capture and Exploration</h1>
-
-<address>
-{{welcome/logout}}
-{{contact us}}
-{{search}}
-</address>
-
-<div>{{menubar}}</div>
 
 <div>
   <h2>Hypothesis Generation and Cohort Discovery with HERON</h2>
 
   <ul>
-    <li><a href="heron">Learn how to go fishin' with HERON.</a></li>
+    <li><a href="heron.html">Learn how to go fishin' with HERON.</a></li>
     <li><a href="http://informatics.kumc.edu/work/ticket/489#@@HERON">Go fishin' with HERON now!</a></li>
   </ul>
 
@@ -38,13 +39,11 @@
     </li>
   </ul>
 </div>
+</div>
+</div>
 
-<ul>
-  <li><a href="http://informatics.kumc.edu/work/ticket/489#@@HERON"
-	 >HERON</a></li>
-  <li><a href="https://cris.kumc.edu/">CRIS</a></li>
-  <li><a href="http://redcap.kumc.edu/">REDCap</a></li>
-</ul>
+  <xi:include href="raven-tools.xml" />
+
 </body>
 </html>
 
