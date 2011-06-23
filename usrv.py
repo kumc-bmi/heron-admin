@@ -5,27 +5,29 @@
 import os
 
 # pypi
-import pystache
+from genshi.template import MarkupTemplate, TemplateLoader, TemplateNotFound
 
 HTMLu = 'text/html; charset=utf-8'
 
 class TemplateApp(object):
     def __init__(self, docroot='htdocs'):
         self._docroot = docroot
+        self._loader = TemplateLoader([docroot], auto_reload=True)
 
     def __call__(self, environ, start_response):
         path = environ['PATH_INFO']
         
         # url-decode path?
         try:
-            f = open(os.path.join(self._docroot, path[1:]))
-            t = f.read()
-        except IOError:
+            tmpl = self._loader.load(path[1:])
+            stream = tmpl.generate() #@@todo: params
+            body = stream.render('xhtml')
+        except TemplateNotFound as e:
             start_response("404 not found", [('Content-type', 'text/plain')])
-            return 'not found: ' + path
+            return str(e)
 
         start_response("200 ok", [('Content-type', HTMLu)])
-        return pystache.render(t)  #@@todo: params
+        return body
 
 
 class AVApp(TemplateApp):
