@@ -137,25 +137,10 @@
 	
 	<div id="main" class="withnav span-19 last">
 	  <a name="maincontent" id="maincontent"></a>
+	  ${select(".//div[@id='main']/*|text()")}
 
-	  <div class="span-14">
-	    ${select("*|text()")}
-	  </div>
-	  
 	  <div class="span-5 last" id="rightnav">
-	    <div class="bluebox span-5 last">
-	      <div class="header png">
-		Are you an investigator?
-	      </div>
-	      
-	      <div class="content png">
-		<p class="center">Login to the<br />
-		<strong><a href="u/main.html" title=
-			   "@@@Raven research portal opens in new window - authentication required"
-			   target="_blank">Raven Research
-		Portal</a></strong></p><br />
-	      </div>
-	    </div>
+	    ${select(".//div[@id='rightnav']/*|text()")}
 	  </div>
 
 	</div>
