@@ -125,12 +125,7 @@
 	<div class="span-5">
 	  <div id="leftnavigation">
 	    <div id="menu">
-	      <ul>
-		<li>
-		  <a href="http://informatics.kumc.edu/work/wiki/RavenMockUp#@@"
-		     >Contact Us</a>
-		</li>
-	      </ul>
+	      ${select(".//div[@id='menu']/*|text()")}
 	    </div>
 	  </div>
 	</div>
