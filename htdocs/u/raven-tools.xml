@@ -6,10 +6,10 @@
 	    <input type="submit" value="Logout" />
 	  </form>
 	</div>
-      <div class="header png"><!--@@??-->    
+      <div class="header png">
 	<h2>Tools</h2>
       </div>
-      <div class="content png"><!--@@??-->
+      <div class="content png">
 	<ul class="links">
 	  <li><a href="https://raven.kumc.edu/raven/AuthServlet">HERON</a></li>
 	  <li><a href="http://biostatistics.kumc.edu/bio_proj_cris.shtml">CRIS</a></li>

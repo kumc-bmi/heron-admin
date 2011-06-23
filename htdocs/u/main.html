@@ -13,26 +13,41 @@
   <div id="main">
     <div class="span-14"> <!-- @@move to layout -->
       <h1>Raven Research Portal</h1>
-      
+
+      <p>RAVEN is an interactive system that provides one
+      stop shopping for research needs. Through a single site,
+      researchers and study personnel can:</p>
       <ul>
-	<li>Information Resources @@link</li>
-	<li>KUMC Centers and Resources @@link</li>
+	<li>identify resources</li>
+	<li>find experts</li>
+	<li>obtain regulatory support</li>
+	<li>capture and explore data</li>
+	<li>learn about educational requirements
+	and opportunities.</li>
       </ul>
-      
-      <div>
-	KUMC Events Calendar
-	
-	<p>
-	  <em>@@extract some events?
-	  <br />
-	or maybe a blog?
-	  </em>
-	</p>
-      </div>
+
+
     </div>
   </div>
 
-  <xi:include href="raven-tools.xml" />
-  
+  <div id="rightnav">
+    <div class="span-5 last">
+	<div>
+	  <form method="POST" action="logout">
+	    Id: <b>${user}</b>
+	    <input type="submit" value="Logout" />
+	  </form>
+	</div>
+      <div class="header png"><!--@@??-->    
+	<h2>Nearby</h2>
+      </div>
+      <div class="content png"><!--@@??-->
+	<ul>
+	  <li><a href="http://www2.kumc.edu/ir/">KUMC Information Resources</a></li>
+	  <li><a href="http://www.kumc.edu/centers-and-resources.html">KUMC Centers and Resources</a></li>
+	</ul>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
