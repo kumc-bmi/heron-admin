@@ -7,6 +7,8 @@ import os
 # pypi
 from genshi.template import MarkupTemplate, TemplateLoader, TemplateNotFound
 
+import cas_auth
+
 HTMLu = 'text/html; charset=utf-8'
 
 class TemplateApp(object):
@@ -30,23 +32,31 @@ class TemplateApp(object):
         return body
 
 
-class AVApp(TemplateApp):
-    def __init__(self, av_path, av_app, docroot='htdocs'):
-        TemplateApp.__init__(self, docroot)
+def _mkapp(cas='https://cas.kumc.edu/cas/', auth_area='/u/'):
+    t = TemplateApp()
+    return cas_auth.CASRequired(cas, auth_area, t, t)
+
+# mod_wsgi conventional entry point
+application = _mkapp()
+                                   
+
+class AVApp(object):
+    '''In production use, static A/V media files would be
+    served with apache, but for test purposes, we'll use
+    this.
+    '''
+    def __init__(self, av_path, av_app, next):
         self._av = av_path
         self._av_app = av_app
+        self._next = next
 
     def __call__(self, environ, start_response):
         path = environ['PATH_INFO']
 
         if self._av and path.startswith(self._av):
             return self._av_app(environ, start_response)
-
-        return TemplateApp.__call__(self, environ, start_response)
-
-
-# mod_wsgi conventional entry point
-#application = TemplateApp()  #@@ untested
+        else:
+            return self._next(environ, start_response)
 
 if __name__ == '__main__':
     # test usage
@@ -54,5 +64,6 @@ if __name__ == '__main__':
     from paste import fileapp
     import sys
     host, port = sys.argv[1:3]
-    app = AVApp('/av/', fileapp.DirectoryApp('htdocs/'))
+
+    app = AVApp('/av/', fileapp.DirectoryApp('htdocs/'), application)
     httpserver.serve(app, host=host, port=port)
