@@ -6,6 +6,7 @@
 # PEP 8 -- Style Guide for Python Code
 # http://www.python.org/dev/peps/pep-0008/
 import os
+from urlparse import urljoin
 
 # from PyPI - the Python Package Index http://pypi.python.org/pypi
 from genshi.template import MarkupTemplate, TemplateLoader, TemplateNotFound
@@ -53,10 +54,13 @@ class PathPrefix(object):
             return self._next(environ, start_response)
 
 
-def _mkapp(cas='https://cas.kumc.edu/cas/', auth_area='/u/'):
+def _mkapp(cas='https://cas.kumc.edu/cas/', auth_area='/u/',
+           logout='/u/logout'):
     t = TemplateApp()
-    protected = cas_auth.CASRequired(cas, t)
-    return PathPrefix(auth_area, protected, t)
+    protected, s = cas_auth.cas_required(cas, t)
+    bye = cas_auth.logout(urljoin(cas, 'logout'), s)
+    return PathPrefix(logout, bye,
+                      PathPrefix(auth_area, protected, t))
 
 # mod_wsgi conventional entry point
 application = _mkapp()
