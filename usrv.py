@@ -7,6 +7,7 @@
 # http://www.python.org/dev/peps/pep-0008/
 import os
 from urlparse import urljoin
+import wsgiref.util as wsgi
 
 # from PyPI - the Python Package Index http://pypi.python.org/pypi
 from genshi.template import MarkupTemplate, TemplateLoader, TemplateNotFound
@@ -37,7 +38,8 @@ class TemplateApp(object):
         # url-decode path?
         try:
             tmpl = self._loader.load(path[1:])
-            stream = tmpl.generate(user=environ.get('REMOTE_USER', ''))
+            stream = tmpl.generate(user=environ.get('REMOTE_USER', ''),
+                                   raven_home=wsgi.application_uri(environ))
             body = stream.render('xhtml')
         except TemplateNotFound as e:
             start_response("404 not found", [('Content-type', 'text/plain')])

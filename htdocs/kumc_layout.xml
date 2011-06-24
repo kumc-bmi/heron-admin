@@ -114,7 +114,7 @@
 	  <div id="toptabnav">
 	    <p><a href="http://www.kumc.edu/">KUMC Home</a>&#160;&gt;&#160;<a
 	    href="http://frontiers.kumc.edu/">Frontiers</a
-	>&#160;&gt;&#160;<a href="http://raven.kumc.edu/">Raven</a>
+	>&#160;&gt;&#160;<a href="${raven_home}">Raven</a>
 	    </p>
 	  </div>
 	</div>
@@ -132,7 +132,9 @@
 	
 	<div id="main" class="withnav span-19 last">
 	  <a name="maincontent" id="maincontent"></a>
-	  ${select(".//div[@id='main']/*|text()")}
+	  <div class="span-14">
+	    ${select(".//div[@id='main']/*|text()")}
+	  </div>
 
 	  <div class="span-5 last" id="rightnav">
 	    ${select(".//div[@id='rightnav']/*|text()")}
