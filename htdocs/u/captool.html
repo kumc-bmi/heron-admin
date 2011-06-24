@@ -1,11 +1,16 @@
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      >
+<xi:include href="../kumc_layout.xml" />
 <head>
   <title>CRIS and REDCap / RAVEN</title>
 </head>
 <body>
-  <h1>CRIS and REDCap</h1>
+  <xi:include href="raven-menu.xml" />
 
-  {{toolmenu}}
+  <div id="main">
+  <h1>CRIS and REDCap</h1>
 
   <div>
     <p>{{velos-logo}} CRIS is our custom installation of Velos
@@ -16,10 +21,14 @@
     <b>cancer</b> or an <b>investigational drug</b>? Choose CRIS.</p>
 
     <ul>
-      <li><a href="#@@"
-	     >Register your project with the Biostatistics Department</a></li>
-      <li><a href="#@@"
-	     >Request CRIS Training</a></li>
+      <li>
+	<a href="http://biostatistics.kumc.edu/bio_proj_reg.shtml"
+	>Register your project with the Biostatistics Department</a>
+      </li>
+      <li>
+	<a href="https://redcap.kumc.edu/surveys/index.php?hash=c4ca4238a0b923820dcc509a6f75849b"
+	   >Request CRIS Training</a>
+      </li>
     </ul>
   </div>
 
@@ -32,9 +41,13 @@
 
     <ul>
       <li><a href="http://redcap.kumc.edu/">Try REDCap now</a></li>
-      <li><a hef="#@@">REDCap video training</a></li>
-      <li>Medical Informatics bi-weekly user meetings: @@where/when</li>
+      <li><a href="https://redcap.kumc.edu/index.php?action=training"
+	     >REDCap video training</a></li>
+      <li id="fct-clinic">Frontiers Clinical/Translational Informatics Clinic:
+      4pm every other Tuesday in Library Room 1040</li>
     </ul>
   </div>
+  </div>
+
 </body>
 </html>
