@@ -11,18 +11,28 @@ from urlparse import urljoin
 # from PyPI - the Python Package Index http://pypi.python.org/pypi
 from genshi.template import MarkupTemplate, TemplateLoader, TemplateNotFound
 
+# see http://code.google.com/p/modwsgi/wiki/VirtualEnvironments 
+import site
+from os.path import join, dirname
+site.addsitedir(dirname(__file__))
+
 import cas_auth
 
 HTMLu = 'text/html; charset=utf-8'
 
 
 class TemplateApp(object):
-    def __init__(self, docroot='htdocs'):
+    def __init__(self, docroot=None):
+        if docroot is None:
+            docroot = os.path.join(dirname(__file__), 'htdocs')
         self._docroot = docroot
         self._loader = TemplateLoader([docroot], auto_reload=True)
 
     def __call__(self, environ, start_response):
         path = environ['PATH_INFO']
+
+        if path == '/':
+            path = '/index.html'
 
         # url-decode path?
         try:
@@ -31,7 +41,8 @@ class TemplateApp(object):
             body = stream.render('xhtml')
         except TemplateNotFound as e:
             start_response("404 not found", [('Content-type', 'text/plain')])
-            return str(e)
+            #debug: return ['docroot: ', self._docroot, '  ', str(e)]
+            return 'We have no page at that address. Broken link? Typo?'
 
         start_response("200 ok", [('Content-type', HTMLu)])
         return body
