@@ -12,6 +12,18 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
+  <!--
+   cribbed from
+   http://stackoverflow.com/questions/2335431/maven-change-a-value-in-a-file-based-on-profile
+  -->
+    <profiles>
+        <profile>
+            <id>test</id>
+            <properties>
+                <raven_url>https://crappie.kumc.edu/raven/</raven_url>
+            </properties>
+        </profile>
+    </profiles>
   <dependencies>
     <!--
 	http://maven.apache.org/general.html#importing-jars
@@ -99,6 +111,17 @@
   </dependencies>
   <build>
     <finalName>raven</finalName>
+
+    <!--
+	cribbed from
+	http://stackoverflow.com/questions/2335431/maven-change-a-value-in-a-file-based-on-profile
+    -->
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
 
     <plugins>
       <!-- maven evidently defaults to 1.3,

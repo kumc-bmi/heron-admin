@@ -5,6 +5,10 @@
 
 	import org.junit.Test;
 
+        /**
+         * TODO: factor out dependency on real LDAP service. integration test?
+         * @author dzhu, dconnolly
+         */
 	public class LdapUtilTest extends LdapUtil{
 		@Test
 		public void testGetDrocEmails(){
