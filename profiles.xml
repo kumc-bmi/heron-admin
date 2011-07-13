@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<profilesXml xmlns="http://maven.apache.org/PROFILES/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/PROFILES/1.0.0 http://maven.apache.org/xsd/profiles-1.0.0.xsd">
+    <profiles>
+        <profile>
+            <id>netbeans-private</id>
+            <activation>
+                <property>
+                    <name>netbeans.execution</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <netbeans.deployment.server.id>jboss-deployer:localhost:8080#default&amp;/home/dconnolly/jboss-4.2.2.GA</netbeans.deployment.server.id>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>test</id>
+            <properties>
+                <raven_cas_service>https://crappie.kumc.edu/</raven_cas_service>
+                <raven_url>https://crappie.kumc.edu/raven/</raven_url>
+                <i2b2_client_service>https://crappie.kumc.edu/i2b2webclient/cas_login.html</i2b2_client_service>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>dev</id>
+            <properties>
+                <raven_cas_service>http://${jboss_host}:8080/raven/</raven_cas_service>
+                <raven_url>http://${jboss_host}:8080/raven/</raven_url>
+                <i2b2_client_service>http://${jboss_host}:8080/i2b2webclient/cas_login.html</i2b2_client_service>
+            </properties>
+        </profile>
+
+    </profiles>
+</profilesXml>

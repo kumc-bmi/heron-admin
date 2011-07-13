@@ -10,20 +10,9 @@
   <!-- http://maven.apache.org/general.html#encoding-warning -->
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <netbeans.hint.deploy.server>JBoss4</netbeans.hint.deploy.server>
   </properties>
 
-  <!--
-   cribbed from
-   http://stackoverflow.com/questions/2335431/maven-change-a-value-in-a-file-based-on-profile
-  -->
-    <profiles>
-        <profile>
-            <id>test</id>
-            <properties>
-                <raven_url>https://crappie.kumc.edu/raven/</raven_url>
-            </properties>
-        </profile>
-    </profiles>
   <dependencies>
     <!--
 	http://maven.apache.org/general.html#importing-jars
@@ -136,11 +125,32 @@
       <plugin>
 	<groupId>org.apache.maven.plugins</groupId>
 	<artifactId>maven-compiler-plugin</artifactId>
-	<version>2.3.2</version>
 	<configuration>
 	  <source>1.6</source>
 	  <target>1.6</target>
 	</configuration>
+      </plugin>
+
+      <!-- filter web.xml
+      cribbed from
+      http://maven.apache.org/plugins/maven-war-plugin/examples/adding-filtering-webresources.html
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-war-plugin</artifactId>
+
+        <configuration>
+          <webResources>
+            <resource>
+              <directory>src/main/webapp</directory>
+              <filtering>true</filtering>
+              <includes>
+                <include>WEB-INF/web.xml</include>
+              </includes>
+            </resource>
+          </webResources>
+        </configuration>
+
       </plugin>
 
       <!-- http://mojo.codehaus.org/jboss-maven-plugin/usage.html -->
@@ -149,7 +159,7 @@
         <artifactId>jboss-maven-plugin</artifactId>
         <version>1.5.0</version>
         <configuration>
-          <!-- <jbossHome>/usr/jboss-4.2.3.GA</jbossHome> -->
+          <jbossHome>${jboss_home}</jbossHome>
           <serverName>default</serverName>
         </configuration>
       </plugin>
