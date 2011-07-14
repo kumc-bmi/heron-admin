@@ -17,6 +17,7 @@
     <!--
 	http://maven.apache.org/general.html#importing-jars
 	$ mvn install:install-file -Dfile=src/main/webapp/WEB-INF/lib/i2b2Common-core.jar  -DgroupId=edu.harvard -DartifactId=i2b2Common-core -Dversion=1.4 -Dpackaging=jar -DgeneratePom=true
+        odd... why does this produce both i2b2Common-core-1.4.jar and i2b2Common-core.jar in our WEB-INF/lib ?
     -->
     <dependency>
       <groupId>edu.harvard</groupId>
@@ -24,13 +25,14 @@
       <version>1.4</version>
     </dependency>
     
-    <!-- from
+    <!-- mvn install:install-file ... again
+        had trouble with the current version:
         http://search.maven.org/#artifactdetails|org.jasig.cas.client|cas-client|3.2.0|pom
     -->
     <dependency>
       <groupId>org.jasig.cas.client</groupId>
       <artifactId>cas-client-core</artifactId>
-      <version>3.2.0</version>
+      <version>3.1.1</version>
     </dependency>
 
     <!-- Don't put this in our .war file; it conflicts with
@@ -47,20 +49,21 @@
       <groupId>commons-collections</groupId>
       <artifactId>commons-collections</artifactId>
       <version>20040616</version>
+      <scope>provided</scope>
     </dependency>
 
     <!-- Used in, e.g. heron/util/DBUtil.java -->
     <dependency>
       <groupId>commons-logging</groupId>
       <artifactId>commons-logging</artifactId>
-      <version>1.1.1</version>
+      <version>1.0.4</version>
     </dependency>
 
     <!-- hmm... why are we using this? -->
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring</artifactId>
-      <version>2.5.6.SEC02</version>
+      <version>2.0</version>
     </dependency>
 
     <!-- not sure we need this; see ServiceLocator.java

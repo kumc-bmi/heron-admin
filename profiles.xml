@@ -27,9 +27,9 @@
         <profile>
             <id>dev</id>
             <properties>
-                <raven_cas_service>http://${jboss_host}:8080/raven/</raven_cas_service>
-                <raven_url>http://${jboss_host}:8080/raven/</raven_url>
-                <i2b2_client_service>http://${jboss_host}:8080/i2b2webclient/cas_login.html</i2b2_client_service>
+                <raven_cas_service>http://localhost:8080/raven/</raven_cas_service>
+                <raven_url>http://localhost:8080/raven/</raven_url>
+                <i2b2_client_service>http://localhost:8080/i2b2webclient/cas_login.html</i2b2_client_service>
             </properties>
         </profile>
 
