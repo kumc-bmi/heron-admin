@@ -1,17 +1,38 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>edu.kumc.informatics.raven</groupId>
-  <artifactId>raven</artifactId>
+  <groupId>edu.kumc.informatics</groupId>
+  <artifactId>raven</artifactId> <!-- TODO: change to heron-admin or the like -->
   <packaging>war</packaging>
   <version>1.0-SNAPSHOT</version>
   <name>HERON Admin</name>
   <url>http://informatics.kumc.edu/work/wiki/RavenPortalDevelopment</url>
 
-  <!-- http://maven.apache.org/general.html#encoding-warning -->
   <properties>
+    <!-- http://maven.apache.org/general.html#encoding-warning -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <netbeans.hint.deploy.server>JBoss4</netbeans.hint.deploy.server>
   </properties>
+
+<!--
+  see also src/main/filters
+  cribbed from
+  http://jee-bpel-soa.blogspot.com/2009/02/maven-profiles-filters-resources-and.html
+  -->
+    <profiles>
+        <profile>
+            <id>test</id>
+            <properties>
+                <env>test</env>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>dev</id>
+            <properties>
+                <env>dev</env>
+            </properties>
+        </profile>
+    </profiles>
 
   <dependencies>
     <!--
@@ -168,7 +189,7 @@
         <artifactId>jboss-maven-plugin</artifactId>
         <version>1.5.0</version>
         <configuration>
-          <jbossHome>${jboss_home}</jbossHome>
+          <jbossHome>${jboss_home}</jbossHome> <!-- set in your settings.xml -->
           <serverName>default</serverName>
         </configuration>
       </plugin>

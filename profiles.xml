@@ -14,26 +14,5 @@
                 <netbeans.deployment.server.id>jboss-deployer:localhost:8080#default&amp;/home/dconnolly/jboss-4.2.2.GA</netbeans.deployment.server.id>
             </properties>
         </profile>
-
-  <!--
-  see also src/main/filters
-  cribbed from
-  http://jee-bpel-soa.blogspot.com/2009/02/maven-profiles-filters-resources-and.html
-  -->
-        <profile>
-            <id>test</id>
-            <properties>
-                <env>test</env>
-            </properties>
-        </profile>
-
-
-        <profile>
-            <id>dev</id>
-            <properties>
-                <env>dev</env>
-            </properties>
-        </profile>
-
     </profiles>
 </profilesXml>
