@@ -13,6 +13,15 @@
     <netbeans.hint.deploy.server>JBoss4</netbeans.hint.deploy.server>
   </properties>
 
+    <!-- for maven-mercurial-build-number-plugin -->
+    <pluginRepositories>
+        <pluginRepository>
+            <id>details-matter-maven-repository</id>
+            <name>Details Matter Maven Repository</name>
+            <url>http://details-matter-maven-repository.googlecode.com/svn/repository/</url>
+        </pluginRepository>
+    </pluginRepositories>
+
 <!--
   see also src/main/filters
   cribbed from
@@ -160,6 +169,19 @@
 	  <target>1.6</target>
 	</configuration>
       </plugin>
+
+<!-- http://code.google.com/p/maven-mercurial-build-number-plugin/ -->
+            <plugin>
+                <artifactId>maven-mercurial-build-number-plugin</artifactId>
+                <version>1.0</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>set-build-number</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
 
       <!-- filter web.xml
       cribbed from

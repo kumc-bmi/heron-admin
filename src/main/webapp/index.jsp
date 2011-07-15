@@ -132,6 +132,10 @@ Bhargav, and Kahlia
 </div>
 <br clear="all" />
 
+<p>
+    <small>build number: <%=prop.getProperty("scm.version").substring(0, 12)%></small>
+</p>
+
 <%@ include file="footer.html"%>
 </body>
 </html>
