@@ -4,7 +4,7 @@
   <artifactId>raven</artifactId>
   <packaging>war</packaging>
   <version>1.0-SNAPSHOT</version>
-  <name>Raven Research Portal</name>
+  <name>HERON Admin</name>
   <url>http://informatics.kumc.edu/work/wiki/RavenPortalDevelopment</url>
 
   <!-- http://maven.apache.org/general.html#encoding-warning -->
@@ -105,9 +105,15 @@
     <finalName>raven</finalName>
 
     <!--
+        see also profiles.xml
 	cribbed from
 	http://stackoverflow.com/questions/2335431/maven-change-a-value-in-a-file-based-on-profile
+        and
+        http://jee-bpel-soa.blogspot.com/2009/02/maven-profiles-filters-resources-and.html
     -->
+    <filters>
+      <filter>src/main/filters/filter-${env}.properties</filter>
+    </filters>
     <resources>
       <resource>
         <directory>src/main/resources</directory>

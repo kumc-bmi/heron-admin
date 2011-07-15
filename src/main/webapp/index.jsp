@@ -1,6 +1,5 @@
-<%@ page import="edu.kumc.informatics.heron.util.*"%>
-<%@ page import="edu.kumc.informatics.heron.base.*"%>
-<%@ page import="java.util.*"%>
+<%@ page import="edu.kumc.informatics.heron.util.StaticDataUtil"%>
+<%@ page import="java.util.Properties"%>
 <%@ page errorPage="error_page.jsp"%>
 <%
 	Properties prop = StaticDataUtil.getSoleInstance().getProperties();
@@ -9,10 +8,7 @@
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<!--	<meta name="keywords" content="add keywords" />
-	<meta name="description" content="Add description of page. " />	
--->
-<title>Raven Research Portal at KUMC</title>
+<title>HERON Admin - Raven Research Portal at KUMC</title>
 <link href="static/kumc/kumc.css" rel="stylesheet" type="text/css"
 	title="KUMC Style" />
 <script type="text/javascript" language="JavaScript"
@@ -81,14 +77,16 @@ Informatics at Kansas</a></p>
 <!-- below crumb trail is optional -->
 <div id="login" align="right">Welcome <%=request.getRemoteUser()%>
 <a href="logout.jsp">logout</a></div>
-<h1>Raven Research Portal</h1><p></p>
+<h1>HERON Admin</h1><p></p>
 
 <div class="kumc_middle_rows_full">
-Welcome to <dfn>Raven</dfn>, the Biomedical Informatics Portal at
-KUMC. Raven's goal is to collect tools for translational research and
-connect informatics to our customers.
-<br><br>
-Currently, we provide the following tools:
+    <p>These are the HERON administrative tools.
+            <em>We're in a transition from where this
+            was the home page of <cite>Raven</cite>,
+            the Medical Informatics research portal at KUMC.</em></p>
+    <p>
+        We also provide the following tools:
+    </p>
 <ul>
 	<li><a href="http://biostatistics.kumc.edu/bio_proj_cris.shtml">CRIS</a>:
 	a Comprehensive Research Information System</li>
@@ -121,7 +119,7 @@ for their intelligence and predisposition to collect things.</p>
 <h2>Meet the KUMC Informatics Team</h2>
 <img src="static/KUMCInformatics.jpg" width="450" height="270"
 	alt="KUMC Informatics Team" />
-<br>Seated: Russ, Dan and Arvinder; Standing: Dongsheng, Angelica, Cathy,
+<br />Seated: Russ, Dan and Arvinder; Standing: Dongsheng, Angelica, Cathy,
 Bhargav, and Kahlia
 </div>
 </div>

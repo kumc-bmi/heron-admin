@@ -15,21 +15,23 @@
             </properties>
         </profile>
 
+  <!--
+  see also src/main/filters
+  cribbed from
+  http://jee-bpel-soa.blogspot.com/2009/02/maven-profiles-filters-resources-and.html
+  -->
         <profile>
             <id>test</id>
             <properties>
-                <raven_cas_service>https://crappie.kumc.edu/</raven_cas_service>
-                <raven_url>https://crappie.kumc.edu/raven/</raven_url>
-                <i2b2_client_service>https://crappie.kumc.edu/i2b2webclient/cas_login.html</i2b2_client_service>
+                <env>test</env>
             </properties>
         </profile>
+
 
         <profile>
             <id>dev</id>
             <properties>
-                <raven_cas_service>http://localhost:8080/raven/</raven_cas_service>
-                <raven_url>http://localhost:8080/raven/</raven_url>
-                <i2b2_client_service>http://localhost:8080/i2b2webclient/cas_login.html</i2b2_client_service>
+                <env>dev</env>
             </properties>
         </profile>
 
