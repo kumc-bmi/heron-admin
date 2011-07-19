@@ -74,6 +74,31 @@
       <scope>provided</scope>
     </dependency>
 
+    <!-- we seem to need this this to use x:transform? -->
+    <dependency>
+      <groupId>javax.servlet</groupId>
+      <artifactId>jstl</artifactId>
+      <version>1.1.2</version>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!--
+    I was getting:
+    org.apache.jasper.JasperException: PWC6169
+    This bug has a work-around http://netbeans.org/bugzilla/show_bug.cgi?id=188765
+    -->
+    <dependency>
+      <groupId>taglibs</groupId>
+      <artifactId>standard</artifactId>
+      <version>1.1.2</version>
+    </dependency>
+    <dependency>
+      <groupId>taglibs</groupId>
+      <artifactId>x</artifactId>
+      <version>1.1.2</version>
+      <type>tld</type>
+    </dependency>
+
     <!-- used in, e.g. HeronDBDao.java -->
     <dependency>
       <groupId>commons-collections</groupId>
@@ -132,7 +157,7 @@
     </dependency>
   </dependencies>
   <build>
-    <finalName>raven</finalName>
+    <finalName>raven</finalName><!-- TODO: rename to heron-admin or some such-->
 
     <!--
         see also profiles.xml
