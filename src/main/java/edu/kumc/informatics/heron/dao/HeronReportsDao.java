@@ -18,6 +18,9 @@ public class HeronReportsDao extends HeronDBDao{
 	 */
 	public List getHeronSystemUsers(){
 		String projSchema = props.getProperty(StaticValues.PROJECT_SCHEMA);
+                if (projSchema == null) {
+                        throw new Error("missing configuration parameter: " + StaticValues.PROJECT_SCHEMA);
+                }
 		String sql = "select s.user_id user_id,s.user_full_name user_full_name, q.query_count query_count, p.session_count session_count "+
 			"from heron.system_access_users s,"+
 			"(select sa.user_id, count(ps.user_id) as query_count "+
