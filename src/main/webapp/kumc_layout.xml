@@ -19,17 +19,9 @@ https://www.owasp.org/index.php?title=Transport_Layer_Protection_Cheat_Sheet#Rul
 
   <xsl:output method="xml" indent="yes" encoding="utf-8" />
 
-  <xsl:template match="/">
-    <html>
-      <xsl:apply-templates />
-    </html>
-  </xsl:template>
-
   <xsl:template match="h:head">
     <head>
-      <title>
-        <xsl:value-of select="h:title"/>
-      </title>
+      <xsl:apply-templates />
 
       <link rel="stylesheet" type="text/css"
           href="https://www.kumc.edu/css/template2009/reset.css" />
@@ -148,8 +140,10 @@ https://www.owasp.org/index.php?title=Transport_Layer_Protection_Cheat_Sheet#Rul
 
             <div class="span-24 last" id="topnav">
               <h2 class="unit">
+                <!-- TODO: handle 2 context headings -->
                 <xsl:value-of select=".//h:h1/text()"/>
               </h2>
+              <!-- TODO: handle per-page nav tree -->
               <div id="toptabnav">
                 <p>
                   <a href="http://www.kumc.edu/">KUMC Home</a>&#160;&gt;&#160;
@@ -168,7 +162,7 @@ https://www.owasp.org/index.php?title=Transport_Layer_Protection_Cheat_Sheet#Rul
             <div class="span-5">
               <div id="leftnavigation">
                 <div id="menu">
-                  <xsl:copy-of select=".//h:div[@id='menu']" />
+                  <xsl:apply-templates select=".//h:div[@id='menu']" />
                 </div>
               </div>
             </div>
@@ -176,11 +170,11 @@ https://www.owasp.org/index.php?title=Transport_Layer_Protection_Cheat_Sheet#Rul
             <div id="main" class="withnav span-19 last">
               <a name="maincontent" id="maincontent"></a>
               <div class="span-14">
-                <xsl:copy-of select=".//h:div[@id='main']" />
+                <xsl:apply-templates select=".//h:div[@id='main']" />
               </div>
 
               <div class="span-5 last" id="rightnav">
-                <xsl:copy-of select=".//h:div[@id='rightnav']"/>
+                <xsl:apply-templates select=".//h:div[@id='rightnav']"/>
               </div>
 
             </div>
@@ -328,6 +322,34 @@ https://www.owasp.org/index.php?title=Transport_Layer_Protection_Cheat_Sheet#Rul
 
       </div>
     </body>
+  </xsl:template>
+
+  <xsl:template match="h:div[*/@id='user-id']">
+    <div id="login" align="right">Id:
+      <xsl:copy-of select="*[@id='user-id']"/>&#160;
+      <a href="logout.jsp">logout</a><!-- TODO: use POST to logout -->
+    </div>
+    <div class="header png">
+      <h2>Problems? Questions? Ideas?</h2>
+    </div>
+    <div class="content png">
+      <ul>
+        <li>
+          <a href="https://redcap.kumc.edu/surveys/?s=3SBkPg">send feedback</a>
+          or
+        </li>
+        <li>
+          mail <a href="mailto:heron-admin@kumc.edu">heron-admin@kumc.edu</a>
+        </li>
+      </ul>
+    </div>
+  </xsl:template>
+
+  <!-- identity transformation; i.e. copy everything by default -->
+  <xsl:template match="@*|node()">
+    <xsl:copy>
+      <xsl:apply-templates select="@*|node()"/>
+    </xsl:copy>
   </xsl:template>
 
 </xsl:transform>
