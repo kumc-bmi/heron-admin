@@ -10,6 +10,14 @@ Listen 443
 <VirtualHost *:443>
         ServerName raven.kumc.edu
 
+# robots.txt
+        Alias /robots.txt /usr/local/apache2/htdocs/robots.txt
+
+        <Directory /usr/local/apache2/htdocs/>
+	     Order Deny,Allow
+             Allow from All
+        </Directory>
+
 Include conf/apps/i2b2-webclient-cas
 
 # connect to JBoss
@@ -32,8 +40,8 @@ Include conf/apps/i2b2-webclient-cas
         </Location>
 
 	SSLEngine on
-	SSLCertificateFile    conf/raven-ssl.crt
-	SSLCertificateKeyFile conf/raven-ssl.key
+	SSLCertificateFile    conf/raven-ssl-cert.pem
+	SSLCertificateKeyFile conf/raven-ssl-key.pem
 
 	BrowserMatch "MSIE [2-6]" 		nokeepalive ssl-unclean-shutdown 		downgrade-1.0 force-response-1.0
 	# MSIE 7 and newer should be able to use keepalive
