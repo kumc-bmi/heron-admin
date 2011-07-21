@@ -4,35 +4,35 @@
    ${select('title')}
 
   <link rel="stylesheet" type="text/css" href=
-  "http://www.kumc.edu/css/template2009/reset.css" />
+  "https://www.kumc.edu/css/template2009/reset.css" />
   <link rel="stylesheet" type="text/css" href=
-  "http://www.kumc.edu/css/template2009/grid-min.css" />
+  "https://www.kumc.edu/css/template2009/grid-min.css" />
   <link rel="stylesheet" type="text/css" href=
-  "http://www.kumc.edu/css/template2009/kulayout.css" />
+  "https://www.kumc.edu/css/template2009/kulayout.css" />
   <link rel="stylesheet" type="text/css" href=
-  "http://www.kumc.edu/css/template2009/kupresentation.css" />
+  "https://www.kumc.edu/css/template2009/kupresentation.css" />
 
 
   <!--[if IE 6]>
-                                <link rel="stylesheet" type="text/css" href="http://www.kumc.edu/css/template2009/ku_ie6.css" />
+                                <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/css/template2009/ku_ie6.css" />
                          <![endif]--><!--[if IE 7]>
-                                <link rel="stylesheet" type="text/css" href="http://www.kumc.edu/css/template2009/ku_ie7.css" />
+                                <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/css/template2009/ku_ie7.css" />
                          <![endif]--><!--[if IE 8]>
-                                <link rel="stylesheet" type="text/css" href="http://www.kumc.edu/css/template2009/ku_ie8.css" />
+                                <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/css/template2009/ku_ie8.css" />
                                 <![endif]-->
   <link rel="stylesheet" type="text/css" href=
-  "http://www.kumc.edu/css/template2009/kuprint.css" media=
+  "https://www.kumc.edu/css/template2009/kuprint.css" media=
   "print" />
   <link rel="shortcut icon" href="http://www.ku.edu/favicon.ico" />
   <script src=
-  "http://www.kumc.edu/js/jquery/jquery-1.3.2/jquery-1.3.2.min.js"
+  "https://www.kumc.edu/js/jquery/jquery-1.3.2/jquery-1.3.2.min.js"
   type="text/javascript">
 </script>
-  <script src="http://www.kumc.edu/js/ku/kutemplate_2009.js" type=
+  <script src="https://www.kumc.edu/js/ku/kutemplate_2009.js" type=
   "text/javascript">
 </script>
   <script src=
-  "http://www.kumc.edu/js/jqueryui/1.7.1/ui.core-1.7.1.js" type=
+  "https://www.kumc.edu/js/jqueryui/1.7.1/ui.core-1.7.1.js" type=
   "text/javascript">
 </script>
 <!-- jquery.showhids.js ? -->
@@ -44,7 +44,7 @@
   <div id="kumc_accessibilty_skip">
     <a href="#maincontent" accesskey="2" name="top" id=
     "top"><img src=
-    "http://www.kumc.edu/Images/template2009/widgets/spacer.gif"
+    "https://www.kumc.edu/Images/template2009/widgets/spacer.gif"
     alt="Skip redundant pieces" width="1" height="1" border=
     "0" /></a>
   </div>
@@ -57,7 +57,7 @@
           <div id="logo" class="span-9">
             <a href="http://www.kumc.edu/"><img id="mylogo" class=
             "png" src=
-            "http://www.kumc.edu/Images/logos/kumclogo_w.png" alt=
+            "https://www.kumc.edu/Images/logos/kumclogo_w.png" alt=
             "KUMC Medical Center" name="mylogo" /></a>
           </div>
 
@@ -85,7 +85,7 @@
               value="keyword/name" title="keyword/name" style=
               "margin-left:8px;" /><input class="button" name=
               "Search" type="image" src=
-              "http://www.kumc.edu/Images/icons/search.gif" alt=
+              "https://www.kumc.edu/Images/icons/search.gif" alt=
               "Search" />
             </form>
 
@@ -160,13 +160,13 @@
 
           <div id="footerjayhawk" class="span-4">
             <a href=
-            "http://frontiers.kumc.edu/frontiers.html#top"><img src="http://www.kumc.edu/Images/icons/uparrow.gif"
+            "http://frontiers.kumc.edu/frontiers.html#top"><img src="https://www.kumc.edu/Images/icons/uparrow.gif"
             border="0" alt=
             "Go to the top of the page" />&#160;top</a>
           </div>
 
           <div id="footertagline" class="span-10 last"><img src=
-          "http://www.kumc.edu/Images/icons/tagline.png" alt=
+          "https://www.kumc.edu/Images/icons/tagline.png" alt=
           "Educating Healthcare Professionals Since 1905" /></div>
         </div>
       </div>
