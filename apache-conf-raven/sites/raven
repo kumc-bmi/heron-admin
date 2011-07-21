@@ -2,13 +2,25 @@
 # using JBoss for the main portal
 # and JBoss-via-php for i2b2
 
-<VirtualHost *:80>
-    RedirectMatch permanent ^/$ https://raven.kumc.edu/
+NameVirtualHost 10.120.1.211:80
+<VirtualHost    10.120.1.211:80>
+  ServerName raven.kumc.edu
+  DocumentRoot "/usr/local/apache2/htdocs-raven"
+			     
+  <Directory /usr/local/apache2/htdocs-raven/>
+    Order Deny,Allow
+    Allow from All
+  </Directory>
+
 </VirtualHost>
 
-Listen 443
-<VirtualHost *:443>
+#Listen 443
+NameVirtualHost 10.120.1.211:443
+<VirtualHost 10.120.1.211:443>
         ServerName raven.kumc.edu
+
+Include conf/apps/raven.conf
+	RedirectMatch permanent ^/$ /raven/
 
 # robots.txt
         Alias /robots.txt /usr/local/apache2/htdocs/robots.txt
@@ -17,27 +29,6 @@ Listen 443
 	     Order Deny,Allow
              Allow from All
         </Directory>
-
-Include conf/apps/i2b2-webclient-cas
-
-# connect to JBoss
-        <Location /raven/>
-         ProxyPass http://localhost:8080/raven/
-         ProxyPassReverse http://localhost:8080/raven/
-        </Location>
-
-       
-       RedirectMatch permanent ^/$ /raven/
-
-        <Location /web-console/>
-         ProxyPass http://localhost:8080/web-console/
-         ProxyPassReverse http://localhost:8080/web-console/
-        </Location>
-
-        <Location /jmx-console/>
-         ProxyPass http://localhost:8080/jmx-console/
-         ProxyPassReverse http://localhost:8080/jmx-console/
-        </Location>
 
 	SSLEngine on
 	SSLCertificateFile    conf/raven-ssl-cert.pem
