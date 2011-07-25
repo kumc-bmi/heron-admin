@@ -1,0 +1,12 @@
+<!-- applicationContext.xml: spring configuration
+http://static.springsource.org/spring/docs/2.5.x/reference/beans.html
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans-2.5.xsd">
+
+  <bean name="mailer" class="edu.kumc.informatics.heron.util.Mailer" scope="session">
+    <constructor-arg type="java.lang.String" value="smtp.kumc.edu"/>
+  </bean>
+</beans>
