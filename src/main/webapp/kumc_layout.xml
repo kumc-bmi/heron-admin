@@ -19,9 +19,12 @@ https://www.owasp.org/index.php?title=Transport_Layer_Protection_Cheat_Sheet#Rul
 
   <xsl:output method="xml" indent="yes" encoding="utf-8" />
 
+  <xsl:param name="scm.version" />
+
   <xsl:template match="h:head">
     <head>
       <xsl:apply-templates />
+      <meta name="build-number" content="{substring($scm.version, 1, 12)}" />
 
       <link rel="stylesheet" type="text/css"
           href="https://www.kumc.edu/css/template2009/reset.css" />

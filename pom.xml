@@ -201,6 +201,30 @@
 	</configuration>
       </plugin>
 
+      <!-- cribbed from http://xsltmp.sourceforge.net/examples/1-1.html -->
+      <plugin>
+        <groupId>net.sf.xsltmp</groupId>
+        <artifactId>xslt-generator-maven-plugin</artifactId>
+        <version>1.6</version>
+        <executions>
+          <execution>
+            <id>layout-web-pages</id>
+            <goals>
+              <goal>many-to-many</goal>
+            </goals>
+            <configuration>
+              <xslTemplate>src/main/webapp/kumc_layout.xml</xslTemplate><!-- TODO: move out of .war -->
+              <parameters>
+                <scm.version>${buildNumber}abcde</scm.version>
+              </parameters>
+              <destDir>${project.build.directory}/${project.artifactId}</destDir>
+              <srcDir>src/main/pages</srcDir>
+              <srcIncludes>**/*.html</srcIncludes>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
 <!-- http://code.google.com/p/maven-mercurial-build-number-plugin/ -->
             <plugin>
                 <artifactId>maven-mercurial-build-number-plugin</artifactId>
