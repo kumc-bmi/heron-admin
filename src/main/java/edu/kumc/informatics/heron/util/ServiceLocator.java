@@ -68,6 +68,7 @@ public class ServiceLocator {
         }
     }
 
+    @Deprecated
     public static ServiceLocator getInstance() {
         return thisInstance;
     }

@@ -28,6 +28,7 @@ public class StaticDataUtil {
          *       or with spring/bean-based config.
          * @return
          */
+        @Deprecated
 	public Properties getProperties() {
 		if (properties == null) {
                         InputStream s = getClass().getResourceAsStream(propertyResourcePath);
@@ -45,7 +46,8 @@ public class StaticDataUtil {
 		}
                 return properties;
 	}
-	
+
+        @Deprecated
 	public static StaticDataUtil getSoleInstance()
 	{
 		return soleInstance;

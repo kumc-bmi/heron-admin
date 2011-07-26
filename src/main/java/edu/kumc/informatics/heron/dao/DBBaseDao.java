@@ -1,7 +1,14 @@
 /**
  * Base class for all DAO classes
- * Avoid putting business logic especially gui related logic here.
- * D. Zhu
+ * 
+ * <cite><a href="http://java.sun.com/blueprints/corej2eepatterns/Patterns/DataAccessObject.html"
+ * >Core J2EE Patterns - Data Access Objects</a></cite>. Sun Microsystems Inc.. 2007-08-02.
+ *
+ *
+ * Copyright(c) 2010-2011 <a href="http://www.kumc.edu"
+ * >University of Kansas Medical Center</a>
+ * by <a href="http://informatics.kumc.edu">Division of Medical Informatics</a>
+ *
  */
 package edu.kumc.informatics.heron.dao;
 
@@ -10,30 +17,19 @@ import javax.sql.DataSource;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.simple.SimpleJdbcTemplate;
-import org.springframework.jdbc.core.support.JdbcDaoSupport;
+import org.springframework.jdbc.core.simple.SimpleJdbcDaoSupport;
 
 import edu.kumc.informatics.heron.util.ServiceLocator;
 
-public class DBBaseDao extends JdbcDaoSupport{
-	private static Log log = LogFactory.getLog(DBBaseDao.class);
-	private SimpleJdbcTemplate sJdbcTemplate;
-	
-	public SimpleJdbcTemplate getSJdbcTemplate() {
-		return sJdbcTemplate;
-	}
+public class DBBaseDao extends SimpleJdbcDaoSupport{
+	protected final Log log = LogFactory.getLog(getClass());
 
-	public void setSJdbcTemplate(SimpleJdbcTemplate jdbcTemplate) {
-		this.sJdbcTemplate = jdbcTemplate;
-	}
-
-	public DBBaseDao(){}
-	
 	/**
 	 * constructor. init SimpleJdbcTemplate.
 	 * @param dataSource
 	 */
-	public DBBaseDao(String dataSource){
+        @Deprecated
+	protected DBBaseDao(String dataSource){
 		DataSource ds = null;
 		try {
 			ds = ServiceLocator.getInstance().getAppServerDataSource(dataSource);
@@ -41,7 +37,6 @@ public class DBBaseDao extends JdbcDaoSupport{
 		} catch (Exception e2) {
 			log.error("error in DBBaseDao(): " + e2.getMessage());
 		} 
-		this.sJdbcTemplate = new SimpleJdbcTemplate(ds);
 		this.setJdbcTemplate(new JdbcTemplate(ds));
 	}
 }

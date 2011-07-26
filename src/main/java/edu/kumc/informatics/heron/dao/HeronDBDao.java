@@ -16,14 +16,11 @@ import org.apache.commons.collections.map.ListOrderedMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.simple.SimpleJdbcDaoSupport;
 import static edu.kumc.informatics.heron.base.StaticValues.*;
 
-public class HeronDBDao extends DBBaseDao{
-	private static Log log = LogFactory.getLog(HeronDBDao.class);
-
-	public HeronDBDao(){
-		super("java:PMBootStrapDS");
-	}
+public class HeronDBDao extends SimpleJdbcDaoSupport {
+	private final Log log = LogFactory.getLog(HeronDBDao.class);
 	
 	/**
 	 * check if user has signed system access agreement.
@@ -35,7 +32,7 @@ public class HeronDBDao extends DBBaseDao{
 		try{
 			String sql = "select count(1) as tot from heron.system_access_users where user_id=?";
 			
-			int count = this.getSJdbcTemplate().queryForInt(sql, userId);
+			int count = this.getSimpleJdbcTemplate().queryForInt(sql, userId);
 			isSigned = count>0?true:false;
 		}catch(DataAccessException ex){
 			log.error("error in isUserAgreementSigned()");
@@ -55,7 +52,7 @@ public class HeronDBDao extends DBBaseDao{
 		String sql = "insert into heron.system_access_users(USER_ID,USER_FULL_NAME,SIGNATURE,SIGNED_DATE,LAST_UPDT_TMST) values(?,?,?,?,sysdate)";
 
 		try{
-			this.getSJdbcTemplate().update(sql,  userId, userName, sigature, signDate);
+			this.getSimpleJdbcTemplate().update(sql,  userId, userName, sigature, signDate);
 		}catch(DataAccessException ex)
 		{
 			log.error("error in insertSystemAccessUser()" + ex.getMessage());
@@ -73,10 +70,10 @@ public class HeronDBDao extends DBBaseDao{
 		 String sql1 = "INSERT INTO PM_PROJECT_USER_ROLES(PROJECT_ID, USER_ID, USER_ROLE_CD, STATUS_CD) VALUES(?, ?, ?, 'A')";
 		 String sql2 = "INSERT INTO PM_USER_DATA (USER_ID, FULL_NAME, PASSWORD, STATUS_CD) VALUES(?, ?, 'CAS', 'A')";
 		 try{
-			 this.getSJdbcTemplate().update(sql2, userId,fullName);
+			 this.getSimpleJdbcTemplate().update(sql2, userId,fullName);
 			
 			 for(String userRole:userRoles){
-				 this.getSJdbcTemplate().update(sql1, projId, userId, userRole);
+				 this.getSimpleJdbcTemplate().update(sql1, projId, userId, userRole);
 			 }
 		 }catch(DataAccessException ex)
 		{
@@ -94,7 +91,7 @@ public class HeronDBDao extends DBBaseDao{
 		try{
 			String sql = "select count(1) as tot from PM_USER_DATA where user_id=? and status_cd='A'";
 			
-			int count = this.getSJdbcTemplate().queryForInt(sql, userId);
+			int count = this.getSimpleJdbcTemplate().queryForInt(sql, userId);
 			isSigned = count>0?true:false;
 		}catch(DataAccessException ex){
 			log.error("error in isUserInI2b2Database()");
@@ -171,7 +168,7 @@ public class HeronDBDao extends DBBaseDao{
 			String sql = "select org from heron.DROC_REVIEWERS where user_id=? and status='A'";
 			
 			@SuppressWarnings("rawtypes")
-			List aList = this.getSJdbcTemplate().queryForList(sql, uid);
+			List aList = this.getSimpleJdbcTemplate().queryForList(sql, uid);
 			if(aList!=null && aList.size()>0)
 				grp =  ((ListOrderedMap)aList.get(0)).get("ORG")+"";
 		}catch(DataAccessException ex){

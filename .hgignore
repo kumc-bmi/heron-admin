@@ -4,3 +4,7 @@ syntax: glob
 target
 *.pyc
 ,*
+# netbeans schema cache
+catalog.xml
+.netbeans/
+

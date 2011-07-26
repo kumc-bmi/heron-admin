@@ -102,22 +102,7 @@ public class BasicUtil {
 		      ex.printStackTrace(); 
 		}
 	}
-	
-	/**
-	 * send email to droc team for heron approval
-	 * @param toEmails
-	 */
-	public void sendNotificationEmailToDroc(String toEmails,String appUrl){
-		String subj = "HERON Sponsorship needs your attention";
-		String contn = "Dear HERON DROC member,\n \n "+
-			"A HERON request has been submitted needs to be approved by your organization. \n \n" +
-			"Please visit: \n\n" + appUrl +
-			" and follow the \"Approve Sponsored HERON Users\" link \n\n"+
-			"Sincerely, \n \n"+
-			"The HERON Team.";
-		this.sendEmails("heron-admin@kumc.edu", toEmails, subj, contn, "smtp.kumc.edu","");
-	}
-	
+
 	/**
 	 * send notification emails to User about sponsorship Approval Or Rejection
 	 * @param userId

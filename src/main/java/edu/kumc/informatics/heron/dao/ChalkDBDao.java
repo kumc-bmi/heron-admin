@@ -18,14 +18,12 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.SqlOutParameter;
 import org.springframework.jdbc.core.SqlParameter;
 import org.springframework.jdbc.object.StoredProcedure;
+import org.springframework.jdbc.core.simple.SimpleJdbcDaoSupport;
 
-public class ChalkDBDao extends DBBaseDao{
+public class ChalkDBDao extends SimpleJdbcDaoSupport{
 	private static Log log = LogFactory.getLog(ChalkDBDao.class);
 	
-	public ChalkDBDao()
-	{
-		super("java:ChalkDS");
-	}
+	// TODO: super("java:ChalkDS");
 	
 	/**
 	 * check if a user has been trained in CHALK

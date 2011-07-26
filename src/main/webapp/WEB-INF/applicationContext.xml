@@ -1,12 +1,51 @@
 <!-- applicationContext.xml: spring configuration
 http://static.springsource.org/spring/docs/2.5.x/reference/beans.html
+
+TODO: consider re-coding in Java, though the community docs all seem to use XML.
 -->
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:schemaLocation="http://www.springframework.org/schema/beans
            http://www.springframework.org/schema/beans/spring-beans-2.5.xsd">
 
-  <bean name="mailer" class="edu.kumc.informatics.heron.util.Mailer" scope="session">
+  <!-- HERON schema, chalk DB, LDAP access -->
+  <bean name="userAccessData"  scope="singleton"
+        class="edu.kumc.informatics.heron.util.DBUtil">
+    <constructor-arg>
+      <ref bean="heronDao" />
+    </constructor-arg>
+    <constructor-arg>
+      <ref bean="chalkChecker" />
+    </constructor-arg>
+  </bean>
+
+
+  <bean name="heronDao" scope="singleton"
+        class="edu.kumc.informatics.heron.dao.HeronDBDao">
+    <property name="dataSource" ref="heronDataSource" />
+  </bean>
+  <!-- get heronDataSource from JNDI.
+       See server/default/deploy/*-ds.xml in JBoss. -->
+  <bean id="heronDataSource"
+        class="org.springframework.jndi.JndiObjectFactoryBean">
+      <property name="jndiName" value="java:PMBootStrapDS"/>
+  </bean>
+
+  <bean name="chalkChecker" scope="singleton"
+        class="edu.kumc.informatics.heron.dao.ChalkDBDao">
+    <property name="dataSource" ref="chalkDataSource" />
+  </bean>
+
+  <!-- get heronDataSource from JNDI -->
+  <bean id="chalkDataSource"
+        class="org.springframework.jndi.JndiObjectFactoryBean">
+      <property name="jndiName" value="java:ChalkDS"/>
+  </bean>
+
+  <!-- for nofiying the DROC from a Servlet-->
+  <bean name="mailer" scope="singleton"
+        class="edu.kumc.informatics.heron.util.Mailer">
     <constructor-arg type="java.lang.String" value="smtp.kumc.edu"/>
   </bean>
+
 </beans>

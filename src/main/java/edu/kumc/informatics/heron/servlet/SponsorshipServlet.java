@@ -4,6 +4,7 @@ import static edu.kumc.informatics.heron.base.StaticValues.*;
 
 import java.io.IOException;
 import java.util.Properties;
+import javax.mail.MessagingException;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
@@ -13,6 +14,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import edu.kumc.informatics.heron.util.BasicUtil;
+import edu.kumc.informatics.heron.util.Mailer;
 import edu.kumc.informatics.heron.util.DBUtil;
 import edu.kumc.informatics.heron.util.LdapUtil;
 import edu.kumc.informatics.heron.util.StaticDataUtil;
@@ -24,12 +26,21 @@ import edu.kumc.informatics.heron.util.StaticDataUtil;
  */
 public class SponsorshipServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private DBUtil dbUtil = new DBUtil();   
 	private BasicUtil bUtil = new BasicUtil();
 	private LdapUtil ldapUtil = new LdapUtil();
 	private Properties props = StaticDataUtil.getSoleInstance().getProperties();
-	
-    /**
+
+        private DBUtil dbUtil;
+        public void setUserAccessData(DBUtil v) {
+                dbUtil = v;
+        }
+
+        private Mailer mailer;
+        public void setMailer(Mailer v) {
+                mailer = v;
+        }
+
+		/**
      * @see HttpServlet#HttpServlet()
      */
     public SponsorshipServlet() {
@@ -37,9 +48,28 @@ public class SponsorshipServlet extends HttpServlet {
         // TODO Auto-generated constructor stub
     }
 
-	/**
+    /*@@@
+        private Object requiredAttribute(String name) throws ServletException {
+                Object value = getServletContext().getAttribute(name);
+                if (value == null) {
+                        throw new ServletException(
+                                "required servlet context attribute missing: "
+                                + name);
+                }
+                return value;
+        }
+
+        @Override
+        public void init() throws ServletException {
+                mailer = (Mailer) requiredAttribute("mailer");
+                dbUtil = (DBUtil) requiredAttribute("userAccessData");
+        }
+*/
+
+        /**
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
 	 */
+        @Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		doPost(request,response);
 	}
@@ -47,11 +77,12 @@ public class SponsorshipServlet extends HttpServlet {
 	/**
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
 	 */
+        @Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		String type = request.getParameter("agreementbtn");
 		String initType = request.getParameter("init_type");
 		
-		//initial display
+		//TODO: move initial display to doGet.
 		if(initType!=null){
 			String uid = request.getRemoteUser();
 			String[] info = ldapUtil.getUserInfo(uid);	
@@ -85,7 +116,7 @@ public class SponsorshipServlet extends HttpServlet {
 					dbUtil.insertSponsorships(request);
 					String[] ids = dbUtil.getDrocIds();
 					String emails = ldapUtil.getDrocEmails(ids);
-					bUtil.sendNotificationEmailToDroc(emails,getAppUrl(request));
+					sendNotificationEmailToDroc(emails,getAppUrl(request));
 				}catch(Exception ex){
 					result = "Sorry, unexpected error with database update: " + ex.getMessage();
 				}
@@ -103,7 +134,23 @@ public class SponsorshipServlet extends HttpServlet {
 			response.sendRedirect(DENIED_URL);
 		}
 	}
-	
+
+	/**
+	 * send email to droc team for heron approval
+	 * @param toEmails
+	 */
+	private void sendNotificationEmailToDroc(String toEmails,String appUrl) throws MessagingException{
+                mailer.send(mailer.render("HERON Sponsorship needs your attention",
+                        "heron-admin@kumc.edu", toEmails, "",
+                        "Dear HERON DROC member,\n \n "
+                        +
+			"A HERON request has been submitted needs to be approved by your organization. \n \n" +
+			"Please visit: \n\n" + appUrl +
+			" and follow the \"Approve Sponsored HERON Users\" link \n\n"+
+			"Sincerely, \n \n"+
+			"The HERON Team."));
+	}
+
 	/**
 	 * check input.
 	 * @param request

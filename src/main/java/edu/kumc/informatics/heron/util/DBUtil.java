@@ -9,7 +9,6 @@ package edu.kumc.informatics.heron.util;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Enumeration;
-import java.util.GregorianCalendar;
 import java.util.Vector;
 import java.sql.Date;
 import java.sql.Timestamp;
@@ -31,9 +30,18 @@ public class DBUtil {
 	//can have other dao too...
 	private static Log log = LogFactory.getLog(DBUtil.class);
 	
-	public DBUtil(){
-		heronDao = new HeronDBDao();
-		chalkDao = new ChalkDBDao();
+        /**
+         * TODO: get rid of this in favor of injection.
+         */
+        @Deprecated
+        public DBUtil() {
+                heronDao = new HeronDBDao();
+                chalkDao = new ChalkDBDao();
+        }
+        
+	public DBUtil(HeronDBDao h, ChalkDBDao ch){
+		heronDao = h;
+		chalkDao = ch;
 	}
 	
 	/**
@@ -169,7 +177,7 @@ public class DBUtil {
 	public String[] getDrocIds(){
 		return heronDao.getDrocIds();
 	}
-	
+
 	/**
 	 * check if user active in exec_group table
 	 * @param uid
