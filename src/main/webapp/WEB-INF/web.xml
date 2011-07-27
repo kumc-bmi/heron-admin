@@ -138,4 +138,14 @@
     <servlet-name>TerminateUsers</servlet-name>
     <url-pattern>/TerminateUsers</url-pattern>
   </servlet-mapping>
+
+  <servlet>
+    <servlet-name>DeriveCas</servlet-name>
+    <servlet-class>edu.kumc.informatics.heron.servlet.DeriveCas</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>DeriveCas</servlet-name>
+    <url-pattern>/DeriveCas</url-pattern>
+  </servlet-mapping>
+
 </web-app>

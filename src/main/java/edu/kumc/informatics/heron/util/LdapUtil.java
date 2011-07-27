@@ -24,7 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import static edu.kumc.informatics.heron.base.StaticValues.*;
 
 public class LdapUtil {
-	private static Log log = LogFactory.getLog(LdapUtil.class);  // TODO: invert control
+	protected static Log log = LogFactory.getLog(LdapUtil.class);  // TODO: invert control
 	private static StaticDataUtil props = StaticDataUtil.getSoleInstance(); // todo: invert control
 
         /**

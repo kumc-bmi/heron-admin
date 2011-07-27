@@ -1,7 +1,13 @@
+/* Copyright (c) 2010-2011 The University of Kansas Medical Center
+ * http://informatics.kumc.edu/
+ */
+package edu.kumc.informatics.heron.util;
 
-	package edu.kumc.informatics.heron.util;
 
-	import static org.junit.Assert.*;
+import javax.mail.MessagingException;
+import javax.mail.Message;
+
+import static org.junit.Assert.*;
 
 	import org.junit.Test;
 
@@ -11,10 +17,30 @@
          */
 	public class LdapUtilTest extends LdapUtil{
 		@Test
-		public void testGetDrocEmails(){
-			assertTrue(this.getDrocEmails(new String[]{"rwaitman"}).length()>0);
-		}
-		
+		public void testGetDrocEmails() throws MessagingException{
+                        String addr1 = this.getDrocEmails(new String[]{"rwaitman"});
+			assertTrue(addr1.length() > 0);
+
+                        String addrN = this.getDrocEmails(new String[]{"rwaitman", "kblackwe",
+                        "rbarohn", "tneely", "lwood2", "jorndoff", "cwittkop",
+                        "trusconi", "cgardner", "kgrasso", });
+			assertTrue(addrN.length() > 0);
+
+                        Mailer mailer = new Mailer("smtp.kumc.edu"); // TODO:@@
+
+                        Message msg1 = mailer.render("a droc notification", "dconnolly+test@kumc.edu",
+                                "dconnolly@kumc.edu,dconnolly@kumc.edu", "",
+                                "Dear DROC members, ...");
+                        mailer.send(msg1);
+
+                        Message msg0 = mailer.render("a droc notification with extra comma", "dconnolly+test@kumc.edu",
+                                "dconnolly@kumc.edu,dconnolly@kumc.edu,", "",
+                                "Dear DROC members, ...");
+                        mailer.send(msg0);
+
+
+                }
+
 		@Test
 		public void testGetLdapAttributeByName(){
 			assertTrue(this.getLdapAttributeByName("rwaitman", "mail").length()>0);

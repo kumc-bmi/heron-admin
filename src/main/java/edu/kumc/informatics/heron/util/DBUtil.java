@@ -43,7 +43,25 @@ public class DBUtil {
 		heronDao = h;
 		chalkDao = ch;
 	}
-	
+
+        /**
+	 * For now, check if user is a qualified faculty.
+	 *
+	 * @param facFlag
+	 * @param jobCode
+	 * @param uid
+	 * @return true if yes, false otherwise.
+	 */
+        private static final String excluded_jobcode="24600";
+	public boolean checkQualification(String facFlag, String jobCode, String uid){
+		boolean result = false;
+		if((facFlag!=null && facFlag.equals("Y") && !jobCode.equals(excluded_jobcode))
+				|| isUserExecutive(uid))
+			result = isUserAgreementSigned(uid);
+		return result;
+	}
+
+
 	/**
 	 * check if user has signed system access agreement.
 	 * @param userId

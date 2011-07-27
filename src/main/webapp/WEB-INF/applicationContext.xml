@@ -4,6 +4,7 @@ http://static.springsource.org/spring/docs/2.5.x/reference/beans.html
 TODO: consider re-coding in Java, though the community docs all seem to use XML.
 -->
 <beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:context="http://www.springframework.org/schema/context"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:schemaLocation="http://www.springframework.org/schema/beans
            http://www.springframework.org/schema/beans/spring-beans-2.5.xsd">
@@ -43,9 +44,58 @@ TODO: consider re-coding in Java, though the community docs all seem to use XML.
   </bean>
 
   <!-- for nofiying the DROC from a Servlet-->
-  <bean name="mailer" scope="singleton"
-        class="edu.kumc.informatics.heron.util.Mailer">
-    <constructor-arg type="java.lang.String" value="smtp.kumc.edu"/>
+  <bean id="mailSender"  scope="singleton"
+        class="org.springframework.mail.javamail.JavaMailSenderImpl">
+    <property name="host" value="smtp.kumc.edu"/>
   </bean>
 
+  <bean id="drocNotification" class="org.springframework.mail.SimpleMailMessage">
+    <property name="from" value="heron-admin@kumc.edu"/>
+    <property name="subject" value="HERON Sponsorship needs your attention"/>
+    <property name="text">
+      <value>Dear HERON DROC member,
+ 
+A HERON request has been submitted and needs review by your organization.
+
+Please visit:
+
+  https://heron.kumc.edu
+
+and follow the "Approve Sponsored HERON Users" link.
+
+Sincerely,
+
+The HERON Team
+in the Medical Informatics Division
+of the KUMC Department of Biostatistics
+      </value>
+    </property>
+  </bean>
+
+  <bean name="enterpriseAuthority"  scope="singleton"
+        class="edu.kumc.informatics.heron.util.EnterpriseAuthority">
+    <constructor-arg>
+      <ref bean="search_kumc_idv"/>
+    </constructor-arg>
+  </bean>
+
+  <bean id="search_kumc_idv" class="org.springframework.ldap.core.LdapTemplate">
+    <constructor-arg ref="kumc_idv" />
+  </bean>
+
+  <bean id="kumc_idv" class="org.springframework.ldap.core.support.LdapContextSource">
+    <property name="url" value="ldaps://idvauth.kumc.edu:636" />
+    <property name="base" value="ou=people,o=idvault" />
+    <property name="userDn" value="cn=biostats, ou=authaccounts,o=idvault" />
+    <property name="password" value="${ldap_credential}" />
+  </bean>
+
+  <bean id="propertyConfigurer"
+          class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+    <property name="locations">
+      <list>
+        <value>classpath:configs.properties</value> <!-- TODO: focus to ldap.properties -->
+      </list>
+    </property>
+  </bean>
 </beans>

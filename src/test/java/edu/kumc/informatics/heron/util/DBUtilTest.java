@@ -5,11 +5,14 @@
 
 package edu.kumc.informatics.heron.util;
 
-
 import org.junit.Test;
 import org.junit.Assert;
+import org.junit.runner.RunWith;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.AbstractTransactionalDataSourceSpringContextTests;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import edu.kumc.informatics.heron.dao.ChalkDBDao;
 import edu.kumc.informatics.heron.dao.HeronDBDao;
@@ -17,24 +20,21 @@ import edu.kumc.informatics.heron.dao.HeronDBDao;
 /**
  * TODO: rename DBUtil class
  * ref http://static.springsource.org/docs/Spring-MVC-step-by-step/part5.html#step5.5
+ *
+ * TODO: separate unit tests from integration tests; try spring's:
+ * @IfProfileValue(name="test-groups", values={"unit-tests", "integration-tests"})
  */
+
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration(locations={"classpath:heron-integration-context.xml"})
 public class DBUtilTest extends AbstractTransactionalDataSourceSpringContextTests {
-        @Override
-        protected String[] getConfigLocations() {
-                return new String[]{"classpath:test-context.xml"};
-        }
-
+        @Autowired
         private HeronDBDao _heronDBDao;
-        public void setHeronDBDao(HeronDBDao h) {
-                _heronDBDao = h;
-        }
 
+        @Autowired
         private ChalkDBDao _chalk;
-        public void setChalkDBDao(ChalkDBDao c) {
-                _chalk = c;
-        }
 
-        // TODO: find out why @Test didn't work here.
+        @Test
         public void testDrocHasAtLeastOneMemberPerOrg() {
                 DBUtil it = new DBUtil(_heronDBDao, _chalk);
                 int drocMemberCount = 0;
@@ -45,4 +45,5 @@ public class DBUtilTest extends AbstractTransactionalDataSourceSpringContextTest
                 logger.info("droc member count: " + drocMemberCount);
                 Assert.assertTrue(drocMemberCount >= 3);
         }
+
 }

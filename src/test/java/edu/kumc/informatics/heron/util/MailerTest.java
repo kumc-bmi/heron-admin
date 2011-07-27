@@ -1,7 +1,5 @@
 package edu.kumc.informatics.heron.util;
 
-import java.util.Collections;
-
 import javax.mail.MessagingException;
 import javax.mail.Message;
 import javax.mail.Header;
@@ -9,6 +7,9 @@ import javax.mail.Header;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
+/**
+ * TODO: use spring mail instead
+ */
 public class MailerTest {
         @Test
         public void itShouldRenderATrivialMessage() throws MessagingException{

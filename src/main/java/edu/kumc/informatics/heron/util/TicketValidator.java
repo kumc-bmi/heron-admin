@@ -11,6 +11,9 @@ import org.jasig.cas.client.validation.Assertion;
 import org.jasig.cas.client.validation.Cas20ProxyTicketValidator;
 import org.jasig.cas.client.validation.TicketValidationException;
 
+/**
+ * TODO: get rid of this class?
+ */
 public class TicketValidator {
 	public final boolean validateTicket(HttpServletRequest request) {
 		AttributePrincipal principal = (AttributePrincipal) request.getUserPrincipal();

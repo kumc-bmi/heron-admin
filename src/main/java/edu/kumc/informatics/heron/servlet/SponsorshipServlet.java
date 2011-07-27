@@ -4,7 +4,6 @@ import static edu.kumc.informatics.heron.base.StaticValues.*;
 
 import java.io.IOException;
 import java.util.Properties;
-import javax.mail.MessagingException;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
@@ -13,11 +12,15 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import org.springframework.mail.MailSender;
+import org.springframework.mail.SimpleMailMessage;
+
 import edu.kumc.informatics.heron.util.BasicUtil;
-import edu.kumc.informatics.heron.util.Mailer;
 import edu.kumc.informatics.heron.util.DBUtil;
 import edu.kumc.informatics.heron.util.LdapUtil;
 import edu.kumc.informatics.heron.util.StaticDataUtil;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.context.support.WebApplicationContextUtils;
 
 /**
  * Servlet implementation class SponsorshipServlet to handle user sponsorship.
@@ -29,42 +32,26 @@ public class SponsorshipServlet extends HttpServlet {
 	private BasicUtil bUtil = new BasicUtil();
 	private LdapUtil ldapUtil = new LdapUtil();
 	private Properties props = StaticDataUtil.getSoleInstance().getProperties();
-
         private DBUtil dbUtil;
-        public void setUserAccessData(DBUtil v) {
-                dbUtil = v;
+
+        @Override
+        /**
+         * cribbed from http://andykayley.blogspot.com/2007/11/how-to-inject-spring-beans-into.html
+         * so much for IoC and type-safety, but simpler than @Autowired magic.
+         */
+        public void init() {
+                WebApplicationContext springContext =
+                        WebApplicationContextUtils.getWebApplicationContext(getServletContext());
+                dbUtil = (DBUtil) springContext.getBean("userAccessData");
         }
 
-        private Mailer mailer;
-        public void setMailer(Mailer v) {
-                mailer = v;
-        }
-
-		/**
+        /**
      * @see HttpServlet#HttpServlet()
      */
     public SponsorshipServlet() {
         super();
         // TODO Auto-generated constructor stub
     }
-
-    /*@@@
-        private Object requiredAttribute(String name) throws ServletException {
-                Object value = getServletContext().getAttribute(name);
-                if (value == null) {
-                        throw new ServletException(
-                                "required servlet context attribute missing: "
-                                + name);
-                }
-                return value;
-        }
-
-        @Override
-        public void init() throws ServletException {
-                mailer = (Mailer) requiredAttribute("mailer");
-                dbUtil = (DBUtil) requiredAttribute("userAccessData");
-        }
-*/
 
         /**
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
@@ -89,7 +76,7 @@ public class SponsorshipServlet extends HttpServlet {
 			HttpSession session = request.getSession();
 			session.setAttribute(USER_FULL_NAME, info[0]);
 			session.setAttribute(USER_TITLE, info[2]);
-			boolean isQualified = checkQualification(info[1],info[3],uid);
+			boolean isQualified = dbUtil.checkQualification(info[1],info[3],uid);
 			
 			if(!isQualified){
 				String message = "sorry, only qualified falcuties who have signed HERON system access agreement can use this functionality."
@@ -114,9 +101,7 @@ public class SponsorshipServlet extends HttpServlet {
 				String result = spnsrType.equals(VIEW_ONLY)?"User(s) Sponsored Successfully !":"Data Usage Agreement Submitted Successfully!";
 				try{
 					dbUtil.insertSponsorships(request);
-					String[] ids = dbUtil.getDrocIds();
-					String emails = ldapUtil.getDrocEmails(ids);
-					sendNotificationEmailToDroc(emails,getAppUrl(request));
+					sendNotificationEmailToDroc();
 				}catch(Exception ex){
 					result = "Sorry, unexpected error with database update: " + ex.getMessage();
 				}
@@ -133,22 +118,6 @@ public class SponsorshipServlet extends HttpServlet {
 		else{//deny/cancel sponsorship
 			response.sendRedirect(DENIED_URL);
 		}
-	}
-
-	/**
-	 * send email to droc team for heron approval
-	 * @param toEmails
-	 */
-	private void sendNotificationEmailToDroc(String toEmails,String appUrl) throws MessagingException{
-                mailer.send(mailer.render("HERON Sponsorship needs your attention",
-                        "heron-admin@kumc.edu", toEmails, "",
-                        "Dear HERON DROC member,\n \n "
-                        +
-			"A HERON request has been submitted needs to be approved by your organization. \n \n" +
-			"Please visit: \n\n" + appUrl +
-			" and follow the \"Approve Sponsored HERON Users\" link \n\n"+
-			"Sincerely, \n \n"+
-			"The HERON Team."));
 	}
 
 	/**
@@ -228,32 +197,27 @@ public class SponsorshipServlet extends HttpServlet {
 	    return msg;
 	}
 
+
+        // cf http://static.springsource.org/spring/docs/2.0.6/reference/mail.html
+        private MailSender mailSender;
+        public void setMailSender(MailSender v) {
+                mailSender = v;
+        }
+
+        private SimpleMailMessage templateMessage;
+        public void setTemplateMessage(SimpleMailMessage templateMessage) {
+                this.templateMessage = templateMessage;
+        }
+
 	/**
-	 * For now, check if user is a qualified faculty.
-	 * aware of the rules will change. Otherwise, build/use a common util method.
-	 * @param facFlag
-	 * @param jobCode
-	 * @param uid
-	 * @return true if yes, false otherwise.
+	 * send email to droc team for heron approval
+	 * @param toEmails
 	 */
-	private boolean checkQualification(String facFlag,String jobCode,String uid){
-		boolean result = false;
-		if((facFlag!=null && facFlag.equals("Y") && !jobCode.equals(props.getProperty(EXCLUDED_JOBCODE)))
-				|| dbUtil.isUserExecutive(uid))
-			result = dbUtil.isUserAgreementSigned(uid);
-		return result;
-	}
-	
-	/**
-	 * get application's url
-	 * @param request
-	 * @return application's url in a string
-	 */
-	private String getAppUrl(HttpServletRequest request){
-		/*String url = request.getScheme()+"://"+request.getServerName();
-		int port = request.getLocalPort();
-		url = port!=0?(url+":"+port):url;
-		url += "/raven";*/
-		return props.getProperty(RAVEN_URL);
-	}
+	private void sendNotificationEmailToDroc(){
+                // Create a thread safe "copy" of the template message and customize it
+                SimpleMailMessage msg = new SimpleMailMessage(this.templateMessage);
+                msg.setTo(ldapUtil.getDrocEmails(dbUtil.getDrocIds()));
+
+                this.mailSender.send(msg);
+        }
 }
