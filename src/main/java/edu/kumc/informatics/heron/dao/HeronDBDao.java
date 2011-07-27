@@ -253,8 +253,7 @@ public class HeronDBDao extends SimpleJdbcDaoSupport {
 	 */
 	public String[] getDrocIds(){
 		String sql = "select distinct user_id from heron.droc_reviewers where status ='A'";
-		@SuppressWarnings("unchecked")
-		List<Object> aList = this.getJdbcTemplate().queryForList(sql);
+		List aList = this.getJdbcTemplate().queryForList(sql);
 		String[] results = new String[aList.size()];
 		for(int i=0;i<aList.size();i++){
 			results[i] = ((ListOrderedMap)aList.get(i)).get("USER_ID")+"";
