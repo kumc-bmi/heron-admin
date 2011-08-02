@@ -1,7 +1,5 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
+/* Copyright (c) 2011 The University of Kansas Medical Center
+ * http://informatics.kumc.edu/ */
 
 package edu.kumc.informatics.heron.capsec;
 
