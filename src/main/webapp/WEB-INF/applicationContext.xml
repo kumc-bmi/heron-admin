@@ -72,8 +72,30 @@ of the KUMC Department of Biostatistics
     </property>
   </bean>
 
-  <bean name="enterpriseAuthority"  scope="singleton"
-        class="edu.kumc.informatics.heron.util.EnterpriseAuthority">
+
+  <bean name="sar" scope="singleton"
+    class="edu.kumc.informatics.heron.capsec.SystemAccessRecords">
+    <constructor-arg><ref bean="enterprise"/></constructor-arg>
+    <constructor-arg><ref bean="droc"/></constructor-arg>
+    <constructor-arg><ref bean="heronDao"/></constructor-arg>
+  </bean>
+  <bean name="droc" scope="singleton"
+        class="edu.kumc.informatics.heron.capsec.DROCSponsoring">
+    <constructor-arg>
+      <ref bean="enterprise"/>
+    </constructor-arg>
+    <constructor-arg>
+      <ref bean="heronDao"/>
+    </constructor-arg>
+    <constructor-arg>
+      <ref bean="mailSender"/>
+    </constructor-arg>
+    <constructor-arg>
+      <ref bean="drocNotification"/>
+    </constructor-arg>
+  </bean>
+  <bean name="enterprise"  scope="singleton"
+        class="edu.kumc.informatics.heron.capsec.Enterprise">
     <constructor-arg>
       <ref bean="search_kumc_idv"/>
     </constructor-arg>

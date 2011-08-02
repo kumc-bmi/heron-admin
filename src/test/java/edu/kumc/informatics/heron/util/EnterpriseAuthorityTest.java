@@ -3,6 +3,9 @@
 
 package edu.kumc.informatics.heron.util;
 
+import edu.kumc.informatics.heron.capsec.Agent;
+import edu.kumc.informatics.heron.capsec.Enterprise;
+import edu.kumc.informatics.heron.capsec.Ticket;
 import javax.naming.NamingException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -29,24 +32,20 @@ public class EnterpriseAuthorityTest {
          */
         public void lookSomebodyUp() throws NamingException, ServletException {
                 MockHttpServletRequest q = new MockHttpServletRequest("GET", "/");
-                MockCASCheck cas_check = new MockCASCheck(q);
+                MockCASCheck cas_check = new MockCASCheck();
                 MockEnterprise e = new MockEnterprise(t);
-                Assert.assertEquals("Dan Connolly", e.getFullName(cas_check));
-                Assert.assertEquals("dconnolly@kumc.edu", e.getMail(cas_check));
+                Agent who = e.affiliate(cas_check.getName());
+                Assert.assertEquals("Dan Connolly", who.getFullName());
+                Assert.assertEquals("dconnolly@kumc.edu", who.getMail());
         }
 
-        static class MockEnterprise extends EnterpriseAuthority {
+        static class MockEnterprise extends Enterprise {
                 public MockEnterprise(LdapTemplate t) {
                         super(t);
                 }
         }
 
-        static class MockCASCheck extends CASCheck {
-                public MockCASCheck(HttpServletRequest q){
-                        super(q);
-                }
-
-                @Override
+        static class MockCASCheck implements Ticket {
                 public String getName() {
                         return "dconnolly";
                 }

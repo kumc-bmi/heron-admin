@@ -3,17 +3,17 @@
 
 package edu.kumc.informatics.heron.servlet;
 
+import edu.kumc.informatics.heron.capsec.Agent;
 import edu.kumc.informatics.heron.util.CASCheck;
-import edu.kumc.informatics.heron.util.EnterpriseAuthority;
+import edu.kumc.informatics.heron.capsec.Enterprise;
+import edu.kumc.informatics.heron.capsec.Sponsor;
+import edu.kumc.informatics.heron.capsec.SystemAccessRecords;
 import java.io.IOException;
 import java.io.PrintWriter;
-import javax.naming.NamingException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.springframework.web.context.WebApplicationContext;
-import org.springframework.web.context.support.WebApplicationContextUtils;
 
 
 /**
@@ -21,7 +21,8 @@ import org.springframework.web.context.support.WebApplicationContextUtils;
  */
 public class DeriveCas extends HttpServlet {
 
-        private EnterpriseAuthority _idvault;
+        private Enterprise _idvault;
+        private SystemAccessRecords _sar;
 
         @Override
         /**
@@ -29,9 +30,10 @@ public class DeriveCas extends HttpServlet {
          * not type-safe, but simpler than @Autowired magic.
          */
         public void init() {
-                WebApplicationContext springContext =
-                        WebApplicationContextUtils.getWebApplicationContext(getServletContext());
-                _idvault = (EnterpriseAuthority) springContext.getBean("enterpriseAuthority");
+                _idvault = (Enterprise) SpringServletHelper.getBean(getServletContext(),
+                        Enterprise.class);
+                _sar = (SystemAccessRecords) SpringServletHelper.getBean(getServletContext(),
+                        SystemAccessRecords.class);
         }
 
         /**
@@ -44,7 +46,7 @@ public class DeriveCas extends HttpServlet {
                 throws ServletException, IOException {
                 PrintWriter out = a.getWriter();
                 try {
-                        CASCheck guard = new CASCheck(q);
+                        CASCheck guard = CASCheck.asTicket(q);
 
                         a.setContentType("text/html; charset=utf-8");
 
@@ -57,16 +59,20 @@ public class DeriveCas extends HttpServlet {
                         }
                         if (q.getParameter("ldap") != null) {
                                 out.println(elt("p", "ldap"));
+                                Agent who;
                                 try {
-                                        out.println(elt("p", "employee name: " + _idvault.getFullName(guard)));
-                                        out.println(elt("p", "employee email: " + _idvault.getMail(guard)));
-                                } catch (NamingException ex) {
+                                        who = _idvault.affiliate(guard.getName());
+                                } catch (SecurityException ex) {
                                         throw new ServletException(ex);
                                 }
+                                out.println(elt("p", "employee name: " + who.getFullName()));
+                                out.println(elt("p", "employee email: " + who.getMail()));
+
                         }
                         if (q.getParameter("sponsor") != null) {
+                                Sponsor who = _sar.asSponsor(guard);
                                 out.println(elt("p", "sponsor"));
-                                out.println(elt("p", "sponsorship: " + _idvault.sponsorship(guard)));
+                                out.println(elt("p", "sponsorship: " + guard.getName()));
                         }
                         out.println("</body></html>");
                 } catch (Exception ex) {

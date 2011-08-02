@@ -3,6 +3,7 @@
 
 package edu.kumc.informatics.heron.util;
 
+import edu.kumc.informatics.heron.capsec.Ticket;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.ServletException;
 
@@ -13,19 +14,20 @@ import org.jasig.cas.client.validation.Assertion;
  * A CASCheck derives other capabilities from a CAS-authenticated HttpServletRequest.
  * @author dconnolly
  */
-public class CASCheck {
+public class CASCheck implements Ticket {
         private final String _name;
 
-        private static final ServletException noCAS = new ServletException(
-                                "cannot make CASCap without session attribute: " +
-                                AbstractCasFilter.CONST_CAS_ASSERTION);
-
-        public String getName() throws ServletException {
-                if (_name == null) {
-                        throw noCAS;
-                }
+        @Override
+        public String getName() {
                 return _name;
         }
+
+        protected CASCheck (String name) {
+                _name = name;
+        }
+
+        protected static final SecurityException denied =
+                new SecurityException("no CAS ticket");
 
         /**
          * Derive a CASCap from a CAS-filtered HttpServletRequest.
@@ -33,15 +35,14 @@ public class CASCheck {
          * @return a CASCap that gives access to the name of the authenticated CAS Principal.
          * @throws ServletException if the request's session has no CAS assertion attribute.
          */
-        public CASCheck (HttpServletRequest request) {
+        public static CASCheck asTicket(HttpServletRequest request)  throws SecurityException {
                 // Rescue Assertion from un-typesafe attribute mapping.
                 Assertion it = (Assertion)request.getSession().getAttribute(
                         AbstractCasFilter.CONST_CAS_ASSERTION);
                 if (it == null){
-                        _name = null;
-                } else {
-                        _name = it.getPrincipal().getName();
+                        throw denied;
                 }
-        }
 
+                return new CASCheck(it.getPrincipal().getName());
+        }
 }

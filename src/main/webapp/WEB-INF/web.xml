@@ -148,4 +148,13 @@
     <url-pattern>/DeriveCas</url-pattern>
   </servlet-mapping>
 
+  <filter>
+    <filter-name>QualifiedFaculty</filter-name>
+    <filter-class>edu.kumc.informatics.heron.servlet.QualifiedFacultyFilter</filter-class>
+  </filter>
+  <filter-mapping>
+    <filter-name>QualifiedFaculty</filter-name>
+    <url-pattern>/u/fac/*</url-pattern>
+  </filter-mapping>
+
 </web-app>

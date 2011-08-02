@@ -37,7 +37,7 @@ public class CASCapTest {
         }
 
         @Test
-        @ExpectedException(ServletException.class)
+        @ExpectedException(SecurityException.class)
         public void preventUnauthenticatedRequests() throws ServletException, IOException {
                 HttpServlet s0 = new CASCapTestServlet();
                 s0.service(_q, _a);
@@ -54,7 +54,7 @@ public class CASCapTest {
                 @Override
                 public void doGet(HttpServletRequest q, HttpServletResponse a) throws ServletException, IOException {
                         a.setContentType("text/plain");
-                        CASCheck cap0 = new CASCheck(q);
+                        CASCheck cap0 = CASCheck.asTicket(q);
                         a.getWriter().print(cap0.getName());
                 }
         }
