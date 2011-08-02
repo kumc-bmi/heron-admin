@@ -58,7 +58,31 @@ public class SponsorshipServlet extends HttpServlet {
 	 */
         @Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		doPost(request,response);
+		String initType = request.getParameter("init_type");
+
+                if (initType != null) {
+                        String uid = request.getRemoteUser();
+                        String[] info = ldapUtil.getUserInfo(uid);
+                        HttpSession session = request.getSession();
+                        session.setAttribute(USER_FULL_NAME, info[0]);
+                        session.setAttribute(USER_TITLE, info[2]);
+                        boolean isQualified = dbUtil.checkQualification(info[1], info[3], uid);
+
+                        if (!isQualified) {
+                                String message = "sorry, only qualified falcuties who have signed HERON system access agreement can use this functionality."
+                                        + "<p><p> Please use link <a href=\"AuthServlet?SPNSR=Y&init_type="
+                                        + initType + "\">Sign System Access Agreement</a> if you a qualified faculty.";
+                                request.setAttribute(VAL_MESSAGE, message);
+                                RequestDispatcher rd = request.getRequestDispatcher(GEN_DISPLAY_URL);
+                                rd.forward(request, response);
+                        } else {
+                                String url = initType.equals(VIEW_ONLY) ? SPONSOR_URL : DATA_USAGE_URL;
+                                RequestDispatcher rd = request.getRequestDispatcher(url);
+                                rd.forward(request, response);
+                        }
+                } else {
+                        response.sendRedirect(DENIED_URL);
+                }
 	}
 
 	/**
@@ -69,30 +93,7 @@ public class SponsorshipServlet extends HttpServlet {
 		String type = request.getParameter("agreementbtn");
 		String initType = request.getParameter("init_type");
 		
-		//TODO: move initial display to doGet.
-		if(initType!=null){
-			String uid = request.getRemoteUser();
-			String[] info = ldapUtil.getUserInfo(uid);	
-			HttpSession session = request.getSession();
-			session.setAttribute(USER_FULL_NAME, info[0]);
-			session.setAttribute(USER_TITLE, info[2]);
-			boolean isQualified = dbUtil.checkQualification(info[1],info[3],uid);
-			
-			if(!isQualified){
-				String message = "sorry, only qualified falcuties who have signed HERON system access agreement can use this functionality."
-					+ "<p><p> Please use link <a href=\"AuthServlet?SPNSR=Y&init_type="+
-					initType + "\">Sign System Access Agreement</a> if you a qualified faculty.";
-				request.setAttribute(VAL_MESSAGE, message);
-				RequestDispatcher rd = request.getRequestDispatcher(GEN_DISPLAY_URL);
-				rd.forward(request, response);
-			}
-			else{
-				String url = initType.equals(VIEW_ONLY)?SPONSOR_URL:DATA_USAGE_URL;
-				RequestDispatcher rd = request.getRequestDispatcher(url);
-				rd.forward(request, response);
-			}
-		}
-		else if("Accept and Submit".equals(type)){//submit sponsorship
+		if("Accept and Submit".equals(type)){//submit sponsorship
 			String spnsrType = request.getParameter("spnsr_type");
 			String backUrl = spnsrType.equals(VIEW_ONLY)?SPONSOR_URL:DATA_USAGE_URL;
 			String message = validateInput(request);
