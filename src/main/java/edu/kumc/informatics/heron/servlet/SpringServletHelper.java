@@ -11,7 +11,10 @@ import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.context.support.WebApplicationContextUtils;
 
 /**
- *
+ * TODO: get bean by name rather than by type; the indirection
+ *       is a little awkward, but otherwise we lose the whole point
+ *       of injection, which is the ability to substitute mock
+ *       objects for testing.
  * @author dconnolly
  */
 public class SpringServletHelper {
