@@ -26,9 +26,10 @@ public class DROCSponsoring {
 
 
         public void postRequest(String title, Sponsor a1, Agent a2) {
-                SimpleMailMessage msg = new SimpleMailMessage(_templateMessage);
-                msg.setTo(mailboxes());
-                _mailSender.send(msg);
+                throw new UnsupportedOperationException("not yet implemented");
+//                SimpleMailMessage msg = new SimpleMailMessage(_templateMessage);
+//                msg.setTo(mailboxes());
+//                _mailSender.send(msg);
         }
 
         public String mailboxes() {
