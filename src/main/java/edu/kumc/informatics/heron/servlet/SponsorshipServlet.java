@@ -19,6 +19,11 @@ import edu.kumc.informatics.heron.util.BasicUtil;
 import edu.kumc.informatics.heron.util.DBUtil;
 import edu.kumc.informatics.heron.util.LdapUtil;
 import edu.kumc.informatics.heron.util.StaticDataUtil;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Vector;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.context.support.WebApplicationContextUtils;
 
@@ -138,7 +143,7 @@ public class SponsorshipServlet extends HttpServlet {
 			msg += "Title of Research is required. ";
 		if(resDesc==null || resDesc.trim().equals(""))
 			msg += "Description of the Research is required. ";
-		if(!bUtil.hasRealValueInString(empls, ";") && !bUtil.hasRealValueInString(nonEmpls, ";"))
+		if(!hasRealValueInString(empls, ";") && !hasRealValueInString(nonEmpls, ";"))
 			msg += "Must enter employee Id(s) or non-KUMC employee Id(s). ";
 		if((expDate!=null&& !expDate.trim().equals("")) && !bUtil.checkDateFormat(expDate))
 			msg += "Expiration Date format invalid. ";
@@ -178,7 +183,7 @@ public class SponsorshipServlet extends HttpServlet {
 				msg += "The following non-KUMC employee id not in LDAP: "+nonEmplIdLdapMsg +". ";
 		}
 		String spnsrType = request.getParameter("spnsr_type");
-		if(bUtil.hasRealValueInString(empls, ";") || bUtil.hasRealValueInString(nonEmpls, ";")){
+		if(hasRealValueInString(empls, ";") || hasRealValueInString(nonEmpls, ";")){
 			String sponsoredMsg =  dbUtil.isSponsoredCheck(empls,pureIdArray,resTitle,resDesc,spnsrType);
 			if(!"".equals(sponsoredMsg))
 				msg += "The following ID(s) has already been sponsored for the same research title and description: "+sponsoredMsg+". ";
@@ -198,6 +203,98 @@ public class SponsorshipServlet extends HttpServlet {
 	    return msg;
 	}
 
+        /**
+         * Parse (name [description]?)+ string.
+         * 
+         * This is a hokey UI; we should use separate form fields.
+         * @param text
+         * @return a list of names and descriptions
+         * @throws IllegalArgumentException if the format is bad
+         */
+        protected List<Pair<String, String>> parseNonEmployees(String text) {
+                assert text != null;
+
+                String[] parts = text.split("\\s*;\\s*");
+                if (parts.length < 1) {
+                        throw new IllegalArgumentException("expected at least one name; found none.");
+                }
+
+                Pattern personDesc = Pattern.compile(
+                        "\\s*([^;\\[\\]\\s]+)\\s*(?:\\[([^\\[\\];]+)\\])?\\s*;?");
+                ArrayList<Pair<String, String>> out = new ArrayList<Pair<String, String>>(parts.length);
+
+                for (String part: parts) {
+                        Matcher m = personDesc.matcher(part);
+
+                        if (m.matches()) {
+                                out.add(new Pair<String, String>(m.group(1), m.group(2)));
+                        } else {
+                                throw new IllegalArgumentException(
+                                        "expected name [description]; found: " + part);
+                        }
+                }
+
+                return out;
+        }
+
+        /**
+         * cribbed from http://stackoverflow.com/questions/521171/a-java-collection-of-value-pairs-tuples/521235#521235
+         */
+        public class Pair<L,R> {
+
+                private final L left;
+                private final R right;
+
+                public Pair(L left, R right) {
+                        this.left = left;
+                        this.right = right;
+                }
+
+                public L getLeft() {
+                        return left;
+                }
+                public R getRight() {
+                        return right;
+                }
+
+                @Override
+                public int hashCode() {
+                        return left.hashCode() ^ right.hashCode();
+                }
+
+                @Override
+                public boolean equals(Object o) {
+                        if (o == null) {
+                                return false;
+                        }
+                        if (!(o instanceof Pair)) {
+                                return false;
+                        }
+                        Pair pairo = (Pair) o;
+                        return this.left.equals(pairo.getLeft())
+                                &&
+ this.right.equals(pairo.getRight());
+                }
+        }
+
+
+        	/**
+	 * check if a string has real value(s) (other than spaces) separated by the delimiter
+	 * @param aString
+	 * @param delimiter
+	 * @return true if has real value(s) (other than spaces) separated by the delimiter
+	 */
+	protected boolean hasRealValueInString(String aString, String delimiter){
+		if(aString!=null){
+			String[] infos = aString.split(delimiter);
+			for(String val:infos){
+				if(val!=null && !val.trim().equals("")){
+					return true;
+				}
+			}
+		}
+		return false;
+	}
 
         // cf http://static.springsource.org/spring/docs/2.0.6/reference/mail.html
         private MailSender mailSender;
