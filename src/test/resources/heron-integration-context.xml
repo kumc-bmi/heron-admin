@@ -8,6 +8,16 @@ TODO: consider using Spring mock JNDI in order to be more similar to deployment 
         xsi:schemaLocation="http://www.springframework.org/schema/beans
         http://www.springframework.org/schema/beans/spring-beans-2.5.xsd">
 
+  <bean id="userAccessData"  scope="singleton"
+        class="edu.kumc.informatics.heron.util.DBUtil">
+    <constructor-arg>
+      <ref bean="heronDao" />
+    </constructor-arg>
+    <constructor-arg>
+      <ref bean="chalkDBDao" />
+    </constructor-arg>
+  </bean>
+
   <bean id="heronDao" class="edu.kumc.informatics.heron.dao.HeronDBDao">
     <property name="dataSource" ref="dataSource" />
   </bean>

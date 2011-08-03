@@ -3,10 +3,21 @@
 
 package edu.kumc.informatics.heron.capsec;
 
+import java.security.acl.NotOwnerException;
+
 /**
  *
  * @author dconnolly
  */
 public interface Sponsor {
-	public void fileRequest(String title, Agent who);
+        /**
+         *
+         * @param title
+         * @param who
+         * TODO: more params
+         * @throws NotOwnerException if who is not from the same enterprise
+         *         as this sponsor.
+         */
+	public void fileRequest(String title, Agent who)
+                throws NotOwnerException;
 }

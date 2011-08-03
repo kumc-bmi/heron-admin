@@ -4,11 +4,10 @@
 package edu.kumc.informatics.heron.util;
 
 import edu.kumc.informatics.heron.capsec.Agent;
-import edu.kumc.informatics.heron.capsec.Enterprise;
+import edu.kumc.informatics.heron.capsec.LDAPEnterprise;
 import edu.kumc.informatics.heron.capsec.Ticket;
 import javax.naming.NamingException;
 import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
 import org.junit.Test;
 import org.junit.Assert;
 import org.junit.runner.RunWith;
@@ -21,7 +20,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(locations={"classpath:ldap-context.xml"})
-public class EnterpriseAuthorityTest {
+public class EnterpriseTest {
 
         @Autowired
         LdapTemplate t;
@@ -39,13 +38,17 @@ public class EnterpriseAuthorityTest {
                 Assert.assertEquals("dconnolly@kumc.edu", who.getMail());
         }
 
-        static class MockEnterprise extends Enterprise {
+        /**
+         * TODO: use mock LDAP to turn this from integration to unit test.
+         */
+        static class MockEnterprise extends LDAPEnterprise {
                 public MockEnterprise(LdapTemplate t) {
                         super(t);
                 }
         }
 
         static class MockCASCheck implements Ticket {
+                @Override
                 public String getName() {
                         return "dconnolly";
                 }

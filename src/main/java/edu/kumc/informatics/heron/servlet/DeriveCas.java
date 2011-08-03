@@ -4,8 +4,8 @@
 package edu.kumc.informatics.heron.servlet;
 
 import edu.kumc.informatics.heron.capsec.Agent;
-import edu.kumc.informatics.heron.util.CASCheck;
 import edu.kumc.informatics.heron.capsec.Enterprise;
+import edu.kumc.informatics.heron.util.CASCheck;
 import edu.kumc.informatics.heron.capsec.Sponsor;
 import edu.kumc.informatics.heron.capsec.SystemAccessRecords;
 import java.io.IOException;
@@ -31,9 +31,9 @@ public class DeriveCas extends HttpServlet {
          */
         public void init() {
                 _idvault = (Enterprise) SpringServletHelper.getBean(getServletContext(),
-                        Enterprise.class);
+                        Enterprise.beanName);
                 _sar = (SystemAccessRecords) SpringServletHelper.getBean(getServletContext(),
-                        SystemAccessRecords.class);
+                        SystemAccessRecords.beanName);
         }
 
         /**

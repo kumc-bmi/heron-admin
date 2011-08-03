@@ -2,8 +2,6 @@
 
 package edu.kumc.informatics.heron.servlet;
 
-import edu.kumc.informatics.heron.capsec.Enterprise;
-import edu.kumc.informatics.heron.util.CASCheck;
 import java.io.IOException;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -13,6 +11,8 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import edu.kumc.informatics.heron.capsec.Enterprise;
+import edu.kumc.informatics.heron.util.CASCheck;
 
 /**
  * Filter out requests that do not come from qualified faculty.
@@ -29,7 +29,7 @@ public class QualifiedFacultyFilter implements Filter {
         @Override
         public void init(FilterConfig fc) throws ServletException {
                 _idvault = (Enterprise) SpringServletHelper.getBean(fc.getServletContext(),
-                        Enterprise.class);
+                        Enterprise.beanName);
         }
 
         @Override

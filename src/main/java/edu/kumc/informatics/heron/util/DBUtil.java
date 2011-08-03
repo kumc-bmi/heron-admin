@@ -6,6 +6,7 @@
  */
 package edu.kumc.informatics.heron.util;
 
+import java.util.List;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Enumeration;
@@ -21,6 +22,7 @@ import org.apache.commons.logging.LogFactory;
 
 import edu.kumc.informatics.heron.dao.ChalkDBDao;
 import edu.kumc.informatics.heron.dao.HeronDBDao;
+import edu.kumc.informatics.heron.servlet.SponsorshipServlet;
 import static edu.kumc.informatics.heron.base.StaticValues.*;
 
 public class DBUtil {
@@ -29,7 +31,11 @@ public class DBUtil {
 	private BasicUtil bUtil = new BasicUtil();
 	//can have other dao too...
 	private static Log log = LogFactory.getLog(DBUtil.class);
-	
+
+        public static interface Beans {
+                String USER_ACCESS_DATA = "userAccessData";
+        }
+
         /**
          * TODO: get rid of this in favor of injection.
          */
@@ -138,8 +144,8 @@ public class DBUtil {
 		String uid = request.getRemoteUser();
 		String[] empIdArray = empIds.split(";");
 		HttpSession session = request.getSession();
-		String[] nonEmpIdArray = (String[])session.getAttribute(NON_EMP_IDS);
-		String[] nonEmpDescArray = (String[])session.getAttribute(NON_EMP_DESCS);
+		String[] nonEmpIdArray = (String[])session.getAttribute(SponsorshipServlet.Form.NON_EMP_IDS);
+		String[] nonEmpDescArray = (String[])session.getAttribute(SponsorshipServlet.Form.NON_EMP_DESCS);
 		heronDao.insertSponsorships(resTitle,resDesc,empIdArray,nonEmpIdArray,expDate,uid,spnsrType,sigName,sigDate,nonEmpDescArray);
 	}
 	
@@ -235,42 +241,9 @@ public class DBUtil {
 	 * @param projDesc
 	 * @return string with ids already sponsored in heron
 	 */
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public String isSponsoredCheck(String emplIdString,String[] nonEmplIds,String projTitle,String projDesc,String spnsrType){
-		String[] empIds = new String[]{};
-		if(emplIdString!=null && !emplIdString.trim().equals("")){
-			empIds = emplIdString.split(",");
-		}
-		Vector vect = new Vector();
-		for(String id : empIds){
-			if(!id.trim().equals(""))
-				vect.add(id);
-		}
-		if(nonEmplIds!=null){
-			for(String id : nonEmplIds){
-				if(!id.trim().equals(""))
-					vect.add(id);
-			}
-		}
-		return heronDao.getSponsoredIds(buildIdList(vect),projTitle,projDesc,spnsrType);		
-	}
-		
-	/**
-	 * build string of comma separated ids
-	 * @param ids
-	 * @return string of comma separated ids or empty string
-	 */
-	private String buildIdList(Vector ids){
-		StringBuffer bf = new StringBuffer("");
+	public String isSponsoredCheck(List<String> ids,String projTitle,String projDesc,String spnsrType){
 
-		for(int i=0;i<ids.size();i++){
-			bf.append("'");
-			bf.append(ids.get(i));
-			bf.append("'");
-			if(i<ids.size()-1)
-				bf.append(",");
-		}
-		return bf.toString();
+		return heronDao.getSponsoredIds(Functional.mkString(ids, spnsrType),projTitle,projDesc,spnsrType);
 	}
 	
 	/**

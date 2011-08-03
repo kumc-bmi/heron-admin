@@ -1,5 +1,9 @@
 package edu.kumc.informatics.heron.base;
 
+/**
+ * @deprecated TODO: refactor to reduce coupling
+ */
+@Deprecated
 public interface StaticValues {
 	String CHALK_URL = "chalk_url";
 	String CAS_LOGIN_URL = "cas_login_url";
@@ -21,13 +25,11 @@ public interface StaticValues {
 	String LDAP_PROV_URL = "ldap_prov_url";
 	String LDAP_PRINCIPAL = "ldap_principal";
 	String LDAP_CREDENTIAL = "ldap_credential";
-	String VIEW_ONLY = "VIEW_ONLY";
-	String DATA_ACCESS = "DATA_ACCESS";
+        String VIEW_ONLY = "VIEW_ONLY";
+        String DATA_ACCESS = "DATA_ACCESS";
 	String EXCLUDED_JOBCODE="excluded_jobcode";
 	String HOME_URL = "index.jsp";
 	String RAVEN_URL = "raven_url";
-	String NON_EMP_IDS = "NON_EMP_IDS";
-	String NON_EMP_DESCS = "NON_EMP_DESCS";
 	String DISCLAIMER_URL ="disclaimer.jsp";
 	String PROJECT_SCHEMA="project_schema";
 	String USER_ROLES_LIST = "USER_ROLES_LIST";

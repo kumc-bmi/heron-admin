@@ -18,6 +18,7 @@ import javax.mail.internet.MimeMessage;
  * @author dongsheng zhu
  *
  */
+@Deprecated
 public class BasicUtil {
 	private LdapUtil ldapUtil = new LdapUtil();
 	private Properties props = StaticDataUtil.getSoleInstance().getProperties();
@@ -25,54 +26,16 @@ public class BasicUtil {
 	 * check if a date string is valid
 	 * @param aDate
 	 * @return true if valid, false otherwise
+         * @deprecated in favor of java.text.SimpleDateFormat
 	 */
+        @Deprecated
 	public boolean checkDateFormat(String aDate){
 		String expression = "(0[1-9]|1[0-2])[/](0[1-9]|[12][0-9]|3[01])[/]\\d{4}"; 
 		Pattern p = Pattern.compile(expression);
 	    Matcher m = p.matcher(aDate);
 	    return m.matches();
 	}
-	
-	/**
-	 * check if any id in the ids string not valid.
-	 * @param ids: id separated by ;
-	 * @return the ids which not in ldap.
-	 */
-	public String ldapCheck(String ids){
-		StringBuffer badIds = new StringBuffer("");
-	
-		if(ids!=null && !ids.trim().equals("")){
-			String[] allIds = ids.split(";");
-			for(int i=0; i<allIds.length;i++){
-				if(allIds[i]!=null && !allIds[i].trim().equals("")){
-					if(!ldapUtil.isUserInLdap(allIds[i].trim())) {
-						badIds.append(allIds[i]);
-						badIds.append(" ");
-					}
-				}
-			}
-		}
-		return badIds.toString();
-	}
-	
-	/**
-	 * check if any id in the string[] not valid.
-	 * @param allIds
-	 * @return the ids which are not in ldap.
-	 */
-	public String ldapCheck(String[] allIds){
-		StringBuffer badIds = new StringBuffer("");
-	
-		for(int i=0; i<allIds.length;i++){
-			if(allIds[i]!=null && !allIds[i].trim().equals("")){
-				if(!ldapUtil.isUserInLdap(allIds[i].trim())) {
-					badIds.append(allIds[i]);
-					badIds.append(" ");
-				}
-			}
-		}
-		return badIds.toString();
-	}
+
 	
 	/**
 	 * common method to send email
@@ -82,7 +45,9 @@ public class BasicUtil {
 	 * @param contn
 	 * @param host
 	 * @param ccEmails
+         * @deprecated in favor of Spring mail
 	 */
+        @Deprecated
 	public void sendEmails(String fromAddr, String toEmails, String subj, String contn,String host,String ccEmails){
 		try {
 		      Properties props = new Properties();
@@ -130,23 +95,5 @@ public class BasicUtil {
 		}
 		contn += "Sincerely, \n \n"+ "The HERON Team.";
 		this.sendEmails("heron-admin@kumc.edu", spnsrInfo[4], subj, contn, "smtp.kumc.edu",userInfo[4]);
-	}
-	
-	/**
-	 * check if a string has real value(s) (other than spaces) separated by the delimiter
-	 * @param aString
-	 * @param delimiter
-	 * @return true if has real value(s) (other than spaces) separated by the delimiter
-	 */
-	public boolean hasRealValueInString(String aString, String delimiter){
-		if(aString!=null){
-			String[] infos = aString.split(delimiter);
-			for(String val:infos){
-				if(val!=null && !val.trim().equals("")){
-					return true;
-				}
-			}
-		}
-		return false;
 	}
 }
