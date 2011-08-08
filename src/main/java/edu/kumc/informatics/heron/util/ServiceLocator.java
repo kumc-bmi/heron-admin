@@ -16,9 +16,6 @@ import java.util.Properties;
 
 import javax.ejb.EJBLocalHome;
 
-import javax.jms.Queue;
-import javax.jms.QueueConnectionFactory;
-
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -143,50 +140,7 @@ public class ServiceLocator {
         return props;
     }
 
-    /**
-    * @return the factory for the factory to get queue connections from
-    */
-    public QueueConnectionFactory getQueueConnectionFactory(
-        String qConnFactoryName) throws Exception {
-        QueueConnectionFactory factory = null;
 
-        try {
-            if (cache.containsKey(qConnFactoryName)) {
-                factory = (QueueConnectionFactory) cache.get(qConnFactoryName);
-            } else {
-                factory = (QueueConnectionFactory) ic.lookup(qConnFactoryName);
-                cache.put(qConnFactoryName, factory);
-            }
-        } catch (NamingException ne) {
-            throw new Exception(ne);
-        } catch (Exception e) {
-            throw new Exception(e);
-        }
-
-        return factory;
-    }
-
-    /**
-     * @return the Queue Destination to send messages to
-     */
-    public Queue getQueue(String queueName) throws Exception {
-        Queue queue = null;
-
-        try {
-            if (cache.containsKey(queueName)) {
-                queue = (Queue) cache.get(queueName);
-            } else {
-                queue = (Queue) ic.lookup(queueName);
-                cache.put(queueName, queue);
-            }
-        } catch (NamingException ne) {
-            throw new Exception(ne);
-        } catch (Exception e) {
-            throw new Exception(e);
-        }
-
-        return queue;
-    }
 
     /**
      * will get the ejb Local home factory. If this ejb home factory has already been
