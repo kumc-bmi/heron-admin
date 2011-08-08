@@ -4,6 +4,7 @@
 package edu.kumc.informatics.heron.capsec;
 
 import edu.kumc.informatics.heron.dao.HeronDBDao;
+import javax.naming.NameNotFoundException;
 import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
 
@@ -32,7 +33,7 @@ public class DROCSponsoring {
 //                _mailSender.send(msg);
         }
 
-        public String mailboxes() {
+        public String mailboxes() throws NameNotFoundException {
                 StringBuilder accum = new StringBuilder();
 
                 for (String n: _heronData.getDrocIds()) {

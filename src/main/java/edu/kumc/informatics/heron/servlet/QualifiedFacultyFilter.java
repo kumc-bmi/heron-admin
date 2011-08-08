@@ -3,6 +3,9 @@
 package edu.kumc.informatics.heron.servlet;
 
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.naming.NoPermissionException;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -39,7 +42,7 @@ public class QualifiedFacultyFilter implements Filter {
                 try {
                         q.setAttribute(QualifiedFacultyFilter.class.getName(),
                                 _idvault.qualifiedFaculty(CASCheck.asTicket(hq)));
-                } catch (SecurityException e) {
+                } catch (NoPermissionException ex) {                        
                         ha.sendError(javax.servlet.http.HttpServletResponse.SC_FORBIDDEN);
                         return;
                 }
