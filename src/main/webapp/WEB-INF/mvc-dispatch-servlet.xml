@@ -4,18 +4,14 @@
        http://www.springframework.org/schema/beans/spring-beans-2.5.xsd">
 
   <!-- Spring MVC application context definition -->
-  <!-- cribbed from http://static.springsource.org/docs/Spring-MVC-step-by-step/part2.html -->
 
-<!-- @@TODO: get /heron-admin/ out of here 
-  <bean name="/heron-admin/u/myChecklist.html" class="edu.kumc.informatics.heron.servlet.MyChecklist"/>
--->
   <bean name="myChecklist" class="edu.kumc.informatics.heron.servlet.MyChecklist"/>
 
   <bean id="urlMapper"
         class="org.springframework.web.servlet.handler.SimpleUrlHandlerMapping">
     <property name="mappings">
       <props>
-        <prop key="/u/**">myChecklist</prop>
+        <prop key="/u/myChecklist">myChecklist</prop>
       </props>
     </property>
     <property name="alwaysUseFullPath">
@@ -24,8 +20,10 @@
   </bean>
         
   <bean id="viewResolver" class="org.springframework.web.servlet.view.InternalResourceViewResolver">
-    <property name="viewClass" value="org.springframework.web.servlet.view.JstlView" />
-    <property name="prefix" value="/WEB-INF/"/>
-    <property name="suffix" value=".jsp"/>
+    <!-- <property name="viewClass" value="org.springframework.web.servlet.view.JstlView" /> -->
+    <property name="viewClass" value="edu.kumc.informatics.heron.servlet.StringTemplateView" />
+    <property name="prefix" value="/WEB-INF/templates/"/>
+    <property name="suffix" value=".html"/>
+    <property name="requestContextAttribute" value="rc"/>
   </bean>
 </beans>
