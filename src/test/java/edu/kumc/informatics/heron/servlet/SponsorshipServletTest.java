@@ -23,9 +23,9 @@ import edu.kumc.informatics.heron.util.Functional;
  *
  * @author dconnolly
  */
-@RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration(locations={"classpath:heron-integration-context.xml"})
-public class SponsorshipServletTest extends AbstractTransactionalDataSourceSpringContextTests {
+// @RunWith(SpringJUnit4ClassRunner.class)
+//get rid of this? @ContextConfiguration(locations={"classpath:heron-integration-context.xml"})
+public class SponsorshipServletTest  {
 
         @Test
         public void parsingATrivialDescription() {

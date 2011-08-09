@@ -16,8 +16,9 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.ldap.core.LdapTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.test.annotation.IfProfileValue;
 
-
+@IfProfileValue(name="test-groups", values={"integration-tests"})
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(locations={"classpath:ldap-context.xml"})
 public class EnterpriseTest {

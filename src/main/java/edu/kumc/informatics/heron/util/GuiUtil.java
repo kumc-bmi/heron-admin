@@ -1,5 +1,13 @@
 package edu.kumc.informatics.heron.util;
 
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.xml.parsers.ParserConfigurationException;
+import java.io.StringReader;
+import org.xml.sax.InputSource;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.util.List;
 
 import javax.servlet.http.HttpSession;
@@ -11,10 +19,11 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import edu.harvard.i2b2.common.util.xml.XMLUtil;
+//import edu.harvard.i2b2.common.util.xml.XMLUtil;
 import edu.kumc.informatics.heron.dao.HeronDBDao;
 import edu.kumc.informatics.heron.dao.HeronReportsDao;
 import static edu.kumc.informatics.heron.base.StaticValues.*;
+import org.xml.sax.SAXException;
 
 /**
  * build gui components. 
@@ -243,7 +252,7 @@ public class GuiUtil {
 				String rSize = ((ListOrderedMap)aMap).get("real_set_size")+"";
 				String description = ((ListOrderedMap)aMap).get("description")+"";
 				String rowStyle = i%2==0?"<tr class=\"d0\"><td>":"<tr class=\"d1\"><td>";
-				Document doc = XMLUtil.convertStringToDOM(qxml);
+				Document doc = convertStringToDOM(qxml);
 				NodeList nList = doc.getElementsByTagName("panel");
 				
 				bf.append(rowStyle);
@@ -339,4 +348,32 @@ public class GuiUtil {
 		}
 		return roles;
 	}
+
+        /**
+         * Convert string to DOM document
+         * @param xmlString
+         * @return xmlString parsed into DOM 
+         * @throws SAXException 
+         */
+    protected static Document convertStringToDOM(String xmlString) throws SAXException {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
+        
+        Document document;
+        DocumentBuilder builder;
+
+        try {
+            builder = factory.newDocumentBuilder();
+        } catch (ParserConfigurationException ex) {
+            throw new RuntimeException(ex);
+        }
+        try {
+            document = builder.parse(new InputSource(
+                    new StringReader(xmlString)));
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+
+        return document;
+    }
 }

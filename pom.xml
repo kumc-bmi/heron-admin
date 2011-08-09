@@ -49,27 +49,12 @@
         </profile>
     </profiles>
 
-  <dependencies>
-    <!--
-	http://maven.apache.org/general.html#importing-jars
-	$ mvn install:install-file -Dfile=src/main/webapp/WEB-INF/lib/i2b2Common-core.jar  -DgroupId=edu.harvard -DartifactId=i2b2Common-core -Dversion=1.4 -Dpackaging=jar -DgeneratePom=true
-        odd... why does this produce both i2b2Common-core-1.4.jar and i2b2Common-core.jar in our WEB-INF/lib ?
-    -->
-    <dependency>
-      <groupId>edu.harvard</groupId>
-      <artifactId>i2b2Common-core</artifactId>
-      <version>1.4</version>
-    </dependency>
-    
-    <!-- mvn install:install-file ... again
-        had trouble with the current version:
-        http://search.maven.org/#artifactdetails|org.jasig.cas.client|cas-client|3.2.0|pom
-    -->
+  <dependencies>    
     <!-- TODO: consider org.springframework.security:spring-security-cas-client:3.0.5.RELEASE -->
     <dependency>
       <groupId>org.jasig.cas.client</groupId>
       <artifactId>cas-client-core</artifactId>
-      <version>3.1.1</version>
+      <version>3.2.0</version>
     </dependency>
 
     <!-- Don't put this in our .war file; it conflicts with
@@ -178,8 +163,10 @@
       <scope>test</scope>
     </dependency>
     
-    <!-- Install Oracle and see /opt/oracle/product/10gR2/db/jdbc/lib/ojdbc14.jar
-    or see http://svn.i2b2.org/svn/repos/i2b2/trunk/Maven/lib/jboss/lib/ojdbc14.jar
+    <!-- 
+    http://www.oracle.com/technetwork/database/enterprise-edition/jdbc-10201-088211.html
+    	http://maven.apache.org/general.html#importing-jars
+        mvn install:install-file -DgroupId=com.oracle -DartifactId=ojdbc14 -Dversion=10.2.0.4.0 -Dpackaging=jar -Dfile=/home/connolly/Downloads/ojdbc14.jar
     -->
     <dependency>
       <groupId>com.oracle</groupId>

@@ -10,11 +10,16 @@ import javax.mail.Message;
 import static org.junit.Assert.*;
 
 	import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.test.annotation.IfProfileValue;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
         /**
          * TODO: factor out dependency on real LDAP service. integration test?
          * @author dzhu, dconnolly
          */
+@IfProfileValue(name="test-groups", values={"integration-tests"})
+@RunWith(SpringJUnit4ClassRunner.class)
 	public class LdapUtilTest extends LdapUtil{
 		@Test
 		public void testGetDrocEmails() throws MessagingException{
@@ -26,6 +31,7 @@ import static org.junit.Assert.*;
                         "trusconi", "cgardner", "kgrasso", });
 			assertTrue(addrN.length() > 0);
 
+                        /* TODO: use Spring Mail instead
                         Mailer mailer = new Mailer("smtp.kumc.edu"); // TODO:@@
 
                         Message msg1 = mailer.render("a droc notification", "dconnolly+test@kumc.edu",
@@ -37,7 +43,7 @@ import static org.junit.Assert.*;
                                 "dconnolly@kumc.edu,dconnolly@kumc.edu,", "",
                                 "Dear DROC members, ...");
                         mailer.send(msg0);
-
+*/
 
                 }
 

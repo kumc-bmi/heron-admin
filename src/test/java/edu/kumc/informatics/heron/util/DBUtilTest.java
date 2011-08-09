@@ -16,15 +16,14 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import edu.kumc.informatics.heron.dao.ChalkDBDao;
 import edu.kumc.informatics.heron.dao.HeronDBDao;
+import org.springframework.test.annotation.IfProfileValue;
 
 /**
  * TODO: rename DBUtil class
  * ref http://static.springsource.org/docs/Spring-MVC-step-by-step/part5.html#step5.5
  *
- * TODO: separate unit tests from integration tests; try spring's:
- * @IfProfileValue(name="test-groups", values={"unit-tests", "integration-tests"})
  */
-
+@IfProfileValue(name="test-groups", values={"integration-tests"})
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(locations={"classpath:heron-integration-context.xml"})
 public class DBUtilTest extends AbstractTransactionalDataSourceSpringContextTests {
