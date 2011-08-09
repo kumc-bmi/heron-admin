@@ -10,7 +10,8 @@ TODO: consider re-coding in Java, though the community docs all seem to use XML.
            http://www.springframework.org/schema/beans/spring-beans-2.5.xsd">
 
   <!-- HERON schema, chalk DB, LDAP access -->
-  <bean name="userAccessData"  scope="singleton"
+  <!-- todo: fail fast rather than lazy-init -->
+  <bean name="userAccessData"  scope="singleton"  lazy-init="true"
         class="edu.kumc.informatics.heron.util.DBUtil">
     <constructor-arg>
       <ref bean="heronDao" />
@@ -21,30 +22,30 @@ TODO: consider re-coding in Java, though the community docs all seem to use XML.
   </bean>
 
 
-  <bean name="heronDao" scope="singleton"
+  <bean name="heronDao" scope="singleton"  lazy-init="true"
         class="edu.kumc.informatics.heron.dao.HeronDBDao">
     <property name="dataSource" ref="heronDataSource" />
   </bean>
   <!-- get heronDataSource from JNDI.
        See server/default/deploy/*-ds.xml in JBoss. -->
-  <bean id="heronDataSource"
+  <bean id="heronDataSource"  lazy-init="true"
         class="org.springframework.jndi.JndiObjectFactoryBean">
       <property name="jndiName" value="java:PMBootStrapDS"/>
   </bean>
 
-  <bean name="chalkChecker" scope="singleton"
+  <bean name="chalkChecker" scope="singleton"  lazy-init="true"
         class="edu.kumc.informatics.heron.dao.ChalkDBDao">
     <property name="dataSource" ref="chalkDataSource" />
   </bean>
 
   <!-- get heronDataSource from JNDI -->
-  <bean id="chalkDataSource"
+  <bean id="chalkDataSource"  lazy-init="true"
         class="org.springframework.jndi.JndiObjectFactoryBean">
       <property name="jndiName" value="java:ChalkDS"/>
   </bean>
 
   <!-- for nofiying the DROC from a Servlet-->
-  <bean id="mailSender"  scope="singleton"
+  <bean id="mailSender"  scope="singleton"  lazy-init="true"
         class="org.springframework.mail.javamail.JavaMailSenderImpl">
     <property name="host" value="smtp.kumc.edu"/>
   </bean>
@@ -73,13 +74,13 @@ of the KUMC Department of Biostatistics
   </bean>
 
 
-  <bean name="sar" scope="singleton"
+  <bean name="sar" scope="singleton"  lazy-init="true"
     class="edu.kumc.informatics.heron.capsec.JDBCSystemAccessRecords">
     <constructor-arg><ref bean="enterprise"/></constructor-arg>
     <constructor-arg><ref bean="droc"/></constructor-arg>
     <constructor-arg><ref bean="heronDao"/></constructor-arg>
   </bean>
-  <bean name="droc" scope="singleton"
+  <bean name="droc" scope="singleton"  lazy-init="true"
         class="edu.kumc.informatics.heron.capsec.DROCSponsoring">
     <constructor-arg>
       <ref bean="enterprise"/>
@@ -94,7 +95,7 @@ of the KUMC Department of Biostatistics
       <ref bean="drocNotification"/>
     </constructor-arg>
   </bean>
-  <bean name="enterprise"  scope="singleton"
+  <bean name="enterprise"  scope="singleton"  lazy-init="true"
         class="edu.kumc.informatics.heron.capsec.LDAPEnterprise">
     <constructor-arg>
       <ref bean="search_kumc_idv"/>
