@@ -4,7 +4,7 @@
 package edu.kumc.informatics.heron.servlet;
 
 import edu.kumc.informatics.heron.capsec.Agent;
-import edu.kumc.informatics.heron.capsec.Enterprise;
+import edu.kumc.informatics.heron.capsec.AcademicMedicalCenter;
 import edu.kumc.informatics.heron.util.CASCheck;
 import edu.kumc.informatics.heron.capsec.Sponsor;
 import edu.kumc.informatics.heron.capsec.SystemAccessRecords;
@@ -21,7 +21,7 @@ import javax.servlet.http.HttpServletResponse;
  */
 public class DeriveCas extends HttpServlet {
 
-        private Enterprise _idvault;
+        private AcademicMedicalCenter _idvault;
         private SystemAccessRecords _sar;
 
         @Override
@@ -30,8 +30,8 @@ public class DeriveCas extends HttpServlet {
          * not type-safe, but simpler than @Autowired magic.
          */
         public void init() {
-                _idvault = (Enterprise) SpringServletHelper.getBean(getServletContext(),
-                        Enterprise.beanName);
+                _idvault = (AcademicMedicalCenter) SpringServletHelper.getBean(getServletContext(),
+                        AcademicMedicalCenter.beanName);
                 _sar = (SystemAccessRecords) SpringServletHelper.getBean(getServletContext(),
                         SystemAccessRecords.beanName);
         }

@@ -1,7 +1,7 @@
 /* Copyright (c) 2011 The University of Kansas Medical Center
  * http://informatics.kumc.edu/ */
 
-package edu.kumc.informatics.heron.util;
+package edu.kumc.informatics.heron.capsec;
 
 import edu.kumc.informatics.heron.capsec.Agent;
 import edu.kumc.informatics.heron.capsec.LDAPEnterprise;
@@ -21,7 +21,7 @@ import org.springframework.test.annotation.IfProfileValue;
 @IfProfileValue(name="test-groups", values={"integration-tests"})
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(locations={"classpath:ldap-context.xml"})
-public class EnterpriseTest {
+public class LDAPEnterpriseIntegrationTest {
 
         @Autowired
         LdapTemplate t;

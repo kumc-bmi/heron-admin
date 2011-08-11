@@ -16,9 +16,9 @@ public class DROCSponsoring {
         private final HeronDBDao _heronData; // TODO: refactor
         private final MailSender _mailSender;
         private final SimpleMailMessage _templateMessage;
-        private final Enterprise _enterprise;
+        private final AcademicMedicalCenter _enterprise;
 
-        public DROCSponsoring(Enterprise e, HeronDBDao hd, MailSender ms, SimpleMailMessage sm) {
+        public DROCSponsoring(AcademicMedicalCenter e, HeronDBDao hd, MailSender ms, SimpleMailMessage sm) {
                 _enterprise = e;
                 _heronData = hd;
                 _mailSender = ms;

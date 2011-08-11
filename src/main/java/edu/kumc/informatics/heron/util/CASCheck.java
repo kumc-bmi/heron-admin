@@ -13,7 +13,9 @@ import org.jasig.cas.client.validation.Assertion;
 /**
  * A CASCheck derives other capabilities from a CAS-authenticated HttpServletRequest.
  * @author dconnolly
+ * @deprecated in favor of AcademicMedicalCenter.asTicket()
  */
+@Deprecated
 public class CASCheck implements Ticket {
         private final String _name;
 

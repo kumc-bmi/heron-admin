@@ -20,8 +20,7 @@ import org.springframework.mock.web.MockServletContext;
 import org.springframework.test.annotation.ExpectedException;
 
 /**
- * @@TODO: doc
- * @@TODO: move CASCap.make() to Enterprise
+ * @@TODO: move these tests
  * @author dconnolly
  */
 @RunWith(SpringJUnit4ClassRunner.class)

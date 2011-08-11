@@ -14,7 +14,7 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import edu.kumc.informatics.heron.capsec.Enterprise;
+import edu.kumc.informatics.heron.capsec.AcademicMedicalCenter;
 import edu.kumc.informatics.heron.util.CASCheck;
 
 /**
@@ -27,12 +27,12 @@ import edu.kumc.informatics.heron.util.CASCheck;
  * @author dconnolly
  */
 public class QualifiedFacultyFilter implements Filter {
-        private Enterprise _idvault;
+        private AcademicMedicalCenter _idvault;
 
         @Override
         public void init(FilterConfig fc) throws ServletException {
-                _idvault = (Enterprise) SpringServletHelper.getBean(fc.getServletContext(),
-                        Enterprise.beanName);
+                _idvault = (AcademicMedicalCenter) SpringServletHelper.getBean(fc.getServletContext(),
+                        AcademicMedicalCenter.beanName);
         }
 
         @Override
