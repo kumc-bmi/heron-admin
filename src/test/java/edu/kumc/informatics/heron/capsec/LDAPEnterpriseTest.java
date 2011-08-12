@@ -31,24 +31,26 @@ import org.springframework.mock.web.MockHttpServletRequest;
 
 public class LDAPEnterpriseTest {
 	public static final String mockData = "/mockDirectory.html";
-	LdapTemplate cardsTemplate = new LdapTemplate(new HCardSource());
+	static LdapTemplate cardsTemplate = new LdapTemplate(new HCardSource());
+
+	public static LDAPEnterprise mockMedCenter() {
+		return new LDAPEnterprise(cardsTemplate);
+	}
 
 	@Test
 	public void findKnownAgent() throws NameNotFoundException {
-		LDAPEnterprise e = new LDAPEnterprise(cardsTemplate);
-		Assert.assertEquals("John Smith", e.affiliate("john.smith")
+		Assert.assertEquals("John Smith", mockMedCenter().affiliate("john.smith")
 				.getFullName());
 	}
 
 	@Test(expected = NameNotFoundException.class)
 	public void dontFindUnknownAgent() throws NameNotFoundException {
-		LDAPEnterprise e = new LDAPEnterprise(cardsTemplate);
-		e.affiliate("nobody.we.know");
+		mockMedCenter().affiliate("nobody.we.know");
 	}
 
 	@Test
 	public void findFaculty() throws NoPermissionException, SecurityException {
-		LDAPEnterprise e = new LDAPEnterprise(cardsTemplate);
+		LDAPEnterprise e = mockMedCenter();
 		Agent fac = e
 				.qualifiedFaculty(e.asTicket(mockCASRequest("john.smith")));
 		Assert.assertEquals("John Smith", fac.getFullName());
@@ -57,7 +59,7 @@ public class LDAPEnterpriseTest {
 	@Test(expected = NoPermissionException.class)
 	public void studentNotFaculty() throws NoPermissionException,
 			SecurityException {
-		LDAPEnterprise e = new LDAPEnterprise(cardsTemplate);
+		LDAPEnterprise e = mockMedCenter();
 		e.qualifiedFaculty(e.asTicket(mockCASRequest("bill.student")));
 	}
 
