@@ -24,24 +24,7 @@ https://www.owasp.org/index.php?title=Transport_Layer_Protection_Cheat_Sheet#Rul
       <xsl:apply-templates />
 
       <link rel="stylesheet" type="text/css"
-          href="https://www.kumc.edu/css/template2009/reset.css" />
-      <link rel="stylesheet" type="text/css"
-          href="https://www.kumc.edu/css/template2009/grid-min.css" />
-      <link rel="stylesheet" type="text/css"
-          href="https://www.kumc.edu/css/template2009/kulayout.css" />
-      <link rel="stylesheet" type="text/css"
-          href="https://www.kumc.edu/css/template2009/kupresentation.css" />
-
-
-    <!--[if IE 6]>
-      <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/css/template2009/ku_ie6.css" />
-    <![endif]--><!--[if IE 7]>
-      <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/css/template2009/ku_ie7.css" />
-    <![endif]--><!--[if IE 8]>
-      <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/css/template2009/ku_ie8.css" />
-    <![endif]-->
-      <link rel="stylesheet" type="text/css"
-    href="https://www.kumc.edu/css/template2009/kuprint.css" media="print" />
+	    href="https://www.kumc.edu/css/template2009/ku-sec.css" />
       <link rel="shortcut icon" href="https://www.ku.edu/favicon.ico" />
       <script src="https://www.kumc.edu/js/jquery/jquery-1.3.2/jquery-1.3.2.min.js" type="text/javascript">
     do_not_collapse=1;
@@ -151,7 +134,7 @@ https://www.owasp.org/index.php?title=Transport_Layer_Protection_Cheat_Sheet#Rul
 	    href="http://frontiers.kumc.edu/"
             >Frontiers
                   </a>&#160;&gt;&#160;
-                  <a href="http://raven.kumc.edu/">Raven</a>
+                  <a href="https://raven.kumc.edu/">Raven</a>
                   &#160;&gt;&#160;
                   <a href="./">HERON</a>
                 </p>
