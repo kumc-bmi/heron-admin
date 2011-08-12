@@ -6,7 +6,16 @@
   </head>
   <body>
     <h1>HERON Checklist</h1>
-    <p>Is this thing on? $fullName$</p>
+    <dl>
+    <dt>full name, from LDAP</dt>
+    <dd>$fullName$</dd>
+    <dt>Title</dt>
+    <dd><em>TODO</em></dd>
+    <dt>HERON access</dt>
+    <dd>$if(repositoryTool)$<a href="$repositoryTool$">proceed to tool</a>$else$denied$</dd>
+    <dt>HERON sponsoring</dt>
+    <dd>$if(sponsorshipForm)$<a href="sponsorshipForm">proceed to form</a>$else$denied$</dd>
+    </dl>
   </body>
 </html>
 

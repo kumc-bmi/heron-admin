@@ -2,29 +2,27 @@
  * http://informatics.kumc.edu/ */
 package edu.kumc.informatics.heron.servlet;
 
-import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.HashMap;
+import java.util.Map;
+
 import javax.inject.Inject;
+import javax.naming.NameNotFoundException;
+import javax.naming.NoPermissionException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.naming.NameNotFoundException;
-import javax.naming.NoPermissionException;
 
-import org.springframework.web.servlet.mvc.Controller;
-import org.springframework.web.servlet.ModelAndView;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.mvc.Controller;
 
-import edu.kumc.informatics.heron.capsec.Agent;
 import edu.kumc.informatics.heron.capsec.AcademicMedicalCenter;
+import edu.kumc.informatics.heron.capsec.Agent;
 import edu.kumc.informatics.heron.capsec.RepositoryUser;
 import edu.kumc.informatics.heron.capsec.Sponsor;
 import edu.kumc.informatics.heron.capsec.SystemAccessRecords;
 import edu.kumc.informatics.heron.capsec.Ticket;
-import java.util.HashMap;
-import java.util.Map;
 
 // http://www.antlr.org/wiki/display/ST/Five+minute+Introduction
 //import org.antlr.stringtemplate.StringTemplate;
@@ -109,7 +107,7 @@ public class MyChecklist implements Controller {
                 }
                 logger.info("Returning checklist view with " + getFullName("fallback"));
 
-                Map model = new HashMap();
+                Map<String, String> model = new HashMap<String, String>();
                 model.put(FULL_NAME, getFullName(""));
                 model.put(REPOSITORY_TOOL, _user == null ? null : "TODO:i2b2addr@@");
                 model.put(SPONSORSHIP_FORM, _sponsor == null ? null : "TODO:sponsorhipForm@@");
