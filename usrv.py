@@ -38,8 +38,11 @@ class TemplateApp(object):
         # url-decode path?
         try:
             tmpl = self._loader.load(path[1:])
+            raven_home = wsgi.application_uri(environ)
+            if not raven_home.endswith('/'):
+                raven_home = raven_home + '/'
             stream = tmpl.generate(user=environ.get('REMOTE_USER', ''),
-                                   raven_home=wsgi.application_uri(environ))
+                                   raven_home=raven_home)
             body = stream.render('xhtml')
         except TemplateNotFound as e:
             start_response("404 not found", [('Content-type', 'text/plain')])
