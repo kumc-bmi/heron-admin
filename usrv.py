@@ -6,7 +6,6 @@
 # PEP 8 -- Style Guide for Python Code
 # http://www.python.org/dev/peps/pep-0008/
 import os
-from urlparse import urljoin
 import wsgiref.util as wsgi
 
 # from PyPI - the Python Package Index http://pypi.python.org/pypi
@@ -31,6 +30,7 @@ class TemplateApp(object):
 
     def __call__(self, environ, start_response):
         path = environ['PATH_INFO']
+        session = environ['beaker.session']
 
         if path == '/':
             path = '/index.html'
@@ -41,7 +41,7 @@ class TemplateApp(object):
             raven_home = wsgi.application_uri(environ)
             if not raven_home.endswith('/'):
                 raven_home = raven_home + '/'
-            stream = tmpl.generate(user=environ.get('REMOTE_USER', ''),
+            stream = tmpl.generate(user=session['user'],
                                    raven_home=raven_home)
             body = stream.render('xhtml')
         except TemplateNotFound as e:
@@ -71,12 +71,10 @@ class PathPrefix(object):
 
 
 def _mkapp(cas='https://cas.kumc.edu/cas/', auth_area='/u/',
-           logout='/u/logout'):
+           login='/login', logout='/u/logout'):
     t = TemplateApp()
-    protected, s = cas_auth.cas_required(cas, t)
-    bye = cas_auth.logout(urljoin(cas, 'logout'), s)
-    return PathPrefix(logout, bye,
-                      PathPrefix(auth_area, protected, t))
+    return cas_auth.cas_required(cas, 'raven', PathPrefix,
+                                 login, logout, t)
 
 # mod_wsgi conventional entry point
 application = _mkapp()
