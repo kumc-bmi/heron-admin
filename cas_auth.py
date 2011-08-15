@@ -26,7 +26,7 @@ def cas_required(cas, session_key, router, app_login, app_logout, app):
     def require_userid(environ, start_response):
         session = environ['beaker.session']
         if 'user' in session:
-            print "@@require_userid: ", session['user']
+            #print "require_userid: ", session['user']
             return app(environ, start_response)
         here = construct_url(environ)
         session['here'] = here
