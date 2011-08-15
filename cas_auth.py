@@ -14,10 +14,10 @@ from beaker.middleware import SessionMiddleware
 from paste.auth.cas import AuthCASHandler
 from paste.request import parse_querystring, construct_url
 
-def cas_required(cas, session_key, router, app_login, app_logout, app):
+def cas_required(cas, session_opts, router, app_login, app_logout, app):
     '''Wrap an app in a CAS-authenticated session.
     @param cas: base address of CAS service
-    @param session_key: per beaker.middleware (not sure I grok)
+    @param session_opts: per beaker.middleware (not sure I grok)
     @param router: a thunk(addr, app_for_addr, app_else) router func
     @param app_login: path that we will route to login resource
     @param app_logout: path that we will route to logout resource
@@ -30,7 +30,8 @@ def cas_required(cas, session_key, router, app_login, app_logout, app):
             return app(environ, start_response)
         here = construct_url(environ)
         session['here'] = here
-        exc = HTTPSeeOther(app_login)
+        #print "script name: ", environ['SCRIPT_NAME']
+        exc = HTTPSeeOther(environ['SCRIPT_NAME'] + app_login)
         return exc.wsgi_application(environ, start_response)
 
     def handle_logout(environ, start_response):
@@ -43,7 +44,6 @@ def cas_required(cas, session_key, router, app_login, app_logout, app):
         else:
             return HTTPForbidden().wsgi_application(environ, start_response)
 
-    session_opts = make_session(session_key)
     wrap_login = SessionMiddleware(login_to_session, session_opts)
     wrap_logout = SessionMiddleware(handle_logout,  session_opts)
     wrap_app = SessionMiddleware(require_userid,  session_opts)
@@ -52,6 +52,9 @@ def cas_required(cas, session_key, router, app_login, app_logout, app):
 
 
 def make_session(k):
+    '''
+    @param k: key, per beaker.middleware (not sure I grok)
+    '''
     session_secret = str(uuid.uuid4())
     session_opts = {
         #<benbangert> non-cookie based sessions use secret, cookie-based use validatE_key instead

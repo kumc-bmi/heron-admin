@@ -1,4 +1,4 @@
-'''usrv.py -- a micro web server for mustache-based site dev
+'''usrv.py -- a micro web server for genshi-based site dev
 
 '''
 
@@ -10,6 +10,7 @@ import wsgiref.util as wsgi
 
 # from PyPI - the Python Package Index http://pypi.python.org/pypi
 from genshi.template import MarkupTemplate, TemplateLoader, TemplateNotFound
+from beaker.middleware import SessionMiddleware
 
 # see http://code.google.com/p/modwsgi/wiki/VirtualEnvironments 
 import site
@@ -41,12 +42,12 @@ class TemplateApp(object):
             raven_home = wsgi.application_uri(environ)
             if not raven_home.endswith('/'):
                 raven_home = raven_home + '/'
-            stream = tmpl.generate(user=session['user'],
+            stream = tmpl.generate(user=session.get('user', ""),
                                    raven_home=raven_home)
             body = stream.render('xhtml')
         except TemplateNotFound as e:
             start_response("404 not found", [('Content-type', 'text/plain')])
-            #debug: return ['docroot: ', self._docroot, '  ', str(e)]
+            #print ['docroot: ', self._docroot, '  ', str(e)]
             return 'We have no page at that address. Broken link? Typo?'
 
         start_response("200 ok", [('Content-type', HTMLu)])
@@ -71,10 +72,12 @@ class PathPrefix(object):
 
 
 def _mkapp(cas='https://cas.kumc.edu/cas/', auth_area='/u/',
-           login='/login', logout='/u/logout'):
-    t = TemplateApp()
-    return cas_auth.cas_required(cas, 'raven', PathPrefix,
-                                 login, logout, t)
+           login='/u/login', logout='/u/logout'):
+    session_opts = cas_auth.make_session('raven')
+    t = SessionMiddleware(TemplateApp(), session_opts)
+    return PathPrefix(auth_area,
+                      cas_auth.cas_required(cas, session_opts, PathPrefix,
+                                            login, logout, t), t)
 
 # mod_wsgi conventional entry point
 application = _mkapp()
