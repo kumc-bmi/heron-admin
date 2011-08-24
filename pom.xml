@@ -1,4 +1,7 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                      http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>edu.kumc.informatics</groupId>
   <artifactId>heron-admin</artifactId>
@@ -301,5 +304,54 @@
 
     </plugins>
 
+    <pluginManagement>
+    	<plugins>
+    		<!-- cribbed from http://wiki.eclipse.org/M2E_plugin_execution_not_covered#execute_plugin_goal -->
+    		<!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
+    		<plugin>
+    			<groupId>org.eclipse.m2e</groupId>
+    			<artifactId>lifecycle-mapping</artifactId>
+    			<version>1.0.0</version>
+    			<configuration>
+    				<lifecycleMappingMetadata>
+    					<pluginExecutions>
+    						<pluginExecution>
+    							<pluginExecutionFilter>
+    								<groupId>net.sf.xsltmp</groupId>
+    								<artifactId>
+    									xslt-generator-maven-plugin
+    								</artifactId>
+    								<versionRange>[1.6,)</versionRange>
+    								<goals>
+    									<goal>many-to-many</goal>
+    								</goals>
+    							</pluginExecutionFilter>
+    							<action>
+    								<execute/>
+    							</action>
+    						</pluginExecution>
+    						<pluginExecution>
+    							<pluginExecutionFilter>
+    								<groupId>
+    									org.apache.maven.plugins
+    								</groupId>
+    								<artifactId>
+    									maven-mercurial-build-number-plugin
+    								</artifactId>
+    								<versionRange>[1.0,)</versionRange>
+    								<goals>
+    									<goal>set-build-number</goal>
+    								</goals>
+    							</pluginExecutionFilter>
+    							<action>
+    								<execute/>
+    							</action>
+    						</pluginExecution>
+    					</pluginExecutions>
+    				</lifecycleMappingMetadata>
+    			</configuration>
+    		</plugin>
+    	</plugins>
+    </pluginManagement>
   </build>
 </project>
