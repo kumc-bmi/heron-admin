@@ -11,6 +11,7 @@ import javax.naming.NoPermissionException;
 import javax.naming.directory.Attributes;
 import javax.naming.directory.BasicAttributes;
 import javax.naming.directory.DirContext;
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.xml.xpath.XPathExpressionException;
 import org.w3c.dom.Node;
@@ -50,18 +51,18 @@ public class LDAPEnterpriseTest {
 	}
 
 	@Test
-	public void findFaculty() throws NoPermissionException, SecurityException {
+	public void findFaculty() throws NoPermissionException, ServletException {
 		LDAPEnterprise e = mockMedCenter();
 		Agent fac = e
-				.qualifiedFaculty(e.asTicket(mockCASRequest("john.smith")));
+				.qualifiedFaculty(e.requestTicket(mockCASRequest("john.smith")));
 		Assert.assertEquals("John Smith", fac.getFullName());
 	}
 
 	@Test(expected = NoPermissionException.class)
 	public void studentNotFaculty() throws NoPermissionException,
-			SecurityException {
+			ServletException {
 		LDAPEnterprise e = mockMedCenter();
-		e.qualifiedFaculty(e.asTicket(mockCASRequest("bill.student")));
+		e.qualifiedFaculty(e.requestTicket(mockCASRequest("bill.student")));
 	}
 
 	public static HttpServletRequest mockCASRequest(String userid) {

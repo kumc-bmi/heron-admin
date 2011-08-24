@@ -2,9 +2,6 @@
  * http://informatics.kumc.edu/ */
 package edu.kumc.informatics.heron.servlet;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import javax.inject.Inject;
 import javax.naming.NameNotFoundException;
 import javax.naming.NoPermissionException;
@@ -25,6 +22,10 @@ import edu.kumc.informatics.heron.capsec.SystemAccessRecords;
 import edu.kumc.informatics.heron.capsec.Ticket;
 
 /**
+ * MyChecklist is a HERON access checklist controller.
+ * 
+ * See handleRequest() for details.
+ * 
  * @author dconnolly
  */
 public class MyChecklist implements Controller {
@@ -45,76 +46,81 @@ public class MyChecklist implements Controller {
                 _sar = sar;
         }
 
-        private Agent _affiliate;
-        private Sponsor _sponsor;
-        private RepositoryUser _user;
-
         /**
-         * @param fallback value to return in case affiliate hasn't been set.
+         * Name for this view is "myChecklist".
+         * TODO: cite relevant part of Spring MVC docs.
          */
-        public String getFullName(String fallback) {
-                return _affiliate == null ? fallback : _affiliate.getFullName();
-        }
-
-        /**
-         * @param fallback value to return in case affiliate hasn't been set.
-         */
-        public String getTitle(String fallback) {
-        	return _affiliate == null ? fallback : _affiliate.getTitle();
-        }
-
-        /**
-         * @param fallback value to return in case affiliate hasn't been set.
-         */
-        public String getMail(String fallback) {
-                return _affiliate == null ? fallback : _affiliate.getMail();
-        }
-
-        public Boolean canSponsor() {
-                return _sponsor != null;
-        }
-
-        // This is part of the public interface because it must match config.
         public static final String VIEW_NAME = "myChecklist";
-        // Part of public interface because it must match template usage.
-        public static final String FULL_NAME = "fullName";
-        public static final String TITLE = "title";
-        public static final String REPOSITORY_TOOL = "repositoryTool";
-        public static final String SPONSORSHIP_FORM = "sponsorshipForm";
-        
+
+        public enum ChecklistProperty {
+        	AFFILIATE("affiliate"),
+        	SPONSOR("sponsor"),
+        	REPOSITORY_USER("repositoryUser"),
+        	REPOSITORY_TOOL("repositoryTool"),
+        	SPONSORSHIP_FORM("sponsorshipForm");
+        	final private String label;
+        	ChecklistProperty(String l) {
+        		label = l;
+        	}
+        	@Override
+        	public String toString() {
+        		return label;
+        	}
+        }
+
+        /**
+         * Try to get an affiliate, repository user, and sponsor based on a request.
+         * 
+         * Given a request filtered through a CAS authentication filter:
+         * 
+         * 1. Try to get an affiliate from our AcademicMedicalCenter.
+         * 3. Try to get a repository user based on system access records.
+         * 2. Try to get a sponsor based on system access records and faculty qualifications.
+         * 
+         * Then construct a model with the results, using property names from ChecklistProperty.
+         * 
+         * @throws ServletException if the request, q, has no CAS assertion.
+         */
         @Override
         public ModelAndView handleRequest(HttpServletRequest q, HttpServletResponse a)
-                throws ServletException {
+        		throws ServletException {
+        	Agent affiliate = null;
+            Sponsor sponsor = null;
+            RepositoryUser user = null;
 
-
-                Ticket ticket = _enterprise.asTicket(q);
+                Ticket ticket = _enterprise.requestTicket(q);
                 try {
-                        _affiliate = _enterprise.affiliate(ticket.getName());
+                        affiliate = _enterprise.affiliate(ticket.getName());
 
                         try {
-                                _user = _sar.asUser(ticket);
+                                user = _sar.asUser(ticket);
                         } catch (NoPermissionException ex) {
-                                logger.debug("not a repository user:" + ticket.getName());
+                                logger.debug("no system access agreement on record:" + ticket.getName());
                         } catch (NameNotFoundException ex) {
-                                logger.debug("not a repository user:" + ticket.getName());
+                        	// this can't happen if we already got an affiliate
+                        	throw new AssertionError(ex);
                         }
                         
                         try {
-                                _sponsor = _sar.asSponsor(ticket);
+                                sponsor = _sar.asSponsor(ticket);
                         } catch (NoPermissionException ex) {
                                 logger.debug("not allowed to sponsor:" + ticket.getName());
                         }
                 } catch (NameNotFoundException ex) {
                         // Nobody in the enterprise by that name/id/
                 }
-                logger.info("Returning checklist view with " + getFullName("fallback"));
 
-                Map<String, String> model = new HashMap<String, String>();
-                model.put(FULL_NAME, getFullName(""));
-                model.put(TITLE, getTitle(""));
-                model.put(REPOSITORY_TOOL, _user == null ? null : "TODO:i2b2addr@@");
-                model.put(SPONSORSHIP_FORM, _sponsor == null ? null : "TODO:sponsorhipForm@@");
-                
-                return new ModelAndView(VIEW_NAME, model);
+                ModelAndView mv = new ModelAndView(VIEW_NAME);
+                mv.addObject(ChecklistProperty.AFFILIATE.toString(), affiliate);
+
+                mv.addObject(ChecklistProperty.SPONSOR.toString(), sponsor);
+        		mv.addObject(ChecklistProperty.SPONSORSHIP_FORM.toString(),
+        				sponsor != null ? "TODO:sponsorhipForm@@" : null); // TODO
+
+        		mv.addObject(ChecklistProperty.REPOSITORY_USER.toString(), user);
+        		mv.addObject(ChecklistProperty.REPOSITORY_TOOL.toString(),
+        				user != null ? "TODO:i2b2addr@@" : null); // TODO
+
+        		return mv;
         }
 }

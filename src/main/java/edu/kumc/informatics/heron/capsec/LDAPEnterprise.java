@@ -9,6 +9,7 @@ import javax.naming.NameNotFoundException;
 import javax.naming.NamingException;
 import javax.naming.NoPermissionException;
 import javax.naming.directory.Attributes;
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -178,7 +179,7 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
          * @return a CASCap that gives access to the name of the authenticated CAS Principal.
          * @throws ServletException if the request's session has no CAS assertion attribute.
          */
-        public Ticket asTicket(HttpServletRequest request)  throws SecurityException {
+        public Ticket requestTicket(HttpServletRequest request)  throws ServletException {
                 // Rescue Assertion from un-typesafe attribute mapping.
                 Assertion it = (Assertion)request.getSession().getAttribute(
                         AbstractCasFilter.CONST_CAS_ASSERTION);
@@ -189,8 +190,8 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
                 return new CASTicket(this, it.getPrincipal().getName());
         }
         
-        protected static final SecurityException noCAS =
-                new SecurityException("no CAS ticket");
+        protected static final ServletException noCAS =
+                new ServletException("no CAS ticket");
 
         /**
          * A CASTicket is a capability derived from a CAS-authenticated HttpServletRequest.

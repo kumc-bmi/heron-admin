@@ -11,13 +11,13 @@
     <h1>HERON Checklist</h1>
     <dl>
     <dt>full name, from LDAP</dt>
-    <dd>$fullName$</dd>
+    <dd>$affiliate.fullName$</dd>
     <dt>Title</dt>
-    <dd>$title$</dd>
+    <dd>$affiliate.title$</dd>
     <dt>HERON access</dt>
-    <dd>$if(repositoryTool)$<a href="$repositoryTool$">proceed to tool</a>$else$denied$endif$</dd>
+    <dd>$if(repositoryTool)$ <a href="$repositoryTool$">proceed to tool</a> $else$ denied $endif$</dd>
     <dt>HERON sponsoring</dt>
-    <dd>$if(sponsorshipForm)$<a href="sponsorshipForm">proceed to form</a>$else$denied$endif$</dd>
+    <dd>$if(sponsorshipForm)$ <a href="sponsorshipForm">proceed to form</a> $else$ denied $endif$</dd>
     </dl>
   </body>
 </html>

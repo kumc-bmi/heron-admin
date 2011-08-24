@@ -6,6 +6,7 @@ package edu.kumc.informatics.heron.capsec;
 import java.security.acl.NotOwnerException;
 import javax.naming.NameNotFoundException;
 import javax.naming.NoPermissionException;
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 
 /**
@@ -20,7 +21,7 @@ public interface AcademicMedicalCenter {
          * @return a CASCap that gives access to the name of the authenticated CAS Principal.
          * @throws ServletException if the request's session has no CAS assertion attribute.
          */
-        public Ticket asTicket(HttpServletRequest request)  throws SecurityException;
+        public Ticket requestTicket(HttpServletRequest request)  throws ServletException;
 
         /**
          * Look up an affiliated agent by name.
