@@ -3,20 +3,20 @@
 package edu.kumc.informatics.heron.servlet;
 
 import java.security.acl.NotOwnerException;
+import java.util.Arrays;
 import java.util.Collection;
 
 import javax.naming.NameNotFoundException;
 import javax.naming.NoPermissionException;
 import javax.servlet.http.HttpServletRequest;
 
-import junit.framework.Assert;
-
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
+import org.junit.Assert;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.web.servlet.ModelAndView;
 
-import edu.emory.mathcs.backport.java.util.Arrays;
 import edu.kumc.informatics.heron.capsec.AcademicMedicalCenter;
 import edu.kumc.informatics.heron.capsec.Agent;
 import edu.kumc.informatics.heron.capsec.LDAPEnterpriseTest;
@@ -64,7 +64,7 @@ public class MyChecklistTest {
     }
     
     static class MockRecords implements SystemAccessRecords {
-    	final Logger logger = Logger.getLogger(getClass());
+    	final Log logger = LogFactory.getLog(getClass());
     	final AcademicMedicalCenter _org;
     	final Collection<String> _names;
     	

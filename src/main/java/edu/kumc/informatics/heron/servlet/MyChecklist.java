@@ -33,12 +33,17 @@ import edu.kumc.informatics.heron.capsec.Ticket;
 public class MyChecklist implements Controller {
 
         protected final Log logger = LogFactory.getLog(getClass());
-        
+
         private AcademicMedicalCenter _enterprise;
         private SystemAccessRecords _sar;
 
+        /**
+         * Construct HERON checklist model from organization and system records.
+         * @param e organization for directory lookups
+         * @param sar access records
+         */
         @Inject
-        public MyChecklist(AcademicMedicalCenter e, SystemAccessRecords sar) {
+        public MyChecklist(final AcademicMedicalCenter e, final SystemAccessRecords sar) {
                 _enterprise = e;
                 _sar = sar;
         }
