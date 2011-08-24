@@ -59,6 +59,7 @@ public class MyChecklistTest {
         Assert.assertEquals(MyChecklist.VIEW_NAME, modelAndView.getViewName());
         Assert.assertNotNull(modelAndView.getModel());
         Assert.assertEquals("John Smith", prop(modelAndView, MyChecklist.FULL_NAME));
+        Assert.assertEquals("Chair of Department of Neurology", prop(modelAndView, MyChecklist.TITLE));
         Assert.assertNotNull(prop(modelAndView, MyChecklist.REPOSITORY_TOOL));
         Assert.assertNotNull(prop(modelAndView, MyChecklist.SPONSORSHIP_FORM));
     }
@@ -112,6 +113,11 @@ public class MyChecklistTest {
 			return _who.getFullName();
 		}
 
+		@Override
+		public String getTitle() {
+			return _who.getTitle();
+		}
+		
 		@Override
 		public String getMail() {
 			return _who.getMail();

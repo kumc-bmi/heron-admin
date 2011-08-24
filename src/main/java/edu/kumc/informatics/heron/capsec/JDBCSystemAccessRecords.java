@@ -64,6 +64,10 @@ public class JDBCSystemAccessRecords implements SystemAccessRecords {
                 public String getFullName() {
                         return _asAgent.getFullName();
                 }
+                @Override
+                public String getTitle() {
+                	    return _asAgent.getTitle();
+                }
         }
         
         /**

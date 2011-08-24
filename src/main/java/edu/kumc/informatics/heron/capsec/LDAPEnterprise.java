@@ -39,21 +39,23 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
                                 "Not in Enterprise Directory (LDAP)");
 
         /**
-         * TODO: fix ldap injection
-         * @param name
+         * @param name LDAP common name (cn) to look up
          * @return
          * @throws NameNotFoundException 
          */
         private AccountHolder findByName(String name) throws NameNotFoundException {
+        	    String filter = "(cn=" + name + ")"; // TODO: injection risk?
                 final LDAPEnterprise that = this;
-                List x = _ldapTemplate.search("", "(cn=" + name + ")", //TODO: FIXME
+                @SuppressWarnings("unchecked")
+                List<AccountHolder> x = (List<AccountHolder>)_ldapTemplate.search("", filter,
                         new AttributesMapper() {
                                 @Override
-                                public Object mapFromAttributes(Attributes attrs)
+                                public AccountHolder mapFromAttributes(Attributes attrs)
                                         throws NamingException {
                                         return new AccountHolder(that,
                                                 (String)attrs.get("sn").get(),
                                                 (String)attrs.get("givenname").get(),
+                                                (String)attrs.get("title").get(),
                                                 (String)attrs.get("mail").get(),
                                                 "Y".equals((String)attrs.get("kumcPersonFaculty").get()),
                                                 (String)attrs.get("kumcPersonJobcode").get());
@@ -64,7 +66,7 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
                         throw notfound;
                 }
                 /* TODO: else if x.size() > 1 ... */
-                return (AccountHolder)x.get(0); // ugh... cast...
+                return x.get(0);
         }
 
         private NotOwnerException notmine = new NotOwnerException();
@@ -91,11 +93,12 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
         public static final String excluded_jobcode = "24600";
         static class AccountHolder implements Agent {
                 public AccountHolder(LDAPEnterprise org,
-                        String surName, String givenName, String mail,
+                        String surName, String givenName, String title, String mail,
                         Boolean isFaculty, String jobCode) {
                         _org = org;
                         _surName = surName;
                         _givenName = givenName;
+                        _title = title;
                         _mail = mail;
                         _isFaculty = isFaculty;
                         _jobCode = jobCode;
@@ -104,6 +107,7 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
                 private final LDAPEnterprise _org;
                 private final String _surName;
                 private final String _givenName;
+                private final String _title;
                 private final String _mail;
                 private final Boolean _isFaculty;
                 private final String _jobCode;
@@ -121,6 +125,11 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
                 public String getMail(){
                         return _mail;
                 }
+
+				@Override
+				public String getTitle() {
+					return _title;
+				}
         }
 
         @Override

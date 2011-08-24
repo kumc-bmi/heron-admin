@@ -24,9 +24,6 @@ import edu.kumc.informatics.heron.capsec.Sponsor;
 import edu.kumc.informatics.heron.capsec.SystemAccessRecords;
 import edu.kumc.informatics.heron.capsec.Ticket;
 
-// http://www.antlr.org/wiki/display/ST/Five+minute+Introduction
-//import org.antlr.stringtemplate.StringTemplate;
-
 /**
  * @author dconnolly
  */
@@ -56,22 +53,21 @@ public class MyChecklist implements Controller {
          * @param fallback value to return in case affiliate hasn't been set.
          */
         public String getFullName(String fallback) {
-                if (_affiliate == null) {
-                        return fallback;
-                } else {
-                        return _affiliate.getFullName();
-                }
+                return _affiliate == null ? fallback : _affiliate.getFullName();
+        }
+
+        /**
+         * @param fallback value to return in case affiliate hasn't been set.
+         */
+        public String getTitle(String fallback) {
+        	return _affiliate == null ? fallback : _affiliate.getTitle();
         }
 
         /**
          * @param fallback value to return in case affiliate hasn't been set.
          */
         public String getMail(String fallback) {
-                if (_affiliate == null) {
-                        return fallback;
-                } else {
-                        return _affiliate.getMail();
-                }
+                return _affiliate == null ? fallback : _affiliate.getMail();
         }
 
         public Boolean canSponsor() {
@@ -82,6 +78,7 @@ public class MyChecklist implements Controller {
         public static final String VIEW_NAME = "myChecklist";
         // Part of public interface because it must match template usage.
         public static final String FULL_NAME = "fullName";
+        public static final String TITLE = "title";
         public static final String REPOSITORY_TOOL = "repositoryTool";
         public static final String SPONSORSHIP_FORM = "sponsorshipForm";
         
@@ -114,6 +111,7 @@ public class MyChecklist implements Controller {
 
                 Map<String, String> model = new HashMap<String, String>();
                 model.put(FULL_NAME, getFullName(""));
+                model.put(TITLE, getTitle(""));
                 model.put(REPOSITORY_TOOL, _user == null ? null : "TODO:i2b2addr@@");
                 model.put(SPONSORSHIP_FORM, _sponsor == null ? null : "TODO:sponsorhipForm@@");
                 

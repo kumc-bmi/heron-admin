@@ -39,8 +39,9 @@ public class LDAPEnterpriseTest {
 
 	@Test
 	public void findKnownAgent() throws NameNotFoundException {
-		Assert.assertEquals("John Smith", mockMedCenter().affiliate("john.smith")
-				.getFullName());
+		Agent js = mockMedCenter().affiliate("john.smith");
+		Assert.assertEquals("John Smith", js.getFullName());
+		Assert.assertEquals("Chair of Department of Neurology", js.getTitle());
 	}
 
 	@Test(expected = NameNotFoundException.class)
@@ -141,6 +142,7 @@ public class LDAPEnterpriseTest {
 			{
 				put("sn", "family-name");
 				put("givenname", "given-name");
+				put("title", "title");
 				put("mail", "email");
 				put("kumcPersonFaculty", "kumcPersonFaculty");
 				put("kumcPersonJobcode", "kumcPersonJobcode");
