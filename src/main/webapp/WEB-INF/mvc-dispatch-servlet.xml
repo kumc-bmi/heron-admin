@@ -5,7 +5,15 @@
 
   <!-- Spring MVC application context definition -->
 
-  <bean name="myChecklist" class="edu.kumc.informatics.heron.servlet.MyChecklist"/>
+  <bean name="myChecklist" scope="singleton"  lazy-init="true"
+        class="edu.kumc.informatics.heron.servlet.MyChecklist">
+    <constructor-arg>
+      <ref bean="enterprise"/>
+    </constructor-arg>
+    <constructor-arg>
+      <ref bean="sar"/>
+    </constructor-arg>
+  </bean>
 
   <bean id="urlMapper"
         class="org.springframework.web.servlet.handler.SimpleUrlHandlerMapping">
