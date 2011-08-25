@@ -46,18 +46,33 @@ public class MyChecklistTest {
         Assert.assertEquals(MyChecklist.VIEW_NAME, modelAndView.getViewName());
         Assert.assertNotNull(modelAndView.getModel());
         
-        Agent who = (Agent) prop(modelAndView, ChecklistProperty.AFFILIATE).get(0);
+        Agent who = new ModelProperty<Agent>(modelAndView, ChecklistProperty.AFFILIATE).value();
         Assert.assertEquals("Bill Student", who.getFullName());
-        Assert.assertEquals(null, prop(modelAndView, ChecklistProperty.REPOSITORY_TOOL).get(0));
-        Assert.assertEquals(null, prop(modelAndView, ChecklistProperty.SPONSORSHIP_FORM).get(0));
+        Assert.assertEquals(null, new ModelProperty(modelAndView, ChecklistProperty.REPOSITORY_TOOL).value());
+        Assert.assertEquals(null, new ModelProperty(modelAndView, ChecklistProperty.SPONSORSHIP_FORM).value());
     }
 
-	private static <T> List<T> prop(ModelAndView mav, MyChecklist.ChecklistProperty p) {
-    	ArrayList<T> out = new ArrayList<T>();
-    	@SuppressWarnings("unchecked")
-		T t = (T)mav.getModel().get(p.toString());
-		out.add(t);
-    	return out;
+
+	/**
+	 * Use ChecklistProperty rather than String to access a property.
+	 * @author dconnolly
+	 *
+	 * @param <T> value type of the property
+	 */
+	private class ModelProperty <T> {
+		@SuppressWarnings("unchecked")
+		ModelProperty(ModelAndView mav, ChecklistProperty p) {
+			try {
+				_value = (T) mav.getModel().get(p.toString());
+			} catch (ClassCastException ex) {
+				throw new IllegalArgumentException(ex);
+			}
+		}
+		private T _value;
+		
+		T value() {
+			return _value;
+		}
     }
 
     @Test
@@ -67,11 +82,11 @@ public class MyChecklistTest {
         ModelAndView modelAndView = controller.handleRequest(q, aResponse);
         Assert.assertEquals(MyChecklist.VIEW_NAME, modelAndView.getViewName());
         Assert.assertNotNull(modelAndView.getModel());
-        Agent who = (Agent) prop(modelAndView, MyChecklist.ChecklistProperty.AFFILIATE).get(0);
+        Agent who = new ModelProperty<Agent>(modelAndView, MyChecklist.ChecklistProperty.AFFILIATE).value();
         Assert.assertEquals("John Smith", who.getFullName());
         Assert.assertEquals("Chair of Department of Neurology", who.getTitle());
-        Assert.assertNotNull(prop(modelAndView, ChecklistProperty.REPOSITORY_TOOL).get(0));
-        Assert.assertNotNull(prop(modelAndView, ChecklistProperty.SPONSORSHIP_FORM).get(0));
+        Assert.assertNotNull(new ModelProperty<String>(modelAndView, ChecklistProperty.REPOSITORY_TOOL).value());
+        Assert.assertNotNull(new ModelProperty<String>(modelAndView, ChecklistProperty.SPONSORSHIP_FORM).value());
     }
     
     static class MockRecords implements SystemAccessRecords {
