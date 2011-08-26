@@ -13,7 +13,6 @@
   <properties>
     <!-- http://maven.apache.org/general.html#encoding-warning -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <netbeans.hint.deploy.server>JBoss4</netbeans.hint.deploy.server>
   </properties>
 
     <!-- for maven-mercurial-build-number-plugin -->
@@ -46,9 +45,6 @@
 
         <profile>
             <id>dev</id>
-	    <activation>
-	      <activeByDefault>true</activeByDefault>
-	    </activation>
             <properties>
                 <env>dev</env>
             </properties>
@@ -254,6 +250,29 @@
               <destDir>${project.build.directory}/${project.artifactId}</destDir>
               <srcDir>src/main/pages</srcDir>
               <srcIncludes>**/*.html</srcIncludes>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+<!--
+propagate ldap_credential from ~/.m2/settings.xml
+cribbed from http://mojo.codehaus.org/properties-maven-plugin/usage.html
+ -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>properties-maven-plugin</artifactId>
+        <version>1.0-alpha-2</version>
+        <executions>
+          <execution>
+            <phase>generate-resources</phase>
+            <goals>
+               <goal>write-active-profile-properties</goal>
+            </goals>
+            <configuration>
+              <outputFile>
+                ${project.build.outputDirectory}/app.properties
+              </outputFile>
             </configuration>
           </execution>
         </executions>
