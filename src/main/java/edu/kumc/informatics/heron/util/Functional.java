@@ -46,7 +46,7 @@ public class Functional {
         }
 
         public static <T> List<T> append(List<T> a, List<T> b) {
-                List<T> out = new ArrayList(a);
+                List<T> out = new ArrayList<T>(a);
                 out.addAll(b);
                 return out;
         }
@@ -98,11 +98,32 @@ public class Functional {
                         if (!(o instanceof Pair)) {
                                 return false;
                         }
-                        Pair pairo = (Pair) o;
+                        Pair<?, ?> pairo = (Pair<?, ?>) o;
                         return this.left.equals(pairo.getLeft())
                                 &&
  this.right.equals(pairo.getRight());
                 }
         }
 
+        public abstract static class Either<L, R> {
+        	public abstract <T> T fold(Function1<L, T> goLeft, Function1<R, T> goRight);
+        }
+        public static class Left<L, R> extends Either<L, R> {
+        	private final L _l;
+        	public Left(final L l) {
+        		_l = l;
+        	}
+        	public <T> T fold(Function1<L, T> goLeft, Function1<R, T> goRight) {
+        		return goLeft.apply(_l);
+        	}
+        }
+        public static class Right<L, R> extends Either<L, R> {
+        	private final R _r;
+        	public Right(final R r) {
+        		_r = r;
+        	}
+        	public <T> T fold(Function1<L, T> goLeft, Function1<R, T> goRight) {
+        		return goRight.apply(_r);
+        	}
+        }
 }

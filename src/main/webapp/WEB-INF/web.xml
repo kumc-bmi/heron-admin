@@ -78,12 +78,6 @@
     <listener>
         <listener-class>org.jasig.cas.client.session.SingleSignOutHttpSessionListener</listener-class>
     </listener>
-    <servlet>
-        <description/>
-        <display-name>AuthServlet</display-name>
-        <servlet-name>AuthServlet</servlet-name>
-        <servlet-class>edu.kumc.informatics.heron.servlet.AuthServlet</servlet-class>
-    </servlet>
     <servlet-mapping>
         <servlet-name>AuthServlet</servlet-name>
         <url-pattern>/AuthServlet</url-pattern>
@@ -124,10 +118,6 @@
         <servlet-name>AcknowledgeDisclaimerServlet</servlet-name>
         <servlet-class>edu.kumc.informatics.heron.servlet.AcknowledgeDisclaimerServlet</servlet-class>
     </servlet>
-    <servlet-mapping>
-        <servlet-name>AcknowledgeDisclaimerServlet</servlet-name>
-        <url-pattern>/AcknowledgeDisclaimerServlet</url-pattern>
-    </servlet-mapping>
     <servlet>
         <description/>
         <display-name>TerminateUsers</display-name>
@@ -169,7 +159,7 @@ http://static.springsource.org/docs/Spring-MVC-step-by-step/part1.html
 
     <servlet-mapping>
         <servlet-name>mvc-dispatch</servlet-name>
-        <url-pattern>/u/*</url-pattern>
+        <url-pattern>/*</url-pattern>
     </servlet-mapping>
 
 </web-app>

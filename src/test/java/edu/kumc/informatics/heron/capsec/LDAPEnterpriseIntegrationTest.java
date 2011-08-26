@@ -5,7 +5,6 @@ package edu.kumc.informatics.heron.capsec;
 
 import edu.kumc.informatics.heron.capsec.Agent;
 import edu.kumc.informatics.heron.capsec.LDAPEnterprise;
-import edu.kumc.informatics.heron.capsec.Ticket;
 import javax.naming.NamingException;
 import javax.servlet.ServletException;
 import org.junit.Test;
@@ -32,9 +31,8 @@ public class LDAPEnterpriseIntegrationTest {
          */
         public void lookSomebodyUp() throws NamingException, ServletException {
                 MockHttpServletRequest q = new MockHttpServletRequest("GET", "/");
-                MockCASCheck cas_check = new MockCASCheck();
                 MockEnterprise e = new MockEnterprise(t);
-                Agent who = e.affiliate(cas_check.getName());
+                Agent who = e.affiliate(q.getRemoteUser()); //TODO: this prolly won't work
                 Assert.assertEquals("Dan Connolly", who.getFullName());
                 Assert.assertEquals("dconnolly@kumc.edu", who.getMail());
         }
@@ -44,15 +42,9 @@ public class LDAPEnterpriseIntegrationTest {
          */
         static class MockEnterprise extends LDAPEnterprise {
                 public MockEnterprise(LdapTemplate t) {
-                        super(t);
+                        super(t, null); //@@TODO: mock chalk?
                 }
         }
 
-        static class MockCASCheck implements Ticket {
-                @Override
-                public String getName() {
-                        return "dconnolly";
-                }
-        }
 }
 

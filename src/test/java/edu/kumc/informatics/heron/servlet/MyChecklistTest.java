@@ -6,10 +6,12 @@ import java.security.acl.NotOwnerException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 
 import javax.naming.NameNotFoundException;
 import javax.naming.NoPermissionException;
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 
 import org.apache.commons.logging.Log;
@@ -25,7 +27,6 @@ import edu.kumc.informatics.heron.capsec.LDAPEnterpriseTest;
 import edu.kumc.informatics.heron.capsec.RepositoryUser;
 import edu.kumc.informatics.heron.capsec.Sponsor;
 import edu.kumc.informatics.heron.capsec.SystemAccessRecords;
-import edu.kumc.informatics.heron.capsec.Ticket;
 import edu.kumc.informatics.heron.servlet.MyChecklist.ChecklistProperty;
 
 /**
@@ -48,8 +49,8 @@ public class MyChecklistTest {
         
         Agent who = new ModelProperty<Agent>(modelAndView, ChecklistProperty.AFFILIATE).value();
         Assert.assertEquals("Bill Student", who.getFullName());
-        Assert.assertEquals(null, new ModelProperty(modelAndView, ChecklistProperty.REPOSITORY_TOOL).value());
-        Assert.assertEquals(null, new ModelProperty(modelAndView, ChecklistProperty.SPONSORSHIP_FORM).value());
+        Assert.assertEquals(null, new ModelProperty<String>(modelAndView, ChecklistProperty.REPOSITORY_TOOL).value());
+        Assert.assertEquals(null, new ModelProperty<String>(modelAndView, ChecklistProperty.SPONSORSHIP_FORM).value());
     }
 
 
@@ -104,34 +105,80 @@ public class MyChecklistTest {
     		_names = Arrays.asList(names.split(","));
     	}
     	
+		private static class Ready implements Qualification {
+			public Ready(Agent a) {
+				_who = a;
+			}
+			Agent _who;
+			@Override
+                        public Agent forWhom() {
+	                        return _who;
+                        }
+			
+		}
 		@Override
-		public Sponsor asSponsor(Ticket who) throws NoPermissionException {
-			_org.qualifiedFaculty(who);
-			if (!_names.contains(who.getName())) {
-				logger.info("not in list: [" + who.getName() + "] list:" + _names.toString());
+                public Qualification facultyUser(HttpServletRequest q) throws NoPermissionException, ServletException {
+	                // TODO Auto-generated method stub
+	                return null;
+                }
+
+		@Override
+                public Qualification sponsoredUser(HttpServletRequest q) throws NoPermissionException, ServletException {
+	                // TODO Auto-generated method stub
+	                return null;
+                }
+
+		@Override
+                public Qualification executiveUser(HttpServletRequest q) throws NoPermissionException, ServletException {
+	                // TODO Auto-generated method stub
+	                return null;
+                }
+
+		@Override
+                public Qualification qualifiedUser(HttpServletRequest q) throws NoPermissionException, ServletException {
+	                // TODO Auto-generated method stub
+	                return null;
+                }
+
+		@Override
+                public RepositoryUser repositoryUser(Agent a, Qualification q) throws NoPermissionException {
+			Agent agt;
+                        try {
+	                        agt = _org.affiliate(a.getUserId());
+                        } catch (NameNotFoundException e) {
+	                        // TODO Auto-generated catch block
+	                        e.printStackTrace();
+                        }
+			if (!_names.contains(a.getUserId())) {
+				logger.info("not in list: [" + a.getUserId() + "] list:" + _names.toString());
+				throw new NoPermissionException();
+			}
+			
+			// TODO: check training
+			
+			return new MockUser(a);
+                }
+
+
+		@Override
+                public Sponsor asSponsor(HttpServletRequest q) throws NoPermissionException, ServletException {
+			Agent who = _org.affiliate(q);
+			_org.withFaculty(who, null); //TODO: !!!
+			// TODO: check chalk, sig
+			if (!_names.contains(who.getUserId())) {
+				logger.info("not in list: [" + who.getUserId() + "] list:" + _names.toString());
 				throw new NoPermissionException();
 			}
 			return new MockSponsor();
-		}
-
-		@Override
-		public RepositoryUser asUser(Ticket who) throws NoPermissionException,
-				NameNotFoundException {
-			Agent agt = _org.affiliate(who.getName());
-			if (!_names.contains(who.getName())) {
-				logger.info("not in list: [" + who.getName() + "] list:" + _names.toString());
-				throw new NoPermissionException();
-			}
-			return new MockUser(agt);
-		}
+                }
     	
     }
 
     static class MockUser implements RepositoryUser {
-    	final Agent _who;
-    	MockUser(Agent who) {
-    		_who = who;
-    	}
+            final Agent _who;
+            MockUser(Agent who) {
+                    _who = who;
+            }
 		@Override
 		public String getFullName() {
 			return _who.getFullName();
@@ -146,6 +193,22 @@ public class MyChecklistTest {
 		public String getMail() {
 			return _who.getMail();
 		}
+                @Override
+                public String getUserId() {
+                        return _who.getUserId();
+                }
+                @Override
+                public Date getHSCTrainingExpiration() {
+                        throw new RuntimeException(); // TODO Auto-generated method stub
+                }
+                @Override
+                public boolean acknowledgedRecentDisclaimers() {
+                        throw new RuntimeException(); // TODO Auto-generated method stub
+                }
+                @Override
+                public void acknowledgeRecentDisclaimers() {
+                        throw new RuntimeException(); // TODO Auto-generated method stub                        
+                }
     	
     }
 

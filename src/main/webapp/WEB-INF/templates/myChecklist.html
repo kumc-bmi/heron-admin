@@ -9,10 +9,30 @@
 	<a href="http://www.antlr.org/wiki/display/ST/Five+minute+Introduction">5
 		min intro to ST</a>
 
-	<h1>HERON Checklist</h1>
-	<dl>
-		<dt>full name, from LDAP</dt>
-		<dd>$affiliate.fullName$</dd>
+	<h1>Welcome to HERON</h1>
+	<p>HERON is the i2b2 installation at KUMC...@@</p>
+
+	<p>Welcome, $affiliate.fullName$</p>
+
+
+
+	<form method="post" action="@@todo">
+		$if(repositoryTool)$
+		 <input type="submit" value="Start I2B2" />
+		$else$
+		 <input type="submit" value="Start I2B2" disabled="disabled" />
+        $endif$		
+	</form>
+
+	<ul>
+<li>$if(affiliate.)
+
+<label>Human Subjects <a href="@@todo">chalk
+							training</a> complete?<input name="hsc_trained" type="checkbox"
+						readonly="readonly"> </label>
+				</li>
+
+
 		<dt>Title</dt>
 		<dd>$affiliate.title$</dd>
 		<dt>HERON access</dt>

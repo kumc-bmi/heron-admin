@@ -14,6 +14,7 @@ import java.util.Vector;
 import java.sql.Date;
 import java.sql.Timestamp;
 
+import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
@@ -25,213 +26,24 @@ import edu.kumc.informatics.heron.dao.HeronDBDao;
 import edu.kumc.informatics.heron.servlet.SponsorshipServlet;
 import static edu.kumc.informatics.heron.base.StaticValues.*;
 
+@Deprecated
 public class DBUtil {
 	private HeronDBDao heronDao;
 	private ChalkDBDao chalkDao;
 	private BasicUtil bUtil = new BasicUtil();
 	//can have other dao too...
-	private static Log log = LogFactory.getLog(DBUtil.class);
+	private Log log = LogFactory.getLog(getClass());
 
-        public static interface Beans {
+        public static final class Beans {
                 String USER_ACCESS_DATA = "userAccessData";
         }
 
-        /**
-         * TODO: get rid of this in favor of injection.
-         */
-        @Deprecated
-        public DBUtil() {
-                heronDao = new HeronDBDao();
-                chalkDao = new ChalkDBDao();
-        }
-        
+        @Inject
 	public DBUtil(HeronDBDao h, ChalkDBDao ch){
 		heronDao = h;
 		chalkDao = ch;
 	}
 
-        /**
-	 * For now, check if user is a qualified faculty.
-	 *
-	 * @param facFlag
-	 * @param jobCode
-	 * @param uid
-	 * @return true if yes, false otherwise.
-	 */
-        private static final String excluded_jobcode="24600";
-	public boolean checkQualification(String facFlag, String jobCode, String uid){
-		boolean result = false;
-		if((facFlag!=null && facFlag.equals("Y") && !jobCode.equals(excluded_jobcode))
-				|| isUserExecutive(uid))
-			result = isUserAgreementSigned(uid);
-		return result;
-	}
-
-
-	/**
-	 * check if user has signed system access agreement.
-	 * @param userId
-	 * @return true if yes, false otherwise
-	 */
-	public boolean isUserAgreementSigned(String userId){
-		return heronDao.isUserAgreementSigned(userId);
-	}
-	
-	/**
-	 * add one entry to system_access_users table.
-	 * @param userId
-	 * @param userName
-	 * @param sigature
-	 * @param signDate
-	 */
-	public void insertSystemAccessUser(HttpServletRequest request)
-	{		
-		String userId = request.getRemoteUser();
-		HttpSession session = request.getSession();
-		String userName = session.getAttribute(USER_FULL_NAME)+"";
-		String signature = request.getParameter("txtName");
-		String signDate = request.getParameter("txtSignDate");
-		try{
-			Long ms = new SimpleDateFormat("MM/dd/yyyy").parse(signDate).getTime();
-			heronDao.insertSystemAccessUser(userId, userName, signature, new Timestamp(ms));
-		}
-		catch(ParseException ex){
-			log.error("error in insertSystemAccessUser() parsing date");
-		}
-	}
-	
-	/**
-	 * check if user already in i2b2.
-	 * @param userId
-	 * @return true if exist, false otherwise.
-	 */
-	public boolean isUserInI2b2Database(String userId){
-		return heronDao.isUserInI2b2Database(userId);
-	}
-	
-	/**
-	 * Insert user and project info into i2b2 database
-	 * @param request a HttpServletRequest
-	 */
-	public void insertPMUser(HttpServletRequest request){
-		String projId = StaticDataUtil.getSoleInstance().getProperties().getProperty(USER_PROJ);
-		String userId = request.getRemoteUser();
-		String fullName = request.getSession().getAttribute(USER_FULL_NAME)+"";
-		heronDao.insertPMUser(projId, userId, fullName);
-	}
-	
-	/**
-	 * check if a user has been properly trained in CHALK 
-	 * @param request a HttpServletRequest
-	 * @return training expiration date.
-	 */
-	public Date checkChalkTraining(HttpServletRequest request){
-		return chalkDao.getChalkTrainingExpireDate(request.getRemoteUser());
-	}
-	
-	/**
-	 * insert sponsorship data into database.
-	 * @param request a HttpServletRequest.
-	 */
-	public void insertSponsorships(HttpServletRequest request)throws Exception{
-		String resTitle = request.getParameter("txtRTitle");
-		String resDesc = request.getParameter("resDesc");
-		String empIds = request.getParameter("empIds");
-		String expDate = request.getParameter("expDate");
-		String spnsrType = request.getParameter("spnsr_type");
-		String sigName = request.getParameter("txtName");
-		String sigDate = request.getParameter("txtSignDate");
-		String uid = request.getRemoteUser();
-		String[] empIdArray = empIds.split(";");
-		HttpSession session = request.getSession();
-		String[] nonEmpIdArray = (String[])session.getAttribute(SponsorshipServlet.Form.NON_EMP_IDS);
-		String[] nonEmpDescArray = (String[])session.getAttribute(SponsorshipServlet.Form.NON_EMP_DESCS);
-		heronDao.insertSponsorships(resTitle,resDesc,empIdArray,nonEmpIdArray,expDate,uid,spnsrType,sigName,sigDate,nonEmpDescArray);
-	}
-	
-	/**
-	 * approve sponsorships.
-	 * @param request
-	 * @return empty string if success, else a warning message.
-	 */
-	public String approveSponsorship(HttpServletRequest request){
-		String result = "Approved Successfully.";
-		boolean anyChecked = false;
-		Vector<String> ids = new Vector<String>();
-		Vector<String> vals = new Vector<String>();
-		@SuppressWarnings("unchecked")
-		Enumeration<String> names = request.getParameterNames();
-		String org = request.getParameter("hidOrg");
-		String uid = request.getRemoteUser();
-		
-		while(names.hasMoreElements()){
-			String param = names.nextElement()+"";
-			if(param.startsWith("rad_")){
-				String id = param.substring(4);
-				String val = request.getParameter(param);
-				if(val!=null){
-					anyChecked = true;
-					ids.add(id);
-					vals.add(val);
-				}
-			}
-		}
-		if(anyChecked){
-			heronDao.approveSponsorship(org, ids, vals, uid);
-			notifyUserApprovedOrRejected(ids,vals);
-		}
-		else
-			result = "you did not check anyone to approve.";
-		return  result;
-	}
-	
-	/**
-	 * check if a user is sponsored and approved
-	 * @param uid
-	 * @return true if yes, false otherwise
-	 */
-	public boolean isViewOnlyUserApproved(String uid){
-		return heronDao.isViewOnlyUserApproved(uid);
-	}
-	
-	/**
-	 * get droc member ids
-	 * @return droc member ids as String[]
-	 */
-	public String[] getDrocIds(){
-		return heronDao.getDrocIds();
-	}
-
-	/**
-	 * check if user active in exec_group table
-	 * @param uid
-	 * @return true if user active in exec_group table.
-	 */
-	public boolean isUserExecutive(String uid){
-		return heronDao.isUserExecutive(uid);
-	}
-	
-	/**
-	 * notify user and sponsor if request/sponsorship get rejected or approved
-	 * @param ids
-	 * @param vals
-	 */
-	private void notifyUserApprovedOrRejected(Vector ids, Vector vals){
-		for(int i=0;i<ids.size();i++){
-			String val = vals.get(i)+"";
-			
-			if(val.equals("A")){
-				String[] approveInfo = heronDao.getUserApproveInfo(ids.get(i)+"");
-				if(approveInfo[0]=="T"){
-					bUtil.notifyUserApprovedOrRejected(approveInfo[1],approveInfo[2],"A",approveInfo[3]);
-				}
-			}
-			else if (val.equals("R")){
-				String[] spsrInfo = heronDao.getSponsorshipUserInfo(ids.get(i)+"");
-				bUtil.notifyUserApprovedOrRejected(spsrInfo[0],spsrInfo[1],"R",spsrInfo[2]);
-			}
-		}
-	}
 	
 	/**
 	 * get a string with ids already sponsored
@@ -244,30 +56,5 @@ public class DBUtil {
 	public String isSponsoredCheck(List<String> ids,String projTitle,String projDesc,String spnsrType){
 
 		return heronDao.getSponsoredIds(Functional.mkString(ids, spnsrType),projTitle,projDesc,spnsrType);
-	}
-	
-	/**
-	 * check if user has acknowledged the most recent disclaimer
-	 * @param uid
-	 * @return true if user has acknowledged the most recent disclaimer
-	 */
-	public boolean isDisclaimerRead(String uid){
-		return heronDao.isDisclaimerRead(uid);
-	}
-	
-	/**
-	 * update table to reflect user has ack. the disclaimer
-	 * @param uid
-	 */
-	public void updateDisclaimerAckowledgement(String uid){
-		heronDao.updateDisclaimerAckowledgement(uid);
-	}
-	
-	/**
-	 * terminate heron user based on user id
-	 * @param id
-	 */
-	public String termSponsorship(String id, String action,String reason){
-		return heronDao.termSponsorship(id, action,reason);
 	}
 }

@@ -35,7 +35,7 @@ public class LDAPEnterpriseTest {
 	static LdapTemplate cardsTemplate = new LdapTemplate(new HCardSource());
 
 	public static LDAPEnterprise mockMedCenter() {
-		return new LDAPEnterprise(cardsTemplate);
+		return new LDAPEnterprise(cardsTemplate, null); //@@todo
 	}
 
 	@Test
@@ -54,7 +54,7 @@ public class LDAPEnterpriseTest {
 	public void findFaculty() throws NoPermissionException, ServletException {
 		LDAPEnterprise e = mockMedCenter();
 		Agent fac = e
-				.qualifiedFaculty(e.requestTicket(mockCASRequest("john.smith")));
+				.affiliate(mockCASRequest("john.smith"));
 		Assert.assertEquals("John Smith", fac.getFullName());
 	}
 
@@ -62,7 +62,8 @@ public class LDAPEnterpriseTest {
 	public void studentNotFaculty() throws NoPermissionException,
 			ServletException {
 		LDAPEnterprise e = mockMedCenter();
-		e.qualifiedFaculty(e.requestTicket(mockCASRequest("bill.student")));
+		Agent bill = e.affiliate(mockCASRequest("bill.student"));
+		e.withFaculty(bill, null); //null works?
 	}
 
 	public static HttpServletRequest mockCASRequest(String userid) {

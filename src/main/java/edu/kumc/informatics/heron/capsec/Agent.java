@@ -25,4 +25,6 @@ public interface Agent {
         public String getTitle();
 
         public String getMail();
+        
+        public String getUserId();
 }

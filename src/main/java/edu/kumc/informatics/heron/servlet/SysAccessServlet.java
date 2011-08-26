@@ -10,16 +10,25 @@ import static edu.kumc.informatics.heron.base.StaticValues.DENIED_URL;
 import static edu.kumc.informatics.heron.base.StaticValues.DISCLAIMER_URL;
 import static edu.kumc.informatics.heron.base.StaticValues.I2B2_CLIENT_SERVICE;
 import static edu.kumc.informatics.heron.base.StaticValues.SPONSOR_URL;
-import static edu.kumc.informatics.heron.base.StaticValues.VIEW_ONLY;
+import static edu.kumc.informatics.heron.base.StaticValues.USER_FULL_NAME;
+import static edu.kumc.informatics.heron.base.StaticValues.USER_PROJ;
 
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Properties;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
+import edu.kumc.informatics.heron.capsec.AcademicMedicalCenter;
+import edu.kumc.informatics.heron.capsec.Agent;
+import edu.kumc.informatics.heron.dao.HeronDBDao;
+import edu.kumc.informatics.heron.dao.HeronDao;
 import edu.kumc.informatics.heron.util.BasicUtil;
 import edu.kumc.informatics.heron.util.DBUtil;
 import edu.kumc.informatics.heron.util.StaticDataUtil;
@@ -31,9 +40,17 @@ import static edu.kumc.informatics.heron.base.StaticValues.*;
 public class SysAccessServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private Properties props = StaticDataUtil.getSoleInstance().getProperties();    
-	private DBUtil dbUtil = new DBUtil();
-	private BasicUtil bUtil = new BasicUtil();
+	private HeronDBDao _heronData = new HeronDBDao(); // TODO: use interface
+	private AcademicMedicalCenter _org; // TODO: inject.
 	
+        @Override
+        public void init() {
+                _heronData = (HeronDBDao) SpringServletHelper.getBean(getServletContext(),
+                                HeronDBDao.beanName);
+                assert _heronData != null;
+                assert _org != null; // TODO: this will fail.
+        }
+
     /**
      * @see HttpServlet#HttpServlet()
      */
@@ -56,23 +73,31 @@ public class SysAccessServlet extends HttpServlet {
 		
 		if("Accept".equals(type)){
 			String message = validateInput(request);
-			String uid = request.getRemoteUser();
+			Agent who = _org.affiliate(request);
+			String uid = who.getUserId();
 			
 			if("".equals(message)){
-				dbUtil.insertSystemAccessUser(request);
-				if(!dbUtil.isUserInI2b2Database(uid)){
-					dbUtil.insertPMUser(request);
+				try {
+	                                insertSystemAccessUser(request);
+                                } catch (ParseException e) {
+                                	throw new ServletException(e); //TODO: test hanlding of these problems.
+                                }
+				if (!_heronData.isUserInI2b2Database(uid)) {
+					String projId = StaticDataUtil.getSoleInstance().getProperties()
+					                .getProperty(USER_PROJ);
+					_heronData.insertPMUser(projId, uid, who.getFullName());
 				}
 				String sponsorIndctr = request.getParameter("SPNSR");
 				String initType = request.getParameter("init_type");
-				
-				if(sponsorIndctr!=null && !sponsorIndctr.equals("null")){//coming from sponsorship
-					String url = initType.equals(VIEW_ONLY)?SPONSOR_URL:DATA_USAGE_URL;
+
+				if (sponsorIndctr != null && !sponsorIndctr.equals("null")) {// coming
+					                                                     // from
+					                                                     // sponsorship
+					String url = initType.equals(HeronDao.AccessType.VIEW_ONLY.toString()) ? SPONSOR_URL : DATA_USAGE_URL;
 					RequestDispatcher rd = request.getRequestDispatcher(url);
 					rd.forward(request, response);
-				}
-				else{//normal pass of using i2b2
-					boolean isDisclaimerRead = dbUtil.isDisclaimerRead(uid);
+				}				else{//normal pass of using i2b2
+					boolean isDisclaimerRead = _heronData.disclaimer(who).wasRead();
 					if(!isDisclaimerRead){
 						RequestDispatcher rd = request.getRequestDispatcher(DISCLAIMER_URL);
 						rd.forward(request, response);
@@ -91,7 +116,7 @@ public class SysAccessServlet extends HttpServlet {
 			response.sendRedirect(DENIED_URL);
 		}
 	}
-	
+		
 	/**
 	 * client data validation
 	 * @param request
@@ -106,8 +131,24 @@ public class SysAccessServlet extends HttpServlet {
 			msg += "Signature is required. ";
 		if(sigDate==null || sigDate.trim().equals(""))
 			msg += "Date is required. ";
-		else if(!bUtil.checkDateFormat(sigDate))
-		    	msg += "Date format is wrong.";
+		// TODO: else if(!bUtil.checkDateFormat(sigDate))
+		//    	msg += "Date format is wrong.";
 	    return msg;
 	}
+
+        /**
+         * add one entry to system_access_users table.
+         * @throws ParseException 
+         * @throws ServletException 
+         */
+        public void insertSystemAccessUser(HttpServletRequest request) throws ParseException, ServletException
+        {               
+        	// TODO: hidden param for XSRF protection, etc.
+        	Agent who = _org.affiliate(request);
+                String signature = request.getParameter("txtName");
+                String signDate = request.getParameter("txtSignDate");
+                Long ms = new SimpleDateFormat("MM/dd/yyyy").parse(signDate).getTime();
+                _heronData.insertSystemAccessUser(who.getUserId(), who.getFullName(), signature, new Timestamp(ms));
+        }        
+
 }

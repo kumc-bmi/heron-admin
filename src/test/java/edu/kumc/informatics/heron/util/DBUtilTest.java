@@ -38,10 +38,13 @@ public class DBUtilTest extends AbstractTransactionalDataSourceSpringContextTest
                 DBUtil it = new DBUtil(_heronDBDao, _chalk);
                 final int nOrgs = 3; // hardcoded in DB schema, for now
                 int drocMemberCount = 0;
+//todo
+                /****************
                 for(String id : it.getDrocIds()){
                         drocMemberCount ++;
                         logger.info("droc member id:" + id);
                 }
+*************/
                 logger.info("droc member count: " + drocMemberCount);
                 Assert.assertTrue(drocMemberCount >= nOrgs);
         }

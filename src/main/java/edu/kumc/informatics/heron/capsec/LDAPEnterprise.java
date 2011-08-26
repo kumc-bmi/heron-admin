@@ -3,7 +3,7 @@
 
 package edu.kumc.informatics.heron.capsec;
 
-import java.security.acl.NotOwnerException;
+import java.util.Date;
 import java.util.List;
 import javax.naming.NameNotFoundException;
 import javax.naming.NamingException;
@@ -18,22 +18,28 @@ import org.jasig.cas.client.validation.Assertion;
 import org.springframework.ldap.core.AttributesMapper;
 import org.springframework.ldap.core.LdapTemplate;
 
+import edu.kumc.informatics.heron.dao.ChalkDBDao;
+import edu.kumc.informatics.heron.util.Functional.Function1;
+
 /**
- * An EnterpriseAuthority derives capabilities from a CASCheck using LDAP.
  * @author dconnolly
  */
+//TODO: rename this class.
 public class LDAPEnterprise implements AcademicMedicalCenter {
+
         protected final Log logger = LogFactory.getLog(getClass());
 
         private final LdapTemplate _ldapTemplate;
+        private final ChalkDBDao _chalk;
 
         /**
          *
          * @param t as per SpringLDAP
          * http://static.springsource.org/spring-ldap/docs/1.3.x/reference/html/basic.html
          */
-        public LDAPEnterprise (LdapTemplate t) {
+        public LDAPEnterprise (LdapTemplate t, ChalkDBDao chalk) {
                 _ldapTemplate = t;
+                _chalk = chalk;
         }
 
         private static final NameNotFoundException notfound = new NameNotFoundException (
@@ -44,7 +50,7 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
          * @return
          * @throws NameNotFoundException 
          */
-        private AccountHolder findByName(String name) throws NameNotFoundException {
+        private AccountHolder findByName(final String name) throws NameNotFoundException {
         	    String filter = "(cn=" + name + ")"; // TODO: injection risk?
                 final LDAPEnterprise that = this;
                 @SuppressWarnings("unchecked")
@@ -54,6 +60,7 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
                                 public AccountHolder mapFromAttributes(Attributes attrs)
                                         throws NamingException {
                                         return new AccountHolder(that,
+                                                        name,
                                                 (String)attrs.get("sn").get(),
                                                 (String)attrs.get("givenname").get(),
                                                 (String)attrs.get("title").get(),
@@ -70,33 +77,12 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
                 return x.get(0);
         }
 
-        private NotOwnerException notmine = new NotOwnerException();
-        /**
-         * Ensure that an agent is an agent of this organization.
-         * @param who
-         * @return who, verified to be an agent of this organization
-         * @throws NotOwnerException if who is not recognized
-         */
-        @Override
-        public Agent recognize(Agent who) throws NotOwnerException {
-                AccountHolder out;
-                try {
-                        out = (AccountHolder)who;
-                } catch (ClassCastException e) {
-                        throw notmine;
-                }
-                if (out._org != this) {
-                        throw notmine;
-                }
-                return out;
-        }
-
         public static final String excluded_jobcode = "24600";
         static class AccountHolder implements Agent {
-                public AccountHolder(LDAPEnterprise org,
+                public AccountHolder(LDAPEnterprise org, String userid,
                         String surName, String givenName, String title, String mail,
                         Boolean isFaculty, String jobCode) {
-                        _org = org;
+                        _userid = userid;
                         _surName = surName;
                         _givenName = givenName;
                         _title = title;
@@ -105,13 +91,17 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
                         _jobCode = jobCode;
                 }
 
-                private final LDAPEnterprise _org;
+                private final String _userid;
                 private final String _surName;
                 private final String _givenName;
                 private final String _title;
                 private final String _mail;
                 private final Boolean _isFaculty;
                 private final String _jobCode;
+
+                public String getUserId() {
+                        return _userid;
+                }
 
                 public Boolean isQualifiedFaculty() {
                         return _isFaculty && ! _jobCode.equals(excluded_jobcode);
@@ -138,39 +128,61 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
                 return findByName(name);
         }
 
-        /**
-         * Hmm... perhaps we should be involved in the generation of tickets.
-         * Else why not just use a String?
-         * @param who
-         * @return
-         * @throws LimitExceededException
-         */
         @Override
-        public Agent qualifiedFaculty(Ticket who) throws NoPermissionException {
-                CASTicket cas_who;
+        public Agent affiliate(HttpServletRequest q) throws ServletException {
+                String name = casUserId(q);
                 
-                try {
-                        cas_who = (CASTicket)who;
-                } catch (ClassCastException e) {
-                        throw denied;
-                }
-                if (cas_who._enterprise != this) {
-                        throw denied;
-                }
-
                 AccountHolder a;
                 try {
-                        a = findByName(cas_who.getName());
+                        a = findByName(name);
                 } catch (NameNotFoundException e) {
-                        throw denied;
+                        throw ldap_cas_disagreement;
                 }
 
-                if (!a.isQualifiedFaculty()) {
-                        throw denied;
-                }
                 return a;
         }
-        private NoPermissionException denied = new NoPermissionException();
+        private ServletException ldap_cas_disagreement =
+                        new ServletException("Oops! LDAP and CAS disagree.");
+
+	@Override
+        public <T> T withFaculty(Agent supposedFaculty,
+                        Function1<Agent, T> f)
+                        throws NoPermissionException {
+		AccountHolder acct;
+		try {
+			acct = (AccountHolder) supposedFaculty;
+		} catch (ClassCastException wrongtype) {
+			throw new IllegalArgumentException();
+		}
+                if (!acct.isQualifiedFaculty()) {
+                        throw notFaculty;
+                }
+
+                return f.apply(acct);
+        }
+
+        public static class NoTraining extends NoPermissionException {
+                private static final long serialVersionUID = 1L;
+        }
+        private final NoTraining notraining = new NoTraining();
+
+        /**
+         * 
+         * @param a
+         * @return
+         * @throws NoTraining if training is non-existent or too old.
+         * @throws IllegalArgumentException if a is not from our _org
+         */
+        public Date trainedThru(Agent a) throws NoTraining {
+                Date training_expiration = _chalk.getChalkTrainingExpireDate(a);
+
+                if (training_expiration == null) {
+                        throw notraining;
+                }
+
+                return training_expiration;
+        }
+
 
         
         /**
@@ -179,7 +191,7 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
          * @return a CASCap that gives access to the name of the authenticated CAS Principal.
          * @throws ServletException if the request's session has no CAS assertion attribute.
          */
-        public Ticket requestTicket(HttpServletRequest request)  throws ServletException {
+        private String casUserId(HttpServletRequest request)  throws ServletException {
                 // Rescue Assertion from un-typesafe attribute mapping.
                 Assertion it = (Assertion)request.getSession().getAttribute(
                         AbstractCasFilter.CONST_CAS_ASSERTION);
@@ -187,29 +199,9 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
                         throw noCAS;
                 }
 
-                return new CASTicket(this, it.getPrincipal().getName());
+                return it.getPrincipal().getName();
         }
         
         protected static final ServletException noCAS =
                 new ServletException("no CAS ticket");
-
-        /**
-         * A CASTicket is a capability derived from a CAS-authenticated HttpServletRequest.
-         * @author dconnolly
-         */
-        private static class CASTicket implements Ticket {
-                private final String _name;
-                private final LDAPEnterprise _enterprise;
-                
-                protected CASTicket (LDAPEnterprise e, String name) {
-                        _enterprise = e;
-                        _name = name;
-                }
-
-                @Override
-                public String getName() {
-                        return _name;
-                }
-
-        }
 }
