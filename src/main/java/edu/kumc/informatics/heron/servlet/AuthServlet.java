@@ -8,6 +8,7 @@ package edu.kumc.informatics.heron.servlet;
 
 import java.util.Properties;
 
+import javax.inject.Inject;
 import javax.naming.NoPermissionException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -32,6 +33,7 @@ public class AuthServlet {
         /**
          * @see HttpServlet#HttpServlet()
          */
+        @Inject
         public AuthServlet(AcademicMedicalCenter org, SystemAccessRecords sar) {
                 _org = org;
                 _sar = sar;
@@ -39,7 +41,7 @@ public class AuthServlet {
         private final AcademicMedicalCenter _org;
         private final SystemAccessRecords _sar;
     
-        @RequestMapping(value="/AuthServlet", method = RequestMethod.POST)
+//        @RequestMapping(value="/AuthServlet", method = RequestMethod.POST)
 	protected String visitQueryTool(HttpServletRequest request, HttpServletResponse response)
 	                throws ServletException {
         	try {

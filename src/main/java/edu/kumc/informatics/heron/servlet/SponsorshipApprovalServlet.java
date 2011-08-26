@@ -18,7 +18,8 @@ import edu.kumc.informatics.heron.util.DBUtil;
 @Controller
 public class SponsorshipApprovalServlet {
 
-        @RequestMapping(value="/SponsorshipApprovalServlet", method = RequestMethod.POST)
+
+//TODO	@RequestMapping(value="/SponsorshipApprovalServlet", method = RequestMethod.POST)
         protected String approve(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 /*************
         	DROCSponsoring ds = _sar.drocSponsoring(request);

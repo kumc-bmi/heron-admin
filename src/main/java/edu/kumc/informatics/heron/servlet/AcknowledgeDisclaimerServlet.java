@@ -43,7 +43,7 @@ public class AcknowledgeDisclaimerServlet { // TODO: rename
          * @see HttpServlet#doPost(HttpServletRequest request,
          *      HttpServletResponse response)
          */
-        @RequestMapping(value="/AcknowledgeDisclaimerServlet", method = RequestMethod.POST)
+//TODO        @RequestMapping(value="/AcknowledgeDisclaimerServlet", method = RequestMethod.POST)
         public String acknowledge(HttpServletRequest request,
                         HttpServletResponse response) throws ServletException {
                 Agent whose = _org.affiliate(request);

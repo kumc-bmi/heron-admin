@@ -9,18 +9,7 @@ TODO: consider re-coding in Java, though the community docs all seem to use XML.
        xsi:schemaLocation="http://www.springframework.org/schema/beans
            http://www.springframework.org/schema/beans/spring-beans-2.5.xsd">
 
-  <!-- HERON schema, chalk DB, LDAP access -->
   <!-- todo: fail fast rather than lazy-init -->
-  <bean name="userAccessData"  scope="singleton"  lazy-init="true"
-        class="edu.kumc.informatics.heron.util.DBUtil">
-    <constructor-arg>
-      <ref bean="heronDao" />
-    </constructor-arg>
-    <constructor-arg>
-      <ref bean="chalkChecker" />
-    </constructor-arg>
-  </bean>
-
 
   <bean name="heronDao" scope="singleton"  lazy-init="true"
         class="edu.kumc.informatics.heron.dao.HeronDBDao">
@@ -100,6 +89,9 @@ of the KUMC Department of Biostatistics
     <constructor-arg>
       <ref bean="search_kumc_idv"/>
     </constructor-arg>
+    <constructor-arg>
+      <ref bean="chalkChecker"/>
+    </constructor-arg>
   </bean>
 
   <bean id="search_kumc_idv" class="org.springframework.ldap.core.LdapTemplate">
@@ -118,6 +110,7 @@ of the KUMC Department of Biostatistics
     <property name="locations">
       <list>
         <value>classpath:configs.properties</value> <!-- TODO: focus to ldap.properties -->
+        <value>classpath:app.properties</value> <!-- TODO: focus to ldap.properties -->
       </list>
     </property>
   </bean>

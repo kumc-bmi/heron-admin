@@ -18,8 +18,10 @@
     </constructor-arg>
   </bean>
 
-  <!-- look for @Controller and such -->
+  <!-- look for @Controller and such 
+  TODO
   <context:component-scan base-package="edu.kumc.informatics.heron.servlet"/>
+-->
 
   <bean id="urlMapper"
         class="org.springframework.web.servlet.handler.SimpleUrlHandlerMapping">
