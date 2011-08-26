@@ -2,6 +2,8 @@
  * http://informatics.kumc.edu/ */
 package edu.kumc.informatics.heron.servlet;
 
+import java.util.Date;
+
 import javax.inject.Inject;
 import javax.naming.NoPermissionException;
 import javax.servlet.ServletException;
@@ -52,6 +54,7 @@ public class MyChecklist implements Controller {
 
         public enum ChecklistProperty {
         	AFFILIATE("affiliate"),
+        	TRAINING_EXPIRED("trainingExpired"),
         	TRAINING_EXPIRATION("trainingExpiration"),
         	EXECUTIVE("executive"),
         	FACULTY("faculty"),
@@ -94,12 +97,15 @@ public class MyChecklist implements Controller {
                 SystemAccessRecords.Qualification facqual = null;
                 SystemAccessRecords.Qualification suqual = null;
                 SystemAccessRecords.Qualification qual = null;
-                
+
                 try {
-                	mv.addObject(ChecklistProperty.TRAINING_EXPIRATION.toString(), _enterprise.trainedThru(affiliate));
+                	Date exp = _enterprise.trainedThru(affiliate);
+                	mv.addObject(ChecklistProperty.TRAINING_EXPIRATION.toString(), exp);
+                	mv.addObject(ChecklistProperty.TRAINING_EXPIRED.toString(), new Date().after(exp));
                 } catch (NoPermissionException np) {
                 	// I think the StringTemplate convention is null rather than absent.
                 	mv.addObject(ChecklistProperty.TRAINING_EXPIRATION.toString(), null);
+                	mv.addObject(ChecklistProperty.TRAINING_EXPIRED.toString(), true);
                 }
 
                 try {

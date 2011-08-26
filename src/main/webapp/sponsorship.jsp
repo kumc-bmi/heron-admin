@@ -1,5 +1,7 @@
 <%@ page import="edu.kumc.informatics.heron.base.*" %>
 <%@ page import ="edu.kumc.informatics.heron.util.*" %>
+<%@ page import="edu.kumc.informatics.heron.dao.HeronDao" %>
+
 <%
 String val = request.getAttribute(StaticValues.VAL_MESSAGE)+""; 
 String message = val!=null && !val.equals("null")?val:"";
@@ -35,7 +37,7 @@ if(uname.equals("null")){
 <%@ include file="header.html" %>
 	<div align="center" class="h5red"><blink><%=message%></blink></div>
 	<form id="frmSponsor" action="SponsorshipServlet">
-	<input type="hidden" name="spnsr_type" value="<%=StaticValues.VIEW_ONLY %>"/>
+	<input type="hidden" name="spnsr_type" value="<%=HeronDao.AccessType.VIEW_ONLY.toString() %>"/>
 	<p></p>
 	<table>
 		<tr><th colspan=2><h4>Sponsor Heron System Usage Users</h4></th></tr>

@@ -28,8 +28,8 @@ public interface AcademicMedicalCenter {
 
         Agent affiliate(HttpServletRequest q) throws ServletException;
 
-        <T> T withFaculty(Agent supposedFaculty, Function1<Agent, T> f)
-        		 throws NoPermissionException;
+        void checkFaculty(Agent supposedFaculty) throws NoPermissionException;
+
         public final NoPermissionException notFaculty = new NoPermissionException();
         
         Date trainedThru(Agent a) throws NoPermissionException;

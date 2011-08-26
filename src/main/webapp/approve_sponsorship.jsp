@@ -1,5 +1,6 @@
 <%@ page import="edu.kumc.informatics.heron.base.*" %>
 <%@ page import="edu.kumc.informatics.heron.util.*" %>
+<%@ page import="edu.kumc.informatics.heron.dao.HeronDao" %>
 <%
 String val = request.getAttribute(StaticValues.VAL_MESSAGE)+""; 
 String message = val!=null && !val.equals("null")?val:"";
@@ -29,12 +30,12 @@ String message = val!=null && !val.equals("null")?val:"";
 	<form id="frmSponsor" action="SponsorshipApprovalServlet">
 	<div align="center"><h4>Approve HERON System Usage Users</h4></div>
 	<p></p><h5>
-	<%= new GuiUtil().getSponsorship(StaticValues.VIEW_ONLY,request.getRemoteUser()) %>
+	<%= new GuiUtil().getSponsorship(HeronDao.AccessType.VIEW_ONLY.toString(),request.getRemoteUser()) %>
 	</h5><p></p>
 	<p></p>
 	<div align="center"><h4>Approve HERON Data Usage Users</h4></div>
 	<p></p><h5>
-	<%= new GuiUtil().getSponsorship(StaticValues.DATA_ACCESS,request.getRemoteUser()) %>
+	<%= new GuiUtil().getSponsorship(HeronDao.AccessType.DATA_ACCESS.toString(),request.getRemoteUser()) %>
 	</h5><p></p>
 	<p></p>
 <div align="center">

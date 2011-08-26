@@ -19,16 +19,14 @@ import org.springframework.jdbc.core.simple.SimpleJdbcDaoSupport;
 
 import edu.kumc.informatics.heron.capsec.Agent;
 
-public class ChalkDBDao extends SimpleJdbcDaoSupport{
+public class ChalkDBDao extends SimpleJdbcDaoSupport implements ChalkDao{
 	//private Log log = LogFactory.getLog(getClass());
 		
-        /**
-	 * check if a user has been trained in CHALK
-	 * @param userId
-	 * @return expiration date of HSC training, or null if none on file
-         * @throws NotOwnerException
-	 */
-	public Date getChalkTrainingExpireDate(Agent who) {
+        /* (non-Javadoc)
+         * @see edu.kumc.informatics.heron.dao.ChalkDao#getChalkTrainingExpireDate(edu.kumc.informatics.heron.capsec.Agent)
+         */
+	@Override
+        public Date getChalkTrainingExpireDate(Agent who) {
 	        return new ChalkStoredProcedure(this.getDataSource()).getTrainingExpiration(who);
 	}
 

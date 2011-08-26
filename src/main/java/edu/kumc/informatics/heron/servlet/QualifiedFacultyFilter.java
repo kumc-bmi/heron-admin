@@ -34,13 +34,6 @@ public class QualifiedFacultyFilter implements Filter {
                         AcademicMedicalCenter.beanName);
         }
 
-        // TODO: move to Functional
-        Function1<Agent, Agent> identity = new Function1<Agent, Agent>() {
-		@Override
-		public Agent apply(Agent x) {
-			return x;
-		}};
-		
         @Override
         public void doFilter(ServletRequest q, ServletResponse a, FilterChain fc) throws IOException, ServletException {
                 HttpServletRequest hq = (HttpServletRequest) q;
@@ -48,7 +41,7 @@ public class QualifiedFacultyFilter implements Filter {
                 try {
                 	Agent who = _idvault.affiliate(hq);
                 	
-                	_idvault.withFaculty(who, identity);
+                	_idvault.checkFaculty(who);
                 	// todo: "bigger" type that avoids doing withFaculty again?
                 	q.setAttribute(QualifiedFacultyFilter.class.getName(), who);
                 } catch (NoPermissionException ex) {                        

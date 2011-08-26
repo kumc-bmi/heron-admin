@@ -14,7 +14,7 @@ import org.springframework.test.AbstractTransactionalDataSourceSpringContextTest
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
-import edu.kumc.informatics.heron.dao.ChalkDBDao;
+import edu.kumc.informatics.heron.dao.ChalkDao;
 import edu.kumc.informatics.heron.dao.HeronDBDao;
 import org.springframework.test.annotation.IfProfileValue;
 
@@ -31,7 +31,7 @@ public class DBUtilTest extends AbstractTransactionalDataSourceSpringContextTest
         private HeronDBDao _heronDBDao;
 
         @Autowired
-        private ChalkDBDao _chalk;
+        private ChalkDao _chalk;
 
         @Test
         public void testDrocHasAtLeastOneMemberPerOrg() {

@@ -5,7 +5,7 @@
 
 package edu.kumc.informatics.heron.util;
 
-import edu.kumc.informatics.heron.dao.ChalkDBDao;
+import edu.kumc.informatics.heron.dao.ChalkDao;
 import edu.kumc.informatics.heron.dao.HeronDBDao;
 
 /**
@@ -20,7 +20,7 @@ public class DevUserAccessData extends DBUtil {
          * @param ch in super
          * @param devUserId - user id of developer
          */
-        public DevUserAccessData(HeronDBDao h, ChalkDBDao ch, String devUserId) {
+        public DevUserAccessData(HeronDBDao h, ChalkDao ch, String devUserId) {
                 super(h, ch);
                 _devUserId = devUserId;
         }

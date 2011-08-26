@@ -18,7 +18,7 @@ import org.jasig.cas.client.validation.Assertion;
 import org.springframework.ldap.core.AttributesMapper;
 import org.springframework.ldap.core.LdapTemplate;
 
-import edu.kumc.informatics.heron.dao.ChalkDBDao;
+import edu.kumc.informatics.heron.dao.ChalkDao;
 import edu.kumc.informatics.heron.util.Functional.Function1;
 
 /**
@@ -30,14 +30,14 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
         protected final Log logger = LogFactory.getLog(getClass());
 
         private final LdapTemplate _ldapTemplate;
-        private final ChalkDBDao _chalk;
+        private final ChalkDao _chalk;
 
         /**
          *
          * @param t as per SpringLDAP
          * http://static.springsource.org/spring-ldap/docs/1.3.x/reference/html/basic.html
          */
-        public LDAPEnterprise (LdapTemplate t, ChalkDBDao chalk) {
+        public LDAPEnterprise (LdapTemplate t, ChalkDao chalk) {
                 _ldapTemplate = t;
                 _chalk = chalk;
         }
@@ -145,21 +145,17 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
                         new ServletException("Oops! LDAP and CAS disagree.");
 
 	@Override
-        public <T> T withFaculty(Agent supposedFaculty,
-                        Function1<Agent, T> f)
-                        throws NoPermissionException {
+	public void checkFaculty(Agent supposedFaculty) throws NoPermissionException {
 		AccountHolder acct;
 		try {
 			acct = (AccountHolder) supposedFaculty;
 		} catch (ClassCastException wrongtype) {
 			throw new IllegalArgumentException();
 		}
-                if (!acct.isQualifiedFaculty()) {
-                        throw notFaculty;
-                }
-
-                return f.apply(acct);
-        }
+		if (!acct.isQualifiedFaculty()) {
+			throw notFaculty;
+		}
+	}
 
         public static class NoTraining extends NoPermissionException {
                 private static final long serialVersionUID = 1L;

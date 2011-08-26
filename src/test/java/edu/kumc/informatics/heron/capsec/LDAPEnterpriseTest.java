@@ -3,6 +3,8 @@
 
 package edu.kumc.informatics.heron.capsec;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -13,7 +15,10 @@ import javax.naming.directory.BasicAttributes;
 import javax.naming.directory.DirContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
+import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathExpressionException;
+import javax.xml.xpath.XPathFactory;
+
 import org.w3c.dom.Node;
 import org.xml.sax.InputSource;
 
@@ -27,16 +32,34 @@ import org.springframework.ldap.NamingException;
 import org.springframework.ldap.core.ContextSource;
 import org.springframework.ldap.core.LdapTemplate;
 
+import edu.kumc.informatics.heron.dao.ChalkDao;
 import edu.kumc.informatics.heron.util.HCardContext;
 import org.springframework.mock.web.MockHttpServletRequest;
 
 public class LDAPEnterpriseTest {
 	public static final String mockData = "/mockDirectory.html";
-	static LdapTemplate cardsTemplate = new LdapTemplate(new HCardSource());
 
-	public static LDAPEnterprise mockMedCenter() {
-		return new LDAPEnterprise(cardsTemplate, null); //@@todo
+	public LDAPEnterprise mockMedCenter() {
+		InputSource xmlsrc = new InputSource(getClass().getResourceAsStream(mockData));
+		KUMCHCardContext pplinfo;
+                try {
+	                pplinfo = new KUMCHCardContext(xmlsrc);
+                } catch (XPathExpressionException e) {
+	                throw new IllegalArgumentException(e);
+                }
+		pplinfo.findCards("bill.student"); //@@
+		pplinfo.findCards("bill.studentxxx"); //@@
+		LdapTemplate cardsTemplate = new LdapTemplate(new KUMCHCardSource(pplinfo));
+		return new LDAPEnterprise(cardsTemplate, pplinfo);
 	}
+
+	@Test
+	public void parseSomething() throws XPathExpressionException {
+		XPath xpath = XPathFactory.newInstance().newXPath();
+		InputSource src = new InputSource(getClass().getResourceAsStream(mockData));
+		Assert.assertNotNull(xpath.evaluate("/html/head/title", src));
+	}
+
 
 	@Test
 	public void findKnownAgent() throws NameNotFoundException {
@@ -53,8 +76,7 @@ public class LDAPEnterpriseTest {
 	@Test
 	public void findFaculty() throws NoPermissionException, ServletException {
 		LDAPEnterprise e = mockMedCenter();
-		Agent fac = e
-				.affiliate(mockCASRequest("john.smith"));
+		Agent fac = e.affiliate(mockCASRequest("john.smith"));
 		Assert.assertEquals("John Smith", fac.getFullName());
 	}
 
@@ -63,7 +85,7 @@ public class LDAPEnterpriseTest {
 			ServletException {
 		LDAPEnterprise e = mockMedCenter();
 		Agent bill = e.affiliate(mockCASRequest("bill.student"));
-		e.withFaculty(bill, null); //null works?
+		e.checkFaculty(bill);
 	}
 
 	public static HttpServletRequest mockCASRequest(String userid) {
@@ -133,8 +155,8 @@ public class LDAPEnterpriseTest {
 
 	}
 
-	public static class KUMCHCardContext extends HCardContext {
-		public KUMCHCardContext(InputSource hCardSrc) {
+	public static class KUMCHCardContext extends HCardContext implements ChalkDao {
+		public KUMCHCardContext(InputSource hCardSrc) throws XPathExpressionException {
 			super(hCardSrc);
 		}
 
@@ -155,31 +177,36 @@ public class LDAPEnterpriseTest {
 			BasicAttributes out = new BasicAttributes();
 			for (String ldapattr : ldap2hcard.keySet()) {
 				String hcardClass = ldap2hcard.get(ldapattr);
-				String findByClass = ".//*[@class='" + hcardClass + "']/text()";
-				String value;
-				try {
-					value = xpath.evaluate(findByClass, hcard);
-				} catch (XPathExpressionException ex) {
-					throw new RuntimeException(
-							"Bad XPath defined at design time:" + findByClass,
-							ex);
-				}
-				out.put(ldapattr, value);
+				out.put(ldapattr, getHCardProperty(hcard, hcardClass));
 			}
 			return out;
+		}
+
+		@Override
+                public Date getChalkTrainingExpireDate(Agent who) {
+			String dtend;
+			dtend = getHCardProperty(findCards(who.getUserId()).item(0), "dtend");
+			SimpleDateFormat iso = new SimpleDateFormat("yyyy-mm-dd");
+			try {
+	                        return iso.parse(dtend);
+                        } catch (ParseException e) {
+	                        return null;
+                        }
 		}
 	}
 
 	/**
 	 * Spring ContextSource to build a KUMCHCardContext
 	 */
-	public static class HCardSource implements ContextSource {
-
+	protected static class KUMCHCardSource implements ContextSource {
+		public KUMCHCardSource(KUMCHCardContext ctx) {
+			_ctx = ctx;
+		}
+		private final KUMCHCardContext _ctx;
+		
 		@Override
 		public DirContext getReadOnlyContext() throws NamingException {
-			InputSource src = new InputSource(getClass().getResourceAsStream(
-					mockData));
-			return new KUMCHCardContext(src);
+			return _ctx;
 		}
 
 		@Override

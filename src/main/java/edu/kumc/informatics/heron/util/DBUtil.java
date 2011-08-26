@@ -21,7 +21,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import edu.kumc.informatics.heron.dao.ChalkDBDao;
+import edu.kumc.informatics.heron.dao.ChalkDao;
 import edu.kumc.informatics.heron.dao.HeronDBDao;
 import edu.kumc.informatics.heron.servlet.SponsorshipServlet;
 import static edu.kumc.informatics.heron.base.StaticValues.*;
@@ -29,7 +29,7 @@ import static edu.kumc.informatics.heron.base.StaticValues.*;
 @Deprecated
 public class DBUtil {
 	private HeronDBDao heronDao;
-	private ChalkDBDao chalkDao;
+	private ChalkDao chalkDao;
 	private BasicUtil bUtil = new BasicUtil();
 	//can have other dao too...
 	private Log log = LogFactory.getLog(getClass());
@@ -39,7 +39,7 @@ public class DBUtil {
         }
 
         @Inject
-	public DBUtil(HeronDBDao h, ChalkDBDao ch){
+	public DBUtil(HeronDBDao h, ChalkDao ch){
 		heronDao = h;
 		chalkDao = ch;
 	}

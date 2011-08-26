@@ -3,15 +3,14 @@
 
 package edu.kumc.informatics.heron.capsec;
 
-import edu.kumc.informatics.heron.dao.HeronDBDao;
-import edu.kumc.informatics.heron.dao.HeronDao;
-import edu.kumc.informatics.heron.util.Functional.Function1;
-
 import java.util.Date;
 
 import javax.naming.NoPermissionException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
+
+import edu.kumc.informatics.heron.dao.HeronDBDao;
+import edu.kumc.informatics.heron.dao.HeronDao;
 
 /**
  *
@@ -67,20 +66,13 @@ public class JDBCSystemAccessRecords implements SystemAccessRecords {
 	}
 	
 
-	private static final Function1<Agent, Agent> identity = new Function1<Agent, Agent>() {
-		@Override
-		public Agent apply(Agent who) {
-			return who;
-		}
-	};
-
 	@Override
 	public Qualification facultyUser(HttpServletRequest q)
 	                throws NoPermissionException, ServletException {
 		Agent a = _org.affiliate(q);
 
 		// throw NoPermission unless a is faculty
-		_org.withFaculty(a, identity);
+		_org.checkFaculty(a);
 
 	        return new Qualified(a);
 	}
@@ -158,7 +150,7 @@ public class JDBCSystemAccessRecords implements SystemAccessRecords {
         @Override
 	public Sponsor asSponsor(HttpServletRequest q) throws NoPermissionException, ServletException {
         	Agent a = _org.affiliate(q);
-        	_org.withFaculty(a, identity);
+        	_org.checkFaculty(a);
                 if (!_heronData.isUserAgreementSigned(a)) {
                         throw nosig;
                 }
