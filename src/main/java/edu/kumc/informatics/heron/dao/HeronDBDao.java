@@ -266,7 +266,7 @@ public class HeronDBDao extends SimpleJdbcDaoSupport implements HeronDao {
 		String sql = "select user_id from heron.SPONSORSHIP where user_id=?"
 		                + " and (expire_date is null or expire_date>sysdate) and access_type='VIEW_ONLY' "
 		                + " and (kuh_approval_status ='A' and kumc_approval_status ='A' and ukp_approval_status ='A')";
-		return this.getSimpleJdbcTemplate().queryForList(sql, who)
+		return this.getSimpleJdbcTemplate().queryForList(sql, who.getUserId())
 		                .size() > 0;
 	}
 	
