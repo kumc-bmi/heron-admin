@@ -99,6 +99,10 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
                 private final Boolean _isFaculty;
                 private final String _jobCode;
 
+                @Override
+                public String toString() {
+                	return "Agent(" + _userid + ")";
+                }
                 public String getUserId() {
                         return _userid;
                 }

@@ -68,6 +68,12 @@ public class LDAPEnterpriseTest {
 		Assert.assertEquals("Chair of Department of Neurology", js.getTitle());
 	}
 
+	@Test
+	public void goodAgentToString() throws NameNotFoundException {
+		Agent js = mockMedCenter().affiliate("john.smith");
+		Assert.assertTrue(js.toString().contains(js.getUserId()));
+	}
+
 	@Test(expected = NameNotFoundException.class)
 	public void dontFindUnknownAgent() throws NameNotFoundException {
 		mockMedCenter().affiliate("nobody.we.know");
