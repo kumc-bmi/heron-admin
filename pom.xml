@@ -369,6 +369,25 @@ cribbed from http://mojo.codehaus.org/properties-maven-plugin/usage.html
     								<execute/>
     							</action>
     						</pluginExecution>
+    						<pluginExecution>
+    							<pluginExecutionFilter>
+    								<groupId>org.codehaus.mojo</groupId>
+    								<artifactId>
+    									properties-maven-plugin
+    								</artifactId>
+    								<versionRange>
+    									[1.0-alpha-2,)
+    								</versionRange>
+    								<goals>
+    									<goal>
+    										write-active-profile-properties
+    									</goal>
+    								</goals>
+    							</pluginExecutionFilter>
+    							<action>
+    								<execute/>
+    							</action>
+    						</pluginExecution>
     					</pluginExecutions>
     				</lifecycleMappingMetadata>
     			</configuration>
