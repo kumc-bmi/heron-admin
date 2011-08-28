@@ -48,11 +48,9 @@ public class JDBCSystemAccessRecords implements SystemAccessRecords {
 	        return new Qualified(who);
 	}
 
-	public RepositoryUser repositoryUser(Agent who, Qualification q) throws NoPermissionException {
-		if (q.forWhom() != who) {
-			throw new IllegalArgumentException("bad qualification for:" + who); // todo: Agent.toString()
-		}
-	        Date training_expires = _org.trainedThru(who);
+	public RepositoryUser repositoryUser(Qualification q) throws NoPermissionException {
+		Agent who = q.forWhom();
+		Date training_expires = _org.trainedThru(who);
 
 	        if (_heronData.expired(training_expires)) {
                 	throw trainingOutOfDate;

@@ -130,7 +130,7 @@ public class MyChecklist implements Controller {
                 RepositoryUser user = null;
                 if (qual != null) {
                 	try {
-                		user = _sar.repositoryUser(affiliate, qual);
+                		user = _sar.repositoryUser(qual);
                 	} catch (NoPermissionException np) {
                 	}
                 }

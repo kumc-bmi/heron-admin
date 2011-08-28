@@ -41,7 +41,7 @@ public interface SystemAccessRecords {
         NoPermissionException notExecutive = new NoPermissionException();
         NoPermissionException trainingOutOfDate = new NoPermissionException();
 
-        RepositoryUser repositoryUser(Agent a, Qualification q) throws NoPermissionException;
+        RepositoryUser repositoryUser(Qualification q) throws NoPermissionException;
         
 	/**
 	 * Turn a request into a Sponsor, provided the request is from a qualified

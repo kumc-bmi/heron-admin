@@ -152,7 +152,8 @@ public class MyChecklistTest {
 		}
 
 		@Override
-                public RepositoryUser repositoryUser(Agent a, Qualification q) throws NoPermissionException {
+                public RepositoryUser repositoryUser(Qualification q) throws NoPermissionException {
+			Agent a = q.forWhom();
 			if (!_names.contains(a.getUserId())) {
 				logger.info("not in list: [" + a.getUserId() + "] list:" + _names.toString());
 				throw nosig;

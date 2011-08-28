@@ -46,12 +46,11 @@ public class AcknowledgeDisclaimerServlet { // TODO: rename
 //TODO        @RequestMapping(value="/AcknowledgeDisclaimerServlet", method = RequestMethod.POST)
         public String acknowledge(HttpServletRequest request,
                         HttpServletResponse response) throws ServletException {
-                Agent whose = _org.affiliate(request);
                 RepositoryUser u;
 
                 try {
                         try {
-                                u = _sar.repositoryUser(whose, _sar.qualifiedUser(request));
+                                u = _sar.repositoryUser(_sar.qualifiedUser(request));
                         } catch (NoPermissionException e) {
                                 response.sendError(HttpServletResponse.SC_FORBIDDEN);
                                 return ERROR_VIEW_NAME;

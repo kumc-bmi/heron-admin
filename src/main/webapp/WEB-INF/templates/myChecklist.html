@@ -12,9 +12,9 @@
 	<h1>Welcome to HERON</h1>
 	<p>HERON is the i2b2 installation at KUMC...@@</p>
 
-	<p>Welcome, $affiliate.fullName$</p>
+	<p>Welcome, $affiliate.fullName$, $affiliate.title$.</p>
 
-
+		<h2>HERON access</h2>
 
 	<form method="post" action="@@todo">
 		$if(repositoryTool)$
@@ -24,18 +24,35 @@
         $endif$		
 	</form>
 
-	<ul>
-<li>$if(affiliate.)
+	<div>
+	$if(affiliate.trainingExpired)$
+	<p> <strong class="error">training expired!</strong> </p>
+	$endif$
 
-<label>Human Subjects <a href="@@todo">chalk
+<p><label>Human Subjects <a href="@@todo">chalk
 							training</a> complete?<input name="hsc_trained" type="checkbox"
-						readonly="readonly"> </label>
-				</li>
+						readonly="readonly"
+						$if(!affiliate.trainingExpired)$ checked="checked" $endif$
+						> </label>
+				</p>
+
+	<p>training expires: $trainingExpiration$</p>
+	
+	$if(executive)$
+	<p> <strong>executive:</strong> $affiliate.title$</p>
+	$endif$
+
+	$if(faculty)$
+	<p> <strong>faculty:</strong> $affiliate.title$</p>
+	$endif$
+
+	$if(sponsored)$
+	<p> <strong>sponsored:</strong> $affiliate.title$</p>
+	$endif$
+	</div>
 
 
-		<dt>Title</dt>
-		<dd>$affiliate.title$</dd>
-		<dt>HERON access</dt>
+
 		<dd>
 			<ol>
 				<li><label>Human Subjects <a href="@@todo">chalk
