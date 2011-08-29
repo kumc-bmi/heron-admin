@@ -7,6 +7,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.naming.NameNotFoundException;
 import javax.naming.NoPermissionException;
@@ -47,8 +48,6 @@ public class LDAPEnterpriseTest {
                 } catch (XPathExpressionException e) {
 	                throw new IllegalArgumentException(e);
                 }
-		pplinfo.findCards("bill.student"); //@@
-		pplinfo.findCards("bill.studentxxx"); //@@
 		LdapTemplate cardsTemplate = new LdapTemplate(new KUMCHCardSource(pplinfo));
 		return new LDAPEnterprise(cardsTemplate, pplinfo);
 	}
@@ -92,6 +91,14 @@ public class LDAPEnterpriseTest {
 		LDAPEnterprise e = mockMedCenter();
 		Agent bill = e.affiliate(mockCASRequest("bill.student"));
 		e.checkFaculty(bill);
+	}
+
+	//HCardContext doesn't support this sort of search yet.
+	public void findSomePeople() throws NoPermissionException,
+			ServletException {
+		LDAPEnterprise e = mockMedCenter();
+		List<? extends Agent> hits = e.affiliateSearch("Smith", "", "");
+		Assert.assertTrue(hits.size() == 1);
 	}
 
 	public static HttpServletRequest mockCASRequest(String userid) {

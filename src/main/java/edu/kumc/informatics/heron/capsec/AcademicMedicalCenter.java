@@ -4,6 +4,7 @@
 package edu.kumc.informatics.heron.capsec;
 
 import java.util.Date;
+import java.util.List;
 
 import javax.naming.NameNotFoundException;
 import javax.naming.NoPermissionException;
@@ -35,4 +36,7 @@ public interface AcademicMedicalCenter {
         Date trainedThru(Agent a) throws NoPermissionException;
 
         String beanName = "enterprise";
+
+		List<? extends Agent> affiliateSearch(String sn, String givenname,
+				String cn);
 }

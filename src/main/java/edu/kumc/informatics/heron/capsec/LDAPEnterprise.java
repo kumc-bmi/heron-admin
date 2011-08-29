@@ -5,12 +5,15 @@ package edu.kumc.informatics.heron.capsec;
 
 import java.util.Date;
 import java.util.List;
+
 import javax.naming.NameNotFoundException;
 import javax.naming.NamingException;
 import javax.naming.NoPermissionException;
+import javax.naming.directory.Attribute;
 import javax.naming.directory.Attributes;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.jasig.cas.client.util.AbstractCasFilter;
@@ -19,7 +22,6 @@ import org.springframework.ldap.core.AttributesMapper;
 import org.springframework.ldap.core.LdapTemplate;
 
 import edu.kumc.informatics.heron.dao.ChalkDao;
-import edu.kumc.informatics.heron.util.Functional.Function1;
 
 /**
  * @author dconnolly
@@ -45,31 +47,14 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
         private static final NameNotFoundException notfound = new NameNotFoundException (
                                 "Not in Enterprise Directory (LDAP)");
 
-        /**
-         * @param name LDAP common name (cn) to look up
-         * @return
-         * @throws NameNotFoundException 
-         */
+        @SuppressWarnings("unchecked")
+        private List<AccountHolder> search(final String filter) {
+            return (List<AccountHolder>)_ldapTemplate.search("", filter,
+                    new MapToAccountHolder());
+        }
+
         private AccountHolder findByName(final String name) throws NameNotFoundException {
-        	    String filter = "(cn=" + name + ")"; // TODO: injection risk?
-                final LDAPEnterprise that = this;
-                @SuppressWarnings("unchecked")
-                List<AccountHolder> x = (List<AccountHolder>)_ldapTemplate.search("", filter,
-                        new AttributesMapper() {
-                                @Override
-                                public AccountHolder mapFromAttributes(Attributes attrs)
-                                        throws NamingException {
-                                        return new AccountHolder(that,
-                                                        name,
-                                                (String)attrs.get("sn").get(),
-                                                (String)attrs.get("givenname").get(),
-                                                (String)attrs.get("title").get(),
-                                                (String)attrs.get("mail").get(),
-                                                "Y".equals((String)attrs.get("kumcPersonFaculty").get()),
-                                                (String)attrs.get("kumcPersonJobcode").get());
-                                        // any use for "title"?
-                                }
-                        });
+                List<AccountHolder> x = search("(cn=" + name + ")");
                 if (x.isEmpty()) {
                         throw notfound;
                 }
@@ -78,7 +63,35 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
         }
 
         public static final String excluded_jobcode = "24600";
-        static class AccountHolder implements Agent {
+        private final class MapToAccountHolder implements
+				AttributesMapper {
+
+			@Override
+			public AccountHolder mapFromAttributes(Attributes attrs)
+			        throws NamingException {            
+			        return new AccountHolder(LDAPEnterprise.this,
+			                        attr(attrs, "cn"),
+			                attr(attrs, "sn"),
+			                attr(attrs, "givenname"),
+			                attr(attrs, "title"),
+			                attr(attrs, "mail"),
+			                "Y".equals(attr(attrs, "kumcPersonFaculty")),
+			                attr(attrs, "kumcPersonJobcode"));
+			}
+
+			private String attr(Attributes attrs, String n) throws NamingException {
+				Attribute a = attrs.get(n);
+				if (a != null) {
+					Object v = a.get();
+					if (v != null && v instanceof String) {
+						return (String)v;
+					}
+				}
+				return "";
+			}
+        }
+
+		static class AccountHolder implements Agent {
                 public AccountHolder(LDAPEnterprise org, String userid,
                         String surName, String givenName, String title, String mail,
                         Boolean isFaculty, String jobCode) {
@@ -101,7 +114,7 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
 
                 @Override
                 public String toString() {
-                	return "Agent(" + _userid + ")";
+                	return "Agent(" + _surName + ", " + _givenName + ": " + _userid + ")";
                 }
                 public String getUserId() {
                         return _userid;
@@ -132,6 +145,15 @@ public class LDAPEnterprise implements AcademicMedicalCenter {
                 return findByName(name);
         }
 
+        @Override
+        public List<? extends Agent> affiliateSearch(String sn, String givenname, String cn) {
+        	return search("(&" + filterPart("sn", sn) + filterPart("givenname", givenname) + filterPart("cn", cn) +")");
+        }
+        private String filterPart(String attr, String val) {
+        	//TODO: quote values
+        	return "".equals(val) ? "" : "(" + attr + "=" + val + ")";
+        }
+        
         @Override
         public Agent affiliate(HttpServletRequest q) throws ServletException {
                 String name = casUserId(q);
