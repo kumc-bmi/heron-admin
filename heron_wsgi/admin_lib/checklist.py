@@ -12,19 +12,20 @@ class Checklist(object):
 
         try:
             expiration = self._m.trainedThru(agt)
-            expired = expiration < self._t.today().isoformat()
+            current = (expiration >= self._t.today().isoformat()
+                       and {'checked': 'checked'} or {})
         except KeyError:
             expiration = None
-            expired = True
+            current = {}
 
-        def check_perm(f):
+        def check_perm(f, markup):
             try:
                 f(agt)
-                return True
+                return {markup: markup}
             except heron_policy.NoPermission:
-                return False
+                return {}
             except medcenter.NotFaculty:
-                return False
+                return {}
 
         try:
             q = self._hr.q_any(agt)
@@ -33,13 +34,15 @@ class Checklist(object):
             access = None
 
         return {"affiliate": agt,
-                "trainingExpired": expired,
+                "trainingCurrent": current,
                 "trainingExpiration": expiration,
-                "executive": check_perm(self._hr.q_executive),
-                "faculty": check_perm(self._m.checkFaculty),
-                "signatureOnFile": self._hr.saa_signed(agt),
-                "sponsored": check_perm(self._hr.q_sponsored),
-                "repositoryUser": access
+                "executive": check_perm(self._hr.q_executive, 'checked'),
+                "faculty": check_perm(self._m.checkFaculty, 'checked'),
+                "signatureOnFile": (self._hr.saa_signed(agt)
+                                    and {'disabled': 'disabled'} or {}),
+                "sponsored": check_perm(self._hr.q_sponsored, 'checked'),
+                "accessDisabled": (access and {'name': 'login'}
+                                   or {'disabled': 'disabled'})
                 #SPONSOR("as_sponsor"),
                 #REPOSITORY_TOOL("repositoryTool"),
                 #SPONSORSHIP_FORM("sponsorshipForm");
