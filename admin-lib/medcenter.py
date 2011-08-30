@@ -14,40 +14,54 @@ import config
 # http://code.google.com/p/snake-guice/wiki/GuiceBasics
 
 class MedCenter(object):
+    excluded_jobcode = "24600"
+
     def __init__(self, searchfn, trainingfn):
         self._search = searchfn
         self._training = trainingfn
 
     def affiliate(self, name):
-        matches = self._search('(cn=%s)' % name,
-                               ['cn','sn','givenname','mail'])
+        matches = self._search('(cn=%s)' % name, AccountHolder.attributes)
         if len(matches) != 1:
             if len(matches) == 0:
                 raise KeyError, name
             else:
                 raise ValueError, name  # ambiguous
 
-        dn, x = matches[0]
+        dn, attrs = matches[0]
 
-        return AccountHolder(x)
+        return AccountHolder([attrs[n][0] for n in AccountHolder.attributes])
 
     def trainedThru(self, who):
         return self._training(who.userid())
 
 
+    def qualifiedFaculty(self, who):
+        return (who.kumcPersonJobcode != self.excluded_jobcode
+                and who.kumcPersonFaculty == 'Y')
+
+
 class AccountHolder(object):
-    def __init__(self, attrs):
-        self._userid = attrs['cn'][0]
-        self._sn = attrs['sn'][0]
-        self._givenname = attrs['givenname'][0]
-        self._mail = attrs['mail'][0]
+    attributes = ["cn", "sn", "givenname", "title", "mail",
+                  "kumcPersonFaculty", "kumcPersonJobcode"]
+
+    def __init__(self, values):
+        self._attrs = dict(zip(self.attributes, values))
 
     def __str__(self):
-        return '%s, %s <%s>' % (self._sn, self._givenname, self._mail)
+        return '%s, %s <%s>' % (self.sn, self.givenname, self.mail)
+
+    def __repr__(self):
+        return str(self)
 
     def userid(self):
         # TODO: use python property stuff?
-        return self._userid
+        return self.cn
+
+    def __getattr__(self, n):
+        if n not in self.attributes:
+            raise AttributeError
+        return self._attrs[n]
 
 
 def ldap_searchfn(ini, section):
@@ -67,6 +81,7 @@ def ldap_searchfn(ini, section):
 
 def chalkdb_queryfn(ini, section):
     rt = config.RuntimeOptions('url param')
+    rt.load(ini, section)
 
     def training_expiration(userid):
         addr = rt.url + '?' + urllib.urlencode({rt.param: userid})
