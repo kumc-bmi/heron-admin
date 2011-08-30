@@ -36,9 +36,15 @@ class MedCenter(object):
         return self._training(who.userid())
 
 
-    def qualifiedFaculty(self, who):
-        return (who.kumcPersonJobcode != self.excluded_jobcode
-                and who.kumcPersonFaculty == 'Y')
+    def checkFaculty(self, who):
+        if (who.kumcPersonJobcode != self.excluded_jobcode
+            and who.kumcPersonFaculty == 'Y'):
+            return
+        raise NotFaculty()
+
+
+class NotFaculty(Exception):
+    pass
 
 
 class AccountHolder(object):

@@ -1,4 +1,5 @@
-
+import heron_policy
+import medcenter
 
 class Checklist(object):
     def __init__(self, medcenter, heron_records, timesrc):
@@ -13,17 +14,33 @@ class Checklist(object):
             expiration = self._m.trainedThru(agt)
             expired = expiration < self._t.today().isoformat()
         except KeyError:
+            expiration = None
             expired = True
+
+        def check_perm(f):
+            try:
+                f(agt)
+                return True
+            except heron_policy.NoPermission:
+                return False
+            except medcenter.NotFaculty:
+                return False
+
+        try:
+            q = self._hr.q_any(agt)
+            access = self._hr.repositoryAccess(q)
+        except heron_policy.NoPermission:
+            access = None
 
         return {"affiliate": agt,
                 "trainingExpired": expired,
                 "trainingExpiration": expiration,
-                "executive": self._hr.is_executive(agt),
-                "faculty": self._m.qualifiedFaculty(agt),
-                #SIGNATURE_ON_FILE("signatureOnFile"),
-                #"sponsored"), // TODO: think of a better name
+                "executive": check_perm(self._hr.q_executive),
+                "faculty": check_perm(self._m.checkFaculty),
+                "signatureOnFile": self._hr.saa_signed(agt),
+                "sponsored": check_perm(self._hr.q_sponsored),
+                "repositoryUser": access
                 #SPONSOR("as_sponsor"),
-                #REPOSITORY_USER("repositoryUser"),
                 #REPOSITORY_TOOL("repositoryTool"),
                 #SPONSORSHIP_FORM("sponsorshipForm");
                 }
@@ -44,4 +61,5 @@ if __name__ == '__main__':
 
     check = _integration_test()
 
-    print check.parts_for(uid)
+    import pprint
+    pprint.pprint(check.parts_for(uid))
