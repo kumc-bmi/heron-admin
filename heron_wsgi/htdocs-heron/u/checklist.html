@@ -1,60 +1,13 @@
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml"
-      xmlns:py="http://genshi.edgewall.org/">
+      xmlns:py="http://genshi.edgewall.org/"
+      xmlns:xi="http://www.w3.org/2001/XInclude">
+<xi:include href="../kumc_layout.xml" />
 <head>
   <title>HERON Research Data Repository</title>
-  <style type="text/css">
-    .photo {text-align: center; margin-bottom: 1em }
-  </style>
 </head>
 <body>
-  <h1>HERON Research Data Repository</h1>
-
-  <div id="heron-tricol-01" class="photo">
-    <img src="static/220px-Heron_tricol_01.JPG" alt=""/>
-  </div>
-
-  <p>Welcome, ${affiliate.givenname} ${affiliate.sn},
-  ${affiliate.title} (<code>${affiliate.cn}</code>).</p>
-
-  <p>Access requires 3 things:</p>
-
-  <form method="post" action="@@">
-    <ol>
-      <li>
-	<label>
-	  <input py:attrs="faculty" type="checkbox" disabled="disabled" />faculty?
-	</label>
-	<div py:if="executive">
-	  <input py:attrs="executive" type="checkbox"
-		 disabled="disabled" />executive?
-	</div>
-	<div py:if="not faculty and not executive">
-	  <label>
-	    <input py:attrs="sponsored" type="checkbox" disabled="disabled" />sponsored?
-	  </label>
-	</div>
-      </li>
-
-      <li>
-	<label>
-	  <input type="checkbox" disabled="disabled" py:attrs="trainingCurrent" />
-	HSC Training is complete and current?</label>
-      </li>
-
-      <li>
-	<label>
-	  <input type="checkbox" checked="checked" py:attrs="signatureOnFile" />
-	  signed system access agreement?
-	</label>
-      </li>
-    </ol>
-
-    <p><input type="submit" py:attrs="accessDisabled" value="Login" /> <br />
-    to the HERON i2b2 Query and Analysis Tool</p>
-
-  </form>
-
+  <div id="menu">
   <ul>
     <li><a href="SponsorshipServlet?init_type=VIEW_ONLY">HERON
     Sponsorship Request</a>
@@ -63,12 +16,19 @@
     Data Usage Request</a>
     </li>
     <li><a href="droctools.jspx">DROC Oversight Tools</a></li>
-    <li><a
-	    href="http://biostat-pts.kumc.edu/eres/jsp/kumcpr.jsp"
-	    >Biostatistics Department Project Request Form</a>
-    </li>
   </ul>
+  </div>
 
+  <div id="main">
+  <div id="heron-tricol-01" class="photo">
+  <!-- @@TODO: get the template to handle this style in the head -->
+  <style type="text/css">
+    .photo {text-align: center; margin-bottom: 1em }
+  </style>
+    <img src="../av/220px-Heron_tricol_01.JPG" alt=""/>
+  </div>
+
+  <h1>HERON Research Data Repository</h1>
 
   <!-- TODO: why does this para turn blue? -->
   <p>HERON (Healthcare Enterprise Repository for Ontological Narration)
@@ -77,7 +37,7 @@
   system).
   </p>
 
-  <p>The <a href="AuthServlet">HERON i2b2 Query and Analysis Tool</a>
+  <p>The HERON i2b2 Query and Analysis Tool
   is the main tool for composing queries such as "how many patients
   in the repository have been diagnosed with diabetes and live within
   20 miles of the KUMC campus?"</p>
@@ -101,6 +61,7 @@
     data sets</a></li>
   </ul>
 
+  <div><h2>Support and Feedback</h2>
   <p>The
   <a href=
      "http://informatics.kumc.edu/work/blog/2011/07/first-clinic"
@@ -116,10 +77,74 @@
   <a href="http://biostat-pts.kumc.edu/eres/jsp/kumcpr.jsp"
      >Biostatistics Department Project Request Form</a>.
   </p>
+  </div>
+
 
   <p><small><a href="#heron-tricol-01">photo</a> credit:
   <a href="http://commons.wikimedia.org/wiki/User:Chrharshaw"
      >Christopher Harshaw</a></small>
   </p>
+  </div>
+
+  <div id="rightnav">
+    <div class="span-5 last">
+  <div>
+
+    <p>${affiliate.givenname} ${affiliate.sn},
+    ${affiliate.title} (<code>${affiliate.cn}</code>):
+    </p>
+
+  <form method="post" action="@@">
+    <p><input type="submit" py:attrs="accessDisabled" value="Login" /></p>
+    <ol>
+      <li>
+	<label>
+	  <input py:attrs="faculty" type="checkbox" disabled="disabled" />faculty?
+	</label>
+	<div py:if="executive">
+	  or <br />
+	  <input py:attrs="executive" type="checkbox"
+		 disabled="disabled" />executive?
+	</div>
+	<div py:if="not faculty and not executive">
+	  or <br />
+	  <label>
+	    <input py:attrs="sponsored" type="checkbox" disabled="disabled" />sponsored?
+	  </label>
+	</div>
+      </li>
+
+      <li>
+	<label>
+	  <input type="checkbox" disabled="disabled" py:attrs="trainingCurrent" />
+	<a
+	href="http://www2.kumc.edu/researchcompliance/human_subjects_tutorial_inst.htm"
+	>Human subjects training</a> is complete and current?</label>
+      </li>
+
+      <li>
+	<label>
+	  <input type="checkbox" checked="checked" py:attrs="signatureOnFile" />
+	  Signed <a href="@@">system access agreement</a>?
+	</label>
+      </li>
+    </ol>
+
+  </form>
+  </div>
+      <div class="header png">
+        <h2>Tools</h2>
+      </div>
+      <div class="content png">
+        <ul class="links">
+          <li><a href="http://biostatistics.kumc.edu/bio_proj_cris.shtml">CRIS</a></li>
+          <li><a href="https://redcap.kumc.edu/">REDCap</a></li>
+        </ul>
+        
+      </div>
+    </div>
+  </div>
+
+
 </body>
 </html>
