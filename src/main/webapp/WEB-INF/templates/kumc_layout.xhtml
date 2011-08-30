@@ -11,19 +11,21 @@ from the input document and flows them into the KUMC style.
 Note the use of https://www.kumc.edu/... for KUMC
 stylesheets, scripts, and images as per
 https://www.owasp.org/index.php?title=Transport_Layer_Protection_Cheat_Sheet#Rule_-_Do_Not_Mix_TLS_and_Non-TLS_Content
+
+JSF template stuff cribbed from
+http://stackoverflow.com/questions/4792862/how-to-include-another-xhtml-in-xhtml-using-jsf-2-0-facelets
 -->
-<xsl:transform version="1.0"
-                xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-                xmlns:h="http://www.w3.org/1999/xhtml"
-                xmlns="http://www.w3.org/1999/xhtml">
 
-  <xsl:output method="xml" indent="yes" encoding="utf-8" />
+<!DOCTYPE html>
+<html lang="en"
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:f="http://java.sun.com/jsf/core"
+    xmlns:h="http://java.sun.com/jsf/html"
+    xmlns:ui="http://java.sun.com/jsf/facelets">
 
-  <xsl:param name="scm.version" />
 
-  <xsl:template match="h:head">
     <head>
-      <xsl:apply-templates />
+      <title><ui:insert name="title"></ui:insert></title>
       <meta name="build-number" content="{substring($scm.version, 1, 12)}" />
 
       <link rel="stylesheet" type="text/css"
@@ -40,9 +42,7 @@ https://www.owasp.org/index.php?title=Transport_Layer_Protection_Cheat_Sheet#Rul
       </script>
     <!-- jquery.showhids.js ? -->
     </head>
-  </xsl:template>
 
-  <xsl:template match="h:body">
     <body>
       <div id="kumc_accessibilty_skip">
         <a href="#maincontent" accesskey="2" name="top" id="top">
@@ -127,7 +127,7 @@ https://www.owasp.org/index.php?title=Transport_Layer_Protection_Cheat_Sheet#Rul
             <div class="span-24 last" id="topnav">
               <h2 class="unit">
                 <!-- TODO: handle 2 context headings -->
-                <xsl:value-of select=".//h:h1/text()"/>
+		<ui:insert name="h1">H1</ui:insert>
               </h2>
               <!-- TODO: handle per-page nav tree -->
               <div id="toptabnav">
@@ -150,7 +150,7 @@ https://www.owasp.org/index.php?title=Transport_Layer_Protection_Cheat_Sheet#Rul
             <div class="span-5">
               <div id="leftnavigation">
                 <div id="menu">
-                  <xsl:apply-templates select=".//h:div[@id='menu']" />
+		  <ui:insert name="menu" />
                 </div>
               </div>
             </div>
@@ -158,11 +158,11 @@ https://www.owasp.org/index.php?title=Transport_Layer_Protection_Cheat_Sheet#Rul
             <div id="main" class="withnav span-19 last">
               <a name="maincontent" id="maincontent"></a>
               <div class="span-14">
-                <xsl:apply-templates select=".//h:div[@id='main']" />
+		<ui:insert name="main" />
               </div>
 
               <div class="span-5 last" id="rightnav">
-                <xsl:apply-templates select=".//h:div[@id='rightnav']"/>
+		<ui:insert name="rightnav" />
               </div>
 
             </div>
@@ -310,11 +310,11 @@ https://www.owasp.org/index.php?title=Transport_Layer_Protection_Cheat_Sheet#Rul
 
       </div>
     </body>
-  </xsl:template>
 
-  <xsl:template match="h:div[*/@id='user-id']">
+
+  <ui:define name="login-section">
     <div id="login" align="right">Id:
-      <xsl:copy-of select="*[@id='user-id']"/>&#160;
+      <ui:insert name="user-id"/>&#160;
       <a href="logout.jsp">logout</a><!-- TODO: use POST to logout -->
     </div>
     <div class="header png">
@@ -331,13 +331,6 @@ https://www.owasp.org/index.php?title=Transport_Layer_Protection_Cheat_Sheet#Rul
         </li>
       </ul>
     </div>
-  </xsl:template>
+  </ui:define>
 
-  <!-- identity transformation; i.e. copy everything by default -->
-  <xsl:template match="@*|node()">
-    <xsl:copy>
-      <xsl:apply-templates select="@*|node()"/>
-    </xsl:copy>
-  </xsl:template>
-
-</xsl:transform>
+</html>

@@ -1,5 +1,6 @@
 <%@ page import="edu.kumc.informatics.heron.base.*"%>
 <%@ page import="edu.kumc.informatics.heron.util.*"%>
+<%@ page import="edu.kumc.informatics.heron.dao.HeronDao"%>
 <%
 	String val = request.getAttribute(StaticValues.VAL_MESSAGE) + "";
 	String message = val != null && !val.equals("null") ? val : "";
@@ -45,7 +46,7 @@
 <div align="center" class="h5red"><blink><%=message%></blink></div>
 <form id="frmSponsor" action="SponsorshipServlet"><input
 	type="hidden" name="spnsr_type" id="spnsr_type"
-	value="<%=StaticValues.DATA_ACCESS%>" />
+	value="<%=HeronDao.AccessType.DATA_ACCESS.toString()%>" />
 
 <h4>UNIVERSITY OF KANSAS MEDICAL CENTER HERON DATA USE AGREEMENT</h4>
 <p></p><p></p>

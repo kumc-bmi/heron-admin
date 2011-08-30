@@ -2,8 +2,9 @@
  * http://informatics.kumc.edu/ */
 package edu.kumc.informatics.heron.servlet;
 
+import java.util.Date;
+
 import javax.inject.Inject;
-import javax.naming.NameNotFoundException;
 import javax.naming.NoPermissionException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -19,7 +20,6 @@ import edu.kumc.informatics.heron.capsec.Agent;
 import edu.kumc.informatics.heron.capsec.RepositoryUser;
 import edu.kumc.informatics.heron.capsec.Sponsor;
 import edu.kumc.informatics.heron.capsec.SystemAccessRecords;
-import edu.kumc.informatics.heron.capsec.Ticket;
 
 /**
  * MyChecklist is a HERON access checklist controller.
@@ -54,7 +54,13 @@ public class MyChecklist implements Controller {
 
         public enum ChecklistProperty {
         	AFFILIATE("affiliate"),
+        	TRAINING_EXPIRED("trainingExpired"),
+        	TRAINING_EXPIRATION("trainingExpiration"),
+        	EXECUTIVE("executive"),
+        	FACULTY("faculty"),
+        	SPONSORED("sponsored"), // TODO: think of a better name
         	SPONSOR("sponsor"),
+        	SIGNATURE_ON_FILE("signatureOnFile"),
         	REPOSITORY_USER("repositoryUser"),
         	REPOSITORY_TOOL("repositoryTool"),
         	SPONSORSHIP_FORM("sponsorshipForm");
@@ -82,45 +88,69 @@ public class MyChecklist implements Controller {
          * @throws ServletException if the request, q, has no CAS assertion.
          */
         @Override
-        public ModelAndView handleRequest(HttpServletRequest q, HttpServletResponse a)
-        		throws ServletException {
-        	Agent affiliate = null;
-            Sponsor sponsor = null;
-            RepositoryUser user = null;
+        public ModelAndView handleRequest(HttpServletRequest q,
+                        HttpServletResponse a) throws ServletException {
+                ModelAndView mv = new ModelAndView(VIEW_NAME);
+                final Agent affiliate = _enterprise.affiliate(q);
+                mv.addObject(ChecklistProperty.AFFILIATE.toString(), affiliate);
+                SystemAccessRecords.Qualification execqual = null;
+                SystemAccessRecords.Qualification facqual = null;
+                SystemAccessRecords.Qualification suqual = null;
+                SystemAccessRecords.Qualification qual = null;
 
-                Ticket ticket = _enterprise.requestTicket(q);
                 try {
-                        affiliate = _enterprise.affiliate(ticket.getName());
-
-                        try {
-                                user = _sar.asUser(ticket);
-                        } catch (NoPermissionException ex) {
-                                logger.debug("no system access agreement on record:" + ticket.getName());
-                        } catch (NameNotFoundException ex) {
-                        	// this can't happen if we already got an affiliate
-                        	throw new AssertionError(ex);
-                        }
-                        
-                        try {
-                                sponsor = _sar.asSponsor(ticket);
-                        } catch (NoPermissionException ex) {
-                                logger.debug("not allowed to sponsor:" + ticket.getName());
-                        }
-                } catch (NameNotFoundException ex) {
-                        // Nobody in the enterprise by that name/id/
+                	Date exp = _enterprise.trainedThru(affiliate);
+                	mv.addObject(ChecklistProperty.TRAINING_EXPIRATION.toString(), exp);
+                	mv.addObject(ChecklistProperty.TRAINING_EXPIRED.toString(), new Date().after(exp));
+                } catch (NoPermissionException np) {
+                	// I think the StringTemplate convention is null rather than absent.
+                	mv.addObject(ChecklistProperty.TRAINING_EXPIRATION.toString(), null);
+                	mv.addObject(ChecklistProperty.TRAINING_EXPIRED.toString(), true);
                 }
 
-                ModelAndView mv = new ModelAndView(VIEW_NAME);
-                mv.addObject(ChecklistProperty.AFFILIATE.toString(), affiliate);
+                try {
+                	execqual = _sar.executiveUser(q);
+                } catch (NoPermissionException notexec) {
+                }
+                mv.addObject(ChecklistProperty.EXECUTIVE.toString(), execqual);
+                try {
+                	facqual = _sar.facultyUser(q);
+                	qual = facqual;
+                } catch (NoPermissionException notfac) {
+                }
+                mv.addObject(ChecklistProperty.FACULTY.toString(), facqual);
+                try {
+                	suqual = _sar.sponsoredUser(q);
+                	qual = suqual;
+                } catch (NoPermissionException notsponsored) {
+                }
+                mv.addObject(ChecklistProperty.SPONSORED.toString(), suqual);
 
+
+                RepositoryUser user = null;
+                if (qual != null) {
+                	try {
+                		user = _sar.repositoryUser(qual);
+                	} catch (NoPermissionException np) {
+                	}
+                }
+                mv.addObject(ChecklistProperty.REPOSITORY_USER.toString(), user);
+                mv.addObject(ChecklistProperty.SIGNATURE_ON_FILE.toString(), user != null);
+                mv.addObject(ChecklistProperty.REPOSITORY_TOOL.toString(),
+                                user != null ? "TODO:i2b2addr@@" : null); // TODO
+
+                Sponsor sponsor = null;
+                try {
+                        sponsor = _sar.asSponsor(q);
+                } catch (NoPermissionException ex) {
+                }
                 mv.addObject(ChecklistProperty.SPONSOR.toString(), sponsor);
-        		mv.addObject(ChecklistProperty.SPONSORSHIP_FORM.toString(),
-        				sponsor != null ? "TODO:sponsorhipForm@@" : null); // TODO
 
-        		mv.addObject(ChecklistProperty.REPOSITORY_USER.toString(), user);
-        		mv.addObject(ChecklistProperty.REPOSITORY_TOOL.toString(),
-        				user != null ? "TODO:i2b2addr@@" : null); // TODO
 
-        		return mv;
+                mv.addObject(ChecklistProperty.SPONSORSHIP_FORM.toString(),
+                                sponsor != null ? "TODO:sponsorhipForm@@"
+                                                : null); // TODO
+
+                return mv;
         }
 }

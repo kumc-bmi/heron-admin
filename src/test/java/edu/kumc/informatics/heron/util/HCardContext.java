@@ -4,25 +4,19 @@
  */
 package edu.kumc.informatics.heron.util;
 
-import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.io.IOException;
 import java.util.Hashtable;
-import java.util.Map;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import javax.naming.Binding;
 import javax.naming.Context;
 import javax.naming.Name;
 import javax.naming.NameClassPair;
-import javax.naming.NameNotFoundException;
 import javax.naming.NameParser;
 import javax.naming.NamingEnumeration;
 import javax.naming.directory.Attributes;
-import javax.naming.directory.BasicAttributes;
 import javax.naming.directory.DirContext;
 import javax.naming.directory.ModificationItem;
 import javax.naming.directory.SearchControls;
@@ -32,12 +26,6 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
-import org.junit.Test;
-import org.junit.Assert;
-
-import org.springframework.ldap.NamingException;
-import org.springframework.ldap.core.ContextSource;
-import org.springframework.ldap.core.LdapTemplate;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
@@ -52,9 +40,53 @@ public abstract class HCardContext implements DirContext {
     public static final XPath xpath = XPathFactory.newInstance().newXPath();
     private final Logger logger = Logger.getLogger(getClass().getName());
         
-    private final InputSource _src;
-    protected HCardContext(InputSource src) {
-        _src = src;
+    private final Node _root;
+    protected HCardContext(InputSource xmlsrc) throws XPathExpressionException {
+	    _root = (Node) xpath.evaluate("/", xmlsrc, XPathConstants.NODE);
+    }
+
+
+    /**
+     * Find hCard elements by id.
+     * 
+     * Note: we don't actually look for class="hCard".
+     * 
+     * @param id
+     * @return a NodeList of all elements with matching id attributes
+     * @throws XPathExpressionException
+     */
+    public NodeList findCards(String id) {
+	    logger.entering(getClass().getName(), "findCards");
+	//for test code, we assume id syntax is OK
+        String pathToId = "//*[@id=\"" + id + "\"]";
+        try {
+	        return (NodeList) xpath.evaluate(pathToId, _root, XPathConstants.NODESET);
+        } catch (XPathExpressionException e) {
+        	logger.severe("error evaluating: " + pathToId);
+        	throw new RuntimeException(e);
+//        	throw new RuntimeException("design-time xpath error:" + e.getMessage() +
+//        			(e.getCause() == null ? "" : "cause: " +e.getCause().getMessage()));
+        }
+    }
+
+    /**
+     * Get an hCard property value.
+     * 
+     * @param hcard
+     * @param hcardClass
+     * @return text of child of hcard with matching class attribute
+     */
+    public String getHCardProperty(Node hcard, String hcardClass) {
+            String findByClass = ".//*[@class='" + hcardClass + "']/text()";
+            String value;
+            try {
+            	value = xpath.evaluate(findByClass, hcard);
+            } catch (XPathExpressionException ex) {
+            	throw new RuntimeException(
+            			"Bad XPath defined at design time:" + findByClass,
+            			ex);
+            }
+            return value;
     }
 
     public abstract Attributes cardAttributes(Node hcard);
@@ -110,14 +142,8 @@ public abstract class HCardContext implements DirContext {
         Matcher m = cnFilter.matcher(filter);
         if (m.matches()) {
             String target = m.group(1);
-            //for test code, we assume id syntax is OK
-            String pathToId = "//*[@id=\"" + target + "\"]";
-            try {
-                final NodeList cards = (NodeList) xpath.evaluate(pathToId, _src, XPathConstants.NODESET);
-                return new CardEnumeration(target, cards, cards.getLength());
-            } catch (XPathExpressionException ex) {
-                throw new javax.naming.NamingException(ex.getMessage());
-            }
+            final NodeList cards = findCards(target);
+            return new CardEnumeration(target, cards, cards.getLength());
         } else {
             logger.info("search: regexp failed to get name from: " + filter);
             return new CardEnumeration(name, null, 0);

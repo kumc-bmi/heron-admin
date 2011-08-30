@@ -3,26 +3,21 @@
 
 package edu.kumc.informatics.heron.capsec;
 
-import java.security.acl.NotOwnerException;
+import java.util.Date;
+import java.util.List;
+
 import javax.naming.NameNotFoundException;
 import javax.naming.NoPermissionException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
+
+import edu.kumc.informatics.heron.util.Functional.Function1;
 
 /**
  *
  * @author dconnolly
  */
 public interface AcademicMedicalCenter {
-        
-        /**
-         * Derive a CASCap from a CAS-filtered HttpServletRequest.
-         * @param request
-         * @return a CASCap that gives access to the name of the authenticated CAS Principal.
-         * @throws ServletException if the request's session has no CAS assertion attribute.
-         */
-        public Ticket requestTicket(HttpServletRequest request)  throws ServletException;
-
         /**
          * Look up an affiliated agent by name.
          * @param name
@@ -32,22 +27,16 @@ public interface AcademicMedicalCenter {
          */
         Agent affiliate(String name) throws NameNotFoundException;
 
-        /**
-         * Look up a qualified faculty given login credentials.
-         * @param who
-         * @return
-         * @throws NoPermissionException when the ticket provides insufficient
-         *         credentials to look up a qualified faculty member.
-         */
-        Agent qualifiedFaculty(Ticket who) throws NoPermissionException;
+        Agent affiliate(HttpServletRequest q) throws ServletException;
 
-        /**
-         * Verify that an agent is from this enterprise.
-         * @param who
-         * @return
-         * @throws NotOwnerException
-         */
-        Agent recognize(Agent who) throws NotOwnerException;
+        void checkFaculty(Agent supposedFaculty) throws NoPermissionException;
 
-        public static final String beanName = "enterprise";
+        public final NoPermissionException notFaculty = new NoPermissionException();
+        
+        Date trainedThru(Agent a) throws NoPermissionException;
+
+        String beanName = "enterprise";
+
+		List<? extends Agent> affiliateSearch(String sn, String givenname,
+				String cn);
 }

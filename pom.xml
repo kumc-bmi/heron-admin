@@ -13,7 +13,6 @@
   <properties>
     <!-- http://maven.apache.org/general.html#encoding-warning -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <netbeans.hint.deploy.server>JBoss4</netbeans.hint.deploy.server>
   </properties>
 
     <!-- for maven-mercurial-build-number-plugin -->
@@ -256,6 +255,29 @@
         </executions>
       </plugin>
 
+<!--
+propagate ldap_credential from ~/.m2/settings.xml
+cribbed from http://mojo.codehaus.org/properties-maven-plugin/usage.html
+ -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>properties-maven-plugin</artifactId>
+        <version>1.0-alpha-2</version>
+        <executions>
+          <execution>
+            <phase>generate-resources</phase>
+            <goals>
+               <goal>write-active-profile-properties</goal>
+            </goals>
+            <configuration>
+              <outputFile>
+                ${project.build.outputDirectory}/app.properties
+              </outputFile>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
 <!-- http://code.google.com/p/maven-mercurial-build-number-plugin/ -->
             <plugin>
                 <artifactId>maven-mercurial-build-number-plugin</artifactId>
@@ -341,6 +363,25 @@
     								<versionRange>[1.0,)</versionRange>
     								<goals>
     									<goal>set-build-number</goal>
+    								</goals>
+    							</pluginExecutionFilter>
+    							<action>
+    								<execute/>
+    							</action>
+    						</pluginExecution>
+    						<pluginExecution>
+    							<pluginExecutionFilter>
+    								<groupId>org.codehaus.mojo</groupId>
+    								<artifactId>
+    									properties-maven-plugin
+    								</artifactId>
+    								<versionRange>
+    									[1.0-alpha-2,)
+    								</versionRange>
+    								<goals>
+    									<goal>
+    										write-active-profile-properties
+    									</goal>
     								</goals>
     							</pluginExecutionFilter>
     							<action>

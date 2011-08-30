@@ -3,8 +3,6 @@
 package edu.kumc.informatics.heron.servlet;
 
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.naming.NoPermissionException;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -15,7 +13,8 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import edu.kumc.informatics.heron.capsec.AcademicMedicalCenter;
-import edu.kumc.informatics.heron.util.CASCheck;
+import edu.kumc.informatics.heron.capsec.Agent;
+import edu.kumc.informatics.heron.util.Functional.Function1;
 
 /**
  * Filter out requests that do not come from qualified faculty.
@@ -40,8 +39,11 @@ public class QualifiedFacultyFilter implements Filter {
                 HttpServletRequest hq = (HttpServletRequest) q;
                 HttpServletResponse ha = (HttpServletResponse) a;
                 try {
-                        q.setAttribute(QualifiedFacultyFilter.class.getName(),
-                                _idvault.qualifiedFaculty(CASCheck.asTicket(hq)));
+                	Agent who = _idvault.affiliate(hq);
+                	
+                	_idvault.checkFaculty(who);
+                	// todo: "bigger" type that avoids doing withFaculty again?
+                	q.setAttribute(QualifiedFacultyFilter.class.getName(), who);
                 } catch (NoPermissionException ex) {                        
                         ha.sendError(javax.servlet.http.HttpServletResponse.SC_FORBIDDEN);
                         return;

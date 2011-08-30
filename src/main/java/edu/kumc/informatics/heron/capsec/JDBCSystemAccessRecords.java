@@ -3,12 +3,14 @@
 
 package edu.kumc.informatics.heron.capsec;
 
-import edu.kumc.informatics.heron.dao.HeronDBDao;
-import java.security.acl.NotOwnerException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.naming.NameNotFoundException;
+import java.util.Date;
+
 import javax.naming.NoPermissionException;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+
+import edu.kumc.informatics.heron.dao.HeronDBDao;
+import edu.kumc.informatics.heron.dao.HeronDao;
 
 /**
  *
@@ -17,44 +19,93 @@ import javax.naming.NoPermissionException;
 public class JDBCSystemAccessRecords implements SystemAccessRecords {
         private final AcademicMedicalCenter _org;
         private final DROCSponsoring _droc;
-        private final HeronDBDao _heronData; // TODO: refactor
-
-        private final IllegalArgumentException denied =
-                new IllegalArgumentException("no system access records on file.");
+        private final HeronDao _heronData; // TODO: abstract interface
 
 	public JDBCSystemAccessRecords(AcademicMedicalCenter org, DROCSponsoring droc,
-                HeronDBDao hd) {
+                HeronDao hd) {
 		_org = org;
                 _droc = droc;
                 _heronData = hd;
 	}
 
-        /**
-         * Turn a Ticket into a RepositoryUser, provided the ticket is from
-         * a recognized agent who signed the system access agreement.
-         * @param who
-         * @return
-         * @throws NoPermissionException
-         */
-        @Override
-	public RepositoryUser asUser(Ticket who) throws NoPermissionException, NameNotFoundException {
-                String username = who.getName();
-                Agent asAgent = _org.affiliate(username);
+	private class Qualified implements Qualification {
+		Qualified(Agent who) {
+			_who = who;
+		}
+		private final Agent _who;
+		public Agent forWhom() {
+			return _who;
+		}
+	}
+	
+	@Override
+	public Qualification executiveUser(HttpServletRequest q) throws NoPermissionException, ServletException {
+		Agent who = _org.affiliate(q);
+	        if (!_heronData.isUserExecutive(who)) {
+	                throw notExecutive;
+	        }
 
-                if (!_heronData.isUserAgreementSigned(username)) {
-                        throw denied;
+	        return new Qualified(who);
+	}
+
+	public RepositoryUser repositoryUser(Qualification q) throws NoPermissionException {
+		Agent who = q.forWhom();
+		Date training_expires = _org.trainedThru(who);
+
+	        if (_heronData.expired(training_expires)) {
+                	throw trainingOutOfDate;
                 }
 
-                return new RepositoryUserImpl(asAgent, _org);
+                if (!_heronData.isUserAgreementSigned(who)) {
+                        throw nosig;
+                }
+
+	        return new RepositoryUserImpl(who, training_expires, _heronData.disclaimer(who));
+	}
+	
+
+	@Override
+	public Qualification facultyUser(HttpServletRequest q)
+	                throws NoPermissionException, ServletException {
+		Agent a = _org.affiliate(q);
+
+		// throw NoPermission unless a is faculty
+		_org.checkFaculty(a);
+
+	        return new Qualified(a);
+	}
+
+	@Override
+	public Qualification sponsoredUser(HttpServletRequest q) throws NoPermissionException, ServletException {
+		Agent a = _org.affiliate(q);
+		if (!_heronData.isViewOnlyUserApproved(a)) {
+			throw notSponsored;
+		}
+	        return new Qualified(a);
+	}
+	
+	@Override
+	public Qualification qualifiedUser(HttpServletRequest q) throws NoPermissionException, ServletException {
+		try {
+			return executiveUser(q);
+		} catch (NoPermissionException notexec) {
+			try {
+				return facultyUser(q);
+			} catch (NoPermissionException notfac) {
+				return sponsoredUser(q);
+			}
+		}
 	}
 
         protected static class RepositoryUserImpl implements RepositoryUser {
-                public RepositoryUserImpl(Agent who, AcademicMedicalCenter org){
+                public RepositoryUserImpl(Agent who, Date exp, HeronDBDao.Disclaimer d){
                         _asAgent = who;
-                        _org = org;                        
+                        _disclaimer = d;
+                        _exp = exp;
                 }
-                private final AcademicMedicalCenter _org;
                 private final Agent _asAgent;
+                private final HeronDBDao.Disclaimer _disclaimer;
+                private Date _exp;
                 
                 @Override
                 public String getMail() {
@@ -66,42 +117,54 @@ public class JDBCSystemAccessRecords implements SystemAccessRecords {
                 }
                 @Override
                 public String getTitle() {
-                	    return _asAgent.getTitle();
+                        return _asAgent.getTitle();
+                }
+                @Override
+                public String getUserId() {
+                        return _asAgent.getUserId();
+                }
+                @Override
+                public Date getHSCTrainingExpiration() {
+                        return _exp;
+                }
+                @Override
+                public boolean acknowledgedRecentDisclaimers() {
+                        return _disclaimer.wasRead();
+                }
+                @Override
+                public void acknowledgeRecentDisclaimers() {
+                        _disclaimer.recordAckowledgement();
                 }
         }
         
         /**
-         * Turn a Ticket into a Sponsor, provided the ticket is from
+         * Turn a request into a Sponsor, provided the request is from
          * a qualified faculty member who signed the system access agreement.
          * @param who
          * @return
          * @throws NoPermissionException
+         * @throws ServletException 
          */
         @Override
-	public Sponsor asSponsor(Ticket who) throws NoPermissionException {
-		Agent who_a = _org.qualifiedFaculty(who);
-                if (!_heronData.isUserAgreementSigned(who.getName())) {
-                        throw denied;
+	public Sponsor asSponsor(HttpServletRequest q) throws NoPermissionException, ServletException {
+        	Agent a = _org.affiliate(q);
+        	_org.checkFaculty(a);
+                if (!_heronData.isUserAgreementSigned(a)) {
+                        throw nosig;
                 }
-
-                return new SystemSponsor(who_a, _org, _droc);
+        	return new SystemSponsor(a, _droc); // TODO: facet of _droc?
 	}
 
 	protected static class SystemSponsor implements Sponsor {
-		private AcademicMedicalCenter _org;
-		private Agent _as_agent;
-                private DROCSponsoring _droc;
+                private DROCSponsoring _droc; // TODO: wrong class?
 
-		public SystemSponsor(Agent me, AcademicMedicalCenter org, DROCSponsoring d) {
-			_org = org;
-			_as_agent = me;
+		public SystemSponsor(Agent me, DROCSponsoring d) {
                         _droc = d;
 		}
 
                 @Override
-		public void fileRequest(String title, Agent who) throws NotOwnerException {
-			Agent who_a = _org.recognize(who);
-                        _droc.postRequest(title, this, who);
+		public void fileRequest(String title, Agent who) {
+                	throw new RuntimeException("fileRequest not yet implemented"); //TODO
 		}
 	}
 }

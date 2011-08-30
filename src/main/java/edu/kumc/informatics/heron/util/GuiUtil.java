@@ -1,8 +1,6 @@
 package edu.kumc.informatics.heron.util;
 
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.StringReader;
 import org.xml.sax.InputSource;
@@ -32,11 +30,11 @@ import org.xml.sax.SAXException;
  * @author dzhu
  *
  */
+@Deprecated
 public class GuiUtil {
 	private HeronDBDao heronDao;
 	private HeronReportsDao rptDao;
 	private LdapUtil lUtil;
-	private static Log log = LogFactory.getLog(DBUtil.class);
 	
 	public GuiUtil(){
 		heronDao = new HeronDBDao();
@@ -46,6 +44,7 @@ public class GuiUtil {
 	
 	/**
 	 * build sponsorship display component
+	 * TODO: use real types rather than passing String around for users, orgs, types
 	 * @param type
 	 * @param uid
 	 * @return a string of html
@@ -58,7 +57,10 @@ public class GuiUtil {
 		if(org == null)
 			bf.append("<div class=\"h5red\">Sorry, seems you are not allowed to use this functionality.</div>");
 		else{
-			List spnsrList = heronDao.getSponsorshipForApproval(type,org);
+		        if(true) {
+		                throw new RuntimeException("@@refactoring in progress"); // TODO
+		        }
+			List spnsrList = null; //heronDao.getSponsorshipForApproval(type,org);
 			String prevTitle ="";
 			String curTitle ="";
 			if(spnsrList==null || spnsrList.size()==0)

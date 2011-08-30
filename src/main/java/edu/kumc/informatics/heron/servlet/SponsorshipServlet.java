@@ -21,6 +21,7 @@ import org.apache.commons.logging.Log;
 import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
 
+import edu.kumc.informatics.heron.dao.HeronDao;
 import edu.kumc.informatics.heron.util.DBUtil;
 import edu.kumc.informatics.heron.util.Functional;
 import edu.kumc.informatics.heron.util.LdapUtil;
@@ -36,20 +37,11 @@ import static edu.kumc.informatics.heron.base.StaticValues.*;
 public class SponsorshipServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private LdapUtil ldapUtil = new LdapUtil();
-        private DBUtil dbUtil;
+	private HeronDao _heronData; // TODO: final
         private final Log logger = LogFactory.getLog(this.getClass());
-
-        @Override
-        public void init() {
-                dbUtil = (DBUtil) SpringServletHelper.getBean(getServletContext(),
-                        DBUtil.Beans.USER_ACCESS_DATA);
-                assert dbUtil != null;
-        }
-
 
         /**
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
-	 */
         @Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		String initType = request.getParameter("init_type");
@@ -78,10 +70,10 @@ public class SponsorshipServlet extends HttpServlet {
                         response.sendRedirect(DENIED_URL);
                 }
 	}
+	 */
 
 	/**
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
-	 */
         @Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		String type = request.getParameter("agreementbtn");
@@ -98,7 +90,7 @@ public class SponsorshipServlet extends HttpServlet {
                         ldapValidate(in.nonEmployees.getLeft(), ldapUtil, msgs,
                                 "The following non-KUMC employee id not in LDAP: ");
 
-                        /* TODO: figure out a sane alternative to passing info this way. */
+                        // TODO: figure out a sane alternative to passing info this way.
                         HttpSession session = request.getSession();
                         session.setAttribute(Form.NON_EMP_IDS, in.nonEmployees.getLeft().toArray());
                         session.setAttribute(Form.NON_EMP_DESCS, in.nonEmployees.getRight().toArray());
@@ -137,6 +129,7 @@ public class SponsorshipServlet extends HttpServlet {
 			response.sendRedirect(DENIED_URL);
 		}
 	}
+	 */
 
 
         public static final SimpleDateFormat mmddyyyy = new SimpleDateFormat(
@@ -206,7 +199,7 @@ public class SponsorshipServlet extends HttpServlet {
                                 }
                         }
 
-                        if (spnsrType.equals(DATA_ACCESS)) {
+                        if (spnsrType.equals(HeronDao.AccessType.DATA_ACCESS.toString())) {
                                 sigName = requiredField(request, Form.SIGNER_NAME, msgs,
                                         "Signature is required. ");
                                 sigDate = requiredField(request, Form.SIGN_DATE, msgs,
@@ -218,7 +211,7 @@ public class SponsorshipServlet extends HttpServlet {
                                 }
                         }
                 }
-
+	
                 public String messages() {
                         return msgs.toString();
                 }
@@ -301,6 +294,28 @@ public class SponsorshipServlet extends HttpServlet {
                 }
         }
 
+        /**
+         * insert sponsorship data into database.
+         * @param request a HttpServletRequest.
+         */
+        public void insertSponsorships(HttpServletRequest request)throws Exception{
+                String resTitle = request.getParameter("txtRTitle");
+                String resDesc = request.getParameter("resDesc");
+                String empIds = request.getParameter("empIds");
+                String expDate = request.getParameter("expDate");
+                String spnsrType = request.getParameter("spnsr_type");
+                String sigName = request.getParameter("txtName");
+                String sigDate = request.getParameter("txtSignDate");
+                String uid = request.getRemoteUser();
+                String[] empIdArray = empIds.split(";");
+                HttpSession session = request.getSession();
+                String[] nonEmpIdArray = (String[])session.getAttribute(SponsorshipServlet.Form.NON_EMP_IDS);
+                String[] nonEmpDescArray = (String[])session.getAttribute(SponsorshipServlet.Form.NON_EMP_DESCS);
+                /*******************
+                _heronData.insertSponsorships(resTitle,resDesc,empIdArray,nonEmpIdArray,expDate,uid,spnsrType,sigName,sigDate,nonEmpDescArray);
+	*************/
+        }
+        
 
         // cf http://static.springsource.org/spring/docs/2.0.6/reference/mail.html
         private MailSender mailSender;
@@ -320,7 +335,7 @@ public class SponsorshipServlet extends HttpServlet {
 	private void sendNotificationEmailToDroc(){
                 // Create a thread safe "copy" of the template message and customize it
                 SimpleMailMessage msg = new SimpleMailMessage(this.templateMessage);
-                msg.setTo(ldapUtil.getDrocEmails(dbUtil.getDrocIds()));
+                msg.setTo(ldapUtil.getDrocEmails(_heronData.getDrocIds()));
 
                 this.mailSender.send(msg);
         }

@@ -9,7 +9,10 @@ package edu.kumc.informatics.heron.dao;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.Map;
 import java.util.Vector;
 
 import org.apache.commons.collections.map.ListOrderedMap;
@@ -17,28 +20,27 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.SimpleJdbcDaoSupport;
+
+import edu.kumc.informatics.heron.capsec.Agent;
+import edu.kumc.informatics.heron.dao.HeronDao.DrocAccess;
+import edu.kumc.informatics.heron.util.Functional.Pair;
 import static edu.kumc.informatics.heron.base.StaticValues.*;
 
-public class HeronDBDao extends SimpleJdbcDaoSupport {
-	private final Log log = LogFactory.getLog(HeronDBDao.class);
+public class HeronDBDao extends SimpleJdbcDaoSupport implements HeronDao {
+
+        public static final String beanName = "heronDao";
+
+
+        private final Log log = LogFactory.getLog(HeronDBDao.class);
 	
-	/**
-	 * check if user has signed system access agreement.
-	 * @param userId
-	 * @return true if yes, false otherwise
-	 */
-	public boolean isUserAgreementSigned(String userId){
-		boolean isSigned = false;
-		try{
-			String sql = "select count(1) as tot from heron.system_access_users where user_id=?";
+	/* (non-Javadoc)
+         * @see edu.kumc.informatics.heron.dao.HeronDao#isUserAgreementSigned(edu.kumc.informatics.heron.capsec.Agent)
+         */
+	@Override
+        public boolean isUserAgreementSigned(Agent user) throws DataAccessException{
+	        String sql = "select count(1) as tot from heron.system_access_users where user_id=?";
 			
-			int count = this.getSimpleJdbcTemplate().queryForInt(sql, userId);
-			isSigned = count>0?true:false;
-		}catch(DataAccessException ex){
-			log.error("error in isUserAgreementSigned()");
-		}
-		return isSigned;
-		
+	        return this.getSimpleJdbcTemplate().queryForInt(sql, user.getUserId()) > 0;
 	}
 	
 	/**
@@ -164,62 +166,85 @@ public class HeronDBDao extends SimpleJdbcDaoSupport {
 	 */
 	public String getApproverGroup(String uid){
 		String grp = null;
-		try{
+		//FIXME try{
 			String sql = "select org from heron.DROC_REVIEWERS where user_id=? and status='A'";
 			
 			@SuppressWarnings("rawtypes")
 			List aList = this.getSimpleJdbcTemplate().queryForList(sql, uid);
 			if(aList!=null && aList.size()>0)
 				grp =  ((ListOrderedMap)aList.get(0)).get("ORG")+"";
-		}catch(DataAccessException ex){
-			log.error("error in getApprovalGroup()");
-		}
+		//}catch(DataAccessException ex){
+		//	log.error("error in getApprovalGroup()");
+		//}
 		return grp;
 	}
 	
-	/**
-	 * get a list of sponsorship info from database.
-	 * @param type
-	 * @param org
-	 * @return a list of sponsorship info from database
-	 */
-	@SuppressWarnings("rawtypes")
-	public List getSponsorshipForApproval(String type,String org){
-		String sql = "select SPONSORSHIP_ID,USER_ID,SPONSOR_ID,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE,USER_DESC from HERON.sponsorship s"+
-			" where ACCESS_TYPE='"+type+"' and (s.expire_date is null or s.expire_date>sysdate) ";
-		if(org.equals("KUMC"))
-			sql += " and (KUMC_APPROVAL_STATUS is null or KUMC_APPROVAL_STATUS='D')";
-		else if(org.equals("UKP"))
-			sql += " and (UKP_APPROVAL_STATUS is null or  UKP_APPROVAL_STATUS='D')";
-		else if(org.equals("KUH"))
-			sql += " and (KUH_APPROVAL_STATUS is null or KUH_APPROVAL_STATUS='D')"+
-			" order by research_title";
-		return this.getJdbcTemplate().queryForList(sql);
+	public DrocAccess drocAccess(Agent reviewer) {
+		return new DBDrocAccess(reviewer);
 	}
-	
-	/**
-	 * approve sponsorships
-	 * @param org
-	 * @param ids
-	 * @param vals
-	 * @param uid
-	 */
-	public void approveSponsorship(String org, Vector<String> ids, Vector<String> vals, String uid){
-		String SQL = "update heron.SPONSORSHIP set LAST_UPDT_TMST=sysdate,";
-		if("KUMC".equals(org))
-			SQL += "KUMC_APPROVAL_STATUS=?,KUMC_APPROVED_BY=?,KUMC_APPROVAL_TMST ";
-		else if("UKP".equals(org))
-			SQL += "UKP_APPROVAL_STATUS=?,UKP_APPROVED_BY=?,UKP_APPROVAL_TMST ";
-		else if("KUH".equals(org))
-			SQL += "KUH_APPROVAL_STATUS=?,KUH_APPROVED_BY=?,KUH_APPROVAL_TMST ";	  
-		SQL += "=sysdate where SPONSORSHIP_ID =?";
-		SponsorshipApprovalBatchUpdate batchUpdate = new SponsorshipApprovalBatchUpdate(this.getDataSource(),SQL);
-		
-		for(int i=0;i<ids.size();i++){
-				batchUpdate.update(new Object[]{vals.get(i),uid,ids.get(i)});
+
+	public class DBDrocAccess implements DrocAccess {
+		public DBDrocAccess(Agent reviewer) {
+			_reviewer = reviewer;
 		}
-		batchUpdate.flush();
-		
+
+		private final Agent _reviewer;
+
+		/**
+		 * get a list of sponsorship info from database. TODO: normalize
+		 * XYZ_APPROVAL_STATUS
+		 * 
+		 * @param type
+		 * @param org
+		 * @return a list of sponsorship info from database
+		 */
+		public List<Map<String, Object>> getSponsorshipForApproval(
+		                AccessType type, ParticipatingOrg org) {
+			// TODO: consider a rowmapper and a real type for sponsorships
+			String sql = "select SPONSORSHIP_ID,USER_ID,SPONSOR_ID,RESEARCH_TITLE,RESEARCH_DESC,EXPIRE_DATE,USER_DESC "
+			                + "from HERON.sponsorship s"
+			                + " where ACCESS_TYPE=? and (s.expire_date is null or s.expire_date>sysdate) and "
+			                + org.toString()
+			                + "_APPROVAL_STATUS is null or "
+			                + org.toString()
+			                + "_APPROVAL_STATUS='D')"
+			                + " order by research_title";
+			return HeronDBDao.this.getSimpleJdbcTemplate()
+			                .queryForList(sql, type.toString());
+		}
+
+		/**
+		 * approve sponsorships
+		 * 
+		 * @param org
+		 * @param ids
+		 * @param vals
+		 * @param uid
+		 */
+		public void approveSponsorship(ParticipatingOrg org,
+		                List<Pair<Integer, ApprovalStatus>> decisions) {
+			// TODO: normalize database
+			// TODO: look into Spring API for nicer batch update idiom.
+			String SQL = "update heron.SPONSORSHIP set LAST_UPDT_TMST=sysdate,"
+			                + org.toString()
+			                + "_APPROVAL_STATUS=?,"
+			                + org.toString()
+			                + "_APPROVED_BY=?,"
+			                + org.toString()
+			                + "_APPROVAL_TMST =sysdate where SPONSORSHIP_ID =?";
+			SponsorshipApprovalBatchUpdate batchUpdate = new SponsorshipApprovalBatchUpdate(
+			                HeronDBDao.this.getDataSource(), SQL);
+
+			for (Pair<Integer, ApprovalStatus> d : decisions) {
+				batchUpdate.update(new Object[] {
+				                d.getRight().toString(),
+				                _reviewer.getUserId(),
+				                // count on the database to coerce string to int
+				                d.getLeft().toString()});
+			}
+			batchUpdate.flush();
+		}
+
 	}
 	
 	/**
@@ -235,22 +260,21 @@ public class HeronDBDao extends SimpleJdbcDaoSupport {
 		return this.getJdbcTemplate().queryForList(sql);
 	}
 	
-	/**
-	 * check if a view_only user is sponsored and approved.
-	 * @param uid
-	 * @return true if  sponsored and approved.
-	 */
-	public boolean isViewOnlyUserApproved(String uid){
-		String sql = "select user_id from heron.SPONSORSHIP where user_id='" +
-			uid + "' and (expire_date is null or expire_date>sysdate) and access_type='VIEW_ONLY' " +
-			" and (kuh_approval_status ='A' and kumc_approval_status ='A' and ukp_approval_status ='A')";
-		return this.getJdbcTemplate().queryForList(sql).size()>0;
+	@Override
+        public boolean isViewOnlyUserApproved(Agent who) {
+		//TODO: normalize database using org table
+		String sql = "select user_id from heron.SPONSORSHIP where user_id=?"
+		                + " and (expire_date is null or expire_date>sysdate) and access_type='VIEW_ONLY' "
+		                + " and (kuh_approval_status ='A' and kumc_approval_status ='A' and ukp_approval_status ='A')";
+		return this.getSimpleJdbcTemplate().queryForList(sql, who.getUserId())
+		                .size() > 0;
 	}
 	
 	/**
 	 * get an array of droc user ids
 	 * @return string array of ids
 	 */
+	@Override
 	public String[] getDrocIds(){
 		String sql = "select distinct user_id from heron.droc_reviewers where status ='A'";
 		List aList = this.getJdbcTemplate().queryForList(sql);
@@ -261,15 +285,14 @@ public class HeronDBDao extends SimpleJdbcDaoSupport {
 		return results;
 	}
 	
-	/**
-	 * check if user an executive
-	 * @param uid
-	 * @return true if yes
-	 */
-	public boolean isUserExecutive(String uid){
-		String sql = "select user_id from heron.exec_group where user_id='" +
-		uid + "' and status ='A'";
-		return this.getJdbcTemplate().queryForList(sql).size()>0;
+	/* (non-Javadoc)
+         * @see edu.kumc.informatics.heron.dao.HeronDao#isUserExecutive(edu.kumc.informatics.heron.capsec.Agent)
+         */
+	@Override
+        public boolean isUserExecutive(Agent who){
+		String sql = "select count(*) from heron.exec_group where user_id=? " +
+		                "and status ='A'";
+		return this.getSimpleJdbcTemplate().queryForInt(sql, who.getUserId()) > 0;
 	}
 	
 	/**
@@ -277,7 +300,7 @@ public class HeronDBDao extends SimpleJdbcDaoSupport {
 	 * @param spnId
 	 * @return string[] of sponsorship approval info
 	 */
-	public String[] getUserApproveInfo(String spnId){
+	public String[] getUserApproveInfo(int spnId){
 		String sql = "select user_id, sponsor_id,research_title from HERON.sponsorship where sponsorship_id="+
 			spnId + " and kuh_approval_status='A' and kumc_approval_status='A' and ukp_approval_status='A'";
 		@SuppressWarnings("rawtypes")
@@ -295,7 +318,7 @@ public class HeronDBDao extends SimpleJdbcDaoSupport {
 	 * @param spnId
 	 * @return a string[] of user id and sponsor id
 	 */
-	public String[] getSponsorshipUserInfo(String spnId){
+	public String[] getSponsorshipUserInfo(int spnId){
 		String sql = "select user_id, sponsor_id,research_title from HERON.sponsorship where sponsorship_id="+ spnId;
 		@SuppressWarnings("rawtypes")
 		List aList =  this.getJdbcTemplate().queryForList(sql);
@@ -326,25 +349,45 @@ public class HeronDBDao extends SimpleJdbcDaoSupport {
 		return bf.toString();
 	}
 	
-	/**
-	 * check if user has acknowledged the most recent disclaimer
-	 * @param uid
-	 * @return true if user has acknowledged the most recent disclaimer
-	 */
-	public boolean isDisclaimerRead(String uid){
-		String sql = "select count(1) from HERON.ACKNOWLEDGED_DISCLAIMERS ad, HERON.disclaimers dis "+
-			"where ad.user_id=? and ad.disclaimer_id=dis.disclaimer_id and dis.is_recent=1";
-		return this.getJdbcTemplate().queryForInt(sql, new Object[]{uid})>0;
+	/* (non-Javadoc)
+         * @see edu.kumc.informatics.heron.dao.HeronDao#disclaimer(edu.kumc.informatics.heron.capsec.Agent)
+         */
+	@Override
+        public Disclaimer disclaimer(final Agent who) {
+	        return new Disclaimer(who);
 	}
-	
-	/**
-	 * @see DBUtil#updateDisclaimerAckowledgement
-	 */
-	public void updateDisclaimerAckowledgement(String uid){
-		String sql = "insert into HERON.ACKNOWLEDGED_DISCLAIMERS(user_id,disclaimer_id,acknowledge_tmst)"+
-			"select '"+uid+"',disclaimer_id,sysdate from HERON.DISCLAIMERS where is_recent=1";
-		this.getJdbcTemplate().execute(sql);
-	}
+
+	public final class Disclaimer {
+                Disclaimer(final Agent who) {
+                        _who = who;
+                }
+
+                private final Agent _who;
+
+                /**
+                 * check if user has acknowledged the most recent disclaimer
+                 * 
+                 * @param uid
+                 * @return true if user has acknowledged the most recent
+                 *         disclaimer
+                 */
+                public boolean wasRead() {
+                        String sql = "select count(1) from HERON.ACKNOWLEDGED_DISCLAIMERS ad, HERON.disclaimers dis "
+                                        + "where ad.user_id=? and ad.disclaimer_id=dis.disclaimer_id and dis.is_recent=1";
+                        return HeronDBDao.this.getJdbcTemplate().queryForInt(
+                                        sql, new Object[] { _who.getUserId() }) > 0;
+                }
+
+                /**
+                 * Record acknowledgement of the recent disclaimer(s)
+                 */
+                public void recordAckowledgement() {
+                        String sql = "insert into HERON.ACKNOWLEDGED_DISCLAIMERS(user_id,disclaimer_id,acknowledge_tmst)"
+                                        + "select ?,disclaimer_id,sysdate from HERON.DISCLAIMERS where is_recent=1";
+                        HeronDBDao.this.getJdbcTemplate().update(sql,
+                                        new Object[] { _who.getUserId() });
+                }
+        }
 	
 	/**
 	 * @see DBUtil#getRecentDisclaimer
@@ -382,4 +425,14 @@ public class HeronDBDao extends SimpleJdbcDaoSupport {
 			return "User termination failed.";
 		}
 	}
+
+	/* (non-Javadoc)
+         * @see edu.kumc.informatics.heron.dao.HeronDao#expired(java.util.Date)
+         */
+	@Override
+        public boolean expired(Date then) {
+		GregorianCalendar CE = new GregorianCalendar();
+		return CE.after(then);
+        }
+
 }
