@@ -1,7 +1,6 @@
 '''medcenter.py -- academic medical center directory/policy
 '''
 
-import ConfigParser
 import os
 import sys
 import urllib
@@ -9,6 +8,7 @@ import urllib2
 
 import ldap # http://www.python-ldap.org/doc/html/ldap.html
 
+import config
 
 # consider using snake-guice for testability
 # http://code.google.com/p/snake-guice/wiki/GuiceBasics
@@ -50,32 +50,26 @@ class AccountHolder(object):
         return self._userid
 
 
-def ldap_searchfn(config, section):
-    opts = _configdict(config, section)
-    l = ldap.initialize(opts['url'])
+def ldap_searchfn(ini, section):
+    rt = config.RuntimeOptions('url userdn base password')
+    rt.load(ini, section)
+    l = ldap.initialize(rt.url)
     # TODO: figure out how to configure openssl to handle self-signed certs
     # work-around: use `TLS_REQCERT allow` in /etc/ldap/ldap.conf
     # (not to be confused with /etc/ldap.conf)
-    l.simple_bind_s(opts['userdn'], opts['password'])
-    base = opts['base']
+    l.simple_bind_s(rt.userdn, rt.password)
+    base = rt.base
 
     def search(query, attrs):
         return l.search_s(base, ldap.SCOPE_SUBTREE, query, attrs)
 
     return search
 
-def _configdict(config, section):
-    p = ConfigParser.SafeConfigParser()
-    p.read(config)
-    return dict(p.items(section))
-
-def chalkdb_queryfn(config, section):
-    opts = _configdict(config, section)
-    url = opts['url']
-    param = opts['param']
+def chalkdb_queryfn(ini, section):
+    rt = config.RuntimeOptions('url param')
 
     def training_expiration(userid):
-        addr = url + '?' + urllib.urlencode({param: userid})
+        addr = rt.url + '?' + urllib.urlencode({rt.param: userid})
         body = urllib2.urlopen(addr).read()
 
         if not body:  # no expiration on file
@@ -87,17 +81,17 @@ def chalkdb_queryfn(config, section):
 
 def _integration_test(ldap_ini='kumc-idv.ini', ldap_section='idvault',
                       chalk_ini='chalk.ini', chalk_section='chalk'):
-    uid = sys.argv[1]
 
     ls = ldap_searchfn(ldap_ini, ldap_section)
     cq = chalkdb_queryfn(chalk_ini, chalk_section)
 
-    m = MedCenter(ls, cq)
-    who = m.affiliate(uid)
+    return MedCenter(ls, cq)
 
-    print who
-    print "training: ", m.trainedThru(who)
 
 
 if __name__ == '__main__':
-    _integration_test()
+    uid = sys.argv[1]
+    m = _integration_test()
+    who = m.affiliate(uid)
+    print who
+    print "training: ", m.trainedThru(who)
