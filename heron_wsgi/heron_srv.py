@@ -34,7 +34,7 @@ def _mkapp(cas='https://cas.kumc.edu/cas/', auth_area='/u/',
 
     check = checklist.Checklist(m, hr, datetime.date)
 
-    t = SessionMiddleware(HeronAccessPartsApp('htdocs2/', check),
+    t = SessionMiddleware(HeronAccessPartsApp('htdocs-heron/', check),
                           session_opts)
     return PathPrefix(auth_area,
                       cas_auth.cas_required(cas, session_opts, PathPrefix,
@@ -54,6 +54,6 @@ if __name__ == '__main__':
     # In production use, static A/V media files would be
     # served with apache, but for test purposes, we'll use
     # paste DirectoryApp
-    app = PathPrefix('/av/', fileapp.DirectoryApp('htdocs2/'), application)
+    app = PathPrefix('/av/', fileapp.DirectoryApp('htdocs-heron/'), application)
 
     httpserver.serve(app, host=host, port=port)
