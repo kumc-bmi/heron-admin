@@ -25,7 +25,8 @@ HTMLu = 'text/html; charset=utf-8'
 class TemplateApp(object):
     def __init__(self, docroot=None):
         if docroot is None:
-            docroot = os.path.join(dirname(__file__), 'htdocs')
+            docroot = 'htdocs'
+        docroot = os.path.join(dirname(__file__), docroot)
         self._docroot = docroot
         self._loader = TemplateLoader([docroot], auto_reload=True)
 
@@ -42,8 +43,7 @@ class TemplateApp(object):
             raven_home = wsgi.application_uri(environ)
             if not raven_home.endswith('/'):
                 raven_home = raven_home + '/'
-            stream = tmpl.generate(user=session.get('user', ""),
-                                   raven_home=raven_home)
+            stream = tmpl.generate(**self.parts(environ, session))
             body = stream.render('xhtml')
         except TemplateNotFound as e:
             start_response("404 not found", [('Content-type', 'text/plain')])
@@ -52,6 +52,13 @@ class TemplateApp(object):
 
         start_response("200 ok", [('Content-type', HTMLu)])
         return body
+
+    def parts(self, environ, session):
+        raven_home = wsgi.application_uri(environ)
+        if not raven_home.endswith('/'):
+            raven_home = raven_home + '/'
+        return dict(user=session.get('user', ""),
+                    raven_home=raven_home)
 
 
 class PathPrefix(object):
