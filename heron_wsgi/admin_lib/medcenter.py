@@ -30,7 +30,8 @@ class MedCenter(object):
 
         dn, attrs = matches[0]
 
-        return AccountHolder([attrs[n][0] for n in AccountHolder.attributes])
+        return AccountHolder([attrs.get(n, [None])[0]
+                              for n in AccountHolder.attributes])
 
     def trainedThru(self, who):
         return self._training(who.userid())
