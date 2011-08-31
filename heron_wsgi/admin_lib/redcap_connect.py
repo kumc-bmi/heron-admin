@@ -5,8 +5,8 @@ expects redcap.ini a la:
 [redcap]
 TOKEN=...
 api_url=http://redcap-host/redcap/api/
-survey_url=http://bmidev1/redcap-host/surveys/?s=
-
+survey_url=http://bmidev1/redcap-host/surveys/
+domain=kumc.edu
 '''
 
 import urllib
@@ -18,22 +18,26 @@ import config
 
 def survey_setup(ini, section):
     #TODO: split on this side of call
-    rt = config.RuntimeOptions('token api_url survey_url')
+    rt = config.RuntimeOptions('token api_url survey_url domain')
     rt.load(ini, section)
 
-    def setup(addr):
+    def setup(userid, full_name):
+        email = '%s@%s' % (userid, rt.domain)
         body = urllib.urlencode({'token': rt.token,
                                  'content': 'survey',
                                  'format': 'json',
-                                 'email': addr})
+                                 'email': email})
         body = urllib2.urlopen(rt.api_url, body).read()
-        hashcode = json.loads(body)['hash']
-        return rt.survey_url + hashcode
+        surveycode = json.loads(body)['hash']
+        params = urllib.urlencode({'s': surveycode,
+                                   'email': email,
+                                   'full_name': full_name})
+        return rt.survey_url + '?' + params
 
     return setup
 
 
-def _integration_test(ini='redcap.ini', section='redcap'):
+def _integration_test(ini='saa_survey.ini', section='redcap'):
     return survey_setup(ini, section)
 
 

@@ -1,12 +1,13 @@
 import datetime
 
-import cas_auth
+from paste.httpexceptions import HTTPSeeOther
 
+import cas_auth
 from usrv import TemplateApp, PathPrefix, SessionMiddleware
 from admin_lib import medcenter
 from admin_lib import heron_policy
 from admin_lib import checklist
-
+from admin_lib.redcap_connect import survey_setup
 
 class HeronAccessPartsApp(TemplateApp):
     def __init__(self, docroot, checklist):
@@ -19,8 +20,30 @@ class HeronAccessPartsApp(TemplateApp):
         return self._checklist.parts_for(session['user'])
 
 
+def redcap_redirect(get_addr, medcenter):
+    '''Redirect to user-specific REDCap survey.
+
+    Assumes beaker.session with user and full_name.
+
+    Hmm... we're doing a POST to the REDCap API inside a GET.
+    Kinda iffy, w.r.t. safety and such.
+    '''
+    def wsgi(environ, start_response):
+        session = environ['beaker.session']
+        uid = session['user']
+
+        # perhaps pass full name via session?
+        a = medcenter.affiliate(uid)
+        full_name = "%s, %s" % (a.sn, a.givenname)
+        there = get_addr(uid, full_name)
+        return HTTPSeeOther(there).wsgi_application(environ, start_response)
+
+    return wsgi
+
+
 def _mkapp(cas='https://cas.kumc.edu/cas/', auth_area='/u/',
-           login='/u/login', logout='/u/logout'):
+           login='/u/login', logout='/u/logout',
+           saa_survey='/u/saa_survey'):
     
     session_opts = cas_auth.make_session('heron')
 
@@ -34,11 +57,15 @@ def _mkapp(cas='https://cas.kumc.edu/cas/', auth_area='/u/',
 
     check = checklist.Checklist(m, hr, datetime.date)
 
-    t = SessionMiddleware(HeronAccessPartsApp('htdocs-heron/', check),
+    hp = SessionMiddleware(HeronAccessPartsApp('htdocs-heron/', check),
                           session_opts)
-    return PathPrefix(auth_area,
-                      cas_auth.cas_required(cas, session_opts, PathPrefix,
-                                            login, logout, t), t)
+
+    saa_connect = survey_setup('admin_lib/saa_survey.ini', 'redcap')
+    srv = PathPrefix(saa_survey, redcap_redirect(saa_connect, m), hp)
+    cas = cas_auth.cas_required(cas, session_opts,
+                                PathPrefix, login, logout, srv)
+    return PathPrefix(auth_area, cas, srv)
+
 
 # mod_wsgi conventional entry point
 application = _mkapp()
