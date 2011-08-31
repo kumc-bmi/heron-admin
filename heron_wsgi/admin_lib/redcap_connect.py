@@ -1,8 +1,5 @@
 '''redcap_connect.py -- Connect HERON users to REDCap surveys.
 
-.. todo: The goal is to set up authenticated REDCap surveys, but so
-         far we just managed to exercise the API.
-
 '''
 
 import urllib
@@ -15,12 +12,11 @@ def survey_setup(ini, section):
     rt = config.RuntimeOptions('url token')  #TODO: split on this side of call
     rt.load(ini, section)
 
-    def setup(survey, addr):
+    def setup(addr):
         body = urllib.urlencode({'token': rt.token,
                                  'content': 'survey',
                                  'format': 'json',
-                                 'survey': survey,
-                                 'emailAddress': addr})
+                                 'email': addr})
         return urllib2.urlopen(rt.url, body)
 
     return setup
@@ -32,8 +28,8 @@ def _integration_test(ini='redcap.ini', section='redcap'):
 
 if __name__ == '__main__':
     import sys
-    survey, emailAddress = sys.argv[1:3]
+    emailAddress = sys.argv[1]
     c = _integration_test()
-    response = c(survey, emailAddress)
+    response = c(emailAddress)
     pprint.pprint(response.info().headers)
     print response.read()
