@@ -11,26 +11,29 @@ import pprint
 
 import config
 
-def connector(ini, section):
+def survey_setup(ini, section):
     rt = config.RuntimeOptions('url token')  #TODO: split on this side of call
     rt.load(ini, section)
 
-    def record():
+    def setup(survey, addr):
         body = urllib.urlencode({'token': rt.token,
-                                 'content': 'record',
+                                 'content': 'survey',
                                  'format': 'json',
-                                 'type': 'eav'})
+                                 'survey': survey,
+                                 'emailAddress': addr})
         return urllib2.urlopen(rt.url, body)
 
-    return record
+    return setup
 
 
 def _integration_test(ini='redcap.ini', section='redcap'):
-    return connector(ini, section)
+    return survey_setup(ini, section)
 
 
 if __name__ == '__main__':
+    import sys
+    survey, emailAddress = sys.argv[1:3]
     c = _integration_test()
-    response = c()
+    response = c(survey, emailAddress)
     pprint.pprint(response.info().headers)
     print response.read()
