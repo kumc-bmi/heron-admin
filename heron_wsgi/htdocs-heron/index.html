@@ -90,8 +90,7 @@
     <div class="span-5 last">
   <div>
 
-    <p>${affiliate.givenname} ${affiliate.sn},
-    ${affiliate.title} (<code>${affiliate.cn}</code>):
+    <p>${affiliate.givenname} ${affiliate.sn} (<code>${affiliate.cn}</code>):
     </p>
 
   <form method="post" action="@@">
@@ -101,7 +100,7 @@
     <ol>
       <li>
 	<label>
-	  <input py:attrs="faculty" type="checkbox" disabled="disabled" />faculty?
+	  <input py:attrs="faculty" type="checkbox" disabled="disabled" />KUMC Faculty?
 	</label>
 	<div py:if="executive">
 	  or <br />
@@ -113,6 +112,7 @@
 	  <label>
 	    <input py:attrs="sponsored" type="checkbox" disabled="disabled" />sponsored?
 	  </label>
+	  <br />${affiliate.title}
 	</div>
       </li>
 
