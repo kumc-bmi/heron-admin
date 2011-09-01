@@ -1,24 +1,34 @@
 '''heron_policy.py -- HERON policy decisions, records
 '''
 
-from db_util import transaction, connect
+from db_util import transaction, oracle_connect, mysql_connect
 import config
 
 import medcenter
 
 class HeronRecords(object):
     # TODO: connection pooling/management?
-    def __init__(self, conn, medcenter, timesrc):
+    def __init__(self, conn, medcenter, timesrc, saa_survey_id):
         self._conn = conn
         self._m = medcenter
         self._t = timesrc
+        self._saa_survey_id = saa_survey_id
 
-    def saa_signed(self, agent):
-        return self._agent_test('''select 1 as tot
-                         from heron.system_access_users
-                          where user_id=:u''', 'u', agent)
+    def check_saa_signed(self, agent):
+        with transaction(self._conn) as q:
+            q.execute(
+                '''select p.survey_id, p.participant_email, r.response_id, r.record, r.completion_time
+ 		   from redcap_surveys_response r
+                     join redcap_surveys_participants p on p.participant_id = r.participant_id 
+		   where p.participant_email=%(mail)s and p.survey_id = %(survey_id)s''',
+                {'mail': agent.mail, 'survey_id': self._saa_survey_id})
+            ok = len(q.fetchmany()) > 0
+        if not ok:
+            raise NoAgreement()
 
     def q_executive(self, agent):
+        raise NotExecutive()
+        # TODO: port this to mysql/redcap
         if not self._agent_test('''select 1
                          from heron.exec_group where user_id=:u
 		         and status ='A' ''', 'u', agent):
@@ -30,7 +40,8 @@ class HeronRecords(object):
         return OK(agent)
 
     def q_sponsored(self, agent):
-        # TODO: normalize database using org table
+        raise NotSponsored()
+        # TODO: port this to redcap
         if not self._agent_test(
             '''select user_id
                from heron.SPONSORSHIP
@@ -64,8 +75,7 @@ class HeronRecords(object):
             raise NoTraining("no training on file")
         if texp < self._t.today().isoformat():
             raise NoTraining("training out of date")
-        if not self.saa_signed(a):
-            raise NoAgreement()
+        self.check_saa_signed(a)
         return Access(a, texp, Disclaimer(a))
 
 
@@ -105,19 +115,22 @@ class Disclaimer(object):
         self._agent = agent
 
 
-def setup_connection(ini='heron_records.ini', section='heron'):
+def setup_connection(ini, section):
     '''
     .. todo: refactor into datasource
     '''
-    rt = config.RuntimeOptions('user password host sid'.split())
+    rt = config.RuntimeOptions('user password host sid engine'.split())
     rt.load(ini, section)
-    return connect(rt.user, rt.password, rt.host, 1521, rt.sid)
+    #return oracle_connect(rt.user, rt.password, rt.host, 1521, rt.sid)
+    return mysql_connect(rt.user, rt.password, rt.host, 3306, 'redcap')
 
 
-def _integration_test():
+def _integration_test(ini='heron_records.ini'):
     import datetime
     m = medcenter._integration_test()
-    return HeronRecords(setup_connection(), m, datetime.date)
+    rt = config.RuntimeOptions(['survey_id'])
+    rt.load(ini, 'saa')
+    return HeronRecords(setup_connection(ini, 'redcapdb'), m, datetime.date, int(rt.survey_id))
 
 
 if __name__ == '__main__':

@@ -23,10 +23,10 @@ class Checklist(object):
             expiration = None
             current = {}
 
-        def check_perm(f, markup):
+        def check_perm(f):
             try:
                 f(agt)
-                return {markup: markup}
+                return {'checked': 'checked'}
             except heron_policy.NoPermission:
                 return {}
             except medcenter.NotFaculty:
@@ -41,11 +41,10 @@ class Checklist(object):
         return {"affiliate": agt,
                 "trainingCurrent": current,
                 "trainingExpiration": expiration,
-                "executive": check_perm(self._hr.q_executive, 'checked'),
-                "faculty": check_perm(self._m.checkFaculty, 'checked'),
-                "signatureOnFile": (self._hr.saa_signed(agt)
-                                    and {'disabled': 'disabled'} or {}),
-                "sponsored": check_perm(self._hr.q_sponsored, 'checked'),
+                "executive": check_perm(self._hr.q_executive),
+                "faculty": check_perm(self._m.checkFaculty),
+                "signatureOnFile": check_perm(self._hr.check_saa_signed),
+                "sponsored": check_perm(self._hr.q_sponsored),
                 "accessDisabled": (access and {'name': 'login'}
                                    or {'disabled': 'disabled'})
                 #SPONSOR("as_sponsor"),

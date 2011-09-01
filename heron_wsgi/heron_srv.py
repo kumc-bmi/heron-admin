@@ -103,9 +103,12 @@ def _mkapp(cas='https://cas.kumc.edu/cas/',
     cq = medcenter.chalkdb_queryfn('admin_lib/chalk.ini', 'chalk')
     m = medcenter.MedCenter(ls, cq)
 
-    conn = heron_policy.setup_connection(ini='admin_lib/heron_records.ini',
-                                         section='heron')
-    hr = heron_policy.HeronRecords(conn, m, datetime.date)
+    dbini = 'admin_lib/heron_records.ini'
+    conn = heron_policy.setup_connection(dbini, section='redcapdb')
+    rt = RuntimeOptions(['survey_id'])
+    rt.load(dbini, 'saa')
+    hr = heron_policy.HeronRecords(conn, m, datetime.date, int(rt.survey_id))
+
     check = checklist.Checklist(m, hr, datetime.date)
     saa_connect = survey_setup('admin_lib/saa_survey.ini', 'redcap')
     hp = HeronAccessPartsApp(htdocs, check,
