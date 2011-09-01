@@ -23,12 +23,13 @@ HTMLu = 'text/html; charset=utf-8'
 
 
 class TemplateApp(object):
-    def __init__(self, docroot=None):
+    def __init__(self, partsfn, docroot=None):
         if docroot is None:
             docroot = 'htdocs'
         docroot = os.path.join(dirname(__file__), docroot)
         self._docroot = docroot
         self._loader = TemplateLoader([docroot], auto_reload=True)
+        self._partsfn = partsfn
 
     def __call__(self, environ, start_response):
         path = environ['PATH_INFO']
@@ -40,10 +41,9 @@ class TemplateApp(object):
         # url-decode path?
         try:
             tmpl = self._loader.load(path[1:])
-            raven_home = wsgi.application_uri(environ)
-            if not raven_home.endswith('/'):
-                raven_home = raven_home + '/'
-            stream = tmpl.generate(**self.parts(environ, session))
+            parts = self._partsfn(environ, session)
+            #print >> sys.stderr, "TemplateApp parts:", pprint.pformat(parts)
+            stream = tmpl.generate(**parts)
             body = stream.render('xhtml')
         except TemplateNotFound as e:
             start_response("404 not found", [('Content-type', 'text/plain')])
@@ -53,38 +53,38 @@ class TemplateApp(object):
         start_response("200 ok", [('Content-type', HTMLu)])
         return body
 
-    def parts(self, environ, session):
-        raven_home = wsgi.application_uri(environ)
-        if not raven_home.endswith('/'):
-            raven_home = raven_home + '/'
-        return dict(user=session.get('user', ""),
-                    raven_home=raven_home)
+
+def raven_parts(environ, session):
+    raven_home = wsgi.application_uri(environ)
+    if not raven_home.endswith('/'):
+        raven_home = raven_home + '/'
+    return dict(user=session.get('user', ""),
+                raven_home=raven_home)
 
 
-class PathPrefix(object):
-    '''micro-router
-    '''
-    def __init__(self, prefix, app, next):
-        self._prefix = prefix
-        self._app = app
-        self._next = next
+def route_if_prefix(prefix, app_match, app_else, environ, start_response):
+    path = environ['PATH_INFO']
+    if path.startswith(prefix):
+        return app_match(environ, start_response)
+    else:
+        return app_else(environ, start_response)
 
-    def __call__(self, environ, start_response):
-        path = environ['PATH_INFO']
 
-        if path.startswith(self._prefix):
-            return self._app(environ, start_response)
-        else:
-            return self._next(environ, start_response)
-
+def prefix_router(prefix, app_match, app_else):
+    def handle_request(environ, start_response):
+        return route_if_prefix(prefix, app_match, app_else, environ, start_response)
+    return handle_request
 
 def _mkapp(cas='https://cas.kumc.edu/cas/', auth_area='/u/',
            login='/u/login', logout='/u/logout'):
+    '''
+    .. todo: consider removing this dead code
+    '''
     session_opts = cas_auth.make_session('raven')
-    t = SessionMiddleware(TemplateApp(), session_opts)
-    return PathPrefix(auth_area,
-                      cas_auth.cas_required(cas, session_opts, PathPrefix,
-                                            login, logout, t), t)
+    t = SessionMiddleware(TemplateApp(raven_parts), session_opts)
+    return prefix_router(auth_area,
+                         cas_auth.cas_required(cas, session_opts, prefix_router,
+                                               login, logout, t), t)
 
 # mod_wsgi conventional entry point
 application = _mkapp()
@@ -100,6 +100,6 @@ if __name__ == '__main__':
     # In production use, static A/V media files would be
     # served with apache, but for test purposes, we'll use
     # paste DirectoryApp
-    app = PathPrefix('/av/', fileapp.DirectoryApp('htdocs/'), application)
+    app = prefix_router('/av/', fileapp.DirectoryApp('htdocs/'), application)
 
     httpserver.serve(app, host=host, port=port)

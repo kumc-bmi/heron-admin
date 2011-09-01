@@ -16,12 +16,12 @@ import config
 class MedCenter(object):
     excluded_jobcode = "24600"
 
-    def __init__(self, searchfn, trainingfn):
-        self._search = searchfn
+    def __init__(self, searchsvc, trainingfn):
+        self._svc = searchsvc
         self._training = trainingfn
 
     def affiliate(self, name):
-        matches = self._search('(cn=%s)' % name, AccountHolder.attributes)
+        matches = self._svc.search('(cn=%s)' % name, AccountHolder.attributes)
         if len(matches) != 1:
             if len(matches) == 0:
                 raise KeyError, name
@@ -71,23 +71,40 @@ class AccountHolder(object):
         return self._attrs[n]
 
 
-def ldap_searchfn(ini, section):
-    rt = config.RuntimeOptions('url userdn base password')
-    rt.load(ini, section)
-    l = ldap.initialize(rt.url)
-    # TODO: figure out how to configure openssl to handle self-signed certs
-    # work-around: use `TLS_REQCERT allow` in /etc/ldap/ldap.conf
-    # (not to be confused with /etc/ldap.conf)
-    l.simple_bind_s(rt.userdn, rt.password)
-    base = rt.base
+class LDAPService(object):
+    '''
+    Haven't found a better way to deal with SSL certs
+    than putting `TLS_REQCERT allow` in /etc/ldap/ldap.conf
+    (not to be confused with /etc/ldap.conf)
 
-    def search(query, attrs):
-        return l.search_s(base, ldap.SCOPE_SUBTREE, query, attrs)
+    TODO: consider refactoring usage of ldap.initialize() for testability
+    '''
 
-    return search
+    def __init__(self, ini, section):
+        rt = config.RuntimeOptions('url userdn base password'.split())
+        rt.load(ini, section)
+        self._rt = rt
+        self._l = None
+
+    def bind(self):
+        rt = self._rt
+        self._l = l = ldap.initialize(rt.url)
+        l.simple_bind_s(rt.userdn, rt.password)
+        return l
+
+    def search(self, query, attrs):
+        l = self._l or self.bind()
+        base = self._rt.base
+        try:
+            ans = l.search_s(base, ldap.SCOPE_SUBTREE, query, attrs)
+        except ldap.CANNOT_CONNECT:
+            l = self.bind()
+            ans = l.search_s(base, ldap.SCOPE_SUBTREE, query, attrs)
+        return ans
+
 
 def chalkdb_queryfn(ini, section):
-    rt = config.RuntimeOptions('url param')
+    rt = config.RuntimeOptions('url param'.split())
     rt.load(ini, section)
 
     def training_expiration(userid):
@@ -104,7 +121,7 @@ def chalkdb_queryfn(ini, section):
 def _integration_test(ldap_ini='kumc-idv.ini', ldap_section='idvault',
                       chalk_ini='chalk.ini', chalk_section='chalk'):
 
-    ls = ldap_searchfn(ldap_ini, ldap_section)
+    ls = LDAPService(ldap_ini, ldap_section)
     cq = chalkdb_queryfn(chalk_ini, chalk_section)
 
     return MedCenter(ls, cq)

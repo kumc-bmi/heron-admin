@@ -5,7 +5,7 @@ import ConfigParser
 
 class RuntimeOptions(object):
     def __init__(self, attrs):
-        self._attrs = attrs.split()
+        self._attrs = attrs
         self._d = {}
 
     def load(self, ini, section):

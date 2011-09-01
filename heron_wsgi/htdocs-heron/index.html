@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml"
       xmlns:py="http://genshi.edgewall.org/"
       xmlns:xi="http://www.w3.org/2001/XInclude">
-<xi:include href="../kumc_layout.xml" />
+<xi:include href="kumc_layout.xml" />
 <head>
   <title>HERON Research Data Repository</title>
 </head>
@@ -25,7 +25,7 @@
   <style type="text/css">
     .photo {text-align: center; margin-bottom: 1em }
   </style>
-    <img src="../av/220px-Heron_tricol_01.JPG" alt=""/>
+    <img src="av/220px-Heron_tricol_01.JPG" alt=""/>
   </div>
 
   <h1>HERON Research Data Repository</h1>
@@ -127,7 +127,7 @@
       <li>
 	<label>
 	  <input type="checkbox" checked="checked" py:attrs="signatureOnFile" />
-	  Signed <a href="saa_survey">system access agreement</a>?
+	  Signed <a href="${saa_path}">system access agreement</a>?
 	</label>
       </li>
     </ol>

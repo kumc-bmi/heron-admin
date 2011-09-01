@@ -96,14 +96,22 @@ class Access(object):
     def __repr__(self):
         return str(self)
 
+
 class Disclaimer(object):
+    '''
+    .. todo: route users thru disclaimer
+    '''
     def __init__(self, agent):
         self._agent = agent
 
+
 def setup_connection(ini='heron_records.ini', section='heron'):
-    ro = config.RuntimeOptions('user password host port sid')
-    ro.load(ini, section)
-    return connect(ro.user, ro.password, ro.host, ro.port or 1521, ro.sid)
+    '''
+    .. todo: refactor into datasource
+    '''
+    rt = config.RuntimeOptions('user password host sid'.split())
+    rt.load(ini, section)
+    return connect(rt.user, rt.password, rt.host, 1521, rt.sid)
 
 
 def _integration_test():

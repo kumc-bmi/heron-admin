@@ -54,6 +54,9 @@ def cas_required(cas, session_opts, router, app_login, app_logout, app):
 def make_session(k):
     '''
     @param k: key, per beaker.middleware (not sure I grok)
+
+    .. todo: study 'secure' field of session_opts
+
     '''
     session_secret = str(uuid.uuid4())
     session_opts = {
@@ -65,7 +68,6 @@ def make_session(k):
         'session.type': 'cookie',
         'session.key': k,  # umm... not sure I grok this.
         'session.auto': True,
-        #@@ secure
         }
     return session_opts
 

@@ -17,8 +17,7 @@ import json
 import config
 
 def survey_setup(ini, section):
-    #TODO: split on this side of call
-    rt = config.RuntimeOptions('token api_url survey_url domain')
+    rt = config.RuntimeOptions('token api_url survey_url domain'.split())
     rt.load(ini, section)
 
     def setup(userid, full_name):
