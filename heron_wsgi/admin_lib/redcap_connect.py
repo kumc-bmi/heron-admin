@@ -29,7 +29,7 @@ def survey_setup(ini, section):
         body = urllib2.urlopen(rt.api_url, body).read()
         surveycode = json.loads(body)['hash']
         params = urllib.urlencode({'s': surveycode,
-                                   'email': email,
+                                   'user_id': userid,
                                    'full_name': full_name})
         return rt.survey_url + '?' + params
 
