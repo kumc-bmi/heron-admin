@@ -97,7 +97,7 @@ class LDAPService(object):
         base = self._rt.base
         try:
             ans = l.search_s(base, ldap.SCOPE_SUBTREE, query, attrs)
-        except ldap.CANNOT_CONNECT:
+        except ldap.CONNECT_ERROR:
             l = self.bind()
             ans = l.search_s(base, ldap.SCOPE_SUBTREE, query, attrs)
         return ans
