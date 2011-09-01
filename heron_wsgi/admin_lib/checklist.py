@@ -7,6 +7,11 @@ class Checklist(object):
         self._hr = heron_records
         self._t = timesrc
 
+    def access_for(self, uid):
+        agt = self._m.affiliate(uid)
+        q = self._hr.q_any(agt)
+        return self._hr.repositoryAccess(q)
+
     def parts_for(self, uid):
         agt = self._m.affiliate(uid)
 

@@ -1,6 +1,6 @@
 import datetime
 
-from paste.httpexceptions import HTTPSeeOther
+from paste.httpexceptions import HTTPSeeOther, HTTPForbidden
 from paste.exceptions.errormiddleware import ErrorMiddleware
 
 import cas_auth
@@ -12,21 +12,44 @@ from admin_lib.redcap_connect import survey_setup
 from admin_lib.config import RuntimeOptions
 
 class HeronAccessPartsApp(object):
-    def __init__(self, docroot, checklist, saa_redir, saa_path):
+    def __init__(self, docroot, checklist, saa_redir, saa_path,
+                 i2b2_login_path, i2b2_tool_addr):
         self._tplapp = TemplateApp(self.parts, docroot)
         self._checklist = checklist
         self._saa_redir = saa_redir
         self._saa_path = saa_path
+        self._i2b2_login_path = i2b2_login_path
+        self._i2b2_tool_addr = i2b2_tool_addr
 
     def __call__(self, environ, start_response):
-        return route_if_prefix(self._saa_path, self._saa_redir, self._tplapp,
-                               environ, start_response)
-        
+        path = environ['PATH_INFO']
+        if path.startswith(self._i2b2_login_path):
+            return self.i2b2_login(environ, start_response)
+        elif path.startswith(self._saa_path):
+            return self._saa_redir(environ, start_response)
+        else:
+            return self._tplapp(environ, start_response)
+
+    def i2b2_login(self, environ, start_response):
+        session = environ['beaker.session']
+        if environ['REQUEST_METHOD'] == "POST":
+            try:
+                a = self._checklist.access_for(session['user'])
+                ans = HTTPSeeOther(self._i2b2_tool_addr)
+            except heron_policy.NoPermission, np:
+                ans = HTTPForbidden(detail=np.message).wsgi_application(environ, start_response)
+        else:
+            ans = HTTPMethodNotAllowed()
+
+        return ans.wsgi_application(environ, start_response)
+
+
     def parts(self, environ, session):
         if 'user' not in session:
             return {}
         parts = dict(self._checklist.parts_for(session['user']),
-                     saa_path=self._saa_path)
+                     saa_path=self._saa_path,
+                     i2b2_login_path=self._i2b2_login_path)
         return parts
 
 
@@ -73,8 +96,8 @@ def _mkapp(cas='https://cas.kumc.edu/cas/',
            auth_area='/',
            login='/login', logout='/logout',
            saa_path='/saa_survey',
+           i2b2_check='/i2b2', i2b2_tool='https://heron.kumc.edu/i2b2webclient/cas_login.html',
            ini='heron_errors.ini', section='errors'):
-    
 
     ls = medcenter.LDAPService('admin_lib/kumc-idv.ini', 'idvault')
     cq = medcenter.chalkdb_queryfn('admin_lib/chalk.ini', 'chalk')
@@ -86,8 +109,9 @@ def _mkapp(cas='https://cas.kumc.edu/cas/',
     check = checklist.Checklist(m, hr, datetime.date)
     saa_connect = survey_setup('admin_lib/saa_survey.ini', 'redcap')
     hp = HeronAccessPartsApp(htdocs, check,
-                             redcap_redirect(saa_connect, m), saa_path)
-                          
+                             redcap_redirect(saa_connect, m), saa_path,
+                             i2b2_check, i2b2_tool)
+
     session_opts = cas_auth.make_session('heron')
     cas = cas_auth.cas_required(cas, session_opts, prefix_router,
                                 login, logout, SessionMiddleware(hp, session_opts))
