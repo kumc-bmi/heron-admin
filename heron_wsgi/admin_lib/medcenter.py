@@ -30,8 +30,7 @@ class MedCenter(object):
 
         dn, attrs = matches[0]
 
-        return AccountHolder([attrs.get(n, [None])[0]
-                              for n in AccountHolder.attributes])
+        return AccountHolder(extract_values(attrs))
 
     def trainedThru(self, who):
         return self._training(who.userid())
@@ -43,13 +42,37 @@ class MedCenter(object):
             return
         raise NotFaculty()
 
+    def affiliateSearch(self, max_qty, cn, sn, givenname):
+        clauses = ['(%s=%s*)' % (n, v)
+                   for (n, v) in (('cn', cn), ('sn', sn), ('givenname', givenname))
+                   if v]
+        if len(clauses) == 0:
+            return ()
+
+        if len(clauses) > 1:
+            q = '(&' + (''.join(clauses)) + ')'
+        else:
+            q = clauses[0]
+
+        results = self._svc.search(q, AccountHolder.attributes)[:max_qty]
+        return [AccountHolder(extract_values(attrs))
+                for dn, attrs in results]
+
+
+def extract_values(attrs):
+    return [attrs.get(n, [None])[0]
+            for n in AccountHolder.attributes]
+
 
 class NotFaculty(Exception):
     pass
 
 
 class AccountHolder(object):
-    attributes = ["cn", "sn", "givenname", "title", "mail",
+    '''
+    Note: KUMC uses ou for department.
+    '''
+    attributes = ["cn", "ou", "sn", "givenname", "title", "mail",
                   "kumcPersonFaculty", "kumcPersonJobcode"]
 
     def __init__(self, values):
@@ -97,8 +120,8 @@ class LDAPService(object):
         base = self._rt.base
         try:
             ans = l.search_s(base, ldap.SCOPE_SUBTREE, query, attrs)
-        except ldap.CONNECT_ERROR:
-            l = self.bind()
+        except ldap.SERVER_DOWN:
+            self._l = l = self.bind()
             ans = l.search_s(base, ldap.SCOPE_SUBTREE, query, attrs)
         return ans
 
@@ -129,8 +152,20 @@ def _integration_test(ldap_ini='kumc-idv.ini', ldap_section='idvault',
 
 
 if __name__ == '__main__':
-    uid = sys.argv[1]
-    m = _integration_test()
-    who = m.affiliate(uid)
-    print who
-    print "training: ", m.trainedThru(who)
+    import pprint
+
+    if '--search' in sys.argv:
+        cn, sn, givenname = sys.argv[2:5]
+        m = _integration_test()
+        print [10, cn, sn, givenname]
+        print m.affiliateSearch(10, cn, sn, givenname)
+    else:
+        uid = sys.argv[1]
+        m = _integration_test()
+
+        #all attributes:
+        pprint.pprint(m._svc.search('(cn=%s)' % uid, []))
+
+        who = m.affiliate(uid)
+        print who
+        print "training: ", m.trainedThru(who)
