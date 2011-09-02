@@ -1,12 +1,13 @@
 '''ldaplib.py -- LDAP configuration and search
 
-We expect configuration a la::
+Sample configuration::
 
+  >>> print _sample_settings.inifmt('enterprise_directory')
   [enterprise_directory]
+  base=ou=...,o=...
+  password=sekret
   url=ldaps://_ldap_host_:636
-  userDn= cn=...,ou=...,o=...
-  password= ...
-  base= ou=...,o=...
+  userdn=cn=...,ou=...,o=...
 
 '''
 import ldap # http://www.python-ldap.org/doc/html/ldap.html
@@ -42,6 +43,13 @@ class LDAPService(object):
             self._l = l = self.bind()
             ans = l.search_s(base, ldap.SCOPE_SUBTREE, query, attrs)
         return ans
+
+
+_sample_settings = config.TestTimeOptions(dict(
+        url='ldaps://_ldap_host_:636',
+        userdn='cn=...,ou=...,o=...',
+        password='sekret',
+        base='ou=...,o=...'))
 
 
 def _integration_test(ini='integration-test.ini', section='enterprise_directory'):
