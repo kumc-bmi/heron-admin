@@ -2,11 +2,23 @@
 
   >>> m = _doctester()
 
+Look someone up in the enterprise directory::
+
   >>> a1 = m.affiliate('john.smith')
   >>> a1
   John Smith <john.smith@js.example>
   >>> a1.title
   'Chair of Department of Neurology'
+
+We use an outboard service to check human subjects "chalk" training::
+
+  >>> print _sample_chalk_settings.inifmt('chalk')
+  [chalk]
+  param=userid
+  url=http://localhost:8080/chalk-checker
+
+  >>> m.trainedThru(a1)
+  '2012-01-01'
 
 '''
 
@@ -96,6 +108,11 @@ class AccountHolder(object):
         if n not in self.attributes:
             raise AttributeError
         return self._attrs[n]
+
+
+_sample_chalk_settings = config.TestTimeOptions(dict(
+        url='http://localhost:8080/chalk-checker',
+        param='userid'))
 
 
 def chalkdb_queryfn(ini, section):  # pragma nocover. not worth mocking an urlopener
