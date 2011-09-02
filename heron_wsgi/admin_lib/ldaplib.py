@@ -2,7 +2,7 @@
 
 Sample configuration::
 
-  >>> print _sample_settings.inifmt('enterprise_directory')
+  >>> print _sample_settings.inifmt(CONFIG_SECTION)
   [enterprise_directory]
   base=ou=...,o=...
   password=sekret
@@ -14,6 +14,9 @@ import ldap # http://www.python-ldap.org/doc/html/ldap.html
 
 import config
 
+CONFIG_SECTION='enterprise_directory'
+
+
 class LDAPService(object):
     '''
     Haven't found a better way to deal with SSL certs
@@ -22,7 +25,7 @@ class LDAPService(object):
 
     '''
 
-    def __init__(self, ini, section):
+    def __init__(self, ini, section=CONFIG_SECTION):
         rt = config.RuntimeOptions('url userdn base password'.split())
         rt.load(ini, section)
         self._rt = rt
@@ -52,8 +55,8 @@ _sample_settings = config.TestTimeOptions(dict(
         base='ou=...,o=...'))
 
 
-def _integration_test(ini='integration-test.ini', section='enterprise_directory'):  # pragma nocover
-    return LDAPService(ini, section)
+def _integration_test(ini='integration-test.ini'):  # pragma nocover
+    return LDAPService(ini)
 
 
 if __name__ == '__main__':  # pragma nocover

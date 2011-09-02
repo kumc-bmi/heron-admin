@@ -12,7 +12,7 @@ Look someone up in the enterprise directory::
 
 We use an outboard service to check human subjects "chalk" training::
 
-  >>> print _sample_chalk_settings.inifmt('chalk')
+  >>> print _sample_chalk_settings.inifmt(CHALK_CONFIG_SECTION)
   [chalk]
   param=userid
   url=http://localhost:8080/chalk-checker
@@ -28,6 +28,8 @@ import urllib
 import urllib2
 
 import config
+
+CHALK_CONFIG_SECTION='chalk'
 
 class MedCenter(object):
     excluded_jobcode = "24600"
@@ -115,7 +117,7 @@ _sample_chalk_settings = config.TestTimeOptions(dict(
         param='userid'))
 
 
-def chalkdb_queryfn(ini, section):  # pragma nocover. not worth mocking an urlopener
+def chalkdb_queryfn(ini, section=CHALK_CONFIG_SECTION):  # pragma nocover. not worth mocking an urlopener
     rt = config.RuntimeOptions('url param'.split())
     rt.load(ini, section)
 

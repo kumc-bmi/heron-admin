@@ -21,13 +21,13 @@ import json
 
 import config
 
-def survey_setup(ini, section):
-    rt = config.RuntimeOptions('token api_url survey_url domain'.split())
+def settings(ini, section):
+    rt = config.RuntimeOptions('token api_url survey_url domain survey_id'.split())
     rt.load(ini, section)
-    return _survey_setup(rt, urllib2)
+    return rt
 
 
-def _survey_setup(rt, urlopener):
+def survey_setup(rt, urlopener=urllib2):
     def setup(userid, full_name):
         email = '%s@%s' % (userid, rt.domain)
         body = urllib.urlencode({'token': rt.token,
@@ -63,12 +63,13 @@ _test_settings = config.TestTimeOptions(dict(
     domain='example.edu',
     survey_id=11))
 
+
 def _doctester():
-    return _survey_setup(_test_settings, _TestUrlOpener())
+    return survey_setup(_test_settings, _TestUrlOpener())
 
 
 def _integration_test(ini='integration-test.ini', section='saa_survey'):  # pragma nocover
-    return survey_setup(ini, section)
+    return survey_setup(settings(ini, section))
 
 
 if __name__ == '__main__':  # pragma nocover

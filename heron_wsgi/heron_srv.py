@@ -1,3 +1,5 @@
+'''heron_srv.py -- HERON administrative web interface
+'''
 import datetime
 
 from paste.httpexceptions import HTTPSeeOther, HTTPForbidden
@@ -7,30 +9,31 @@ from paste.request import parse_querystring
 import cas_auth
 from usrv import TemplateApp, SessionMiddleware, route_if_prefix, prefix_router
 from admin_lib import medcenter
+from admin_lib import ldaplib
 from admin_lib import heron_policy
 from admin_lib import checklist
-from admin_lib.redcap_connect import survey_setup
-from admin_lib.config import RuntimeOptions
+from admin_lib import redcap_connect
+from admin_lib import config
 
 class HeronAccessPartsApp(object):
-    def __init__(self, docroot, checklist, medcenter,
-                 saa_redir, saa_path,
-                 i2b2_login_path, i2b2_tool_addr,
-                 oversight_path):
-        self._tplapp = TemplateApp(self.parts, docroot)
+    htdocs = 'htdocs-heron/'
+    saa_path='/saa_survey'
+    i2b2_login_path='/i2b2'
+    oversight_path='/build_team.html'
+
+    def __init__(self, checklist, medcenter, saa_redir, i2b2_tool_addr):
         self._checklist = checklist
         self._m = medcenter
         self._saa_redir = saa_redir
-        self._saa_path = saa_path
-        self._i2b2_login_path = i2b2_login_path
         self._i2b2_tool_addr = i2b2_tool_addr
-        self._oversight_path = oversight_path
+
+        self._tplapp = TemplateApp(self.parts, self.htdocs)
 
     def __call__(self, environ, start_response):
         path = environ['PATH_INFO']
-        if path.startswith(self._i2b2_login_path):
+        if path.startswith(self.i2b2_login_path):
             return self.i2b2_login(environ, start_response)
-        elif path.startswith(self._saa_path):
+        elif path.startswith(self.saa_path):
             return self._saa_redir(environ, start_response)
         else:
             return self._tplapp(environ, start_response)
@@ -64,9 +67,9 @@ class HeronAccessPartsApp(object):
                                            params.get('givenname', ''))
 
         parts = dict(self._checklist.parts_for(session['user']),
-                     saa_path=self._saa_path,
-                     i2b2_login_path=self._i2b2_login_path,
-                     oversight_path=self._oversight_path,
+                     saa_path=self.saa_path,
+                     i2b2_login_path=self.i2b2_login_path,
+                     oversight_path=self.oversight_path,
                      team=team,
                      candidates=candidates)
         return parts
@@ -94,10 +97,55 @@ def redcap_redirect(get_addr, medcenter):
     return wsgi
 
 
-def _err_handler(app, ini, section):
-    rt = RuntimeOptions("debug smtp_server error_email"
-                        " from_address error_subject_prefix".split())
-    rt.load(ini, section)
+def heron_app(searchsvc, chalkcheck, redcapconn, timesrc, survey_settings, i2b2_settings):
+    '''
+      >>> from admin_lib import hcard_mock
+      >>> mockdir = hcard_mock.MockDirectory(hcard_mock.TEST_FILE)
+      >>> mockdb = heron_policy._TestDBConn()
+      >>> timesrc = heron_policy._TestTimeSource()
+      >>> ss = redcap_connect._test_settings
+      >>> i2s = config.TestTimeOptions({'cas_login': 'http://...'})
+      >>> app = heron_app(mockdir, mockdir.trainedThru, mockdb, timesrc, ss, i2s)
+      >>> app == None
+      False
+    '''
+    m = medcenter.MedCenter(searchsvc, chalkcheck)
+    hr = heron_policy.HeronRecords(redcapconn, m, timesrc, int(survey_settings.survey_id))
+    check = checklist.Checklist(m, hr, datetime.date)
+    saa_connect = redcap_connect.survey_setup(survey_settings)
+    redir = redcap_redirect(saa_connect, m)
+    return HeronAccessPartsApp(check, m, redir, i2b2_settings.cas_login)
+
+
+def cas_wrap(app, cas_settings,
+             auth_area='/', login='/login', logout='/logout'):
+    session_opts = cas_auth.make_session('heron')
+    cas_app = cas_auth.cas_required(cas_settings.base, session_opts, prefix_router,
+                                    login, logout, SessionMiddleware(app, session_opts))
+    return prefix_router(auth_area, cas_app, app)
+
+
+ERR_SECTION='errors'
+_sample_err_settings = dict(
+    recover=True,
+    debug=False,
+    smtp_server='smtp.example.edu',
+    error_email='sysadmin@example.edu',
+    from_address='heron@example.edu',
+    error_subject_prefix='HERON crash')
+
+
+def _err_handler(app, rt):
+    '''
+      >>> print config.TestTimeOptions(_sample_err_settings).inifmt(ERR_SECTION)
+      [errors]
+      debug=False
+      error_email=sysadmin@example.edu
+      error_subject_prefix=HERON crash
+      from_address=heron@example.edu
+      smtp_server=smtp.example.edu
+   '''
+
     if rt.debug:
         eh = ErrorMiddleware(app, debug=True, show_exceptions_in_wsgi_errors=True)
     else:
@@ -110,43 +158,32 @@ def _err_handler(app, ini, section):
     return eh
 
 
-def _mkapp(cas='https://cas.kumc.edu/cas/',
-           htdocs='htdocs-heron/',
-           auth_area='/',
-           login='/login', logout='/logout',
-           saa_path='/saa_survey',
-           i2b2_check='/i2b2', i2b2_tool='https://heron.kumc.edu/i2b2webclient/cas_login.html',
-           ini='heron_errors.ini', section='errors'):
+def _mkapp(webapp_ini, admin_ini, saa_section='saa_survey'):
+    searchsvc = ldaplib.LDAPService(admin_ini)
+    chalkcheck = medcenter.chalkdb_queryfn(admin_ini)
+    conn = heron_policy.setup_connection(admin_ini)
+    survey_settings = redcap_connect.settings(admin_ini, saa_section)
+    i2b2_settings = config.RuntimeOptions('cas_login').load(webapp_ini, 'i2b2')
+    happ = heron_app(searchsvc, chalkcheck, conn, datetime.date, survey_settings, i2b2_settings)
 
-    ls = medcenter.LDAPService('admin_lib/kumc-idv.ini', 'idvault')
-    cq = medcenter.chalkdb_queryfn('admin_lib/chalk.ini', 'chalk')
-    m = medcenter.MedCenter(ls, cq)
+    cas_settings = config.RuntimeOptions('base').load(webapp_ini, 'cas')
+    # hmm... not sure happ should get requests outside CAS auth_area
+    cas_app = cas_wrap(happ, cas_settings)
 
-    dbini = 'admin_lib/heron_records.ini'
-    conn = heron_policy.setup_connection(dbini, section='redcapdb')
-    rt = RuntimeOptions(['survey_id'])
-    rt.load(dbini, 'saa')
-    hr = heron_policy.HeronRecords(conn, m, datetime.date, int(rt.survey_id))
+    err_options = config.RuntimeOptions(_sample_err_settings.keys()).load(webapp_ini, 'errors')
+    return _err_handler(cas_app, err_options)
 
-    check = checklist.Checklist(m, hr, datetime.date)
-    saa_connect = survey_setup('admin_lib/saa_survey.ini', 'redcap')
-    hp = HeronAccessPartsApp(htdocs, check, m,
-                             redcap_redirect(saa_connect, m), saa_path,
-                             i2b2_check, i2b2_tool, '/build_team.html')
 
-    session_opts = cas_auth.make_session('heron')
-    cas = cas_auth.cas_required(cas, session_opts, prefix_router,
-                                login, logout, SessionMiddleware(hp, session_opts))
-
-    # hmm... not sure hp should get requests outside auth_area
-    return _err_handler(prefix_router(auth_area, cas, hp), ini, section)
+def _integration_test(webapp_ini='integration-test.ini',
+                      admin_ini='admin_lib/integration-test.ini'):  # pragma nocover
+    return _mkapp(webapp_ini, admin_ini)
 
 
 # mod_wsgi conventional entry point
-application = _mkapp()
+#application = _mkapp('heron_pages.ini', 'admin_lib/heron_admin.ini')
+application = _integration_test()
 
-
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma nocover
     # test usage
     from paste import httpserver
     from paste import fileapp
@@ -156,6 +193,6 @@ if __name__ == '__main__':
     # In production use, static A/V media files would be
     # served with apache, but for test purposes, we'll use
     # paste DirectoryApp
-    app = prefix_router('/av/', fileapp.DirectoryApp('htdocs-heron/'), application)
+    app = prefix_router('/av/', fileapp.DirectoryApp(HeronAccessPartsApp.htdocs), application)
 
     httpserver.serve(app, host=host, port=port)

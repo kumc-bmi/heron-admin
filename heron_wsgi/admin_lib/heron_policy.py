@@ -27,6 +27,9 @@ import config
 
 import medcenter
 
+REDCAPDB_CONFIG_SECTION='redcapdb'
+
+
 class HeronRecords(object):
     # TODO: connection pooling/management?
     def __init__(self, conn, medcenter, timesrc, saa_survey_id):
@@ -136,7 +139,7 @@ class Disclaimer(object):
         self._agent = agent
 
 
-def setup_connection(ini, section):
+def setup_connection(ini, section=REDCAPDB_CONFIG_SECTION):
     '''
     .. todo: refactor into datasource
     '''
@@ -190,7 +193,8 @@ def _integration_test(ini='integration-test.ini'):  # pragma nocover
 
     rt = config.RuntimeOptions(['survey_id'])
     rt.load(ini, 'saa_survey')
-    return HeronRecords(setup_connection(ini, 'redcapdb'), m, datetime.date, int(rt.survey_id))
+    return HeronRecords(setup_connection(ini),
+                        m, datetime.date, int(rt.survey_id))
 
 
 if __name__ == '__main__':  # pragma nocover

@@ -71,6 +71,8 @@ def route_if_prefix(prefix, app_match, app_else, environ, start_response):
 
 
 def prefix_router(prefix, app_match, app_else):
+    assert app_match is not None
+    assert app_else is not None
     def handle_request(environ, start_response):
         return route_if_prefix(prefix, app_match, app_else, environ, start_response)
     return handle_request

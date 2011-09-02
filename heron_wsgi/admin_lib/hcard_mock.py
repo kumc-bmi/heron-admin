@@ -17,12 +17,13 @@ Search by cn and return a couple attributes::
 
 '''
 
+import os
 import re
 
 from lxml import etree  # http://codespeak.net/lxml/ or python-lxml in ubuntu
 
 
-TEST_FILE = 'mockDirectory.html'
+TEST_FILE = os.path.join(os.path.dirname(__file__), 'mockDirectory.html')
 
 class MockDirectory(object):
     # map from ldap attributes to hcard(ish) class nams
