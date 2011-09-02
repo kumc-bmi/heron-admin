@@ -184,7 +184,7 @@ class _TestTrx():
         pass
 
 
-def _integration_test(ini='integration-test.ini'):
+def _integration_test(ini='integration-test.ini'):  # pragma nocover
     import datetime
     m = medcenter._integration_test()
 
@@ -193,7 +193,7 @@ def _integration_test(ini='integration-test.ini'):
     return HeronRecords(setup_connection(ini, 'redcapdb'), m, datetime.date, int(rt.survey_id))
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma nocover
     import sys
     userid = sys.argv[1]
     hr = _integration_test()

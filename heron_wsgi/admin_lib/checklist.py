@@ -93,7 +93,7 @@ def _doctester():
     return Checklist(m, hr, heron_policy._TestTimeSource())
 
 
-def _integration_test():
+def _integration_test():  # pragma nocover
     import datetime
     import medcenter
     import heron_policy
@@ -102,7 +102,7 @@ def _integration_test():
     return Checklist(m, hr, datetime.date)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma nocover
     import sys
     uid = sys.argv[1]
 

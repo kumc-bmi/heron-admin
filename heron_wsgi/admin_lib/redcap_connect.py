@@ -67,11 +67,11 @@ def _doctester():
     return _survey_setup(_test_settings, _TestUrlOpener())
 
 
-def _integration_test(ini='integration-test.ini', section='saa_survey'):
+def _integration_test(ini='integration-test.ini', section='saa_survey'):  # pragma nocover
     return survey_setup(ini, section)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma nocover
     import sys
     from pprint import pprint
     userid, fullName = sys.argv[1:3]

@@ -3,7 +3,7 @@
 
 import ConfigParser
 
-class RuntimeOptions(object):
+class RuntimeOptions(object):  # pragma nocover
     def __init__(self, attrs):
         self._attrs = attrs
         self._d = {}
@@ -27,6 +27,11 @@ class TestTimeOptions(object):
       color=blue
       size=10
 
+    Some 'static' checking:
+      >>> tto.typo
+      Traceback (most recent call last):
+          ...
+      AttributeError: typo
     '''
     def __init__(self, settings):
         self._settings = settings

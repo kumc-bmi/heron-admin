@@ -52,11 +52,11 @@ _sample_settings = config.TestTimeOptions(dict(
         base='ou=...,o=...'))
 
 
-def _integration_test(ini='integration-test.ini', section='enterprise_directory'):
+def _integration_test(ini='integration-test.ini', section='enterprise_directory'):  # pragma nocover
     return LDAPService(ini, section)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma nocover
     import sys, pprint
     ldap_query = sys.argv[1]
     attrs = sys.argv[2].split(",") if sys.argv[2:] else []

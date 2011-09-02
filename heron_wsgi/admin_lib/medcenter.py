@@ -29,7 +29,7 @@ class MedCenter(object):
         if len(matches) != 1:
             if len(matches) == 0:
                 raise KeyError, name
-            else:
+            else: # pragma nocover
                 raise ValueError, name  # ambiguous
 
         dn, attrs = matches[0]
@@ -98,7 +98,7 @@ class AccountHolder(object):
         return self._attrs[n]
 
 
-def chalkdb_queryfn(ini, section):
+def chalkdb_queryfn(ini, section):  # pragma nocover. not worth mocking an urlopener
     rt = config.RuntimeOptions('url param'.split())
     rt.load(ini, section)
 
@@ -119,7 +119,7 @@ def _doctester():
     return MedCenter(d, d.trainedThru)
 
 
-def _integration_test(ini='integration-test.ini', chalk_section='chalk'):
+def _integration_test(ini='integration-test.ini', chalk_section='chalk'):  # pragma: no cover
     import ldaplib
 
     cq = chalkdb_queryfn(ini, chalk_section)
@@ -128,7 +128,7 @@ def _integration_test(ini='integration-test.ini', chalk_section='chalk'):
 
 
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     import pprint
 
     if '--search' in sys.argv:
