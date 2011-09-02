@@ -1,4 +1,13 @@
 '''medcenter.py -- academic medical center directory/policy
+
+  >>> m = _doctester()
+
+  >>> a1 = m.affiliate('john.smith')
+  >>> a1
+  John Smith <john.smith@js.example>
+  >>> a1.title
+  'Chair of Department of Neurology'
+
 '''
 
 import os
@@ -6,12 +15,7 @@ import sys
 import urllib
 import urllib2
 
-import ldap # http://www.python-ldap.org/doc/html/ldap.html
-
 import config
-
-# consider using snake-guice for testability
-# http://code.google.com/p/snake-guice/wiki/GuiceBasics
 
 class MedCenter(object):
     excluded_jobcode = "24600"
@@ -79,7 +83,7 @@ class AccountHolder(object):
         self._attrs = dict(zip(self.attributes, values))
 
     def __str__(self):
-        return '%s, %s <%s>' % (self.sn, self.givenname, self.mail)
+        return '%s %s <%s>' % (self.givenname, self.sn, self.mail)
 
     def __repr__(self):
         return str(self)
@@ -92,38 +96,6 @@ class AccountHolder(object):
         if n not in self.attributes:
             raise AttributeError
         return self._attrs[n]
-
-
-class LDAPService(object):
-    '''
-    Haven't found a better way to deal with SSL certs
-    than putting `TLS_REQCERT allow` in /etc/ldap/ldap.conf
-    (not to be confused with /etc/ldap.conf)
-
-    TODO: consider refactoring usage of ldap.initialize() for testability
-    '''
-
-    def __init__(self, ini, section):
-        rt = config.RuntimeOptions('url userdn base password'.split())
-        rt.load(ini, section)
-        self._rt = rt
-        self._l = None
-
-    def bind(self):
-        rt = self._rt
-        self._l = l = ldap.initialize(rt.url)
-        l.simple_bind_s(rt.userdn, rt.password)
-        return l
-
-    def search(self, query, attrs):
-        l = self._l or self.bind()
-        base = self._rt.base
-        try:
-            ans = l.search_s(base, ldap.SCOPE_SUBTREE, query, attrs)
-        except ldap.SERVER_DOWN:
-            self._l = l = self.bind()
-            ans = l.search_s(base, ldap.SCOPE_SUBTREE, query, attrs)
-        return ans
 
 
 def chalkdb_queryfn(ini, section):
@@ -141,13 +113,18 @@ def chalkdb_queryfn(ini, section):
     return training_expiration
 
 
-def _integration_test(ldap_ini='kumc-idv.ini', ldap_section='idvault',
-                      chalk_ini='chalk.ini', chalk_section='chalk'):
+def _doctester():
+    import hcard_mock
+    d = hcard_mock.MockDirectory(hcard_mock.TEST_FILE)
+    return MedCenter(d, d.trainedThru)
 
-    ls = LDAPService(ldap_ini, ldap_section)
-    cq = chalkdb_queryfn(chalk_ini, chalk_section)
 
-    return MedCenter(ls, cq)
+def _integration_test(ini='integration-test.ini', chalk_section='chalk'):
+    import ldaplib
+
+    cq = chalkdb_queryfn(ini, chalk_section)
+
+    return MedCenter(ldaplib._integration_test(), cq)
 
 
 
@@ -162,9 +139,6 @@ if __name__ == '__main__':
     else:
         uid = sys.argv[1]
         m = _integration_test()
-
-        #all attributes:
-        pprint.pprint(m._svc.search('(cn=%s)' % uid, []))
 
         who = m.affiliate(uid)
         print who

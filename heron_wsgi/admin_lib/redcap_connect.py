@@ -1,12 +1,12 @@
 '''redcap_connect.py -- Connect HERON users to REDCap surveys.
 
-expects redcap.ini a la:
+expects configuration a la:
 
 [redcap]
 TOKEN=...
 api_url=http://redcap-host/redcap/api/
 survey_url=http://bmidev1/redcap-host/surveys/
-domain=kumc.edu
+domain=example.edu
 '''
 
 import urllib
@@ -36,7 +36,7 @@ def survey_setup(ini, section):
     return setup
 
 
-def _integration_test(ini='saa_survey.ini', section='redcap'):
+def _integration_test(ini='saa_survey.ini', section='saa_survey'):
     return survey_setup(ini, section)
 
 

@@ -1,3 +1,35 @@
+'''
+
+  >>> import pprint
+  >>> cl = _doctester()
+  >>> pprint.pprint(cl.parts_for('john.smith'))
+  {'accessDisabled': {'name': 'login'},
+   'affiliate': John Smith <john.smith@js.example>,
+   'executive': {},
+   'faculty': {'checked': 'checked'},
+   'signatureOnFile': {'checked': 'checked'},
+   'sponsored': {},
+   'trainingCurrent': {'checked': 'checked'},
+   'trainingExpiration': '2012-01-01'}
+
+  >>> pprint.pprint(cl.parts_for('bill.student'))
+  {'accessDisabled': {'disabled': 'disabled'},
+   'affiliate': Bill Student <bill.student@js.example>,
+   'executive': {},
+   'faculty': {},
+   'signatureOnFile': {},
+   'sponsored': {},
+   'trainingCurrent': {},
+   'trainingExpiration': ''}
+
+  >>> pprint.pprint(cl.parts_for('nobody'))
+  Traceback (most recent call last):
+    ...
+  KeyError: 'nobody'
+
+
+'''
+
 import heron_policy
 import medcenter
 
@@ -51,6 +83,14 @@ class Checklist(object):
                 #REPOSITORY_TOOL("repositoryTool"),
                 #SPONSORSHIP_FORM("sponsorshipForm");
                 }
+
+
+def _doctester():
+    import medcenter
+    import heron_policy
+    m = medcenter._doctester()
+    hr = heron_policy._doctester()
+    return Checklist(m, hr, heron_policy._TestTimeSource())
 
 
 def _integration_test():

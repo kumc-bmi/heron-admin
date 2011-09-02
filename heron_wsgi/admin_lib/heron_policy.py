@@ -1,4 +1,25 @@
 '''heron_policy.py -- HERON policy decisions, records
+
+  >>> hp = _doctester()
+  >>> m = hp._m  # cheating a bit
+
+Look up an investigator and a student::
+  >>> fac = m.affiliate('john.smith')
+  >>> stu = m.affiliate('bill.student')
+
+See if they're qualified faculty::
+  >>> hp.q_faculty(fac)
+  OK:John Smith <john.smith@js.example>
+  >>> hp.q_faculty(stu)
+  Traceback (most recent call last):
+    ...
+  NotFaculty
+
+Get an actual access qualification; i.e. check for
+system access agreement and human subjects training::
+  >>> hp.repositoryAccess(hp.q_any(fac))
+  Access(John Smith <john.smith@js.example>)
+
 '''
 
 from db_util import transaction, oracle_connect, mysql_connect
@@ -125,11 +146,50 @@ def setup_connection(ini, section):
     return mysql_connect(rt.user, rt.password, rt.host, 3306, 'redcap')
 
 
-def _integration_test(ini='heron_records.ini'):
+def _doctester(ini='integration-test.ini'):
+    import datetime
+    m = medcenter._doctester()
+
+    survey_id = 11  # arbitrary
+    return HeronRecords(_TestDBConn(), m, _TestTimeSource(), survey_id)
+
+
+class _TestTimeSource(object):
+    def today(self):
+        import datetime
+        return datetime.date(2011, 9, 2)
+
+
+class _TestDBConn(object):
+    def cursor(self):
+        return _TestTrx()
+
+    def commit(self):
+        pass
+
+class _TestTrx():
+    def __init__(self):
+        self._results = None
+
+    def execute(self, q, params=[]):
+        if params == {'mail': 'john.smith@js.example', 'survey_id': 11}:
+            self._results = [(11, 'john.smith@js.example', 123, 123, '2011-01-01')]
+        else:
+            self._results = []
+
+    def fetchmany(self):
+        return self._results
+
+    def close(self):
+        pass
+
+
+def _integration_test(ini='integration-test.ini'):
     import datetime
     m = medcenter._integration_test()
+
     rt = config.RuntimeOptions(['survey_id'])
-    rt.load(ini, 'saa')
+    rt.load(ini, 'saa_survey')
     return HeronRecords(setup_connection(ini, 'redcapdb'), m, datetime.date, int(rt.survey_id))
 
 
