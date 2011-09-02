@@ -8,37 +8,45 @@
 </head>
 <body>
 
-<py:def function="peopleTable(people)">
+<py:def function="peopleTable(people, pfx)">
 <table py:if="people">
   <tr>
     <th>&#160;</th>
-    <th>User ID</th><th>Surname</th><th>Given Name</th><th>Title</th><th>Department</th>
+    <th>User ID</th><th>Name</th><th>Title</th><th>Department</th>
   </tr>
   <tr py:for="who in people">
-    <td><input type="checkbox" name="choose_${who.cn}" /></td>
-    <td>${who.cn}</td><td>${who.sn}</td><td>${who.givenname}</td><td>${who.title}</td><td>${who.ou}</td>
+    <td><input type="checkbox" name="${pfx}_${who.cn}" /></td>
+    <td>${who.cn}</td><td>${who.sn}, ${who.givenname}</td><td>${who.title}</td><td>${who.ou}</td>
   </tr>
 </table>
 </py:def>
 
 <div id="main">
 <form py:if="team" method="get" action="">
-${peopleTable(team)}
+${peopleTable(team, 'r')}
 <p><input type="submit" name='goal' value="Remove" /></p>
+<input type="hidden" name="uids" value="${uids}" />
 </form>
 
 <form method="get" action="">
 <p>Look up a team member by giving the first letters of their surname, given name, or KUMC id:
-<br /><label>Surname: <input name='sn' /></label>
-<br /><label>Given name: <input name='givenname' /></label>
-<br /><label>KUMC id: <input name='cn' /></label>
-<br /><input type="submit" name='goal' value="Search" />
+<dl>
+<dt><label for='sn'>Surname:</label></dt>
+<dd><input name='sn' /></dd>
+<dt><label for='givenname'>Given name:</label></dt>
+<dd><input name='givenname' /></dd>
+<dt><label for='cn'>KUMC id:</label></dt>
+<dd><input name='cn' /></dd>
+</dl>
+<input type="submit" name='goal' value="Search" />
+<input type="hidden" name="uids" value="${uids}" />
 </p>
 </form>
 
 <form py:if="candidates" method="get" action="">
-${peopleTable(candidates)}
+${peopleTable(candidates, 'a')}
 <p><input type="submit" name='goal' value="Add" /></p>
+<input type="hidden" name="uids" value="${uids}" />
 </form>
 </div>
 

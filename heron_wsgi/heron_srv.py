@@ -53,26 +53,65 @@ class HeronAccessPartsApp(object):
 
 
     def parts(self, environ, session):
+        '''
+        .. todo: pass param names such as 'goal' to the template rather than manually maintaining.
+        '''
         if 'user' not in session:
             return {}
 
-        team = []
-        candidates = []
-
         params = dict(parse_querystring(environ))
-        if params.get('goal', None) == 'Search':
+        uids, goal = edit_team(params)
+
+        if goal == 'Search':
             candidates = self._m.affiliateSearch(15,
                                            params.get('cn', ''),
                                            params.get('sn', ''),
                                            params.get('givenname', ''))
+            candidates.sort(key = lambda(a): (a.sn, a.givenname))
+        else:
+            candidates = []
+
+        # Since we're the only supposed to supply these names,
+        # it seems OK to throw KeyError if we hit a bad one.
+        team = [self._m.affiliate(n) for n in uids]
+        team.sort(key = lambda(a): (a.sn, a.givenname))
 
         parts = dict(self._checklist.parts_for(session['user']),
                      saa_path=self.saa_path,
                      i2b2_login_path=self.i2b2_login_path,
                      oversight_path=self.oversight_path,
                      team=team,
+                     uids=' '.join(uids),
                      candidates=candidates)
         return parts
+
+
+def edit_team(params):
+    r'''
+      >>> edit_team({'a_dconnolly': 'on',
+      ...            'a_mconnolly': 'on',
+      ...            'goal': 'Add',
+      ...            'uids': 'rwaitman aallen'})
+      (['rwaitman', 'aallen', 'dconnolly', 'mconnolly'], 'Add')
+
+      >>> edit_team({'r_rwaitman': 'on',
+      ...            'goal': 'Remove',
+      ...            'uids': 'rwaitman aallen'})
+      (['aallen'], 'Remove')
+    '''
+    v = params.get('uids', None)
+    uids = v.split(' ') if v else []
+
+    goal = params.get('goal', None)
+    if goal == 'Add':
+        for n in params:
+            if params[n] == "on" and n.startswith("a_"):
+                uids.append(n[2:])  # hmm... what about dups?
+    elif goal == 'Remove':
+        for n in params:
+            if params[n] == "on" and n.startswith("r_"):
+                del uids[uids.index(n[2:])]
+    return uids, goal
 
 
 def redcap_redirect(get_addr, medcenter):
@@ -127,7 +166,6 @@ def cas_wrap(app, cas_settings,
 
 ERR_SECTION='errors'
 _sample_err_settings = dict(
-    recover=True,
     debug=False,
     smtp_server='smtp.example.edu',
     error_email='sysadmin@example.edu',
