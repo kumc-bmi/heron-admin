@@ -11,3 +11,6 @@ catalog.xml
 # passwords and such for integration testing
 heron_wsgi/integration-test.ini
 heron_wsgi/admin_lib/integration-test.ini
+heron_wsgi/htmlcov
+heron_wsgi/.coverage
+
