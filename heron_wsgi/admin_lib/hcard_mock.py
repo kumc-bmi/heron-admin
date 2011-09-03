@@ -4,7 +4,7 @@ Usage::
   $ python -m doctest hcard_mock.py
 
 Load the mock data::
-  >>> d = MockDirectory(TEST_FILE)
+  >>> d = MockDirectory()
 
 Search by cn and return a couple attributes::
   >>> d.search('(cn=john.smith)', ['sn', 'givenname'])
@@ -36,7 +36,7 @@ class MockDirectory(object):
                   "kumcPersonFaculty": "kumcPersonFaculty",
                   "kumcPersonJobcode": "kumcPersonJobcode"}
 
-    def __init__(self, filename):
+    def __init__(self, filename=TEST_FILE):
         self._doc = etree.parse(open(filename))
 
     def _byid(self, i):

@@ -1,19 +1,42 @@
 '''heron_srv.py -- HERON administrative web interface
+
+  >>> print config.TestTimeOptions(_sample_err_settings).inifmt(ERR_SECTION)
+  [errors]
+  debug=False
+  error_email=sysadmin@example.edu
+  error_subject_prefix=HERON crash
+  from_address=heron@example.edu
+  smtp_server=smtp.example.edu
+
+
 '''
 import datetime
 
 from paste.httpexceptions import HTTPSeeOther, HTTPForbidden
 from paste.exceptions.errormiddleware import ErrorMiddleware
 from paste.request import parse_querystring
+import injector # http://pypi.python.org/pypi/injector/
+                # 0.3.1 7deba485e5b966300ef733c3393c98c6
+from injector import inject, provides
 
 import cas_auth
 from usrv import TemplateApp, SessionMiddleware, route_if_prefix, prefix_router
 from admin_lib import medcenter
+from admin_lib.medcenter import MedCenter
 from admin_lib import ldaplib
 from admin_lib import heron_policy
-from admin_lib import checklist
+from admin_lib.checklist import Checklist
 from admin_lib import redcap_connect
 from admin_lib import config
+
+KSystemAccessRedirect = injector.Key('SystemAccessRedirect')
+KI2B2Address = injector.Key('I2B2Address')
+KSearchService = injector.Key('SearchService')
+KCASOptions = injector.Key('CASOptions')
+KCASApp = injector.Key('CASApp')
+KErrorOptions = injector.Key('ErrorOptions')
+KTopApp = injector.Key('TopApp')
+
 
 class HeronAccessPartsApp(object):
     htdocs = 'htdocs-heron/'
@@ -21,6 +44,8 @@ class HeronAccessPartsApp(object):
     i2b2_login_path='/i2b2'
     oversight_path='/build_team.html'
 
+    @inject(checklist=Checklist, medcenter=MedCenter,
+            saa_redir=KSystemAccessRedirect, i2b2_tool_addr=KI2B2Address)
     def __init__(self, checklist, medcenter, saa_redir, i2b2_tool_addr):
         self._checklist = checklist
         self._m = medcenter
@@ -29,6 +54,10 @@ class HeronAccessPartsApp(object):
 
         self._tplapp = TemplateApp(self.parts, self.htdocs)
 
+    def __repr__(self):
+        return 'HeronAccessPartsApp(%s, %s, %s)' % (
+            self._checklist, self._m, self._i2b2_tool_addr)
+    
     def __call__(self, environ, start_response):
         path = environ['PATH_INFO']
         if path.startswith(self.i2b2_login_path):
@@ -124,6 +153,8 @@ def redcap_redirect(get_addr, medcenter):
     Hmm... we're doing a POST to the REDCap API inside a GET.
     Kinda iffy, w.r.t. safety and such.
     '''
+    # ' emacs gets confused :-/
+    
     def wsgi(environ, start_response):
         session = environ['beaker.session']
         uid = session['user']
@@ -136,32 +167,20 @@ def redcap_redirect(get_addr, medcenter):
     return wsgi
 
 
-def heron_app(searchsvc, chalkcheck, redcapconn, timesrc, survey_settings, i2b2_settings):
-    '''
-      >>> from admin_lib import hcard_mock
-      >>> mockdir = hcard_mock.MockDirectory(hcard_mock.TEST_FILE)
-      >>> mockdb = heron_policy._TestDBConn()
-      >>> timesrc = heron_policy._TestTimeSource()
-      >>> ss = redcap_connect._test_settings
-      >>> i2s = config.TestTimeOptions({'cas_login': 'http://...'})
-      >>> app = heron_app(mockdir, mockdir.trainedThru, mockdb, timesrc, ss, i2s)
-      >>> app == None
-      False
-    '''
-    m = medcenter.MedCenter(searchsvc, chalkcheck)
-    hr = heron_policy.HeronRecords(redcapconn, m, timesrc, int(survey_settings.survey_id))
-    check = checklist.Checklist(m, hr, datetime.date)
-    saa_connect = redcap_connect.survey_setup(survey_settings)
-    redir = redcap_redirect(saa_connect, m)
-    return HeronAccessPartsApp(check, m, redir, i2b2_settings.cas_login)
+class CASWrap(injector.Module):
+    def configure(self, binder):
+        pass
 
-
-def cas_wrap(app, cas_settings,
+    @provides(KCASApp)
+    @inject(app=HeronAccessPartsApp, cas_settings=KCASOptions)
+    def wrap(self, app, cas_settings, session_key='heron',
              auth_area='/', login='/login', logout='/logout'):
-    session_opts = cas_auth.make_session('heron')
-    cas_app = cas_auth.cas_required(cas_settings.base, session_opts, prefix_router,
-                                    login, logout, SessionMiddleware(app, session_opts))
-    return prefix_router(auth_area, cas_app, app)
+        session_opts = cas_auth.make_session(session_key)
+        cas_app = cas_auth.cas_required(cas_settings.base, session_opts,
+                                        prefix_router, login, logout,
+                                        SessionMiddleware(app, session_opts))
+        # hmm... not sure app should get requests outside CAS auth_area
+        return prefix_router(auth_area, cas_app, app)
 
 
 ERR_SECTION='errors'
@@ -173,53 +192,109 @@ _sample_err_settings = dict(
     error_subject_prefix='HERON crash')
 
 
-def _err_handler(app, rt):
+class ErrorHandling(injector.Module):
+    def configure(self, binder):
+        pass
+
+    @provides(KTopApp)
+    @inject(app=KCASApp, rt=KErrorOptions)
+    def err_handler(self, app, rt):
+        if rt.debug:
+            eh = ErrorMiddleware(app, debug=True,
+                                 show_exceptions_in_wsgi_errors=True)
+        else:
+            eh = ErrorMiddleware(app, debug=False,
+                                 error_email=rt.error_email,
+                                 from_address=rt.from_address,
+                                 smtp_server=rt.smtp_server,
+                                 error_subject_prefix=rt.error_subject_prefix,
+                                 show_exceptions_in_wsgi_errors=True)
+        return eh
+
+
+class IntegrationTest(injector.Module):
+    def configure(self, binder,
+                  webapp_ini='integration-test.ini',
+                  admin_ini='admin_lib/integration-test.ini',
+                  saa_section='saa_survey'):
+        searchsvc = ldaplib.LDAPService(admin_ini)
+        binder.bind(KSearchService, searchsvc)
+
+        chalkcheck = medcenter.chalkdb_queryfn(admin_ini)
+        mc = medcenter.MedCenter(searchsvc, chalkcheck)
+        # TODO: use injection for MedCenter
+        binder.bind(medcenter.MedCenter, mc)
+
+        i2b2_settings = config.RuntimeOptions('cas_login').load(
+            webapp_ini, 'i2b2')
+        binder.bind(KI2B2Address, to=i2b2_settings.cas_login)
+
+        survey_settings = redcap_connect.settings(admin_ini, saa_section)
+        saa_connect = redcap_connect.survey_setup(survey_settings)
+        redir = redcap_redirect(saa_connect, mc)
+        binder.bind(KSystemAccessRedirect,
+                    # be explicit; else the setup function gets called
+                    to=injector.InstanceProvider(redir))
+
+        conn = heron_policy.setup_connection(admin_ini)
+        # TODO: use injection for HeronRecords
+        hr = heron_policy.HeronRecords(conn, mc, datetime.datetime,
+                                       int(survey_settings.survey_id))
+
+        binder.bind(datetime.date, to=datetime.date)
+        binder.bind(heron_policy.HeronRecords, to=hr)
+
+        check = Checklist(mc, hr, datetime.date)
+        binder.bind(Checklist, check)
+
+        binder.bind(KCASOptions,
+                    config.RuntimeOptions('base').load(webapp_ini, 'cas'))
+        binder.bind(KErrorOptions,
+                    config.RuntimeOptions(_sample_err_settings.keys()
+                                          ).load(webapp_ini, 'errors'))
+
+
+class Mock(injector.Module):
     '''
-      >>> print config.TestTimeOptions(_sample_err_settings).inifmt(ERR_SECTION)
-      [errors]
-      debug=False
-      error_email=sysadmin@example.edu
-      error_subject_prefix=HERON crash
-      from_address=heron@example.edu
-      smtp_server=smtp.example.edu
-   '''
+    >>> depgraph = injector.Injector([Mock(), ErrorHandling(), CASWrap()])
+    >>> happ = depgraph.get(HeronAccessPartsApp)
+    >>> tapp = depgraph.get(KTopApp)
+    '''
+    def configure(self, binder):
+        binder.bind(KSystemAccessRedirect,
+                    # be explicit; else the setup function gets called
+                    to=injector.InstanceProvider(redcap_connect._mock()))
+        binder.bind(KI2B2Address, to='http://www.i2b2.org/')
 
-    if rt.debug:
-        eh = ErrorMiddleware(app, debug=True, show_exceptions_in_wsgi_errors=True)
-    else:
-        eh = ErrorMiddleware(app, debug=False,
-                             error_email=rt.error_email,
-                             from_address=rt.from_address,
-                             smtp_server=rt.smtp_server,
-                             error_subject_prefix=rt.error_subject_prefix,
-                             show_exceptions_in_wsgi_errors=True)
-    return eh
+        from admin_lib import hcard_mock
+        hd = hcard_mock.MockDirectory()
+        binder.bind(KSearchService, to=hd)
 
+        # TODO: use injection for MedCenter
+        mc = medcenter.MedCenter(hd, hd.trainedThru)
+        binder.bind(medcenter.MedCenter, mc)
 
-def _mkapp(webapp_ini, admin_ini, saa_section='saa_survey'):
-    searchsvc = ldaplib.LDAPService(admin_ini)
-    chalkcheck = medcenter.chalkdb_queryfn(admin_ini)
-    conn = heron_policy.setup_connection(admin_ini)
-    survey_settings = redcap_connect.settings(admin_ini, saa_section)
-    i2b2_settings = config.RuntimeOptions('cas_login').load(webapp_ini, 'i2b2')
-    happ = heron_app(searchsvc, chalkcheck, conn, datetime.date, survey_settings, i2b2_settings)
+        ts = heron_policy._TestTimeSource()
+        conn = heron_policy._TestDBConn()
+        # TODO: use injection for HeronRecords
+        hp = heron_policy.HeronRecords(conn, mc, ts, saa_survey_id=11)
 
-    cas_settings = config.RuntimeOptions('base').load(webapp_ini, 'cas')
-    # hmm... not sure happ should get requests outside CAS auth_area
-    cas_app = cas_wrap(happ, cas_settings)
+        binder.bind(datetime.date, to=ts)
+        binder.bind(heron_policy.HeronRecords, to=hp)
 
-    err_options = config.RuntimeOptions(_sample_err_settings.keys()).load(webapp_ini, 'errors')
-    return _err_handler(cas_app, err_options)
+        hp = heron_policy._mock()
+        binder.bind(heron_policy.HeronRecords, hp)
+        
+        cl = Checklist(mc, hp, ts)
+        binder.bind(Checklist, cl)
 
+        binder.bind(KCASOptions,
+                    config.TestTimeOptions(
+                        {'base': 'https://cas.kumc.edu/cas/'}))
 
-def _integration_test(webapp_ini='integration-test.ini',
-                      admin_ini='admin_lib/integration-test.ini'):  # pragma nocover
-    return _mkapp(webapp_ini, admin_ini)
-
-
-# mod_wsgi conventional entry point
-#application = _mkapp('heron_pages.ini', 'admin_lib/heron_admin.ini')
-application = _integration_test()
+        binder.bind(KErrorOptions,
+                    config.TestTimeOptions(dict(_sample_err_settings,
+                                                debug=True)))
 
 if __name__ == '__main__':  # pragma nocover
     # test usage
@@ -228,9 +303,18 @@ if __name__ == '__main__':  # pragma nocover
     import sys
     host, port = sys.argv[1:3]
 
+    # mod_wsgi conventional entry point @@needs to be global
+    application = injector.Injector([IntegrationTest(),
+                                     ErrorHandling(), CASWrap()]).get(KTopApp)
+    #application = injector.Injector([Mock(),
+    #                                 ErrorHandling(), CASWrap()]).get(KTopApp)
+
+
     # In production use, static A/V media files would be
     # served with apache, but for test purposes, we'll use
     # paste DirectoryApp
-    app = prefix_router('/av/', fileapp.DirectoryApp(HeronAccessPartsApp.htdocs), application)
+    app = prefix_router('/av/',
+                        fileapp.DirectoryApp(HeronAccessPartsApp.htdocs),
+                        application)
 
     httpserver.serve(app, host=host, port=port)

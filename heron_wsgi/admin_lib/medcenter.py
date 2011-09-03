@@ -1,6 +1,8 @@
 '''medcenter.py -- academic medical center directory/policy
 
-  >>> m = _doctester()
+  >>> import hcard_mock
+  >>> d = hcard_mock.MockDirectory()
+  >>> m = MedCenter(d, d.trainedThru)
 
 Look someone up in the enterprise directory::
 
@@ -37,6 +39,9 @@ class MedCenter(object):
     def __init__(self, searchsvc, trainingfn):
         self._svc = searchsvc
         self._training = trainingfn
+
+    def __repr__(self):
+        return "MedCenter(s, t)"
 
     def affiliate(self, name):
         matches = self._svc.search('(cn=%s)' % name, AccountHolder.attributes)
@@ -132,7 +137,7 @@ def chalkdb_queryfn(ini, section=CHALK_CONFIG_SECTION):  # pragma nocover. not w
     return training_expiration
 
 
-def _doctester():
+def _mock():
     import hcard_mock
     d = hcard_mock.MockDirectory(hcard_mock.TEST_FILE)
     return MedCenter(d, d.trainedThru)

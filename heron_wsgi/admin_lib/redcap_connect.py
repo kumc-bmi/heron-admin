@@ -8,7 +8,7 @@
   survey_url=http://bmidev1/redcap-host/surveys/
   token=sekret
 
-  >>> setup = _doctester()
+  >>> setup = survey_setup(_test_settings, _TestUrlOpener())
   >>> setup('john.smith@js.example', 'John Smith')
   'http://bmidev1/redcap-host/surveys/?s=xyzpdq&user_id=john.smith%40js.example&full_name=John+Smith'
 
@@ -64,7 +64,7 @@ _test_settings = config.TestTimeOptions(dict(
     survey_id=11))
 
 
-def _doctester():
+def _mock():
     return survey_setup(_test_settings, _TestUrlOpener())
 
 

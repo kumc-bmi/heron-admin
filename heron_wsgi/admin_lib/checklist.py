@@ -1,7 +1,12 @@
 '''
 
   >>> import pprint
-  >>> cl = _doctester()
+  >>> import medcenter
+  >>> import heron_policy
+  >>> m = medcenter._mock()
+  >>> hr = heron_policy._mock()
+  >>> cl = Checklist(m, hr, heron_policy._TestTimeSource())
+
   >>> pprint.pprint(cl.parts_for('john.smith'))
   {'accessDisabled': {'name': 'login'},
    'affiliate': John Smith <john.smith@js.example>,
@@ -38,6 +43,9 @@ class Checklist(object):
         self._m = medcenter
         self._hr = heron_records
         self._t = timesrc
+
+    def __repr__(self):
+        return 'Checlist(m, hr, t)'
 
     def access_for(self, uid):
         agt = self._m.affiliate(uid)
@@ -85,11 +93,11 @@ class Checklist(object):
                 }
 
 
-def _doctester():
+def _mock():
     import medcenter
     import heron_policy
-    m = medcenter._doctester()
-    hr = heron_policy._doctester()
+    m = medcenter._mock()
+    hr = heron_policy._mock()
     return Checklist(m, hr, heron_policy._TestTimeSource())
 
 

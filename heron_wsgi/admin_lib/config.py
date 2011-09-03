@@ -18,6 +18,9 @@ class Options(object):
         lines = ['%s=%s' % (k, s[k]) for k in sorted(s.keys())]
         return '\n'.join(["[%s]" % section] + lines)
 
+    def __repr__(self):
+        return 'Options(%s)' % sorted(self._d.keys())
+
 
 class RuntimeOptions(Options):  # pragma nocover
     def load(self, ini, section):

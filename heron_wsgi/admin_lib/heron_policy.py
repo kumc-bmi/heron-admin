@@ -1,7 +1,8 @@
 '''heron_policy.py -- HERON policy decisions, records
 
-  >>> hp = _doctester()
-  >>> m = hp._m  # cheating a bit
+  >>> m = medcenter._mock()
+  >>> survey_id = 11  # arbitrary
+  >>> hp = HeronRecords(_TestDBConn(), m, _TestTimeSource(), survey_id)
 
 Look up an investigator and a student::
   >>> fac = m.affiliate('john.smith')
@@ -149,9 +150,8 @@ def setup_connection(ini, section=REDCAPDB_CONFIG_SECTION):
     return mysql_connect(rt.user, rt.password, rt.host, 3306, 'redcap')
 
 
-def _doctester(ini='integration-test.ini'):
-    import datetime
-    m = medcenter._doctester()
+def _mock(ini='integration-test.ini'):
+    m = medcenter._mock()
 
     survey_id = 11  # arbitrary
     return HeronRecords(_TestDBConn(), m, _TestTimeSource(), survey_id)
