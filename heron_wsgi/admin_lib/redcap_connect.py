@@ -35,7 +35,9 @@ def survey_setup(rt, urlopener=urllib2):
                                  'format': 'json',
                                  'email': email})
         body = urlopener.urlopen(rt.api_url, body).read()
-        surveycode = json.loads(body)['hash']
+        ans = json.loads(body)
+        #print ans
+        surveycode = ans['hash']
         params = urllib.urlencode([('s', surveycode)] + sorted(params.iteritems()))
         return rt.survey_url + '?' + params
 
@@ -69,7 +71,7 @@ def _mock():
     return survey_setup(_test_settings, _TestUrlOpener())
 
 
-def _integration_test(ini='integration-test.ini', section='saa_survey'):  # pragma nocover
+def _integration_test(ini='integration-test.ini', section='oversight_survey'):  # pragma nocover
     return survey_setup(settings(ini, section))
 
 
@@ -79,7 +81,7 @@ if __name__ == '__main__':  # pragma nocover
     userid, fullName = sys.argv[1:3]
     c = _integration_test()
     try:
-        pprint(c(userid, fullName))
+        pprint(c(userid, {'full_name': fullName}))
     except IOError, e:
         print e.message
         print e

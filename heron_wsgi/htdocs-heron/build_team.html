@@ -4,7 +4,7 @@
       xmlns:xi="http://www.w3.org/2001/XInclude">
 <xi:include href="kumc_layout.xml" />
 <head>
-  <title>HERON: Build Repository Access Team</title>
+  <title>HERON: Build List of People for use in Oversight Request</title>
 </head>
 <body>
 
@@ -26,6 +26,11 @@
 ${peopleTable(team, 'r')}
 <p><input type="submit" name='goal' value="Remove" /></p>
 <input type="hidden" name="uids" value="${uids}" />
+</form>
+
+<form py:if="team" method="get" action="${done_path}">
+<input type="hidden" name="uids" value="${uids}" />
+<p><input type="submit" name="continue" value="Done Choosing People" /></p>
 </form>
 
 <form method="get" action="">

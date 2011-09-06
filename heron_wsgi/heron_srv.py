@@ -13,6 +13,7 @@
 import datetime
 from urllib import URLopener
 import urllib2
+import itertools
 
 from paste.httpexceptions import HTTPSeeOther, HTTPForbidden
 from paste.exceptions.errormiddleware import ErrorMiddleware
@@ -31,8 +32,9 @@ from admin_lib.checklist import Checklist
 from admin_lib import redcap_connect
 from admin_lib import config
 
-KRedcapOptions = injector.Key('RedcapOptions')
 KI2B2Address = injector.Key('I2B2Address')
+KSystemAccessOptions = injector.Key('SystemAccessOptions')
+KOversightOptions = injector.Key('SystemAccessOptions')
 KSearchService = injector.Key('SearchService')
 KCASOptions = injector.Key('CASOptions')
 KCASApp = injector.Key('CASApp')
@@ -43,16 +45,21 @@ KTopApp = injector.Key('TopApp')
 class HeronAccessPartsApp(object):
     htdocs = 'htdocs-heron/'
     saa_path='/saa_survey'
+    team_done_path='/team_done'
     i2b2_login_path='/i2b2'
     oversight_path='/build_team.html'
 
     @inject(checklist=Checklist, medcenter=MedCenter,
-            redcap_opts=KRedcapOptions, urlopener=URLopener,
+            saa_opts=KSystemAccessOptions,
+            oversight_opts=KOversightOptions,
+            urlopener=URLopener,
             i2b2_tool_addr=KI2B2Address)
-    def __init__(self, checklist, medcenter, redcap_opts, urlopener, i2b2_tool_addr):
+    def __init__(self, checklist, medcenter, saa_opts, oversight_opts, urlopener, i2b2_tool_addr):
         self._checklist = checklist
         self._m = medcenter
-        self._redcap_link = redcap_connect.survey_setup(redcap_opts, urlopener)
+        self._saa_opts = saa_opts
+        self._oversight_opts = oversight_opts
+        self._urlopener = urlopener
         self._i2b2_tool_addr = i2b2_tool_addr
 
         self._tplapp = TemplateApp(self.parts, self.htdocs)
@@ -67,6 +74,8 @@ class HeronAccessPartsApp(object):
             return self.i2b2_login(environ, start_response)
         elif path.startswith(self.saa_path):
             return self.saa_redir(environ, start_response)
+        elif path.startswith(self.team_done_path):
+            return self.oversight_redir(environ, start_response)
         else:
             return self._tplapp(environ, start_response)
 
@@ -88,13 +97,33 @@ class HeronAccessPartsApp(object):
         Hmm... we're doing a POST to the REDCap API inside a GET.
         Kinda iffy, w.r.t. safety and such.
         '''
+        _, uid, full_name = self._request_agent(environ)
+        return self._survey_redir(self._saa_opts, uid, {'user_id': uid, 'full_name': full_name},
+                                  environ, start_response)
+
+    def _request_agent(self, environ):
         session = environ['beaker.session']
         uid = session['user']
 
         a = self._m.affiliate(uid)
         full_name = "%s, %s" % (a.sn, a.givenname)
-        there = self._redcap_link(uid, {'user_id': uid, 'full_name': full_name})
+        return a, uid, full_name
+
+    def _survey_redir(self, opts, uid, params, environ, start_response):
+        there = self._saa_link = redcap_connect.survey_setup(opts, self._urlopener)(uid, params)
         return HTTPSeeOther(there).wsgi_application(environ, start_response)
+
+    def oversight_redir(self, environ, start_response):
+        _, uid, full_name = self._request_agent(environ)
+
+        params = dict(parse_querystring(environ))
+        uids = _request_uids(params)
+
+        return self._survey_redir(self._oversight_opts, uid,
+                                  dict(team_params(self._m, uids),
+                                       user_id=uid, full_name=full_name,
+                                       is_data_request='no'),
+                                  environ, start_response)
 
     def parts(self, environ, session):
         '''
@@ -124,10 +153,29 @@ class HeronAccessPartsApp(object):
                      saa_path=self.saa_path,
                      i2b2_login_path=self.i2b2_login_path,
                      oversight_path=self.oversight_path,
+                     done_path=self.team_done_path,
                      team=team,
                      uids=' '.join(uids),
                      candidates=candidates)
         return parts
+
+
+def team_params(mc, uids):
+    r'''
+    >>> import pprint
+    >>> pprint.pprint(list(team_params(medcenter._mock(), ['john.smith', 'bill.student'])))
+    [('user_id_1', 'john.smith'),
+     ('name_etc_1', 'Smith, John\nChair of Department of Neurology\n'),
+     ('user_id_2', 'bill.student'),
+     ('name_etc_2', 'Student, Bill\n\n')]
+
+    '''
+    nested = [[('user_id_%d' % (i+1), uid),
+               ('name_etc_%d' % (i+1), '%s, %s\n%s\n%s' % (a.sn, a.givenname, a.title, a.ou))]
+              for (i, uid, a) in 
+              [(i, uids[i], mc.affiliate(uids[i]))
+               for i in range(0, len(uids))]]
+    return itertools.chain.from_iterable(nested)
 
 
 def edit_team(params):
@@ -143,8 +191,7 @@ def edit_team(params):
       ...            'uids': 'rwaitman aallen'})
       (['aallen'], 'Remove')
     '''
-    v = params.get('uids', None)
-    uids = v.split(' ') if v else []
+    uids = _request_uids(params)
 
     goal = params.get('goal', None)
     if goal == 'Add':
@@ -156,6 +203,10 @@ def edit_team(params):
             if params[n] == "on" and n.startswith("r_"):
                 del uids[uids.index(n[2:])]
     return uids, goal
+
+def _request_uids(params):
+    v = params.get('uids', None)
+    return v.split(' ') if v else []
 
 
 class CASWrap(injector.Module):
@@ -207,7 +258,8 @@ class IntegrationTest(injector.Module):
     def configure(self, binder,
                   webapp_ini='integration-test.ini',
                   admin_ini='admin_lib/integration-test.ini',
-                  saa_section='saa_survey'):
+                  saa_section='saa_survey',
+                  oversight_section='oversight_survey'):
         searchsvc = ldaplib.LDAPService(admin_ini)
         binder.bind(KSearchService, searchsvc)
 
@@ -220,13 +272,15 @@ class IntegrationTest(injector.Module):
             webapp_ini, 'i2b2')
         binder.bind(KI2B2Address, to=i2b2_settings.cas_login)
 
-        binder.bind(KRedcapOptions, redcap_connect.settings(admin_ini, saa_section))
-        binder.bind(URLopener, urllib2)
+        saa_opts = redcap_connect.settings(admin_ini, saa_section)
+        binder.bind(KSystemAccessOptions, saa_opts)
+        binder.bind(KOversightOptions, redcap_connect.settings(admin_ini, oversight_section))
+        binder.bind(URLopener, injector.InstanceProvider(urllib2))
 
         conn = heron_policy.setup_connection(admin_ini)
         # TODO: use injection for HeronRecords
         hr = heron_policy.HeronRecords(conn, mc, datetime.datetime,
-                                       int(survey_settings.survey_id))
+                                       int(saa_opts.survey_id))
 
         binder.bind(datetime.date, to=datetime.date)
         binder.bind(heron_policy.HeronRecords, to=hr)
@@ -248,7 +302,8 @@ class Mock(injector.Module):
     >>> tapp = depgraph.get(KTopApp)
     '''
     def configure(self, binder):
-        binder.bind(KRedcapOptions, redcap_connect._test_settings)
+        binder.bind(KSystemAccessOptions, redcap_connect._test_settings)
+        binder.bind(KOversightOptions, redcap_connect._test_settings)
         binder.bind(URLopener,
                     # avoid UnknownProvider: couldn't determine provider ...
                     injector.InstanceProvider(redcap_connect._TestUrlOpener()))
