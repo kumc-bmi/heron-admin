@@ -11,6 +11,8 @@
 
 '''
 import datetime
+from urllib import URLopener
+import urllib2
 
 from paste.httpexceptions import HTTPSeeOther, HTTPForbidden
 from paste.exceptions.errormiddleware import ErrorMiddleware
@@ -29,7 +31,7 @@ from admin_lib.checklist import Checklist
 from admin_lib import redcap_connect
 from admin_lib import config
 
-KSystemAccessRedirect = injector.Key('SystemAccessRedirect')
+KRedcapOptions = injector.Key('RedcapOptions')
 KI2B2Address = injector.Key('I2B2Address')
 KSearchService = injector.Key('SearchService')
 KCASOptions = injector.Key('CASOptions')
@@ -45,11 +47,12 @@ class HeronAccessPartsApp(object):
     oversight_path='/build_team.html'
 
     @inject(checklist=Checklist, medcenter=MedCenter,
-            saa_redir=KSystemAccessRedirect, i2b2_tool_addr=KI2B2Address)
-    def __init__(self, checklist, medcenter, saa_redir, i2b2_tool_addr):
+            redcap_opts=KRedcapOptions, urlopener=URLopener,
+            i2b2_tool_addr=KI2B2Address)
+    def __init__(self, checklist, medcenter, redcap_opts, urlopener, i2b2_tool_addr):
         self._checklist = checklist
         self._m = medcenter
-        self._saa_redir = saa_redir
+        self._redcap_link = redcap_connect.survey_setup(redcap_opts, urlopener)
         self._i2b2_tool_addr = i2b2_tool_addr
 
         self._tplapp = TemplateApp(self.parts, self.htdocs)
@@ -63,7 +66,7 @@ class HeronAccessPartsApp(object):
         if path.startswith(self.i2b2_login_path):
             return self.i2b2_login(environ, start_response)
         elif path.startswith(self.saa_path):
-            return self._saa_redir(environ, start_response)
+            return self.saa_redir(environ, start_response)
         else:
             return self._tplapp(environ, start_response)
 
@@ -80,6 +83,18 @@ class HeronAccessPartsApp(object):
 
         return ans.wsgi_application(environ, start_response)
 
+    def saa_redir(self, environ, start_response):
+        '''
+        Hmm... we're doing a POST to the REDCap API inside a GET.
+        Kinda iffy, w.r.t. safety and such.
+        '''
+        session = environ['beaker.session']
+        uid = session['user']
+
+        a = self._m.affiliate(uid)
+        full_name = "%s, %s" % (a.sn, a.givenname)
+        there = self._redcap_link(uid, {'user_id': uid, 'full_name': full_name})
+        return HTTPSeeOther(there).wsgi_application(environ, start_response)
 
     def parts(self, environ, session):
         '''
@@ -141,30 +156,6 @@ def edit_team(params):
             if params[n] == "on" and n.startswith("r_"):
                 del uids[uids.index(n[2:])]
     return uids, goal
-
-
-def redcap_redirect(get_addr, medcenter):
-    '''Redirect to user-specific REDCap survey.
-
-    Assumes beaker.session with user and full_name.
-
-    .. todo: consider caching full_name in session
-
-    Hmm... we're doing a POST to the REDCap API inside a GET.
-    Kinda iffy, w.r.t. safety and such.
-    '''
-    # ' emacs gets confused :-/
-    
-    def wsgi(environ, start_response):
-        session = environ['beaker.session']
-        uid = session['user']
-
-        a = medcenter.affiliate(uid)
-        full_name = "%s, %s" % (a.sn, a.givenname)
-        there = get_addr(uid, full_name)
-        return HTTPSeeOther(there).wsgi_application(environ, start_response)
-
-    return wsgi
 
 
 class CASWrap(injector.Module):
@@ -229,12 +220,8 @@ class IntegrationTest(injector.Module):
             webapp_ini, 'i2b2')
         binder.bind(KI2B2Address, to=i2b2_settings.cas_login)
 
-        survey_settings = redcap_connect.settings(admin_ini, saa_section)
-        saa_connect = redcap_connect.survey_setup(survey_settings)
-        redir = redcap_redirect(saa_connect, mc)
-        binder.bind(KSystemAccessRedirect,
-                    # be explicit; else the setup function gets called
-                    to=injector.InstanceProvider(redir))
+        binder.bind(KRedcapOptions, redcap_connect.settings(admin_ini, saa_section))
+        binder.bind(URLopener, urllib2)
 
         conn = heron_policy.setup_connection(admin_ini)
         # TODO: use injection for HeronRecords
@@ -261,9 +248,10 @@ class Mock(injector.Module):
     >>> tapp = depgraph.get(KTopApp)
     '''
     def configure(self, binder):
-        binder.bind(KSystemAccessRedirect,
-                    # be explicit; else the setup function gets called
-                    to=injector.InstanceProvider(redcap_connect._mock()))
+        binder.bind(KRedcapOptions, redcap_connect._test_settings)
+        binder.bind(URLopener,
+                    # avoid UnknownProvider: couldn't determine provider ...
+                    injector.InstanceProvider(redcap_connect._TestUrlOpener()))
         binder.bind(KI2B2Address, to='http://www.i2b2.org/')
 
         from admin_lib import hcard_mock

@@ -9,8 +9,8 @@
   token=sekret
 
   >>> setup = survey_setup(_test_settings, _TestUrlOpener())
-  >>> setup('john.smith@js.example', 'John Smith')
-  'http://bmidev1/redcap-host/surveys/?s=xyzpdq&user_id=john.smith%40js.example&full_name=John+Smith'
+  >>> setup('john.smith', {'user_id': 'john.smith', 'full_name': 'John Smith'})
+  'http://bmidev1/redcap-host/surveys/?s=8074&full_name=John+Smith&user_id=john.smith'
 
 '''
 
@@ -28,7 +28,7 @@ def settings(ini, section):
 
 
 def survey_setup(rt, urlopener=urllib2):
-    def setup(userid, full_name):
+    def setup(userid, params):
         email = '%s@%s' % (userid, rt.domain)
         body = urllib.urlencode({'token': rt.token,
                                  'content': 'survey',
@@ -36,9 +36,7 @@ def survey_setup(rt, urlopener=urllib2):
                                  'email': email})
         body = urlopener.urlopen(rt.api_url, body).read()
         surveycode = json.loads(body)['hash']
-        params = urllib.urlencode({'s': surveycode,
-                                   'user_id': userid,
-                                   'full_name': full_name})
+        params = urllib.urlencode([('s', surveycode)] + sorted(params.iteritems()))
         return rt.survey_url + '?' + params
 
     return setup
@@ -46,14 +44,17 @@ def survey_setup(rt, urlopener=urllib2):
 
 class _TestUrlOpener(object):
     def urlopen(self, addr, body):
-        return _TestResponse()
+        return _TestResponse(hex(abs(hash(addr)))[-4:])
 
 class _TestResponse(object):
+    def __init__(self, h):
+        self._h = h
+
     def read(self):
         return json.dumps({'PROJECT_ID': 123,
                            'add': 0,
                            'survey_id': _test_settings.survey_id,
-                           'hash': u'xyzpdq',
+                           'hash': self._h,
                            'email': u'BOGUS@%s' % _test_settings.domain})
 
 _test_settings = config.TestTimeOptions(dict(
