@@ -12,41 +12,41 @@ import java.util.Map;
 
 import javax.sql.DataSource;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.SqlOutParameter;
 import org.springframework.jdbc.core.SqlParameter;
 import org.springframework.jdbc.object.StoredProcedure;
+import org.springframework.jdbc.core.simple.SimpleJdbcDaoSupport;
 
-public class ChalkDBDao extends DBBaseDao{
-	private static Log log = LogFactory.getLog(ChalkDBDao.class);
-	
-	public ChalkDBDao()
-	{
-		super("java:ChalkDS");
+import edu.kumc.informatics.heron.capsec.Agent;
+
+public class ChalkDBDao extends SimpleJdbcDaoSupport implements ChalkDao{
+	//private Log log = LogFactory.getLog(getClass());
+		
+        /* (non-Javadoc)
+         * @see edu.kumc.informatics.heron.dao.ChalkDao#getChalkTrainingExpireDate(edu.kumc.informatics.heron.capsec.Agent)
+         */
+	@Override
+        public Date getChalkTrainingExpireDate(Agent who) {
+	        return new ChalkStoredProcedure(this.getDataSource()).getTrainingExpiration(who);
 	}
-	
-	/**
-	 * check if a user has been trained in CHALK
-	 * @param userId
-	 * @return
-	 */
-	@SuppressWarnings("unchecked")
-	public Date getChalkTrainingExpireDate(String userId){
-		Map paraMap = new HashMap();
-		paraMap.put("Username", userId);
-		Map aMap = new ChalkStoredProcedure(this.getDataSource()).execute(paraMap);
-		return ((Date)aMap.get("HSExpirationDate"));
-	}
-	
+
 	private class ChalkStoredProcedure extends StoredProcedure{
 		private static final String SQL = "CheckHumanSubjectsStatus";
+                private static final String USERNAME = "Username";
+                private static final String EXPIRATION = "HSExpirationDate";
 
 		ChalkStoredProcedure(DataSource dataSource) {
 		      super(dataSource, SQL);
-		      declareParameter(new SqlParameter("Username", Types.VARCHAR));
-		      declareParameter(new SqlOutParameter("HSExpirationDate", Types.DATE));
+		      declareParameter(new SqlParameter(USERNAME, Types.VARCHAR));
+		      declareParameter(new SqlOutParameter(EXPIRATION, Types.DATE));
 		}
+		
+                Date getTrainingExpiration(Agent who) {
+                        Map<String, String> paraMap = new HashMap<String, String>();
+                        paraMap.put(USERNAME, who.getUserId());
+                        @SuppressWarnings("rawtypes")
+                        Map aMap = execute(paraMap);
+                        return((Date) aMap.get(EXPIRATION));
+                }
 	}
 }

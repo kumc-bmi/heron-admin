@@ -1,0 +1,61 @@
+<!-- 
+    Document   : droctools
+    Created on : Jul 20, 2011, 9:55:34 AM
+    Author     : dconnolly
+-->
+<jsp:root xmlns:jsp="http://java.sun.com/JSP/Page" version="2.0"
+          xmlns:c="http://java.sun.com/jsp/jstl/core"
+          xmlns:x="http://java.sun.com/jsp/jstl/xml">
+
+  <jsp:directive.page contentType="text/html; charset=utf-8"
+                      pageEncoding="UTF-8"/>
+
+  <!-- TODO: run the layout transformation at build-time -->
+  <c:import var="layout" url="kumc_layout.xml"/>
+  <x:transform xslt="${layout}">
+    <html lang="en"
+          xmlns="http://www.w3.org/1999/xhtml">
+      <head>
+        <title>HERON Data Request Oversight Tools</title>
+      </head>
+      <body>
+        <div id="menu">
+          <ul>
+          <li><a href="system_users_report.jsp">HERON
+              System Users Report</a></li>
+          <li><a href="approved_users_report.jsp">HERON
+              Approved Users Report</a></li>
+          <li><a href="approve_sponsorship.jsp">Approve
+              Sponsored HERON Users</a></li>
+          <li><a href="term_heron_users.jsp">Terminate
+              Sponsored HERON Users</a></li>
+          </ul>
+        </div>
+
+        <div id="main">
+          <h1>HERON Data Request Oversight Tools</h1>
+
+          <ul>
+          <li><a href="approve_sponsorship.jsp">Approve
+              Sponsored HERON Users</a></li>
+          <li><a href="term_heron_users.jsp">Terminate
+              Sponsored HERON Users</a></li>
+          <li><a href="system_users_report.jsp">HERON
+              System Users Report</a></li>
+          <li><a href="approved_users_report.jsp">HERON
+              Approved Users Report</a></li>
+          </ul>
+        </div>
+
+        <div id="rightnav">
+          <div>
+            <b id="user-id">
+              <jsp:expression>request.getRemoteUser()</jsp:expression></b>
+          </div>
+        </div>
+
+      </body>
+    </html>
+  </x:transform>
+
+</jsp:root>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:py="http://genshi.edgewall.org/"
+      xmlns:xi="http://www.w3.org/2001/XInclude">
+<xi:include href="kumc_layout.xml" />
+<head>
+  <title>HERON: Build List of People for use in Oversight Request</title>
+</head>
+<body>
+
+<py:def function="peopleTable(people, pfx)">
+<table py:if="people">
+  <tr>
+    <th>&#160;</th>
+    <th>User ID</th><th>Name</th><th>Title</th><th>Department</th>
+  </tr>
+  <tr py:for="who in people">
+    <td><input type="checkbox" name="${pfx}_${who.cn}" /></td>
+    <td>${who.cn}</td><td>${who.sn}, ${who.givenname}</td><td>${who.title}</td><td>${who.ou}</td>
+  </tr>
+</table>
+</py:def>
+
+<div id="main">
+<form py:if="team" method="get" action="">
+${peopleTable(team, 'r')}
+<p><input type="submit" name='goal' value="Remove" /></p>
+<input type="hidden" name="uids" value="${uids}" />
+</form>
+
+<form py:if="team" method="get" action="${done_path}">
+<input type="hidden" name="uids" value="${uids}" />
+<p><input type="submit" name="continue" value="Done Choosing People" /></p>
+</form>
+
+<form method="get" action="">
+<p>Look up a team member by giving the first letters of their surname, given name, or KUMC id:
+<dl>
+<dt><label for='sn'>Surname:</label></dt>
+<dd><input name='sn' /></dd>
+<dt><label for='givenname'>Given name:</label></dt>
+<dd><input name='givenname' /></dd>
+<dt><label for='cn'>KUMC id:</label></dt>
+<dd><input name='cn' /></dd>
+</dl>
+<input type="submit" name='goal' value="Search" />
+<input type="hidden" name="uids" value="${uids}" />
+</p>
+</form>
+
+<form py:if="candidates" method="get" action="">
+${peopleTable(candidates, 'a')}
+<p><input type="submit" name='goal' value="Add" /></p>
+<input type="hidden" name="uids" value="${uids}" />
+</form>
+</div>
+
+</body>
+</html>
+

@@ -1,0 +1,49 @@
+<!--  Copyright (c) 2011 University of Kansas Medical Center
+      <http://informatics.kumc.edu>
+
+TODO: consider using Spring mock JNDI in order to be more similar to deployment context.
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans-2.5.xsd">
+
+  <bean id="userAccessData"  scope="singleton"
+        class="edu.kumc.informatics.heron.util.DBUtil">
+    <constructor-arg>
+      <ref bean="heronDao" />
+    </constructor-arg>
+    <constructor-arg>
+      <ref bean="chalkDBDao" />
+    </constructor-arg>
+  </bean>
+
+  <bean id="heronDao" class="edu.kumc.informatics.heron.dao.HeronDBDao">
+    <property name="dataSource" ref="dataSource" />
+  </bean>
+
+  <bean id="chalkDBDao" class="edu.kumc.informatics.heron.dao.ChalkDBDao">
+    <property name="dataSource" ref="dataSource" /> <!-- @@this is bogus... -->
+  </bean>
+
+  <!-- cribbed from http://static.springsource.org/docs/Spring-MVC-step-by-step/part5.html -->
+  <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+    <property name="driverClassName" value="${jdbc.driverClassName}"/>
+    <property name="url" value="${jdbc.url}"/>
+    <property name="username"  value="${jdbc.username}"/>
+    <property name="password" value="${jdbc.password}"/>
+  </bean>
+  <bean id="propertyConfigurer"
+          class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+    <property name="locations">
+      <list>
+        <value>classpath:jdbc.properties</value>
+      </list>
+    </property>
+  </bean>
+
+  <bean id="transactionManager"
+          class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+    <property name="dataSource" ref="dataSource" />
+  </bean>
+</beans>

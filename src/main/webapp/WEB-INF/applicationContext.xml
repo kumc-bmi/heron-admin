@@ -1,0 +1,117 @@
+<!-- applicationContext.xml: spring configuration
+http://static.springsource.org/spring/docs/2.5.x/reference/beans.html
+
+TODO: consider re-coding in Java, though the community docs all seem to use XML.
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans-2.5.xsd">
+
+  <!-- todo: fail fast rather than lazy-init -->
+
+  <bean name="heronDao" scope="singleton"  lazy-init="true"
+        class="edu.kumc.informatics.heron.dao.HeronDBDao">
+    <property name="dataSource" ref="heronDataSource" />
+  </bean>
+  <!-- get heronDataSource from JNDI.
+       See server/default/deploy/*-ds.xml in JBoss. -->
+  <bean id="heronDataSource"  lazy-init="true"
+        class="org.springframework.jndi.JndiObjectFactoryBean">
+      <property name="jndiName" value="java:PMBootStrapDS"/>
+  </bean>
+
+  <bean name="chalkChecker" scope="singleton"  lazy-init="true"
+        class="edu.kumc.informatics.heron.dao.ChalkDBDao">
+    <property name="dataSource" ref="chalkDataSource" />
+  </bean>
+
+  <!-- get heronDataSource from JNDI -->
+  <bean id="chalkDataSource"  lazy-init="true"
+        class="org.springframework.jndi.JndiObjectFactoryBean">
+      <property name="jndiName" value="java:ChalkDS"/>
+  </bean>
+
+  <!-- for nofiying the DROC from a Servlet-->
+  <bean id="mailSender"  scope="singleton"  lazy-init="true"
+        class="org.springframework.mail.javamail.JavaMailSenderImpl">
+    <property name="host" value="smtp.kumc.edu"/>
+  </bean>
+
+  <bean id="drocNotification" class="org.springframework.mail.SimpleMailMessage">
+    <property name="from" value="heron-admin@kumc.edu"/>
+    <property name="subject" value="HERON Sponsorship needs your attention"/>
+    <property name="text">
+      <value>Dear HERON DROC member,
+ 
+A HERON request has been submitted and needs review by your organization.
+
+Please visit:
+
+  https://heron.kumc.edu
+
+and follow the "Approve Sponsored HERON Users" link.
+
+Sincerely,
+
+The HERON Team
+in the Medical Informatics Division
+of the KUMC Department of Biostatistics
+      </value>
+    </property>
+  </bean>
+
+
+  <bean name="sar" scope="singleton"  lazy-init="true"
+    class="edu.kumc.informatics.heron.capsec.JDBCSystemAccessRecords">
+    <constructor-arg><ref bean="enterprise"/></constructor-arg>
+    <constructor-arg><ref bean="droc"/></constructor-arg>
+    <constructor-arg><ref bean="heronDao"/></constructor-arg>
+  </bean>
+  <bean name="droc" scope="singleton"  lazy-init="true"
+        class="edu.kumc.informatics.heron.capsec.DROCSponsoring">
+    <constructor-arg>
+      <ref bean="enterprise"/>
+    </constructor-arg>
+    <constructor-arg>
+      <ref bean="heronDao"/>
+    </constructor-arg>
+    <constructor-arg>
+      <ref bean="mailSender"/>
+    </constructor-arg>
+    <constructor-arg>
+      <ref bean="drocNotification"/>
+    </constructor-arg>
+  </bean>
+  <bean name="enterprise"  scope="singleton"  lazy-init="true"
+        class="edu.kumc.informatics.heron.capsec.LDAPEnterprise">
+    <constructor-arg>
+      <ref bean="search_kumc_idv"/>
+    </constructor-arg>
+    <constructor-arg>
+      <ref bean="chalkChecker"/>
+    </constructor-arg>
+  </bean>
+
+  <bean id="search_kumc_idv" class="org.springframework.ldap.core.LdapTemplate">
+    <constructor-arg ref="kumc_idv" />
+  </bean>
+
+  <bean id="kumc_idv" class="org.springframework.ldap.core.support.LdapContextSource">
+    <property name="url" value="ldaps://idvauth.kumc.edu:636" />
+    <property name="base" value="ou=people,o=idvault" />
+    <property name="userDn" value="cn=biostats, ou=authaccounts,o=idvault" />
+    <property name="password" value="${ldap_credential}" />
+  </bean>
+
+  <bean id="propertyConfigurer"
+          class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+    <property name="locations">
+      <list>
+        <value>classpath:configs.properties</value> <!-- TODO: focus to ldap.properties -->
+        <value>classpath:app.properties</value> <!-- TODO: focus to ldap.properties -->
+      </list>
+    </property>
+  </bean>
+</beans>

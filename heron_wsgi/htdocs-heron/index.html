@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:py="http://genshi.edgewall.org/"
+      xmlns:xi="http://www.w3.org/2001/XInclude">
+<xi:include href="kumc_layout.xml" />
+<head>
+  <title>HERON Research Data Repository</title>
+</head>
+<body>
+  <div id="menu">
+  <ul>
+    <li><a href="${oversight_path}">HERON
+    Sponsorship Request</a>
+    </li>
+    <li><a href="https://redcap.kumc.edu/surveys/?s=rRYkiH">HERON
+    Data Usage Request</a>
+    </li>
+    <li><a href="https://redcap.kumc.edu/redcap_v4.1.0/setup.php?pid=238">DROC Oversight Tools</a></li>
+  </ul>
+  </div>
+
+  <div id="main">
+  <div id="heron-tricol-01" class="photo">
+  <!-- @@TODO: get the template to handle this style in the head -->
+  <style type="text/css">
+    .photo {text-align: center; margin-bottom: 1em }
+  </style>
+    <img src="av/220px-Heron_tricol_01.JPG" alt=""/>
+  </div>
+
+  <h1>HERON Research Data Repository</h1>
+
+  <!-- TODO: why does this para turn blue? -->
+  <p>HERON (Healthcare Enterprise Repository for Ontological Narration)
+  allows you to explore de-identified data from Epic/O2 (the
+  hospital electronic medical records) and IDX (the clinical billing
+  system).
+  </p>
+
+  <p>The HERON i2b2 Query and Analysis Tool
+  is the main tool for composing queries such as "how many patients
+  in the repository have been diagnosed with diabetes and live within
+  20 miles of the KUMC campus?"</p>
+
+  <p>Access to de-identified data is non-human subjects research and
+  does not require IRB approval. For qualified faculty who want
+  <em>view-only</em> access to do patient count queries, executing
+  a system access agreement is the only requirement.</p>
+
+  <p><a href=
+	"http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials"
+	>Getting Access to HERON</a> explains the process in detail.
+  </p>
+
+  <p>A Data Request Oversight Committee (DROC) oversees requests to:</p>
+  <ul>
+    <li><a href="https://redcap.kumc.edu/surveys/?s=rRYkiH">sponsor
+    collaborators and research team members</a></li>
+
+    <li><a href="https://redcap.kumc.edu/surveys/?s=rRYkiH">extract
+    data sets</a></li>
+  </ul>
+
+  <div><h2>Support and Feedback</h2>
+  <p>The
+  <a href=
+     "http://informatics.kumc.edu/work/blog/2011/07/first-clinic"
+     >Frontiers Clinical/Translational Informatics Clinic</a>
+  meets every other Tuesday
+  for investigators needing assistance using informatics tools
+  for data exploration, cohort discovery, and data collection.
+  The clinic is a brainstorming session and an education forum for
+  investigators and informatics to share knowledge, provide feedback,
+  and optimize the use of systems.</p>
+
+  <p>To set up consultation regarding your project, complete a
+  <a href="http://biostat-pts.kumc.edu/eres/jsp/kumcpr.jsp"
+     >Biostatistics Department Project Request Form</a>.
+  </p>
+  </div>
+
+
+  <p><small><a href="#heron-tricol-01">photo</a> credit:
+  <a href="http://commons.wikimedia.org/wiki/User:Chrharshaw"
+     >Christopher Harshaw</a></small>
+  </p>
+  </div>
+
+  <div id="rightnav">
+    <div class="span-5 last">
+  <div>
+
+    <p>${affiliate.givenname} ${affiliate.sn} (<code>${affiliate.cn}</code>):
+    </p>
+
+  <form method="post" action="${i2b2_login_path}">
+    <p>
+      <input type="submit" py:attrs="accessDisabled" value="Start Query Tool" />
+    </p>
+    <ol>
+      <li>
+	<label>
+	  <input py:attrs="faculty" type="checkbox" disabled="disabled" />KUMC Faculty?
+	</label>
+	<div py:if="executive">
+	  or <br />
+	  <input py:attrs="executive" type="checkbox"
+		 disabled="disabled" />executive?
+	</div>
+	<div py:if="not faculty and not executive">
+	  or <br />
+	  <label>
+	    <input py:attrs="sponsored" type="checkbox" disabled="disabled" />sponsored?
+	  </label>
+	  <br />${affiliate.title}
+	</div>
+      </li>
+
+      <li>
+	<label>
+	  <input type="checkbox" disabled="disabled" py:attrs="trainingCurrent" />
+	<a
+	href="http://www2.kumc.edu/researchcompliance/human_subjects_tutorial_inst.htm"
+	>Human subjects training</a> is complete and current?</label>
+	  <a py:if="not trainingCurrent" href="#training-records">*</a>
+      </li>
+
+      <li>
+	<label>
+	  <input type="checkbox" disabled="disabled" py:attrs="signatureOnFile" />
+	  Signed <a href="${saa_path}">system access agreement</a>?
+	</label>
+      </li>
+    </ol>
+
+    <p py:if="not trainingCurrent" py:with="admin_mailbox='heron-admin@kumc.edu'">
+      <em id="training-records">*If you believe the records of your training are out of date,
+      please contact <a href="mailto:${admin_mailbox}?subject=HSC%20training%20records"
+      >heron-admin@kumc.edu</a>.</em>
+    </p>
+  </form>
+  </div>
+      <div class="header png">
+        <h2>Tools</h2>
+      </div>
+      <div class="content png">
+        <ul class="links">
+          <li><a href="http://biostatistics.kumc.edu/bio_proj_cris.shtml">CRIS</a></li>
+          <li><a href="https://redcap.kumc.edu/">REDCap</a></li>
+        </ul>
+        
+      </div>
+    </div>
+  </div>
+
+
+</body>
+</html>

@@ -1,0 +1,27 @@
+"Variable / Field Name","Form Name","Section Header","Field Type","Field Label","Choices, Calculations, OR Slider Labels","Field Note","Text Validation Type OR Show Slider Number","Text Validation Min","Text Validation Max",Identifier?,"Branching Logic (Show field only if...)","Required Field?","Custom Alignment","Question Number (surveys only)"
+user_id,heron_project_team_request,,text,"User ID",,"@@get from CAS/LDAP",,,,,,y,,
+project_title,heron_project_team_request,,text,"Project Title",,"Must be distinct from titles of all previous requests. Add your name, today's date, etc. if you run into collisions.",,,,,,y,,
+is_data_request,heron_project_team_request,,yesno,"Requesting Data Access?","VIEW_ONLY,Sponsorship of view-only access
+DATA_USE,Data Use","@@clarify this above?",,,,,,y,,
+description_sponsor,heron_project_team_request,"@@sponsorship agreement text goes here",notes,"Project description",,"@@preparatory to research... is this covered in the agreement text?",,,,,"[is_data_request] = '0'",,,
+is_identified_data,heron_project_team_request,,yesno,"Identified Data?",,@@clarify,,,,,"[is_data_request] = '1'",y,,
+hsc_number,heron_project_team_request,,text,"HSC number",,"@@can HSC numbers include anything other than digits?",integer,,,,"[is_data_request] = '1' and [is_identified_data] = '1'",y,,
+data_use_description,heron_project_team_request,"@@data use agreement text goes here",notes,Description,,@@clarify,,,,,"[is_data_request] = '1'",y,,
+user_id_1,heron_project_team_request,"Specify study team... @@",text,"User Id #1",,,,,,,,y,,
+kumc_employee_1,heron_project_team_request,,yesno,"KUMC Employee?",,,,,,,,y,,
+affiliation_1,heron_project_team_request,,notes,Affiliation,,,,,,,"[kumc_employee_1] = '0'",y,,
+user_id_2,heron_project_team_request,,text,"User Id #2",,,,,,,"[user_id_1] > ''",,,
+kumc_employee_2,heron_project_team_request,,yesno,"KUMC Employee?",,,,,,,"[user_id_2] > ''",y,,
+affiliation_3,heron_project_team_request,,notes,Affiliation,,,,,,,"[kumc_employee_2] = '0'",y,,
+approve_kuh,kuh_review,,radio,"Approve on behalf of KUH?","1, Yes | 2, No | 3, Defer",,,,,,,y,,
+notes_kuh,kuh_review,,notes,Notes,,"comments, rationale",,,,,,,,
+approve_kumc,kumc_review,,radio,"Approve on behalf of KUMC","1, Yes | 2, No | 3, Defer",@@brainstorming,,,,,,y,,
+description_sponsor2,kumc_review,,sql,request,"select value
+from redcap_data 
+where project_id= 238 
+and 
+field_name = 'description_sponsor'",,,,,,,,,
+notes_kumc,kumc_review,,notes,Notes,,"comments, rationale, ...",,,,,,,,
+prior_description,kumc_review,,calc,"prior description","if (1=1, [description_sponsor],0)",,,,,,,,,
+approve_kupi,kupi_review,,radio,"Approve on behalf of KUPI?","1, Yes | 2, No | 3, Defer",,,,,,,y,,
+notes_kupi,kupi_review,,notes,Notes,,"comments, rationale, ...",,,,,,,,
