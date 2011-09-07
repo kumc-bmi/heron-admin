@@ -44,6 +44,9 @@ KTopApp = injector.Key('TopApp')
 
 class HeronAccessPartsApp(object):
     htdocs = 'htdocs-heron/'
+    base_path='/'
+    login_path='/login'
+    logout_path='/logout'
     saa_path='/saa_survey'
     team_done_path='/team_done'
     i2b2_login_path='/i2b2'
@@ -150,6 +153,7 @@ class HeronAccessPartsApp(object):
         team.sort(key = lambda(a): (a.sn, a.givenname))
 
         parts = dict(self._checklist.parts_for(session['user']),
+                     logout_path=self.logout_path,
                      saa_path=self.saa_path,
                      i2b2_login_path=self.i2b2_login_path,
                      oversight_path=self.oversight_path,
@@ -215,14 +219,12 @@ class CASWrap(injector.Module):
 
     @provides(KCASApp)
     @inject(app=HeronAccessPartsApp, cas_settings=KCASOptions)
-    def wrap(self, app, cas_settings, session_key='heron',
-             auth_area='/', login='/login', logout='/logout'):
+    def wrap(self, app, cas_settings, session_key='heron'):
         session_opts = cas_auth.make_session(session_key)
         cas_app = cas_auth.cas_required(cas_settings.base, session_opts,
-                                        prefix_router, login, logout,
+                                        prefix_router, app.login_path, app.logout_path,
                                         SessionMiddleware(app, session_opts))
-        # hmm... not sure app should get requests outside CAS auth_area
-        return prefix_router(auth_area, cas_app, app)
+        return prefix_router(app.base_path, cas_app, app)
 
 
 ERR_SECTION='errors'
@@ -296,10 +298,27 @@ class IntegrationTest(injector.Module):
 
 
 class Mock(injector.Module):
-    '''
-    >>> depgraph = injector.Injector([Mock(), ErrorHandling(), CASWrap()])
-    >>> happ = depgraph.get(HeronAccessPartsApp)
-    >>> tapp = depgraph.get(KTopApp)
+    '''An injector module to build a mock version of this WSGI application.
+
+    Use this module and a couple others to mock up to HeronAccessPartsApp::
+      >>> depgraph = injector.Injector([Mock(), ErrorHandling(), CASWrap()])
+      >>> happ = depgraph.get(HeronAccessPartsApp)
+
+    Then automatically inject it into a CAS and Error handling wrappers::
+      >>> tapp = depgraph.get(KTopApp)
+
+    An initial visit to the root page redirects to the login path and sets a cookie::
+      >>> from paste.fixture import TestApp
+      >>> t = TestApp(tapp)
+      >>> r1 = t.get('/', status=303)
+      >>> ('location', happ.login_path) in r1.headers
+      True
+      >>> ['Found cookie' for (n, v) in r1.headers if n.lower() == 'set-cookie']
+      ['Found cookie']
+
+    what happens when we follow?
+      >>> r2 = r1.follow()
+
     '''
     def configure(self, binder):
         binder.bind(KSystemAccessOptions, redcap_connect._test_settings)

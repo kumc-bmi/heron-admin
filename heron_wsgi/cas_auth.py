@@ -2,6 +2,47 @@
 
 .. _CAS: http://www.jasig.org/cas
 
+Suppose we have an app that we want protected by CAS::
+  >>> def protected(environ, start_response):
+  ...     session = environ['beaker.session']
+  ...     u = session['user']
+  ...     start_response('200 OK', [('content-type', 'text/plain')])
+  ...     return ['logged in user:', u]
+
+Let's wrap it in `cas_required`::
+  >>> import urllib
+  >>> from usrv import prefix_router
+  >>> addr = 'http://example/cas/'
+  >>> session_opts = make_session('ex', uuid_maker=lambda: '1234-5678')
+  >>> cr = cas_required(addr, session_opts, prefix_router, '/login', '/logout', protected)
+
+An initial visit to the root page redirects to the login path and sets a cookie::
+  >>> from paste.fixture import TestApp
+  >>> t = TestApp(cr)
+  >>> r1 = t.get('/', status=303)
+  >>> def _loc(headers):
+  ...    return [v for (n, v) in headers if n.lower() == 'location'][0]
+  >>> _loc(r1.headers)
+  '/login'
+  >>> ['Found cookie' for (n, v) in r1.headers if n.lower() == 'set-cookie']
+  ['Found cookie']
+
+The next step is a link to the CAS service with the `service` param set to our login address::
+   >>> r2 = r1.follow()
+   >>> _loc(r2.headers)
+   'http://example/cas/login?service=http%3A%2F%2Flocalhost%2Flogin'
+
+The the CAS service redirects back with a ticket.
+paste.auth.cas uses urllib.urlopen(), so we need to override it for testing::
+   >>> from tests import default_urlopener, LinesUrlOpener
+   >>> with default_urlopener(LinesUrlOpener(['yes', 'john.smith'])):
+   ...     r3 = t.get('/login?ticket=ST-381409-fsFVbSPrkoD9nANruV4B-example', status=303)
+   >>> _loc(r3.headers)
+   'http://localhost/'
+
+And finally, our protected app runs:
+   >>> r3.follow(status=200)
+   <Response 200 OK 'logged in user:john.'>
 '''
 
 import uuid
@@ -39,8 +80,8 @@ def cas_required(cas, session_opts, router, app_login, app_logout, app):
             session = environ['beaker.session']
             session.invalidate()
             session.save()
-            exc = HTTPSeeOther(urljoin(cas, 'logout'))
-            return exc.wsgi_application(environ, start_response)
+            there = urljoin(cas, 'logout')
+            return HTTPSeeOther(there).wsgi_application(environ, start_response)
         else:
             return HTTPForbidden().wsgi_application(environ, start_response)
 
@@ -51,14 +92,14 @@ def cas_required(cas, session_opts, router, app_login, app_logout, app):
                   router(app_logout, wrap_logout, wrap_app))
 
 
-def make_session(k):
+def make_session(k, uuid_maker=uuid.uuid4):
     '''
     @param k: key, per beaker.middleware (not sure I grok)
 
     .. todo: study 'secure' field of session_opts
 
     '''
-    session_secret = str(uuid.uuid4())
+    session_secret = str(uuid_maker())
     session_opts = {
         #<benbangert> non-cookie based sessions use secret, cookie-based use validatE_key instead
         #<benbangert> should prolly clarify that
@@ -83,3 +124,4 @@ def login_to_session(environ, start_response):
     exc = HTTPSeeOther(next)
     return exc.wsgi_application(environ, start_response)
             
+

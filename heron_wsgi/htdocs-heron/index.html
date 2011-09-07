@@ -6,7 +6,8 @@
 <head>
   <title>HERON Research Data Repository</title>
 </head>
-<body>
+<!-- todo: consider passing admin_mailbox in from python -->
+<body py:with="admin_mailbox='heron-admin@kumc.edu'">
   <div id="menu">
   <ul>
     <li><a href="${oversight_path}">HERON
@@ -24,6 +25,7 @@
   <!-- @@TODO: get the template to handle this style in the head -->
   <style type="text/css">
     .photo {text-align: center; margin-bottom: 1em }
+    .doit {text-align: center }
   </style>
     <img src="av/220px-Heron_tricol_01.JPG" alt=""/>
   </div>
@@ -62,23 +64,27 @@
   </ul>
 
   <div><h2>Support and Feedback</h2>
-  <p>The
-  <a href=
-     "http://informatics.kumc.edu/work/blog/2011/07/first-clinic"
-     >Frontiers Clinical/Translational Informatics Clinic</a>
-  meets every other Tuesday
-  for investigators needing assistance using informatics tools
-  for data exploration, cohort discovery, and data collection.
+
+  <p>The <a href=
+  "http://informatics.kumc.edu/work/blog/2011/07/first-clinic"
+  >Frontiers Clinical/Translational Informatics Clinic</a> meets every
+  other Tuesday for investigators needing assistance using informatics
+  tools for data exploration, cohort discovery, and data collection.
   The clinic is a brainstorming session and an education forum for
   investigators and informatics to share knowledge, provide feedback,
-  and optimize the use of systems.</p>
+  and optimize the use of systems.  <em>See the <a
+  href="http://www2.kumc.edu/webevent/scripts/webevent.plx?userid=guest;cmd=list2week;token=guest.ee19ab01eb2b074dd595327c2d334d04"
+  >KUMC Calendar</a> for the date of the next clinic.</em>
+</p>
 
   <p>To set up consultation regarding your project, complete a
   <a href="http://biostat-pts.kumc.edu/eres/jsp/kumcpr.jsp"
      >Biostatistics Department Project Request Form</a>.
   </p>
   </div>
-
+  
+  <p>Feel free to send questions and concerns to <a
+  href="mailto:${admin_mailbox}" >${admin_mailbox}</a>.</p>
 
   <p><small><a href="#heron-tricol-01">photo</a> credit:
   <a href="http://commons.wikimedia.org/wiki/User:Chrharshaw"
@@ -87,14 +93,18 @@
   </div>
 
   <div id="rightnav">
-    <div class="span-5 last">
-  <div>
+    <div class="span-7 last">
 
-    <p>${affiliate.givenname} ${affiliate.sn} (<code>${affiliate.cn}</code>):
-    </p>
+      <form action="${logout_path}" method="post">
+	<p>${affiliate.givenname} ${affiliate.sn} (<code>${affiliate.cn}</code>)
+	<input type="submit" value="logout" />
+	</p>
+      </form>
+
+  <div class="header png"><h3>i2b2 Query and Analysis Tool</h3>
 
   <form method="post" action="${i2b2_login_path}">
-    <p>
+    <p class="doit">
       <input type="submit" py:attrs="accessDisabled" value="Start Query Tool" />
     </p>
     <ol>
@@ -108,11 +118,11 @@
 		 disabled="disabled" />executive?
 	</div>
 	<div py:if="not faculty and not executive">
-	  or <br />
+	  no: ${affiliate.title}
+	  <br />
 	  <label>
 	    <input py:attrs="sponsored" type="checkbox" disabled="disabled" />sponsored?
 	  </label>
-	  <br />${affiliate.title}
 	</div>
       </li>
 
@@ -133,12 +143,24 @@
       </li>
     </ol>
 
-    <p py:if="not trainingCurrent" py:with="admin_mailbox='heron-admin@kumc.edu'">
+    <p py:if="not trainingCurrent">
       <em id="training-records">*If you believe the records of your training are out of date,
       please contact <a href="mailto:${admin_mailbox}?subject=HSC%20training%20records"
-      >heron-admin@kumc.edu</a>.</em>
+      >${admin_mailbox}</a>.</em>
     </p>
   </form>
+
+  </div>
+
+  <div class="header png">
+    <h3>Problems? Questions? Ideas?</h3>
+  </div>
+  <div class="content png">
+    <ul>
+      <li><a href="https://redcap.kumc.edu/surveys/?s=3SBkPg&amp;tool=1">Gripe/Praise</a></li>
+    </ul>
+  </div>
+
   </div>
       <div class="header png">
         <h2>Tools</h2>
@@ -151,6 +173,7 @@
         
       </div>
     </div>
+  <div>
   </div>
 
 

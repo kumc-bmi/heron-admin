@@ -2,18 +2,22 @@
 '''
 import doctest
 
-import checklist
-import config
-import db_util
-import hcard_mock
-import heron_policy
-import medcenter
-import redcap_connect
+def main():
+    import checklist
+    import config
+    import db_util
+    import hcard_mock
+    import heron_policy
+    import medcenter
+    import redcap_connect
+    
+    doctest.testmod(checklist)
+    doctest.testmod(config)
+    doctest.testmod(db_util)
+    doctest.testmod(hcard_mock)
+    doctest.testmod(heron_policy)
+    doctest.testmod(medcenter)
+    doctest.testmod(redcap_connect)
 
-doctest.testmod(checklist)
-doctest.testmod(config)
-doctest.testmod(db_util)
-doctest.testmod(hcard_mock)
-doctest.testmod(heron_policy)
-doctest.testmod(medcenter)
-doctest.testmod(redcap_connect)
+if __name__ == '__main__':
+    main()
