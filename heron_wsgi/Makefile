@@ -12,8 +12,11 @@ MODULES=admin_lib/checklist.py admin_lib/config.py admin_lib/db_util.py \
         admin_lib/medcenter.py admin_lib/redcap_connect.py \
         heron_srv.py cas_auth.py usrv.py
 
-view: ,deps.ps
-	$(XDG_OPEN) ,deps.ps
+view: ,deps.svg
+	$(XDG_OPEN) ,deps.svg
+
+,deps.svg: ,deps.dot
+	$(DOT) -Tsvg ,deps.dot >$@
 
 ,deps.ps: ,deps.dot
 	$(DOT) -Tps ,deps.dot >$@
