@@ -243,6 +243,7 @@ class TemplateErrorMiddleware(ErrorMiddleware):
 
     def exception_handler(self, exc_info, environ):
         # TODO: share loader with the the TemplateApp
+        # darn it; this method is supposed to do all sorts of other stuff. grumble side-effects grumble.
         loader = TemplateLoader([HeronAccessPartsApp.htdocs], auto_reload=True)
         tmpl = loader.load(self.template)
         stream = tmpl.generate(exc_type=str(exc_info[0]), exc_val=(exc_info[1]))
@@ -258,15 +259,15 @@ class ErrorHandling(injector.Module):
     @inject(app=KCASApp, rt=KErrorOptions)
     def err_handler(self, app, rt):
         if rt.debug:
-            eh = TemplateErrorMiddleware(app, debug=True,
-                                         show_exceptions_in_wsgi_errors=True)
+            eh = ErrorMiddleware(app, debug=True,
+                                 show_exceptions_in_wsgi_errors=True)
         else:
-            eh = TemplateErrorMiddleware(app, debug=False,
-                                         error_email=rt.error_email,
-                                         from_address=rt.from_address,
-                                         smtp_server=rt.smtp_server,
-                                         error_subject_prefix=rt.error_subject_prefix,
-                                         show_exceptions_in_wsgi_errors=True)
+            eh = ErrorMiddleware(app, debug=False,
+                                 error_email=rt.error_email,
+                                 from_address=rt.from_address,
+                                 smtp_server=rt.smtp_server,
+                                 error_subject_prefix=rt.error_subject_prefix,
+                                 show_exceptions_in_wsgi_errors=True)
         return eh
 
 
