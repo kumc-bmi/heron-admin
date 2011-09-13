@@ -95,8 +95,9 @@ class HeronRecords(object):
 
     def repositoryAccess(self, q):
         a = q.agent
-        texp = self._m.trainedThru(a)
-        if texp is None:
+        try:
+            texp = self._m.trainedThru(a)
+        except KeyError:
             raise NoTraining("no training on file")
         if texp < self._t.today().isoformat():
             raise NoTraining("training out of date")
