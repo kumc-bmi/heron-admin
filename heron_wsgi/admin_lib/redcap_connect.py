@@ -22,8 +22,8 @@ import json
 
 import config
 
-def settings(ini, section):
-    rt = config.RuntimeOptions('token api_url survey_url domain survey_id'.split())
+def settings(ini, section, extras=[]):
+    rt = config.RuntimeOptions('token api_url survey_url domain survey_id'.split() + extras)
     rt.load(ini, section)
     return rt
 

@@ -2,7 +2,7 @@
 
   >>> m = medcenter._mock()
   >>> hp = HeronRecords(_TestDBConn(), m, _TestTimeSource(),
-  ...                   saa_survey_id=11, oversight_project_id=34, qty_institutions=3)
+  ...                   saa_survey_id=11, oversight_project_id=34)
 
 
 Look up an investigator and a student::
@@ -46,15 +46,16 @@ REDCAPDB_CONFIG_SECTION='redcapdb'
 
 
 class HeronRecords(object):
+    qty_institutions = len(('kuh', 'kupi', 'kumc'))
+
     # TODO: connection pooling/management?
     def __init__(self, conn, medcenter, timesrc,
-                 saa_survey_id, oversight_project_id, qty_institutions):
+                 saa_survey_id, oversight_project_id):
         self._conn = conn
         self._m = medcenter
         self._t = timesrc
         self._saa_survey_id = saa_survey_id
         self._oversight_project_id = oversight_project_id
-        self.qty_institutions = qty_institutions
 
     def check_saa_signed(self, agent):
         '''Test for an authenticated SAA survey response bearing the agent's email address.
@@ -200,8 +201,8 @@ def setup_connection(ini, section=REDCAPDB_CONFIG_SECTION):
 def _mock(ini='integration-test.ini'):
     m = medcenter._mock()
 
-    survey_id = 11  # arbitrary
-    return HeronRecords(_TestDBConn(), m, _TestTimeSource(), survey_id)
+    return HeronRecords(_TestDBConn(), m, _TestTimeSource(),
+                        saa_survey_id=11, oversight_project_id=34)
 
 
 class _TestTimeSource(object):

@@ -289,14 +289,16 @@ class IntegrationTest(injector.Module):
         binder.bind(KI2B2Address, to=i2b2_settings.cas_login)
 
         saa_opts = redcap_connect.settings(admin_ini, saa_section)
+        droc_opts = redcap_connect.settings(admin_ini, oversight_section, ['project_id'])
         binder.bind(KSystemAccessOptions, saa_opts)
-        binder.bind(KOversightOptions, redcap_connect.settings(admin_ini, oversight_section))
+        binder.bind(KOversightOptions, droc_opts)
         binder.bind(URLopener, injector.InstanceProvider(urllib2.build_opener()))
 
         conn = heron_policy.setup_connection(admin_ini)
         # TODO: use injection for HeronRecords
         hr = heron_policy.HeronRecords(conn, mc, datetime.datetime,
-                                       int(saa_opts.survey_id))
+                                       int(saa_opts.survey_id),
+                                       int(droc_opts.project_id))
 
         binder.bind(datetime.date, to=datetime.date)
         binder.bind(heron_policy.HeronRecords, to=hr)
@@ -355,7 +357,7 @@ class Mock(injector.Module):
         ts = heron_policy._TestTimeSource()
         conn = heron_policy._TestDBConn()
         # TODO: use injection for HeronRecords
-        hp = heron_policy.HeronRecords(conn, mc, ts, saa_survey_id=11)
+        hp = heron_policy.HeronRecords(conn, mc, ts, saa_survey_id=11, oversight_project_id=34)
 
         binder.bind(datetime.date, to=ts)
         binder.bind(heron_policy.HeronRecords, to=hp)
