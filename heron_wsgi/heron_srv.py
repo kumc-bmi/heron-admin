@@ -18,6 +18,7 @@ import itertools
 from paste.httpexceptions import HTTPSeeOther, HTTPForbidden
 from paste.exceptions.errormiddleware import ErrorMiddleware
 from paste.request import parse_querystring
+from genshi.template import TemplateLoader
 import injector # http://pypi.python.org/pypi/injector/
                 # 0.3.1 7deba485e5b966300ef733c3393c98c6
 from injector import inject, provides
@@ -236,6 +237,18 @@ _sample_err_settings = dict(
     error_subject_prefix='HERON crash')
 
 
+class TemplateErrorMiddleware(ErrorMiddleware):
+    template =  'oops.html'
+
+    def exception_handler(self, exc_info, environ):
+        # TODO: share loader with the the TemplateApp
+        loader = TemplateLoader([HeronAccessPartsApp.htdocs], auto_reload=True)
+        tmpl = loader.load(self.template)
+        stream = tmpl.generate(exc_type=str(exc_info[0]), exc_val=(exc_info[1]))
+        body = stream.render('xhtml')
+        return ''.join(list(body))
+
+
 class ErrorHandling(injector.Module):
     def configure(self, binder):
         pass
@@ -244,15 +257,15 @@ class ErrorHandling(injector.Module):
     @inject(app=KCASApp, rt=KErrorOptions)
     def err_handler(self, app, rt):
         if rt.debug:
-            eh = ErrorMiddleware(app, debug=True,
-                                 show_exceptions_in_wsgi_errors=True)
+            eh = TemplateErrorMiddleware(app, debug=True,
+                                         show_exceptions_in_wsgi_errors=True)
         else:
-            eh = ErrorMiddleware(app, debug=False,
-                                 error_email=rt.error_email,
-                                 from_address=rt.from_address,
-                                 smtp_server=rt.smtp_server,
-                                 error_subject_prefix=rt.error_subject_prefix,
-                                 show_exceptions_in_wsgi_errors=True)
+            eh = TemplateErrorMiddleware(app, debug=False,
+                                         error_email=rt.error_email,
+                                         from_address=rt.from_address,
+                                         smtp_server=rt.smtp_server,
+                                         error_subject_prefix=rt.error_subject_prefix,
+                                         show_exceptions_in_wsgi_errors=True)
         return eh
 
 
@@ -319,6 +332,8 @@ class Mock(injector.Module):
     what happens when we follow?
       >>> r2 = r1.follow()
 
+
+    .. todo:: automated test for LDAP failure
     '''
     def configure(self, binder):
         binder.bind(KSystemAccessOptions, redcap_connect._test_settings)
