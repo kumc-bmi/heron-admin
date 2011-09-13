@@ -104,18 +104,18 @@ select distinct
 from (
   select record, value as userid
   from redcap_data
-  where project_id=:project_id
-  and field_name like 'user_id_%'
+  where project_id=%(project_id)s
+  and field_name like 'user_id_%%'
 ) as candidate
 join  (
   select record, field_name as institution, value as decision
   from redcap_data
-  where project_id=:project_id
-  and field_name like 'approve_%'
+  where project_id=%(project_id)s
+  and field_name like 'approve_%%'
 ) as review on review.record = candidate.record
-where decision=1 and userid=:userid
+where decision=1 and userid=%(userid)s
 ) review
-having count(*) = :qty
+having count(*) = %(qty)s
 '''
                       , dict(project_id=self._oversight_project_id,
                              userid=agent.userid(),
