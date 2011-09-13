@@ -113,8 +113,8 @@ class HeronAccessPartsApp(object):
         full_name = "%s, %s" % (a.sn, a.givenname)
         return a, uid, full_name
 
-    def _survey_redir(self, opts, uid, params, environ, start_response):
-        there = self._saa_link = redcap_connect.survey_setup(opts, self._urlopener)(uid, params)
+    def _survey_redir(self, opts, uid, params, environ, start_response, multi=False):
+        there = self._saa_link = redcap_connect.survey_setup(opts, self._urlopener)(uid, params, multi)
         return HTTPSeeOther(there).wsgi_application(environ, start_response)
 
     def oversight_redir(self, environ, start_response):
@@ -125,9 +125,10 @@ class HeronAccessPartsApp(object):
 
         return self._survey_redir(self._oversight_opts, uid,
                                   dict(team_params(self._m, uids),
+                                       multi='yes',
                                        user_id=uid, full_name=full_name,
-                                       is_data_request='no'),
-                                  environ, start_response)
+                                       is_data_request='0'),
+                                  environ, start_response, multi=True)
 
     def parts(self, environ, session):
         '''
@@ -290,7 +291,7 @@ class IntegrationTest(injector.Module):
         saa_opts = redcap_connect.settings(admin_ini, saa_section)
         binder.bind(KSystemAccessOptions, saa_opts)
         binder.bind(KOversightOptions, redcap_connect.settings(admin_ini, oversight_section))
-        binder.bind(URLopener, injector.InstanceProvider(urllib2))
+        binder.bind(URLopener, injector.InstanceProvider(urllib2.build_opener()))
 
         conn = heron_policy.setup_connection(admin_ini)
         # TODO: use injection for HeronRecords

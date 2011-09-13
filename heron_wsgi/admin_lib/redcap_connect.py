@@ -14,6 +14,7 @@
 
 '''
 
+import sys
 import urllib
 import urllib2
 import pprint
@@ -27,16 +28,18 @@ def settings(ini, section):
     return rt
 
 
-def survey_setup(rt, urlopener=urllib2):
-    def setup(userid, params):
+def survey_setup(rt, urlopener=urllib2, ans_cb=None):
+    def setup(userid, params, multi=False):
         email = '%s@%s' % (userid, rt.domain)
         body = urllib.urlencode({'token': rt.token,
                                  'content': 'survey',
                                  'format': 'json',
+                                 'multi': 'yes' if multi else 'no',
                                  'email': email})
-        body = urlopener.urlopen(rt.api_url, body).read()
+        body = urlopener.open(rt.api_url, body).read()
         ans = json.loads(body)
-        #print ans
+        if ans_cb:
+            ans_cb(ans)
         surveycode = ans['hash']
         params = urllib.urlencode([('s', surveycode)] + sorted(params.iteritems()))
         return rt.survey_url + '?' + params
@@ -45,7 +48,7 @@ def survey_setup(rt, urlopener=urllib2):
 
 
 class _TestUrlOpener(object):
-    def urlopen(self, addr, body):
+    def open(self, addr, body):
         return _TestResponse(hex(abs(hash(addr)))[-4:])
 
 class _TestResponse(object):
@@ -67,21 +70,47 @@ _test_settings = config.TestTimeOptions(dict(
     survey_id=11))
 
 
+def _show_ans(ans):
+    print >>sys.stderr, ans
+
 def _mock():
-    return survey_setup(_test_settings, _TestUrlOpener())
+    return survey_setup(_test_settings, _TestUrlOpener(), _show_ans)
 
 
 def _integration_test(ini='integration-test.ini', section='oversight_survey'):  # pragma nocover
-    return survey_setup(settings(ini, section))
+    return survey_setup(settings(ini, section), urllib.URLopener(), _show_ans)
 
+
+def _test_multi_use(c, uid, full_name, ua):
+    '''Test that a user can use the same survey to make multiple requests.
+    '''
+    params = {'email': userid + '@kumc.edu', 'full_name': full_name}
+    addr1 = c(uid, params, multi=True)
+
+    content1 = ua.open(addr1).read()
+    if 'already' in content1:
+        raise ValueError, 'form for 1st request says ...already...'
+
+    # @@ need to fill it out.
+
+    addr2 = c(uid, params, multi=True)
+    if addr2 == addr1:
+        raise ValueError, '2nd request has same address as 1st: %s = %s' % (addr1, addr2)
+
+    content2 = ua.open(addr2).read()
+    if 'already' in content2:
+        raise ValueError, 'form for 2nd request says ...already...'
+
+    
 
 if __name__ == '__main__':  # pragma nocover
-    import sys
     from pprint import pprint
     userid, fullName = sys.argv[1:3]
     c = _integration_test()
     try:
-        pprint(c(userid, {'full_name': fullName}))
+        pprint(c(userid, {'email': userid + '@kumc.edu', 'full_name': fullName}))
     except IOError, e:
         print e.message
         print e
+
+    _test_multi_use(c, userid, fullName, urllib.URLopener())
