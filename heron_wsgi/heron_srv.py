@@ -4,19 +4,19 @@
   [errors]
   debug=False
   error_email=sysadmin@example.edu
+  error_email_from=heron@example.edu
   error_subject_prefix=HERON crash
-  from_address=heron@example.edu
   smtp_server=smtp.example.edu
 
 
 '''
 import datetime
-from urllib import URLopener
+from urllib import URLopener, urlencode
 import urllib2
 import itertools
 
 from paste.httpexceptions import HTTPSeeOther, HTTPForbidden
-from paste.exceptions.errormiddleware import ErrorMiddleware
+from paste.exceptions.errormiddleware import handle_exception
 from paste.request import parse_querystring
 from genshi.template import TemplateLoader
 import injector # http://pypi.python.org/pypi/injector/
@@ -52,6 +52,7 @@ class HeronAccessPartsApp(object):
     team_done_path='/team_done'
     i2b2_login_path='/i2b2'
     oversight_path='/build_team.html'
+    oops_path='/oops.html'
 
     @inject(checklist=Checklist, medcenter=MedCenter,
             saa_opts=KSystemAccessOptions,
@@ -135,6 +136,10 @@ class HeronAccessPartsApp(object):
         .. todo: pass param names such as 'goal' to the template rather than manually maintaining.
         '''
         if 'user' not in session:
+            return {}
+
+        path = environ['PATH_INFO']
+        if path.startswith(self.oops_path):
             return {}
 
         params = dict(parse_querystring(environ))
@@ -234,21 +239,51 @@ _sample_err_settings = dict(
     debug=False,
     smtp_server='smtp.example.edu',
     error_email='sysadmin@example.edu',
-    from_address='heron@example.edu',
+    error_email_from='heron@example.edu',
     error_subject_prefix='HERON crash')
 
 
-class TemplateErrorMiddleware(ErrorMiddleware):
-    template =  'oops.html'
+def error_mapper(code, message, environ, global_conf):
+    if code in [500]:
+        params = {'message':message, 'code':code}
+        url = HeronAccessPartsApp.oops_path + '?' + urlencode(params)
 
-    def exception_handler(self, exc_info, environ):
-        # TODO: share loader with the the TemplateApp
-        # darn it; this method is supposed to do all sorts of other stuff. grumble side-effects grumble.
-        loader = TemplateLoader([HeronAccessPartsApp.htdocs], auto_reload=True)
-        tmpl = loader.load(self.template)
-        stream = tmpl.generate(exc_type=str(exc_info[0]), exc_val=(exc_info[1]))
-        body = stream.render('xhtml')
-        return ''.join(list(body))
+        print "@@url:", url
+        import pprint
+        pprint.pprint(environ)
+        return url
+    else:
+        return None
+
+def err_handler(app, rt, template = 'oops.html'):
+    def handle(environ, start_response):
+        try:
+            return app(environ, start_response)
+        except Exception, e:
+            exc_info = sys.exc_info()
+            try:
+                if rt.debug and int(rt.debug):
+                    handle_exception(exc_info, environ['wsgi.errors'], debug_mode=True, html=False,
+                                     show_exceptions_in_wsgi_errors=True)
+                else:
+                    handle_exception(exc_info, environ['wsgi.errors'], debug_mode=False, html=False,
+                                     show_exceptions_in_wsgi_errors=True,
+                                     error_email=rt.error_email,
+                                     error_email_from=rt.error_email_from,
+                                     smtp_server=rt.smtp_server,
+                                     error_subject_prefix=rt.error_subject_prefix)
+
+                # TODO: share loader with the the TemplateApp
+                loader = TemplateLoader([HeronAccessPartsApp.htdocs], auto_reload=True)
+                tmpl = loader.load(template)
+                stream = tmpl.generate(error_info=str(e))
+                body = stream.render('xhtml')
+
+                start_response('500 internal server error', [('Content-type', 'text/html;charset=utf-8')])
+                return body
+            finally:
+                exc_info = None
+    return handle
 
 
 class ErrorHandling(injector.Module):
@@ -258,17 +293,7 @@ class ErrorHandling(injector.Module):
     @provides(KTopApp)
     @inject(app=KCASApp, rt=KErrorOptions)
     def err_handler(self, app, rt):
-        if rt.debug:
-            eh = ErrorMiddleware(app, debug=True,
-                                 show_exceptions_in_wsgi_errors=True)
-        else:
-            eh = ErrorMiddleware(app, debug=False,
-                                 error_email=rt.error_email,
-                                 from_address=rt.from_address,
-                                 smtp_server=rt.smtp_server,
-                                 error_subject_prefix=rt.error_subject_prefix,
-                                 show_exceptions_in_wsgi_errors=True)
-        return eh
+        return err_handler(app, rt)
 
 
 class IntegrationTest(injector.Module):
