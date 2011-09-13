@@ -14,6 +14,7 @@ class Options(object):
         return self._d.get(n, None)
 
     def inifmt(self, section):
+        # oops... redundant w.r.t. ConfigParser.write() and String()
         s = self._d
         lines = ['%s=%s' % (k, s[k]) for k in sorted(s.keys())]
         return '\n'.join(["[%s]" % section] + lines)
