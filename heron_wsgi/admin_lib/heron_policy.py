@@ -216,8 +216,9 @@ def datasource(ini, section=REDCAPDB_CONFIG_SECTION):
     return get_connection
 
 
-def _mock(ini='integration-test.ini'):
-    m = medcenter._mock()
+def _mock(m=None, ini='integration-test.ini'):
+    if m is None:
+        m = medcenter._mock()
 
     return HeronRecords(_test_datasource, m, _TestTimeSource(),
                         saa_survey_id=11, oversight_project_id=34)
