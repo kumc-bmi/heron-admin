@@ -16,7 +16,7 @@ model of i2b2 users and roles::
 
 Then we use something like the sealer/unsealer capability pattern
 to ensure that requests are authorized (though python's object
-access policies are to liberal to take this too seriously):
+access policies are too liberal to take this too seriously):
 
   >>> def simple_audit(access):
   ...     return access.agent.userid()
@@ -39,9 +39,16 @@ contents of the project management store::
 
   >>> pm.ensure_account(okjs)
 
-  >>> dbsrc().execute('select project_id, user_id, user_role_cd, status_cd'
-  ...                 ' from pm_project_user_roles').fetchall()
-  [(u'BlueHeron', u'john.smith', u'USER', u'A'), (u'BlueHeron', u'john.smith', u'DATA_LDS', u'A'), (u'BlueHeron', u'john.smith', u'DATA_OBFSC', u'A'), (u'BlueHeron', u'john.smith', u'DATA_AGG', u'A')]
+  >>> import pprint
+  >>> ans = dbsrc().execute('select project_id, user_id, '
+  ...                       ' user_role_cd, status_cd'
+  ...                       ' from pm_project_user_roles')
+  >>> pprint.pprint(ans.fetchall())
+  [(u'BlueHeron', u'john.smith', u'USER', u'A'),
+   (u'BlueHeron', u'john.smith', u'DATA_LDS', u'A'),
+   (u'BlueHeron', u'john.smith', u'DATA_OBFSC', u'A'),
+   (u'BlueHeron', u'john.smith', u'DATA_AGG', u'A')]
+
 '''
 
 from sqlalchemy import Column, ForeignKey, Unicode
