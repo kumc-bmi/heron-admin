@@ -1,11 +1,12 @@
 '''heron_policy.py -- HERON policy decisions, records
 
   >>> m = medcenter._mock()
-  >>> hp = HeronRecords(_TestDBConn(), m, _TestTimeSource(),
+  >>> hp = HeronRecords(_test_datasource, m, _TestTimeSource(),
   ...                   saa_survey_id=11, oversight_project_id=34)
 
 
 Look up an investigator and a student::
+
   >>> fac = m.affiliate('john.smith')
   >>> fac
   John Smith <john.smith@js.example>
@@ -13,6 +14,8 @@ Look up an investigator and a student::
   >>> stu2 = m.affiliate('some.one')
 
 See if they're qualified faculty::
+
+  >>> _test_datasource(reset=True) and None
   >>> hp.q_faculty(fac)
   OK:John Smith <john.smith@js.example>
   >>> hp.q_faculty(stu)
@@ -22,6 +25,7 @@ See if they're qualified faculty::
 
 See if the students are qualified in some way::
 
+  >>> _test_datasource(reset=True) and None
   >>> hp.q_any(stu)
   Traceback (most recent call last):
     ...
@@ -32,8 +36,20 @@ See if the students are qualified in some way::
 
 Get an actual access qualification; i.e. check for
 system access agreement and human subjects training::
+
+  >>> _test_datasource(reset=True) and None
   >>> hp.repositoryAccess(hp.q_any(fac))
   Access(John Smith <john.smith@js.example>)
+
+Make sure we recover, eventually, after database errors::
+
+    >>> [hp.q_any(stu2) for i in range(1, 10)]
+    Traceback (most recent call last):
+      ...
+    IOError: databases fail sometimes; deal
+
+    >>> hp.q_any(stu2)
+    OK:Some One <some.one@js.example>
 
 '''
 
@@ -48,10 +64,10 @@ REDCAPDB_CONFIG_SECTION='redcapdb'
 class HeronRecords(object):
     qty_institutions = len(('kuh', 'kupi', 'kumc'))
 
-    # TODO: connection pooling/management?
-    def __init__(self, conn, medcenter, timesrc,
+    def __init__(self, datasource, medcenter, timesrc,
                  saa_survey_id, oversight_project_id):
-        self._conn = conn
+        # TODO: connection pooling/management?
+        self._datasrc = datasource
         self._m = medcenter
         self._t = timesrc
         self._saa_survey_id = saa_survey_id
@@ -60,7 +76,7 @@ class HeronRecords(object):
     def check_saa_signed(self, agent):
         '''Test for an authenticated SAA survey response bearing the agent's email address.
         '''
-        with transaction(self._conn) as q:
+        with transaction(self._datasrc()) as q:
             q.execute(
                 '''select p.survey_id, p.participant_email, r.response_id, r.record, r.completion_time
  		   from redcap_surveys_response r
@@ -95,7 +111,7 @@ class HeronRecords(object):
         approve_%, with a distinct approve_% field for each
         participating institution and coded yes=1/no=2/defer=3.
         '''
-        with transaction(self._conn) as q:
+        with transaction(self._datasrc()) as q:
             q.execute('''
 select record, count(*)
 from (
@@ -136,7 +152,7 @@ having count(*) = %(qty)s
                 return self.q_sponsored(agent)
 
     def _agent_test(self, sql, k, agent):
-        with transaction(self._conn) as q:
+        with transaction(self._datasrc()) as q:
             q.execute(sql, {k: agent.userid()})
             return len(q.fetchall()) > 0
 
@@ -188,20 +204,22 @@ class Disclaimer(object):
         self._agent = agent
 
 
-def setup_connection(ini, section=REDCAPDB_CONFIG_SECTION):
+def datasource(ini, section=REDCAPDB_CONFIG_SECTION):
     '''
     .. todo: refactor into datasource
     '''
     rt = config.RuntimeOptions('user password host sid engine'.split())
     rt.load(ini, section)
-    #return oracle_connect(rt.user, rt.password, rt.host, 1521, rt.sid)
-    return mysql_connect(rt.user, rt.password, rt.host, 3306, 'redcap')
+    def get_connection():
+        #return oracle_connect(rt.user, rt.password, rt.host, 1521, rt.sid)
+        return mysql_connect(rt.user, rt.password, rt.host, 3306, 'redcap')
+    return get_connection
 
 
 def _mock(ini='integration-test.ini'):
     m = medcenter._mock()
 
-    return HeronRecords(_TestDBConn(), m, _TestTimeSource(),
+    return HeronRecords(_test_datasource, m, _TestTimeSource(),
                         saa_survey_id=11, oversight_project_id=34)
 
 
@@ -211,18 +229,42 @@ class _TestTimeSource(object):
         return datetime.date(2011, 9, 2)
 
 
+_d = None
+def _test_datasource(reset=False):
+    global _d
+    if reset or _d is None or _d.hosed:
+        _d = _TestDBConn()
+
+    return _d
+
+
 class _TestDBConn(object):
+    def __init__(self):
+        self._ticks = 0
+        self.hosed = False
+
     def cursor(self):
-        return _TestTrx()
+        self._ticks += 1
+        if self._ticks % 7 == 0:
+            self.hosed = True
+        return _TestTrx(self.hosed)
 
     def commit(self):
         pass
 
+    def rollback(self):
+        pass
+
+
 class _TestTrx():
-    def __init__(self):
+    def __init__(self, fail=False):
         self._results = None
+        self._fail = fail
 
     def execute(self, q, params=[]):
+        if self._fail:
+            raise IOError, 'databases fail sometimes; deal'
+
         if params == {'mail': 'john.smith@js.example', 'survey_id': 11}:
             self._results = [(11, 'john.smith@js.example', 123, 123, '2011-01-01')]
         elif 'count' in q:  # assume it's the sponsored query
@@ -254,10 +296,12 @@ def _integration_test(ini='integration-test.ini'):  # pragma nocover
     import datetime
     m = medcenter._integration_test()
 
-    rt = config.RuntimeOptions(['survey_id'])
-    rt.load(ini, 'saa_survey')
-    return HeronRecords(setup_connection(ini),
-                        m, datetime.date, int(rt.survey_id))
+    srt = config.RuntimeOptions(['survey_id'])
+    srt.load(ini, 'saa_survey')
+    ort = config.RuntimeOptions(['project_id'])
+    ort.load(ini, 'oversight_survey')
+    return HeronRecords(datasource(ini), m, datetime.date,
+                        int(srt.survey_id), int(ort.project_id))
 
 
 if __name__ == '__main__':  # pragma nocover
