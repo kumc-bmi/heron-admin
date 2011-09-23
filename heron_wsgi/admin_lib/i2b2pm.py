@@ -4,7 +4,6 @@ To create an I2B2PM proxy/client object, first we need a datasource,
 i.e. a "session maker", connected to the "delcarative base" of our
 model of i2b2 users and roles::
 
-  >>> import sqlalchemy
   >>> engine = sqlalchemy.create_engine('sqlite://')
   >>> Base.metadata.bind = engine
   >>> Base.metadata.create_all(engine)
@@ -14,21 +13,17 @@ model of i2b2 users and roles::
 
 .. todo:: cite sqlalchemy docs for session maker, declarative base
 
-Then we use something like the sealer/unsealer capability pattern
-to ensure that requests are authorized (though python's object
-access policies are too liberal to take this too seriously):
+Next, we'll need a heron_policy.HeronRecords checker:
 
-  >>> def simple_audit(access):
-  ...     return access.agent.userid()
+  >>> mc = medcenter._mock()
+  >>> hp = heron_policy._mock(mc)
 
-.. todo: cite erights.org sealer/unsealer pattern
+Its audit method is the only part that the pm proxy actually uses::
 
-Now we can create our project management cell proxy::
+  >>> pm = I2B2PM(dbsrc, heron_policy.audit)
 
-  >>> pm = I2B2PM(dbsrc, simple_audit)
-
-Then, suppose we go through a HeronPolicy to get an
-access token for John Smith::
+Now, suppose we go through our HeronRecords to get an access token for
+John Smith::
 
   >>> mc = medcenter._mock()
   >>> hp = heron_policy._mock(mc)
@@ -58,9 +53,11 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.types import String, Integer, Date, Enum
+import sqlalchemy
 
 import heron_policy  # hmm... only for testing?
 import medcenter
+import config
 
 
 class I2B2PM(object):
@@ -83,6 +80,9 @@ class I2B2PM(object):
         ds = self._datasrc()
         t = func.now()
 
+        #import pdb
+        #pdb.set_trace()
+
         # TODO: consider factoring out the "update the change_date
         # whenever you set a field" aspect of Audited.
         try:
@@ -93,7 +93,9 @@ class I2B2PM(object):
             me = User(user_id=uid,
                       entry_date=t, change_date=t, status_cd='A')
             ds.add(me)
-        if tuple([r.user_role_cd for r in me.roles]) != roles:
+
+        my_role_codes = [mr.user_role_cd for mr in me.roles]
+        if [r for r in roles if not r in my_role_codes]:
             me.roles = [
                 UserRole(user_id=uid, project_id=project_id,
                          user_role_cd=c,
@@ -137,7 +139,7 @@ class User(Base, Audited):
                     changeby_char, status_cd='A')
 
     def __repr__(self):
-        return "<User('%s')>" % self.name
+        return "<User(%s)>" % self.user_id
 
 
 class UserRole(Base, Audited):
@@ -151,3 +153,34 @@ class UserRole(Base, Audited):
                                'DATA_OBFSC', 'DATA_AGG', 'DATA_DEID',
                                'DATA_LDS', 'DATA_PROT'),
                           primary_key=True)
+
+    def __repr__(self):
+        return "<UserRule(%s, %s, %s)>" % (self.project_id,
+                                           self.user_id,
+                                           self.user_role_cd)
+
+
+def _integration_test(hp, ini='integration-test.ini'):
+    '''
+    '''
+    rt = config.RuntimeOptions(['url'])
+    rt.load(ini, 'i2b2pm')
+    settings = rt._d  # KLUDGE!
+
+    engine = sqlalchemy.engine_from_config(settings, 'sqlalchemy.')
+    Base.metadata.bind = engine
+    dbsrc = sessionmaker(engine)
+
+    return I2B2PM(dbsrc, hp.audit)
+
+
+if __name__ == '__main__':
+    import sys
+    user_id = sys.argv[1]
+
+    mc = medcenter._integration_test()
+    hp = heron_policy._integration_test(mc)
+    pm = _integration_test(hp)
+
+    user_login_ok = hp.q_any(mc.affiliate(user_id))
+    pm.ensure_account(user_login_ok)

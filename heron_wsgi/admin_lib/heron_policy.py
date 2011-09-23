@@ -167,6 +167,15 @@ having count(*) = %(qty)s
         self.check_saa_signed(a)
         return Access(a, texp, Disclaimer(a))
 
+    def audit(self, access):
+        '''This mimics the sealer/unsealer pattern but doesn't actually
+        provide a secure implementation. We trust our codebase, for now.
+
+        .. todo: cite erights.org sealer/unsealer pattern
+        '''
+        return access.agent.userid()
+
+
 
 class NoPermission(Exception):
     pass
@@ -293,9 +302,10 @@ class _TestTrx():
         pass
 
 
-def _integration_test(ini='integration-test.ini'):  # pragma nocover
+def _integration_test(m=None, ini='integration-test.ini'):  # pragma nocover
     import datetime
-    m = medcenter._integration_test()
+    if m is None:
+        m = medcenter._integration_test()
 
     srt = config.RuntimeOptions(['survey_id'])
     srt.load(ini, 'saa_survey')
