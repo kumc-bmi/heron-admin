@@ -29,11 +29,11 @@ import urllib
 import urllib2
 
 import injector
-from injector import inject
+from injector import inject, provides
 
 import config
+import ldaplib
 
-KSearchService = injector.Key('SearchService')
 KTrainingFunction = injector.Key('TrainingFunction')
 
 CHALK_CONFIG_SECTION='chalk'
@@ -41,7 +41,7 @@ CHALK_CONFIG_SECTION='chalk'
 class MedCenter(object):
     excluded_jobcode = "24600"
 
-    @inject(searchsvc=KSearchService,
+    @inject(searchsvc=ldaplib.LDAPService,
             trainingfn=KTrainingFunction)
     def __init__(self, searchsvc, trainingfn):
         self._svc = searchsvc
@@ -149,39 +149,39 @@ class Mock(injector.Module):
         import hcard_mock
         d = hcard_mock.MockDirectory(hcard_mock.TEST_FILE)
 
-        binder.bind(KSearchService,
+        binder.bind(ldaplib.LDAPService,
                     injector.InstanceProvider(d))
         binder.bind(KTrainingFunction,
                     injector.InstanceProvider(d.trainedThru))
 
 
-def _mock():
-    import hcard_mock
-    d = hcard_mock.MockDirectory(hcard_mock.TEST_FILE)
-    return MedCenter(d, d.trainedThru)
+class IntegrationTest(injector.Module):
+    @provides(KTrainingFunction)
+    def training(self, ini='integration-test.ini'):
+        return chalkdb_queryfn(ini, CHALK_CONFIG_SECTION)
 
+    @classmethod
+    def deps(cls):
+        return [IntegrationTest, ldaplib.IntegrationTest]
 
-def _integration_test(ini='integration-test.ini', chalk_section='chalk'):  # pragma: no cover
-    import ldaplib
-
-    cq = chalkdb_queryfn(ini, chalk_section)
-
-    return MedCenter(ldaplib._integration_test(), cq)
-
+    @classmethod
+    def depgraph(cls):
+        return injector.Injector([class_() for class_ in cls.deps()])
 
 
 if __name__ == '__main__': # pragma: no cover
     import pprint
 
+    depgraph = IntegrationTest.depgraph()
+    m = depgraph.get(MedCenter)
+
     if '--search' in sys.argv:
         cn, sn, givenname = sys.argv[2:5]
-        m = _integration_test()
+
         print [10, cn, sn, givenname]
         print m.affiliateSearch(10, cn, sn, givenname)
     else:
         uid = sys.argv[1]
-        m = _integration_test()
-
         who = m.affiliate(uid)
         print who
         print "training: ", m.trainedThru(who)

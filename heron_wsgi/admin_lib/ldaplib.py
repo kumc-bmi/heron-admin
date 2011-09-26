@@ -11,6 +11,8 @@ Sample configuration::
 
 '''
 import ldap # http://www.python-ldap.org/doc/html/ldap.html
+import injector
+from injector import inject, provides
 
 import config
 
@@ -25,9 +27,8 @@ class LDAPService(object):
 
     '''
 
-    def __init__(self, ini, section=CONFIG_SECTION):
-        rt = config.RuntimeOptions('url userdn base password'.split())
-        rt.load(ini, section)
+    @inject(rt=(config.Options, CONFIG_SECTION))
+    def __init__(self, rt):
         self._rt = rt
         self._l = None
 
@@ -55,13 +56,20 @@ _sample_settings = config.TestTimeOptions(dict(
         base='ou=...,o=...'))
 
 
-def _integration_test(ini='integration-test.ini'):  # pragma nocover
-    return LDAPService(ini)
+class IntegrationTest(injector.Module):
 
+    @provides((config.Options, CONFIG_SECTION))
+    def opts(self, ini='integration-test.ini'):
+        rt = config.RuntimeOptions('url userdn base password'.split())
+        rt.load(ini, CONFIG_SECTION)
+        return rt
+        
 
 if __name__ == '__main__':  # pragma nocover
     import sys, pprint
     ldap_query = sys.argv[1]
     attrs = sys.argv[2].split(",") if sys.argv[2:] else []
-    ls = _integration_test()
+
+    depgraph = injector.Injector([IntegrationTest()])
+    ls = depgraph.get(LDAPService)
     pprint.pprint(ls.search(ldap_query, attrs))

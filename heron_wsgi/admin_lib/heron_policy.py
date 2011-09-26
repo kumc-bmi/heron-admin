@@ -65,7 +65,7 @@ REDCAPDB_CONFIG_SECTION='redcapdb'
 SAA_CONFIG_SECTION='saa_survey'
 OVERSIGHT_CONFIG_SECTION='oversight_survey'
 
-KDataSource = injector.Key('DataSource')
+KDataSource = injector.Key('HERONDataSource')
 KTimeSource = injector.Key('TimeSource')
 
 class HeronRecords(object):
@@ -248,14 +248,6 @@ class Mock(injector.Module):
                     config.TestTimeOptions({'project_id': 34}))
 
 
-def _mock(m=None):
-    if m is None:
-        m = medcenter._mock()
-
-    return HeronRecords(_test_datasource, m, _TestTimeSource(),
-                        saa_survey_id=11, oversight_project_id=34)
-
-
 class _TestTimeSource(object):
     def today(self):
         import datetime
@@ -325,23 +317,41 @@ class _TestTrx():
         pass
 
 
-def _integration_test(m=None, ini='integration-test.ini'):  # pragma nocover
-    import datetime
-    if m is None:
-        m = medcenter._integration_test()
+class IntegrationTest(injector.Module):  # pragma nocover
+    ini='integration-test.ini'
 
-    srt = config.RuntimeOptions(['survey_id'])
-    srt.load(ini, SAA_CONFIG_SECTION)
-    ort = config.RuntimeOptions(['project_id'])
-    ort.load(ini, OVERSIGHT_CONFIG_SECTION)
-    return HeronRecords(datasource(ini), m, datetime.date,
-                        int(srt.survey_id), int(ort.project_id))
+    def configure(self, binder):
+        import datetime
+        binder.bind(KTimeSource,
+                    injector.InstanceProvider(datetime.date))
+
+        binder.bind(KDataSource,
+                    injector.InstanceProvider(datasource(self.ini)))
+
+        srt = config.RuntimeOptions(['survey_id'])
+        srt.load(self.ini, SAA_CONFIG_SECTION)
+        binder.bind((config.Options, SAA_CONFIG_SECTION), srt)
+
+        ort = config.RuntimeOptions(['project_id'])
+        ort.load(self.ini, OVERSIGHT_CONFIG_SECTION)
+        binder.bind((config.Options, OVERSIGHT_CONFIG_SECTION), ort)
+
+    @classmethod
+    def deps(cls):
+        return [IntegrationTest] + medcenter.IntegrationTest.deps()
+
+    @classmethod
+    def depgraph(cls):
+        return injector.Injector([class_() for class_ in cls.deps()])
 
 
 if __name__ == '__main__':  # pragma nocover
     import sys
+    import ldaplib
+
     userid = sys.argv[1]
-    hr = _integration_test()
+    depgraph = IntegrationTest.depgraph()
+    hr = depgraph.get(HeronRecords)
     a = hr._m.affiliate(userid)
     q = hr.q_any(a)
     print "qualified?", q

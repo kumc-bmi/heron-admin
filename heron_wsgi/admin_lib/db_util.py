@@ -16,7 +16,7 @@ def mysql_connect(u, p, host, port, db):
 
 @contextmanager
 def transaction(conn):
-    '''Return an Oracle database cursor manager.
+    '''Return an database cursor manager.
 
     :param conn: an Oracle connection
     '''

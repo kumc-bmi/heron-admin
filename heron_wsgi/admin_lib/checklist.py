@@ -1,12 +1,13 @@
 '''
 
-  >>> import pprint
-  >>> import medcenter
-  >>> import heron_policy
-  >>> m = medcenter._mock()
-  >>> hr = heron_policy._mock()
-  >>> cl = Checklist(m, hr, heron_policy._TestTimeSource())
 
+  >>> depgraph = injector.Injector([Mock(),
+  ...                               heron_policy.Mock(), medcenter.Mock()])
+  >>> m = depgraph.get(medcenter.MedCenter)
+  >>> hr = depgraph.get(heron_policy.HeronRecords)
+  >>> cl = depgraph.get(Checklist)
+
+  >>> import pprint
   >>> pprint.pprint(cl.parts_for('john.smith'))
   {'accessDisabled': {'name': 'login'},
    'affiliate': John Smith <john.smith@js.example>,
@@ -35,22 +36,29 @@
 
 '''
 
+import injector
+from injector import inject
+
 import heron_policy
 import medcenter
 
 class Checklist(object):
-    def __init__(self, medcenter, heron_records, timesrc):
-        self._m = medcenter
+    @inject(mc=medcenter.MedCenter,
+            heron_records=heron_policy.HeronRecords,
+            timesrc=heron_policy.KTimeSource)
+    def __init__(self, mc, heron_records, timesrc):
+        self._m = mc
         self._hr = heron_records
         self._t = timesrc
 
     def __repr__(self):
         return 'Checlist(m, hr, t)'
 
-    def access_for(self, uid):
-        agt = self._m.affiliate(uid)
-        q = self._hr.q_any(agt)
-        return self._hr.repositoryAccess(q)
+    def medcenter(self):
+        return self._m
+
+    def heron_records(self):
+        return self._hr
 
     def parts_for(self, uid):
         agt = self._m.affiliate(uid)
@@ -93,28 +101,30 @@ class Checklist(object):
                 }
 
 
-def _mock():
-    import medcenter
-    import heron_policy
-    m = medcenter._mock()
-    hr = heron_policy._mock()
-    return Checklist(m, hr, heron_policy._TestTimeSource())
+class Mock(injector.Module):
+    def configure(self, binder):
+        pass
 
 
-def _integration_test():  # pragma nocover
-    import datetime
-    import medcenter
-    import heron_policy
-    m = medcenter._integration_test()
-    hr = heron_policy._integration_test()
-    return Checklist(m, hr, datetime.date)
+class IntegrationTest(injector.Module):
+    def configure(self, binder):
+        pass
+
+    @classmethod
+    def deps(cls):
+        return [cls] + heron_policy.IntegrationTest.deps()
+
+    @classmethod
+    def depgraph(cls):
+        return injector.Injector([class_() for class_ in cls.deps()])
 
 
 if __name__ == '__main__':  # pragma nocover
     import sys
     uid = sys.argv[1]
 
-    check = _integration_test()
+    depgraph = IntegrationTest.depgraph()
+    check = depgraph.get(Checklist)
 
     import pprint
     pprint.pprint(check.parts_for(uid))

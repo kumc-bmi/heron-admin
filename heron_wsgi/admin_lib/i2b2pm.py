@@ -1,32 +1,16 @@
 '''i2b2pm.py -- I2B2 Project Management cell client/proxy
 
-To create an I2B2PM proxy/client object, first we need a datasource,
-i.e. a "session maker", connected to the "delcarative base" of our
-model of i2b2 users and roles::
 
-  >>> engine = sqlalchemy.create_engine('sqlite://')
-  >>> Base.metadata.bind = engine
-  >>> Base.metadata.create_all(engine)
-  >>> dbsrc = sessionmaker(engine)
+  >>> depgraph = injector.Injector([Mock(),
+  ...                               medcenter.Mock(), heron_policy.Mock()])
 
-.. todo:: get rid of globals using injector
-
-.. todo:: cite sqlalchemy docs for session maker, declarative base
-
-Next, we'll need a heron_policy.HeronRecords checker:
-
-  >>> mc = medcenter._mock()
-  >>> hp = heron_policy._mock(mc)
-
-Its audit method is the only part that the pm proxy actually uses::
-
-  >>> pm = I2B2PM(dbsrc, heron_policy.audit)
+  >>> pm = depgraph.get(I2B2PM)
 
 Now, suppose we go through our HeronRecords to get an access token for
 John Smith::
 
-  >>> mc = medcenter._mock()
-  >>> hp = heron_policy._mock(mc)
+  >>> mc = depgraph.get(medcenter.MedCenter)
+  >>> hp = depgraph.get(heron_policy.HeronRecords)
   >>> okjs = hp.q_any(mc.affiliate('john.smith'))
 
 Then calling the ensure_account method should ensure the following
@@ -35,6 +19,7 @@ contents of the project management store::
   >>> pm.ensure_account(okjs)
 
   >>> import pprint
+  >>> dbsrc = depgraph.get((Session, __name__))
   >>> ans = dbsrc().execute('select project_id, user_id, '
   ...                       ' user_role_cd, status_cd'
   ...                       ' from pm_project_user_roles')
@@ -46,36 +31,39 @@ contents of the project management store::
 
 '''
 
+import injector
+from injector import inject
 from sqlalchemy import Column, ForeignKey, Unicode
 from sqlalchemy import func
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm.session import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.types import String, Integer, Date, Enum
 import sqlalchemy
 
-import heron_policy  # hmm... only for testing?
 import medcenter
 import config
 
 
 class I2B2PM(object):
-    def __init__(self, datasrc, audit):
+    @inject(datasrc=(Session, __name__),
+            hr=heron_policy.HeronRecords)
+    def __init__(self, datasrc, hr):
         '''
-        @param datasrc: a function that returns a sqlalchemy.Session
-        @param audit: a function that audits an access capability
-                      and returns a user id or raises and exception.
+        @param datasrc: a function that returns a sqlalchemy session
+        @param hr: a HeronRecords used to audit access capabilities.
         '''
         self._datasrc = datasrc
-        self._audit = audit
+        self._hr = hr
 
     def ensure_account(self, access,
                        project_id='BlueHeron',
                        roles = ('USER', 'DATA_LDS', 'DATA_OBFSC', 'DATA_AGG')):
         '''Ensure that an i2b2 account is ready for an authorized user.
         '''
-        uid = self._audit(access)
+        uid = self._hr.audit(access)
 
         ds = self._datasrc()
         t = func.now()
@@ -160,27 +148,52 @@ class UserRole(Base, Audited):
                                            self.user_role_cd)
 
 
-def _integration_test(hp, ini='integration-test.ini'):
-    '''
-    '''
-    rt = config.RuntimeOptions(['url'])
-    rt.load(ini, 'i2b2pm')
-    settings = rt._d  # KLUDGE!
+CONFIG_SECTION='i2b2pm'
 
-    engine = sqlalchemy.engine_from_config(settings, 'sqlalchemy.')
-    Base.metadata.bind = engine
-    dbsrc = sessionmaker(engine)
+class IntegrationTest(injector.Module):
+    ini='integration-test.ini'
 
-    return I2B2PM(dbsrc, hp.audit)
+    def configure(self, binder):
+        binder.bind(DeclarativeMeta, Base)
+
+        rt = config.RuntimeOptions(['url'])
+        rt.load(self.ini, CONFIG_SECTION)
+        settings = rt._d  # KLUDGE!
+        engine = sqlalchemy.engine_from_config(settings, 'sqlalchemy.')
+        Base.metadata.bind = engine
+        binder.bind((Session, __name__),
+                    injector.InstanceProvider(sessionmaker(engine)))
+
+    @classmethod
+    def deps(cls):
+        return [IntegrationTest] + heron_policy.IntegrationTest.deps()
+
+    @classmethod
+    def depgraph(cls):
+        return injector.Injector([class_() for class_ in cls.deps()])
+
+
+class Mock(injector.Module):
+    '''Mock up I2B2PM dependencies: SQLite datasource
+    '''
+    def configure(self, binder):
+        binder.bind(DeclarativeMeta, Base)
+
+        engine = sqlalchemy.create_engine('sqlite://')
+        Base.metadata.bind = engine
+        Base.metadata.create_all(engine)
+        binder.bind((Session, __name__),
+                    injector.InstanceProvider(sessionmaker(engine)))
 
 
 if __name__ == '__main__':
     import sys
     user_id = sys.argv[1]
 
-    mc = medcenter._integration_test()
-    hp = heron_policy._integration_test(mc)
-    pm = _integration_test(hp)
+    depgraph = IntegrationTest.depgraph()
+    mc = depgraph.get(medcenter.MedCenter)
+    hr = depgraph.get(heron_policy.HeronRecords)
+    pm = depgraph.get(I2B2PM)
 
-    user_login_ok = hp.q_any(mc.affiliate(user_id))
+    user_login_ok = hr.q_any(mc.affiliate(user_id))
     pm.ensure_account(user_login_ok)

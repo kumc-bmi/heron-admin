@@ -28,7 +28,7 @@ def settings(ini, section, extras=[]):
     return rt
 
 
-def survey_setup(rt, urlopener=urllib2, ans_cb=None):
+def survey_setup(rt, urlopener, ans_cb=None):
     def setup(userid, params, multi=False):
         email = '%s@%s' % (userid, rt.domain)
         body = urllib.urlencode({'token': rt.token,
@@ -72,9 +72,6 @@ _test_settings = config.TestTimeOptions(dict(
 
 def _show_ans(ans):
     print >>sys.stderr, ans
-
-def _mock():
-    return survey_setup(_test_settings, _TestUrlOpener(), _show_ans)
 
 
 def _integration_test(ini='integration-test.ini', section='oversight_survey'):  # pragma nocover
