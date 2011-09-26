@@ -357,7 +357,6 @@ class IntegrationTest(injector.Module):  # pragma nocover
 
 if __name__ == '__main__':  # pragma nocover
     import sys
-    import ldaplib
 
     userid = sys.argv[1]
     depgraph = IntegrationTest.depgraph()

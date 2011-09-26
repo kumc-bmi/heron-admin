@@ -11,7 +11,6 @@ Suppose we have an app that we want protected by CAS::
 
 Let's wrap it in `cas_required`::
   >>> import urllib
-  >>> from usrv import prefix_router
   >>> addr = 'http://example/cas/'
   >>> session_opts = make_session('ex', uuid_maker=lambda: '1234-5678')
   >>> cr = cas_required(addr, session_opts, prefix_router, '/login', '/logout', protected)
@@ -34,7 +33,6 @@ The next step is a link to the CAS service with the `service` param set to our l
 
 The the CAS service redirects back with a ticket.
 paste.auth.cas uses urllib.urlopen(), so we need to override it for testing::
-   >>> from tests import default_urlopener, LinesUrlOpener
    >>> with default_urlopener(LinesUrlOpener(['yes', 'john.smith'])):
    ...     r3 = t.get('/login?ticket=ST-381409-fsFVbSPrkoD9nANruV4B-example', status=303)
    >>> _loc(r3.headers)
@@ -49,6 +47,8 @@ import uuid
 from cgi import parse_qs, escape
 from urlparse import urljoin
 from urllib import urlencode
+from contextlib import contextmanager
+import urllib
 
 from paste.httpexceptions import HTTPSeeOther, HTTPForbidden
 from beaker.middleware import SessionMiddleware
@@ -125,3 +125,43 @@ def login_to_session(environ, start_response):
     return exc.wsgi_application(environ, start_response)
             
 
+def route_if_prefix(prefix, app_match, app_else, environ, start_response):
+    path = environ['PATH_INFO']
+    if path.startswith(prefix):
+        return app_match(environ, start_response)
+    else:
+        return app_else(environ, start_response)
+
+
+def prefix_router(prefix, app_match, app_else):
+    assert app_match is not None
+    assert app_else is not None
+    def handle_request(environ, start_response):
+        return route_if_prefix(prefix, app_match, app_else, environ, start_response)
+    return handle_request
+
+class LinesUrlOpener(object):
+    '''An URL opener to help with CAS testing
+    '''
+    def __init__(self, lines):
+        self._lines = lines
+
+    def open(self, addr, body=None):
+        return LinesResponse(self._lines)
+
+class LinesResponse(object):
+    def __init__(self, lines):
+        self._lines = lines
+
+    def read(self):
+        return '\n'.join(self._lines)
+
+
+@contextmanager
+def default_urlopener(u):
+    sv = urllib._urlopener
+    urllib._urlopener = u
+    try:
+        yield None
+    finally:
+        urllib._urlopener = sv

@@ -24,10 +24,10 @@ import injector # http://pypi.python.org/pypi/injector/
 from injector import inject, provides
 
 import cas_auth
-from usrv import TemplateApp, SessionMiddleware, route_if_prefix, prefix_router
+from cas_auth import route_if_prefix, prefix_router
+from usrv import TemplateApp, SessionMiddleware
 from admin_lib import medcenter
 from admin_lib.medcenter import MedCenter
-from admin_lib import ldaplib
 from admin_lib import heron_policy
 from admin_lib.checklist import Checklist
 from admin_lib import redcap_connect

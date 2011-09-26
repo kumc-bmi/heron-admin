@@ -18,6 +18,7 @@ from os.path import join, dirname
 site.addsitedir(dirname(__file__))
 
 import cas_auth
+from cas_auth import prefix_router, route_if_prefix
 
 HTMLu = 'text/html; charset=utf-8'
 
@@ -61,21 +62,6 @@ def raven_parts(environ, session):
     return dict(user=session.get('user', ""),
                 raven_home=raven_home)
 
-
-def route_if_prefix(prefix, app_match, app_else, environ, start_response):
-    path = environ['PATH_INFO']
-    if path.startswith(prefix):
-        return app_match(environ, start_response)
-    else:
-        return app_else(environ, start_response)
-
-
-def prefix_router(prefix, app_match, app_else):
-    assert app_match is not None
-    assert app_else is not None
-    def handle_request(environ, start_response):
-        return route_if_prefix(prefix, app_match, app_else, environ, start_response)
-    return handle_request
 
 def _mkapp(cas='https://cas.kumc.edu/cas/', auth_area='/u/',
            login='/u/login', logout='/u/logout'):
