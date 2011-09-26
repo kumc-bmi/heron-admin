@@ -52,7 +52,7 @@ class TemplateApp(object):
             return 'We have no page at that address. Broken link? Typo?'
 
         start_response("200 ok", [('Content-type', HTMLu)])
-        return body
+        return [body]
 
 
 def raven_parts(environ, session):

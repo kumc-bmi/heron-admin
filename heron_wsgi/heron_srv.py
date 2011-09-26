@@ -1,5 +1,38 @@
 '''heron_srv.py -- HERON administrative web interface
 
+
+A plain request for the homepage redirects us to the CAS login page:
+
+  >>> from paste.fixture import TestApp
+  >>> t = TestApp(Mock.make())
+  >>> r1 = t.get('http://localhost/', status=303)
+  >>> r2 = r1.follow()
+  >>> dict(r2.headers)['location']
+  'https://example/cas/login?service=http%3A%2F%2Flocalhost%2Flogin'
+
+Assuming successful login, the CAS service redirects back with a ticket::
+
+  >>> from cas_auth import default_urlopener, LinesUrlOpener
+  >>> with default_urlopener(LinesUrlOpener(['yes', 'john.smith'])):
+  ...     r3 = t.get('/login?ticket=ST-381409-fsFVbSPrkoD9nANruV4B-example',
+  ...                status=303)
+  >>> dict(r3.headers)['location']
+  'http://localhost/'
+
+We validate the ticket and grant access::
+
+  >>> r4 = r3.follow(status=200)
+  >>> 'John Smith' in r4
+  True
+
+
+.. todo:: automated test for link to system access agreement
+.. todo:: automated test for LDAP failure
+
+
+Error handling needs configuration::
+
+
   >>> print config.TestTimeOptions(_sample_err_settings).inifmt(ERR_SECTION)
   [errors]
   debug=False
@@ -92,7 +125,8 @@ class HeronAccessPartsApp(object):
                 self._pm.ensure_account(a)
                 ans = HTTPSeeOther(self._i2b2_tool_addr)
             except heron_policy.NoPermission, np:
-                ans = HTTPForbidden(detail=np.message).wsgi_application(environ, start_response)
+                ans = HTTPForbidden(detail=np.message).wsgi_application(
+                    environ, start_response)
         else:
             ans = HTTPMethodNotAllowed()
 
@@ -104,7 +138,8 @@ class HeronAccessPartsApp(object):
         Kinda iffy, w.r.t. safety and such.
         '''
         _, uid, full_name = self._request_agent(environ)
-        return self._survey_redir(self._saa_opts, uid, {'user_id': uid, 'full_name': full_name},
+        return self._survey_redir(self._saa_opts, uid, {
+                'user_id': uid, 'full_name': full_name},
                                   environ, start_response)
 
     def _request_agent(self, environ):
@@ -230,7 +265,8 @@ class CASWrap(injector.Module):
     def wrap(self, app, cas_settings, session_key='heron'):
         session_opts = cas_auth.make_session(session_key)
         cas_app = cas_auth.cas_required(cas_settings.base, session_opts,
-                                        prefix_router, app.login_path, app.logout_path,
+                                        prefix_router,
+                                        app.login_path, app.logout_path,
                                         SessionMiddleware(app, session_opts))
         return prefix_router(app.base_path, cas_app, app)
 
@@ -332,21 +368,11 @@ class Mock(injector.Module):
     Then automatically inject it into a CAS and Error handling wrappers::
       >>> tapp = depgraph.get(KTopApp)
 
-    An initial visit to the root page redirects to the login path and sets a cookie::
-      >>> from paste.fixture import TestApp
-      >>> t = TestApp(tapp)
-      >>> r1 = t.get('/', status=303)
-      >>> ('location', happ.login_path) in r1.headers
-      True
-      >>> ['Found cookie' for (n, v) in r1.headers if n.lower() == 'set-cookie']
-      ['Found cookie']
-
-    what happens when we follow?
-      >>> r2 = r1.follow()
-
-
-    .. todo:: automated test for LDAP failure
     '''
+
+    @classmethod
+    def make(cls):
+        return cls.depgraph().get(KTopApp)
 
     @classmethod
     def depgraph(cls):
@@ -359,11 +385,11 @@ class Mock(injector.Module):
                     # avoid UnknownProvider: couldn't determine provider ...
                     injector.InstanceProvider(redcap_connect._TestUrlOpener()))
 
-        binder.bind(KI2B2Address, to='http://www.i2b2.org/')
+        binder.bind(KI2B2Address, to='http://example/i2b2')
 
         binder.bind(KCASOptions,
                     config.TestTimeOptions(
-                        {'base': 'https://cas.kumc.edu/cas/'}))
+                        {'base': 'https://example/cas/'}))
 
         binder.bind(KErrorOptions,
                     config.TestTimeOptions(dict(_sample_err_settings,
