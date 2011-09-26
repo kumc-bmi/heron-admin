@@ -82,8 +82,16 @@ class HeronRecords(object):
         self._datasrc = datasource
         self._m = mc
         self._t = timesrc
+        self._saa_opts = saa_opts
         self._saa_survey_id = saa_opts.survey_id
+        self._oversight_opts = oversight_opts
         self._oversight_project_id = oversight_opts.project_id
+
+    def saa_opts(self):
+        return self._saa_opts
+
+    def oversight_opts(self):
+        return self._oversight_opts
 
     def check_saa_signed(self, agent):
         '''Test for an authenticated SAA survey response bearing the agent's email address.
@@ -185,7 +193,7 @@ having count(*) = %(qty)s
 
         .. todo: cite erights.org sealer/unsealer pattern
         '''
-        return access.agent.userid()
+        return access._agent.userid()
 
 
 
@@ -318,7 +326,9 @@ class _TestTrx():
 
 
 class IntegrationTest(injector.Module):  # pragma nocover
-    ini='integration-test.ini'
+    def __init__(self, ini='integration-test.ini'):
+        injector.Module.__init__(self)
+        self._ini = ini
 
     def configure(self, binder):
         import datetime
@@ -326,14 +336,14 @@ class IntegrationTest(injector.Module):  # pragma nocover
                     injector.InstanceProvider(datetime.date))
 
         binder.bind(KDataSource,
-                    injector.InstanceProvider(datasource(self.ini)))
+                    injector.InstanceProvider(datasource(self._ini)))
 
         srt = config.RuntimeOptions(['survey_id'])
-        srt.load(self.ini, SAA_CONFIG_SECTION)
+        srt.load(self._ini, SAA_CONFIG_SECTION)
         binder.bind((config.Options, SAA_CONFIG_SECTION), srt)
 
         ort = config.RuntimeOptions(['project_id'])
-        ort.load(self.ini, OVERSIGHT_CONFIG_SECTION)
+        ort.load(self._ini, OVERSIGHT_CONFIG_SECTION)
         binder.bind((config.Options, OVERSIGHT_CONFIG_SECTION), ort)
 
     @classmethod

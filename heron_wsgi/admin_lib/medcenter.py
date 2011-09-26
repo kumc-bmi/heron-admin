@@ -154,11 +154,19 @@ class Mock(injector.Module):
         binder.bind(KTrainingFunction,
                     injector.InstanceProvider(d.trainedThru))
 
+    @classmethod
+    def make(cls):
+        depgraph = injector.Injector(Mock())
+        return depgraph.get(MedCenter)
 
 class IntegrationTest(injector.Module):
+    def __init__(self, ini='integration-test.ini'):
+        injector.Module.__init__(self)
+        self._ini = ini
+
     @provides(KTrainingFunction)
-    def training(self, ini='integration-test.ini'):
-        return chalkdb_queryfn(ini, CHALK_CONFIG_SECTION)
+    def training(self):
+        return chalkdb_queryfn(self._ini, CHALK_CONFIG_SECTION)
 
     @classmethod
     def deps(cls):

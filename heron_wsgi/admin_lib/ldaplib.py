@@ -57,11 +57,14 @@ _sample_settings = config.TestTimeOptions(dict(
 
 
 class IntegrationTest(injector.Module):
+    def __init__(self, ini='integration-test.ini'):
+        injector.Module.__init__(self)
+        self._ini = ini
 
     @provides((config.Options, CONFIG_SECTION))
-    def opts(self, ini='integration-test.ini'):
+    def opts(self):
         rt = config.RuntimeOptions('url userdn base password'.split())
-        rt.load(ini, CONFIG_SECTION)
+        rt.load(self._ini, CONFIG_SECTION)
         return rt
         
 

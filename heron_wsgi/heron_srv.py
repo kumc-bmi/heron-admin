@@ -32,11 +32,9 @@ from admin_lib import heron_policy
 from admin_lib.checklist import Checklist
 from admin_lib import redcap_connect
 from admin_lib import config
+from admin_lib import i2b2pm
 
 KI2B2Address = injector.Key('I2B2Address')
-KSystemAccessOptions = injector.Key('SystemAccessOptions')
-KOversightOptions = injector.Key('SystemAccessOptions')
-KSearchService = injector.Key('SearchService')
 KCASOptions = injector.Key('CASOptions')
 KCASApp = injector.Key('CASApp')
 KErrorOptions = injector.Key('ErrorOptions')
@@ -54,16 +52,16 @@ class HeronAccessPartsApp(object):
     oversight_path='/build_team.html'
     oops_path='/oops.html'
 
-    @inject(checklist=Checklist, medcenter=MedCenter,
-            saa_opts=KSystemAccessOptions,
-            oversight_opts=KOversightOptions,
+    @inject(checklist=Checklist, pm=i2b2pm.I2B2PM,
             urlopener=URLopener,
             i2b2_tool_addr=KI2B2Address)
-    def __init__(self, checklist, medcenter, saa_opts, oversight_opts, urlopener, i2b2_tool_addr):
+    def __init__(self, checklist, pm, urlopener, i2b2_tool_addr):
         self._checklist = checklist
-        self._m = medcenter
-        self._saa_opts = saa_opts
-        self._oversight_opts = oversight_opts
+        self._pm = pm
+        self._m = checklist.medcenter()
+        self._hr = checklist.heron_records()
+        self._saa_opts = self._hr.saa_opts()
+        self._oversight_opts = self._hr.oversight_opts()
         self._urlopener = urlopener
         self._i2b2_tool_addr = i2b2_tool_addr
 
@@ -88,7 +86,10 @@ class HeronAccessPartsApp(object):
         session = environ['beaker.session']
         if environ['REQUEST_METHOD'] == "POST":
             try:
-                a = self._checklist.access_for(session['user'])
+                agt = self._m.affiliate(session['user'])
+                q = self._hr.q_any(agt)
+                a = self._hr.repositoryAccess(q)
+                self._pm.ensure_account(a)
                 ans = HTTPSeeOther(self._i2b2_tool_addr)
             except heron_policy.NoPermission, np:
                 ans = HTTPForbidden(detail=np.message).wsgi_application(environ, start_response)
@@ -174,7 +175,7 @@ class HeronAccessPartsApp(object):
 def team_params(mc, uids):
     r'''
     >>> import pprint
-    >>> pprint.pprint(list(team_params(medcenter._mock(), ['john.smith', 'bill.student'])))
+    >>> pprint.pprint(list(team_params(medcenter.Mock.make(), ['john.smith', 'bill.student'])))
     [('user_id_1', 'john.smith'),
      ('name_etc_1', 'Smith, John\nChair of Department of Neurology\n'),
      ('user_id_2', 'bill.student'),
@@ -297,40 +298,22 @@ class ErrorHandling(injector.Module):
 
 
 class IntegrationTest(injector.Module):
+    @classmethod
+    def depgraph(cls,
+                 admin_ini='admin_lib/integration-test.ini'):
+        return injector.Injector([IntegrationTest(),
+                                  ErrorHandling(), CASWrap()] +
+                                 [class_(admin_ini)
+                                  for class_ in i2b2pm.IntegrationTest.deps()])
+
     def configure(self, binder,
-                  webapp_ini='integration-test.ini',
-                  admin_ini='admin_lib/integration-test.ini',
-                  saa_section='saa_survey',
-                  oversight_section='oversight_survey'):
-        searchsvc = ldaplib.LDAPService(admin_ini)
-        binder.bind(KSearchService, searchsvc)
-
-        chalkcheck = medcenter.chalkdb_queryfn(admin_ini)
-        mc = medcenter.MedCenter(searchsvc, chalkcheck)
-        # TODO: use injection for MedCenter
-        binder.bind(medcenter.MedCenter, mc)
-
+                  webapp_ini='integration-test.ini'):
         i2b2_settings = config.RuntimeOptions('cas_login').load(
             webapp_ini, 'i2b2')
         binder.bind(KI2B2Address, to=i2b2_settings.cas_login)
 
-        saa_opts = redcap_connect.settings(admin_ini, saa_section)
-        droc_opts = redcap_connect.settings(admin_ini, oversight_section, ['project_id'])
-        binder.bind(KSystemAccessOptions, saa_opts)
-        binder.bind(KOversightOptions, droc_opts)
-        binder.bind(URLopener, injector.InstanceProvider(urllib2.build_opener()))
-
-        conn = heron_policy.setup_connection(admin_ini)
-        # TODO: use injection for HeronRecords
-        hr = heron_policy.HeronRecords(conn, mc, datetime.datetime,
-                                       int(saa_opts.survey_id),
-                                       int(droc_opts.project_id))
-
-        binder.bind(datetime.date, to=datetime.date)
-        binder.bind(heron_policy.HeronRecords, to=hr)
-
-        check = Checklist(mc, hr, datetime.date)
-        binder.bind(Checklist, check)
+        binder.bind(URLopener,
+                    injector.InstanceProvider(urllib2.build_opener()))
 
         binder.bind(KCASOptions,
                     config.RuntimeOptions('base').load(webapp_ini, 'cas'))
@@ -343,7 +326,7 @@ class Mock(injector.Module):
     '''An injector module to build a mock version of this WSGI application.
 
     Use this module and a couple others to mock up to HeronAccessPartsApp::
-      >>> depgraph = injector.Injector([Mock(), ErrorHandling(), CASWrap()])
+      >>> depgraph = Mock.depgraph()
       >>> happ = depgraph.get(HeronAccessPartsApp)
 
     Then automatically inject it into a CAS and Error handling wrappers::
@@ -364,35 +347,19 @@ class Mock(injector.Module):
 
     .. todo:: automated test for LDAP failure
     '''
+
+    @classmethod
+    def depgraph(cls):
+        return injector.Injector([Mock(), ErrorHandling(), CASWrap(),
+                                  i2b2pm.Mock(), heron_policy.Mock(),
+                                  medcenter.Mock()])
+
     def configure(self, binder):
-        binder.bind(KSystemAccessOptions, redcap_connect._test_settings)
-        binder.bind(KOversightOptions, redcap_connect._test_settings)
         binder.bind(URLopener,
                     # avoid UnknownProvider: couldn't determine provider ...
                     injector.InstanceProvider(redcap_connect._TestUrlOpener()))
+
         binder.bind(KI2B2Address, to='http://www.i2b2.org/')
-
-        from admin_lib import hcard_mock
-        hd = hcard_mock.MockDirectory()
-        binder.bind(KSearchService, to=hd)
-
-        # TODO: use injection for MedCenter
-        mc = medcenter.MedCenter(hd, hd.trainedThru)
-        binder.bind(medcenter.MedCenter, mc)
-
-        ts = heron_policy._TestTimeSource()
-        conn = heron_policy._TestDBConn()
-        # TODO: use injection for HeronRecords
-        hp = heron_policy.HeronRecords(conn, mc, ts, saa_survey_id=11, oversight_project_id=34)
-
-        binder.bind(datetime.date, to=ts)
-        binder.bind(heron_policy.HeronRecords, to=hp)
-
-        hp = heron_policy._mock()
-        binder.bind(heron_policy.HeronRecords, hp)
-        
-        cl = Checklist(mc, hp, ts)
-        binder.bind(Checklist, cl)
 
         binder.bind(KCASOptions,
                     config.TestTimeOptions(
@@ -402,6 +369,7 @@ class Mock(injector.Module):
                     config.TestTimeOptions(dict(_sample_err_settings,
                                                 debug=True)))
 
+                    
 if __name__ == '__main__':  # pragma nocover
     # test usage
     from paste import httpserver
@@ -410,15 +378,12 @@ if __name__ == '__main__':  # pragma nocover
     host, port = sys.argv[1:3]
 
     # mod_wsgi conventional entry point @@needs to be global
-    application = injector.Injector([IntegrationTest(),
-                                     ErrorHandling(), CASWrap()]).get(KTopApp)
-    #application = injector.Injector([Mock(),
-    #                                 ErrorHandling(), CASWrap()]).get(KTopApp)
-
+    application = IntegrationTest().depgraph().get(KTopApp)
 
     # In production use, static A/V media files would be
     # served with apache, but for test purposes, we'll use
     # paste DirectoryApp
+    # TODO: use paster
     app = prefix_router('/av/',
                         fileapp.DirectoryApp(HeronAccessPartsApp.htdocs),
                         application)

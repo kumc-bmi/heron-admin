@@ -12,11 +12,12 @@ John Smith::
   >>> mc = depgraph.get(medcenter.MedCenter)
   >>> hp = depgraph.get(heron_policy.HeronRecords)
   >>> okjs = hp.q_any(mc.affiliate('john.smith'))
+  >>> ajs = hp.repositoryAccess(okjs)
 
 Then calling the ensure_account method should ensure the following
 contents of the project management store::
 
-  >>> pm.ensure_account(okjs)
+  >>> pm.ensure_account(ajs)
 
   >>> import pprint
   >>> dbsrc = depgraph.get((Session, __name__))
@@ -44,6 +45,7 @@ from sqlalchemy.types import String, Integer, Date, Enum
 import sqlalchemy
 
 import medcenter
+import heron_policy
 import config
 
 
@@ -151,13 +153,15 @@ class UserRole(Base, Audited):
 CONFIG_SECTION='i2b2pm'
 
 class IntegrationTest(injector.Module):
-    ini='integration-test.ini'
+    def __init__(self, ini='integration-test.ini'):
+        injector.Module.__init__(self)
+        self._ini = ini
 
     def configure(self, binder):
         binder.bind(DeclarativeMeta, Base)
 
         rt = config.RuntimeOptions(['url'])
-        rt.load(self.ini, CONFIG_SECTION)
+        rt.load(self._ini, CONFIG_SECTION)
         settings = rt._d  # KLUDGE!
         engine = sqlalchemy.engine_from_config(settings, 'sqlalchemy.')
         Base.metadata.bind = engine
@@ -169,8 +173,8 @@ class IntegrationTest(injector.Module):
         return [IntegrationTest] + heron_policy.IntegrationTest.deps()
 
     @classmethod
-    def depgraph(cls):
-        return injector.Injector([class_() for class_ in cls.deps()])
+    def depgraph(cls, ini='integration-test.ini'):
+        return injector.Injector([class_(ini) for class_ in cls.deps()])
 
 
 class Mock(injector.Module):
