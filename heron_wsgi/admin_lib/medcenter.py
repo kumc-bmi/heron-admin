@@ -1,8 +1,7 @@
 '''medcenter.py -- academic medical center directory/policy
 
-  >>> import hcard_mock
-  >>> d = hcard_mock.MockDirectory()
-  >>> m = MedCenter(d, d.trainedThru)
+  >>> depgraph = injector.Injector([Mock()])
+  >>> m = depgraph.get(MedCenter)
 
 Look someone up in the enterprise directory::
 
@@ -29,13 +28,21 @@ import sys
 import urllib
 import urllib2
 
+import injector
+from injector import inject
+
 import config
+
+KSearchService = injector.Key('SearchService')
+KTrainingFunction = injector.Key('TrainingFunction')
 
 CHALK_CONFIG_SECTION='chalk'
 
 class MedCenter(object):
     excluded_jobcode = "24600"
 
+    @inject(searchsvc=KSearchService,
+            trainingfn=KTrainingFunction)
     def __init__(self, searchsvc, trainingfn):
         self._svc = searchsvc
         self._training = trainingfn
@@ -135,6 +142,17 @@ def chalkdb_queryfn(ini, section=CHALK_CONFIG_SECTION):  # pragma nocover. not w
 
         return body.strip()  # get rid of newline
     return training_expiration
+
+
+class Mock(injector.Module):
+    def configure(self, binder):
+        import hcard_mock
+        d = hcard_mock.MockDirectory(hcard_mock.TEST_FILE)
+
+        binder.bind(KSearchService,
+                    injector.InstanceProvider(d))
+        binder.bind(KTrainingFunction,
+                    injector.InstanceProvider(d.trainedThru))
 
 
 def _mock():
