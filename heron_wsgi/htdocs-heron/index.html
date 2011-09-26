@@ -9,6 +9,19 @@
 <!-- todo: consider passing admin_mailbox in from python -->
 <body py:with="admin_mailbox='heron-admin@kumc.edu'">
   <div id="menu">
+  <div class="header png"><h3>i2b2 Query and Analysis Tool</h3>
+  <ul>
+    <li>
+  <form method="post" action="${i2b2_login_path}">
+    <p class="doit">
+      <input type="submit" py:attrs="accessDisabled" value="Start Query Tool" />
+    </p>
+  </form>
+  </li>
+  </ul>
+  </div>
+
+  <div class="header png"><h3>Investigator Requests</h3>
   <ul>
     <li><a href="${oversight_path}">HERON
     Sponsorship Request</a>
@@ -16,8 +29,14 @@
     <li><a href="https://redcap.kumc.edu/surveys/?s=rRYkiH">HERON
     Data Usage Request</a>
     </li>
+  </ul>
+  </div>
+
+  <div class="header png"><h3>Oversight</h3>
+  <ul>
     <li><a href="https://redcap.kumc.edu/redcap_v4.1.0/setup.php?pid=238">DROC Oversight Tools</a></li>
   </ul>
+  </div>
   </div>
 
   <div id="main">
@@ -101,12 +120,6 @@
 	</p>
       </form>
 
-  <div class="header png"><h3>i2b2 Query and Analysis Tool</h3>
-
-  <form method="post" action="${i2b2_login_path}">
-    <p class="doit">
-      <input type="submit" py:attrs="accessDisabled" value="Start Query Tool" />
-    </p>
     <ol>
       <li>
 	<label>
@@ -148,9 +161,6 @@
       please contact <a href="mailto:${admin_mailbox}?subject=HSC%20training%20records"
       >${admin_mailbox}</a>.</em>
     </p>
-  </form>
-
-  </div>
 
   <div class="header png">
     <h3>Problems? Questions? Ideas?</h3>
