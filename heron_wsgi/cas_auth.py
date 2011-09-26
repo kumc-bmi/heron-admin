@@ -31,8 +31,8 @@ The next step is a link to the CAS service with the `service` param set to our l
    >>> _loc(r2.headers)
    'http://example/cas/login?service=http%3A%2F%2Flocalhost%2Flogin'
 
-The the CAS service redirects back with a ticket.
-paste.auth.cas uses urllib.urlopen(), so we need to override it for testing::
+The the CAS service redirects back with a ticket::
+
    >>> with default_urlopener(LinesUrlOpener(['yes', 'john.smith'])):
    ...     r3 = t.get('/login?ticket=ST-381409-fsFVbSPrkoD9nANruV4B-example', status=303)
    >>> _loc(r3.headers)
@@ -159,6 +159,8 @@ class LinesResponse(object):
 
 @contextmanager
 def default_urlopener(u):
+    '''Override URLOpener used in urllib.urlopen(), e.g. by paste.auth.cas
+    '''
     sv = urllib._urlopener
     urllib._urlopener = u
     try:

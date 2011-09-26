@@ -8,14 +8,18 @@ def main():
     import db_util
     import hcard_mock
     import heron_policy
+    import i2b2pm
+    import ldaplib
     import medcenter
     import redcap_connect
-    
+
     doctest.testmod(checklist)
     doctest.testmod(config)
     doctest.testmod(db_util)
     doctest.testmod(hcard_mock)
     doctest.testmod(heron_policy)
+    doctest.testmod(i2b2pm)
+    doctest.testmod(ldaplib)
     doctest.testmod(medcenter)
     doctest.testmod(redcap_connect)
 

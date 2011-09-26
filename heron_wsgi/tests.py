@@ -4,13 +4,12 @@ def main():
     from admin_lib import tests as admin_tests
     admin_tests.main()
 
-    import heron_srv
-    doctest.testmod(heron_srv)
-
     import cas_auth
-    doctest.testmod(cas_auth)
-
+    import heron_srv
     import usrv
+
+    doctest.testmod(cas_auth)
+    doctest.testmod(heron_srv)
     doctest.testmod(usrv)
 
 
