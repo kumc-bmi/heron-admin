@@ -1,9 +1,10 @@
 '''heron_policy.py -- HERON policy decisions, records
 
-  >>> m = medcenter._mock()
-  >>> hp = HeronRecords(_test_datasource, m, _TestTimeSource(),
-  ...                   saa_survey_id=11, oversight_project_id=34)
+  >>> depgraph = injector.Injector([Mock(), medcenter.Mock()])
+  >>> m = depgraph.get(medcenter.MedCenter)
+  >>> hp = depgraph.get(HeronRecords)
 
+.. todo:: explain our use of injector a bit
 
 Look up an investigator and a student::
 
@@ -53,25 +54,36 @@ Make sure we recover, eventually, after database errors::
 
 '''
 
+import injector
+from injector import inject
+
 from db_util import transaction, oracle_connect, mysql_connect
 import config
-
 import medcenter
 
 REDCAPDB_CONFIG_SECTION='redcapdb'
+SAA_CONFIG_SECTION='saa_survey'
+OVERSIGHT_CONFIG_SECTION='oversight_survey'
 
+KDataSource = injector.Key('DataSource')
+KTimeSource = injector.Key('TimeSource')
 
 class HeronRecords(object):
     qty_institutions = len(('kuh', 'kupi', 'kumc'))
 
-    def __init__(self, datasource, medcenter, timesrc,
-                 saa_survey_id, oversight_project_id):
+    @inject(datasource=KDataSource,
+            mc=medcenter.MedCenter,
+            timesrc=KTimeSource,
+            saa_opts=(config.Options, SAA_CONFIG_SECTION),
+            oversight_opts=(config.Options, OVERSIGHT_CONFIG_SECTION))
+    def __init__(self, datasource, mc, timesrc,
+                 saa_opts, oversight_opts):
         # TODO: connection pooling/management?
         self._datasrc = datasource
-        self._m = medcenter
+        self._m = mc
         self._t = timesrc
-        self._saa_survey_id = saa_survey_id
-        self._oversight_project_id = oversight_project_id
+        self._saa_survey_id = saa_opts.survey_id
+        self._oversight_project_id = oversight_opts.project_id
 
     def check_saa_signed(self, agent):
         '''Test for an authenticated SAA survey response bearing the agent's email address.
@@ -225,7 +237,18 @@ def datasource(ini, section=REDCAPDB_CONFIG_SECTION):
     return get_connection
 
 
-def _mock(m=None, ini='integration-test.ini'):
+class Mock(injector.Module):
+    def configure(self, binder):
+        binder.bind(KDataSource,
+                    injector.InstanceProvider(_test_datasource))
+        binder.bind(KTimeSource, _TestTimeSource),
+        binder.bind((config.Options, SAA_CONFIG_SECTION),
+                    config.TestTimeOptions({'survey_id': 11}))
+        binder.bind((config.Options, OVERSIGHT_CONFIG_SECTION),
+                    config.TestTimeOptions({'project_id': 34}))
+
+
+def _mock(m=None):
     if m is None:
         m = medcenter._mock()
 
@@ -308,9 +331,9 @@ def _integration_test(m=None, ini='integration-test.ini'):  # pragma nocover
         m = medcenter._integration_test()
 
     srt = config.RuntimeOptions(['survey_id'])
-    srt.load(ini, 'saa_survey')
+    srt.load(ini, SAA_CONFIG_SECTION)
     ort = config.RuntimeOptions(['project_id'])
-    ort.load(ini, 'oversight_survey')
+    ort.load(ini, OVERSIGHT_CONFIG_SECTION)
     return HeronRecords(datasource(ini), m, datetime.date,
                         int(srt.survey_id), int(ort.project_id))
 
