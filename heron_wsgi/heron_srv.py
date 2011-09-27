@@ -1,56 +1,26 @@
 '''heron_srv.py -- HERON administrative web interface
-=====================================================
+-----------------------------------------------------
 
-Login
------
+Main features:
 
-A plain request for the homepage redirects us to the CAS login page:
+  * :class:`CASWrap` restricts access using CAS login
+    - see :func:`test_grant_access_with_valid_cas_ticket`
 
-  >>> from paste.fixture import TestApp
-  >>> t = TestApp(Mock.make())
-  >>> r1 = t.get('http://localhost/', status=303)
-  >>> r2 = r1.follow()
-  >>> dict(r2.headers)['location']
-  'https://example/cas/login?service=http%3A%2F%2Flocalhost%2Flogin'
+  * :class:`HeronAccessPartsApp` provides:
+    - REDCap integration for System Access Agreement
+    - I2B2 access to qualified faculty and users they sponsor
+    - Investigator requests
+      - building a list of people to sponsor
+      - REDCap integration
 
-Assuming successful login, the CAS service redirects back with a ticket::
+.. todo:: DROC oversight reports
 
-  >>> from cas_auth import default_urlopener, LinesUrlOpener
-  >>> with default_urlopener(LinesUrlOpener(['yes', 'john.smith'])):
-  ...     r3 = t.get('/login?ticket=ST-381409-fsFVbSPrkoD9nANruV4B-example',
-  ...                status=303)
-  >>> dict(r3.headers)['location']
-  'http://localhost/'
+See also: `HERON training materials`__
 
-We validate the ticket and grant access::
+__ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
 
-  >>> r4 = r3.follow(status=200)
-  >>> 'John Smith' in r4
-  True
-
-
-System Access Agreement
------------------------
-
-  >>> r5 = t.get(HeronAccessPartsApp.saa_path, status=303)
-  >>> dict(r5.headers)['location']
-  'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&user_id=john.smith'
-
-.. todo:: automated test for link to system access agreement
 .. todo:: automated test for LDAP failure
-
-
-Error handling needs configuration::
-
-
-  >>> print config.TestTimeOptions(_sample_err_settings).inifmt(ERR_SECTION)
-  [errors]
-  debug=False
-  error_email=sysadmin@example.edu
-  error_email_from=heron@example.edu
-  error_subject_prefix=HERON crash
-  smtp_server=smtp.example.edu
-
+.. todo:: automated test for database failure
 
 '''
 
@@ -145,10 +115,17 @@ class HeronAccessPartsApp(object):
         return ans.wsgi_application(environ, start_response)
 
     def saa_redir(self, environ, start_response):
-        '''
+        '''Redirect to a per-user System Access Agreement REDCap survey.
+
+          >>> t, r4 = test_grant_access_with_valid_cas_ticket()
+          >>> r5 = t.get(HeronAccessPartsApp.saa_path, status=303)
+          >>> dict(r5.headers)['location']
+          'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&user_id=john.smith'
+
         Hmm... we're doing a POST to the REDCap API inside a GET.
         Kinda iffy, w.r.t. safety and such.
         '''
+
         _, uid, full_name = self._request_agent(environ)
         return self._survey_redir(self._saa_opts, uid, {
                 'user_id': uid, 'full_name': full_name},
@@ -167,6 +144,17 @@ class HeronAccessPartsApp(object):
         return HTTPSeeOther(there).wsgi_application(environ, start_response)
 
     def oversight_redir(self, environ, start_response):
+        '''Redirect to a per-user sponsorship/data-use REDCap survey.
+
+          >>> t, r4 = test_grant_access_with_valid_cas_ticket()
+          >>> r5 = t.get(HeronAccessPartsApp.team_done_path, status=303)
+          >>> dict(r5.headers)['location']
+          'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&is_data_request=0&multi=yes&user_id=john.smith'
+
+        Hmm... we're doing a POST to the REDCap API inside a GET.
+        Kinda iffy, w.r.t. safety and such.
+        '''
+
         _, uid, full_name = self._request_agent(environ)
 
         params = dict(parse_querystring(environ))
@@ -222,7 +210,8 @@ class HeronAccessPartsApp(object):
 def team_params(mc, uids):
     r'''
     >>> import pprint
-    >>> pprint.pprint(list(team_params(medcenter.Mock.make(), ['john.smith', 'bill.student'])))
+    >>> pprint.pprint(list(team_params(medcenter.Mock.make(),
+    ...                                ['john.smith', 'bill.student'])))
     [('user_id_1', 'john.smith'),
      ('name_etc_1', 'Smith, John\nChair of Department of Neurology\n'),
      ('user_id_2', 'bill.student'),
@@ -230,7 +219,8 @@ def team_params(mc, uids):
 
     '''
     nested = [[('user_id_%d' % (i+1), uid),
-               ('name_etc_%d' % (i+1), '%s, %s\n%s\n%s' % (a.sn, a.givenname, a.title, a.ou))]
+               ('name_etc_%d' % (i+1), '%s, %s\n%s\n%s' % (
+                    a.sn, a.givenname, a.title, a.ou))]
               for (i, uid, a) in 
               [(i, uids[i], mc.affiliate(uids[i]))
                for i in range(0, len(uids))]]
@@ -263,12 +253,14 @@ def edit_team(params):
                 del uids[uids.index(n[2:])]
     return uids, goal
 
+
 def _request_uids(params):
     v = params.get('uids', None)
     return v.split(' ') if v else []
 
 
 class CASWrap(injector.Module):
+
     def configure(self, binder):
         pass
 
@@ -281,6 +273,40 @@ class CASWrap(injector.Module):
                                         app.login_path, app.logout_path,
                                         SessionMiddleware(app, session_opts))
         return prefix_router(app.base_path, cas_app, app)
+
+
+def test_home_page_redirects_to_cas():
+    '''
+    A plain request for the homepage redirects us to the CAS login page:
+
+      >>> t, r2 = test_home_page_redirects_to_cas()
+      >>> dict(r2.headers)['location']
+      'https://example/cas/login?service=http%3A%2F%2Flocalhost%2Flogin'
+    '''
+    from paste.fixture import TestApp
+    heron_policy._test_datasource(reset=True)
+    t = TestApp(Mock.make())
+    r1 = t.get('http://localhost/', status=303)
+    return t, r1.follow()
+
+
+def test_grant_access_with_valid_cas_ticket(t=None, r2=None):
+    '''After CAS login, we validate the ticket and grant access::
+
+      >>> t, r2 = test_home_page_redirects_to_cas()
+      >>> t, r4 = test_grant_access_with_valid_cas_ticket(t, r2)
+      >>> 'John Smith' in r4
+      True
+    '''
+    if t is None:
+        t, r2 = test_home_page_redirects_to_cas()
+
+    from cas_auth import default_urlopener, LinesUrlOpener
+    with default_urlopener(LinesUrlOpener(['yes', 'john.smith'])):
+        r3 = t.get('/login?ticket=ST-381409-fsFVbSPrkoD9nANruV4B-example',
+                   status=303)
+    r4 = r3.follow(status=200)
+    return t, r4
 
 
 ERR_SECTION='errors'
@@ -305,6 +331,18 @@ def error_mapper(code, message, environ, global_conf):
         return None
 
 def err_handler(app, rt, template = 'oops.html'):
+    '''
+    Error handling needs configuration::
+
+      >>> print config.TestTimeOptions(_sample_err_settings).inifmt(ERR_SECTION)
+      [errors]
+      debug=False
+      error_email=sysadmin@example.edu
+      error_email_from=heron@example.edu
+      error_subject_prefix=HERON crash
+      smtp_server=smtp.example.edu
+    '''
+
     def handle(environ, start_response):
         try:
             return app(environ, start_response)
