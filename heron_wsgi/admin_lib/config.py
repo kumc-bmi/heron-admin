@@ -20,7 +20,8 @@ class Options(object):
         return '\n'.join(["[%s]" % section] + lines)
 
     def __repr__(self):
-        return 'Options(%s)' % sorted(self._d.keys())
+        return 'Options(%s / %s)' % (sorted(self._attrs),
+                                     sorted(self._d.keys()))
 
 
 class RuntimeOptions(Options):  # pragma nocover

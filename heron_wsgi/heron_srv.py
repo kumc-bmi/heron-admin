@@ -1,5 +1,8 @@
 '''heron_srv.py -- HERON administrative web interface
+=====================================================
 
+Login
+-----
 
 A plain request for the homepage redirects us to the CAS login page:
 
@@ -26,6 +29,13 @@ We validate the ticket and grant access::
   True
 
 
+System Access Agreement
+-----------------------
+
+  >>> r5 = t.get(HeronAccessPartsApp.saa_path, status=303)
+  >>> dict(r5.headers)['location']
+  'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&user_id=john.smith'
+
 .. todo:: automated test for link to system access agreement
 .. todo:: automated test for LDAP failure
 
@@ -43,6 +53,8 @@ Error handling needs configuration::
 
 
 '''
+
+import sys
 import datetime
 from urllib import URLopener, urlencode
 import urllib2
@@ -334,28 +346,39 @@ class ErrorHandling(injector.Module):
 
 
 class IntegrationTest(injector.Module):
-    @classmethod
-    def depgraph(cls,
-                 admin_ini='admin_lib/integration-test.ini'):
-        return injector.Injector([IntegrationTest(),
-                                  ErrorHandling(), CASWrap()] +
-                                 [class_(admin_ini)
-                                  for class_ in i2b2pm.IntegrationTest.deps()])
+    webapp_ini='integration-test.ini'
+    admin_ini='admin_lib/integration-test.ini'
 
-    def configure(self, binder,
-                  webapp_ini='integration-test.ini'):
+    @classmethod
+    def depgraph(cls):
+        return injector.Injector([class_(cls.admin_ini)
+                                  for class_ in i2b2pm.IntegrationTest.deps()]
+                                 + [IntegrationTest(),
+                                    ErrorHandling(), CASWrap()])
+
+    def configure(self, binder):
         i2b2_settings = config.RuntimeOptions('cas_login').load(
-            webapp_ini, 'i2b2')
+            self.webapp_ini, 'i2b2')
         binder.bind(KI2B2Address, to=i2b2_settings.cas_login)
+
+        saa_section = heron_policy.SAA_CONFIG_SECTION
+        droc_section = heron_policy.OVERSIGHT_CONFIG_SECTION
+        binder.bind((config.Options, saa_section),
+                    redcap_connect.settings(self.admin_ini,
+                                            saa_section))
+        binder.bind((config.Options, droc_section),
+                     redcap_connect.settings(self.admin_ini,
+                                             droc_section,
+                                             ['project_id']))
 
         binder.bind(URLopener,
                     injector.InstanceProvider(urllib2.build_opener()))
 
         binder.bind(KCASOptions,
-                    config.RuntimeOptions('base').load(webapp_ini, 'cas'))
+                    config.RuntimeOptions('base').load(self.webapp_ini, 'cas'))
         binder.bind(KErrorOptions,
                     config.RuntimeOptions(_sample_err_settings.keys()
-                                          ).load(webapp_ini, 'errors'))
+                                          ).load(self.webapp_ini, 'errors'))
 
 
 class Mock(injector.Module):
@@ -368,6 +391,18 @@ class Mock(injector.Module):
     Then automatically inject it into a CAS and Error handling wrappers::
       >>> tapp = depgraph.get(KTopApp)
 
+    Make sure we override the saa opts so that they have what
+    redcap_connect needs, and not just what heron_polic needs::
+
+      >>> rt = depgraph.get((config.Options, heron_policy.SAA_CONFIG_SECTION))
+      >>> rt.domain
+      'example.edu'
+
+      >>> rt = depgraph.get((config.Options,
+      ...                    heron_policy.OVERSIGHT_CONFIG_SECTION))
+      >>> rt.project_id
+      34
+
     '''
 
     @classmethod
@@ -376,11 +411,16 @@ class Mock(injector.Module):
 
     @classmethod
     def depgraph(cls):
-        return injector.Injector([Mock(), ErrorHandling(), CASWrap(),
+        return injector.Injector([ErrorHandling(), CASWrap(),
                                   i2b2pm.Mock(), heron_policy.Mock(),
-                                  medcenter.Mock()])
+                                  medcenter.Mock(), Mock()])
 
     def configure(self, binder):
+        binder.bind((config.Options, heron_policy.SAA_CONFIG_SECTION),
+                    redcap_connect._test_settings)
+        binder.bind((config.Options, heron_policy.OVERSIGHT_CONFIG_SECTION),
+                    redcap_connect._test_settings)
+
         binder.bind(URLopener,
                     # avoid UnknownProvider: couldn't determine provider ...
                     injector.InstanceProvider(redcap_connect._TestUrlOpener()))
