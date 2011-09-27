@@ -13,5 +13,5 @@ heron_wsgi/integration-test.ini
 heron_wsgi/admin_lib/integration-test.ini
 heron_wsgi/htmlcov
 heron_wsgi/.coverage
-heron_wsgi/heron_wsgi.egg-info
+heron_wsgi.egg-info
 

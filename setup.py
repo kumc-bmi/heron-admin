@@ -24,7 +24,9 @@ requires = [
     'beaker',
     'paste',
     'genshi',
-    'injector'
+    'injector',
+    'PasteDeploy',
+    'PasteScript',
     ]
 
 if sys.version_info[:3] < (2,5,0):
@@ -49,10 +51,10 @@ setup(name='heron_wsgi',
 # TODO: learn how test_suite works
 #     test_suite='heron_acct',
       install_requires = requires,
-#      entry_points = """\
-#      [paste.app_factory]
-#      main = heron_acct:main
-#      """,
-#      paster_plugins=['pyramid'],
+      entry_points = """\
+      [paste.app_factory]
+      main = heron_wsgi.heron_srv:app_factory
+      """,
+      paster_plugins=['pyramid'],
       )
 

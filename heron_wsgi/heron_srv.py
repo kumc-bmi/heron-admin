@@ -260,7 +260,10 @@ def _request_uids(params):
 
 
 class CASWrap(injector.Module):
-
+    '''
+    .. todo:: refactor into paste.filter_factory
+    http://pythonpaste.org/deploy/#paste-filter-factory
+    '''
     def configure(self, binder):
         pass
 
@@ -383,29 +386,23 @@ class ErrorHandling(injector.Module):
         return err_handler(app, rt)
 
 
-class IntegrationTest(injector.Module):
-    webapp_ini='integration-test.ini'
-    admin_ini='admin_lib/integration-test.ini'
-
-    @classmethod
-    def depgraph(cls):
-        return injector.Injector([class_(cls.admin_ini)
-                                  for class_ in i2b2pm.IntegrationTest.deps()]
-                                 + [IntegrationTest(),
-                                    ErrorHandling(), CASWrap()])
+class RunTime(injector.Module):
+    def __init__(self, webapp_ini, admin_ini):
+        self._webapp_ini = webapp_ini
+        self._admin_ini = admin_ini
 
     def configure(self, binder):
-        i2b2_settings = config.RuntimeOptions('cas_login').load(
-            self.webapp_ini, 'i2b2')
+        i2b2_settings = config.RuntimeOptions(['cas_login']).load(
+            self._webapp_ini, 'i2b2')
         binder.bind(KI2B2Address, to=i2b2_settings.cas_login)
 
         saa_section = heron_policy.SAA_CONFIG_SECTION
         droc_section = heron_policy.OVERSIGHT_CONFIG_SECTION
         binder.bind((config.Options, saa_section),
-                    redcap_connect.settings(self.admin_ini,
+                    redcap_connect.settings(self._admin_ini,
                                             saa_section))
         binder.bind((config.Options, droc_section),
-                     redcap_connect.settings(self.admin_ini,
+                     redcap_connect.settings(self._admin_ini,
                                              droc_section,
                                              ['project_id']))
 
@@ -413,10 +410,18 @@ class IntegrationTest(injector.Module):
                     injector.InstanceProvider(urllib2.build_opener()))
 
         binder.bind(KCASOptions,
-                    config.RuntimeOptions('base').load(self.webapp_ini, 'cas'))
+                    config.RuntimeOptions('base'
+                                          ).load(self._webapp_ini, 'cas'))
         binder.bind(KErrorOptions,
                     config.RuntimeOptions(_sample_err_settings.keys()
-                                          ).load(self.webapp_ini, 'errors'))
+                                          ).load(self._webapp_ini, 'errors'))
+
+    @classmethod
+    def depgraph(cls, webapp_ini, admin_ini):
+        return injector.Injector([class_(admin_ini)
+                                  for class_ in i2b2pm.IntegrationTest.deps()]
+                                 + [RunTime(webapp_ini, admin_ini),
+                                    ErrorHandling(), CASWrap()])
 
 
 class Mock(injector.Module):
@@ -473,7 +478,13 @@ class Mock(injector.Module):
                     config.TestTimeOptions(dict(_sample_err_settings,
                                                 debug=True)))
 
-                    
+
+def app_factory(global_config,
+                webapp_ini='integration-test.ini',
+                admin_ini='admin_lib/integration-test.ini'):
+    return RunTime.depgraph(webapp_ini, admin_ini).get(KTopApp)
+
+
 if __name__ == '__main__':  # pragma nocover
     # test usage
     from paste import httpserver
@@ -481,15 +492,12 @@ if __name__ == '__main__':  # pragma nocover
     import sys
     host, port = sys.argv[1:3]
 
-    # mod_wsgi conventional entry point @@needs to be global
-    application = IntegrationTest().depgraph().get(KTopApp)
-
     # In production use, static A/V media files would be
     # served with apache, but for test purposes, we'll use
     # paste DirectoryApp
     # TODO: use paster
     app = prefix_router('/av/',
                         fileapp.DirectoryApp(HeronAccessPartsApp.htdocs),
-                        application)
+                        app_factory({}))
 
     httpserver.serve(app, host=host, port=port)
