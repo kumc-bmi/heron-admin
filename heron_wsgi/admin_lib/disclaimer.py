@@ -8,7 +8,7 @@ import sqlalchemy
 from sqlalchemy import Table, Column, text
 from sqlalchemy.types import INTEGER, VARCHAR, TEXT, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import mapper
+from sqlalchemy.orm import mapper, column_property
 from sqlalchemy.sql import join, and_, select
 from sqlalchemy.orm import sessionmaker
 
@@ -56,78 +56,75 @@ def colsmatch(t1, t2, cols):
 
 def eav_join(t, keycols, attrs, acol, vcol):
     '''
-      >>> m, j0 = eav_join(redcap_data,
-      ...                  ['project_id', 'record'],
-      ...                  ['url'],
-      ...                  'field_name', 'value')
-      >>> print j0.select()
-      SELECT project_id, event_id, record, field_name, value 
-      FROM (SELECT redcap_data.project_id AS project_id, redcap_data.event_id AS event_id, redcap_data.record AS record, redcap_data.field_name AS field_name, redcap_data.value AS value 
-      FROM redcap_data 
-      WHERE redcap_data.field_name = :field_name_1)
+      >>> cols1, j1, w1 = eav_join(redcap_data,
+      ...                          ['project_id', 'record'],
+      ...                          ['url'],
+      ...                          'field_name', 'value')
+      >>> cols1
+      [Column(u'value', TEXT(), table=<j_url>)]
 
-      >>> m
-      [Column(u'value', TEXT(), table=<redcap_data>)]
+      >>> print select(cols1).where(w1)
+      SELECT j_url.value 
+      FROM redcap_data AS j_url 
+      WHERE j_url.field_name = :field_name_1
 
-      >>> m1, j1 = eav_join(redcap_data,
-      ...                  ['project_id', 'record'],
-      ...                  ['url', 'name'],
-      ...                  'field_name', 'value')
-      >>> print select(m1)
-      SELECT redcap_data.value, j_name.value 
-      FROM redcap_data, (SELECT project_id AS project_id, event_id AS event_id, record AS record, field_name AS field_name, value AS value, redcap_data.project_id AS redcap_data_project_id, redcap_data.event_id AS redcap_data_event_id, redcap_data.record AS redcap_data_record, redcap_data.field_name AS redcap_data_field_name, redcap_data.value AS redcap_data_value 
-      FROM (SELECT redcap_data.project_id AS project_id, redcap_data.event_id AS event_id, redcap_data.record AS record, redcap_data.field_name AS field_name, redcap_data.value AS value 
-      FROM redcap_data 
-      WHERE redcap_data.field_name = :field_name_1) JOIN redcap_data ON project_id = redcap_data.project_id AND record = redcap_data.record AND redcap_data.field_name = :field_name_2) AS j_name
+      >>> c2, j2, w2 = eav_join(redcap_data,
+      ...                       ['project_id', 'record'],
+      ...                       ['url', 'name'],
+      ...                       'field_name', 'value')
+      >>> print select(c2).where(w2)
+      SELECT j_url.value, j_name.value 
+      FROM redcap_data AS j_url, redcap_data AS j_name 
+      WHERE j_url.field_name = :field_name_1 AND j_url.project_id = j_name.project_id AND j_url.record = j_name.record AND j_name.field_name = :field_name_2
 
-      >>> m2, j2 = eav_join(redcap_data,
-      ...                  ['project_id', 'record'],
-      ...                  ['url', 'name', 'current'],
-      ...                  'field_name', 'value')
-      >>> print select(m2)
-      SELECT redcap_data.value, j_name.value, j_current.j_name_value 
-      FROM redcap_data, (SELECT project_id AS project_id, event_id AS event_id, record AS record, field_name AS field_name, value AS value, redcap_data.project_id AS redcap_data_project_id, redcap_data.event_id AS redcap_data_event_id, redcap_data.record AS redcap_data_record, redcap_data.field_name AS redcap_data_field_name, redcap_data.value AS redcap_data_value 
-      FROM (SELECT redcap_data.project_id AS project_id, redcap_data.event_id AS event_id, redcap_data.record AS record, redcap_data.field_name AS field_name, redcap_data.value AS value 
-      FROM redcap_data 
-      WHERE redcap_data.field_name = :field_name_1) JOIN redcap_data ON project_id = redcap_data.project_id AND record = redcap_data.record AND redcap_data.field_name = :field_name_2) AS j_name, (SELECT j_name.project_id AS j_name_project_id, j_name.event_id AS j_name_event_id, j_name.record AS j_name_record, j_name.field_name AS j_name_field_name, j_name.value AS j_name_value, j_name.redcap_data_project_id AS j_name_redcap_data_project_id, j_name.redcap_data_event_id AS j_name_redcap_data_event_id, j_name.redcap_data_record AS j_name_redcap_data_record, j_name.redcap_data_field_name AS j_name_redcap_data_field_name, j_name.redcap_data_value AS j_name_redcap_data_value, redcap_data.project_id AS redcap_data_project_id, redcap_data.event_id AS redcap_data_event_id, redcap_data.record AS redcap_data_record, redcap_data.field_name AS redcap_data_field_name, redcap_data.value AS redcap_data_value 
-      FROM (SELECT project_id AS project_id, event_id AS event_id, record AS record, field_name AS field_name, value AS value, redcap_data.project_id AS redcap_data_project_id, redcap_data.event_id AS redcap_data_event_id, redcap_data.record AS redcap_data_record, redcap_data.field_name AS redcap_data_field_name, redcap_data.value AS redcap_data_value 
-      FROM (SELECT redcap_data.project_id AS project_id, redcap_data.event_id AS event_id, redcap_data.record AS record, redcap_data.field_name AS field_name, redcap_data.value AS value 
-      FROM redcap_data 
-      WHERE redcap_data.field_name = :field_name_1) JOIN redcap_data ON project_id = redcap_data.project_id AND record = redcap_data.record AND redcap_data.field_name = :field_name_2) AS j_name JOIN redcap_data ON j_name.project_id = redcap_data.project_id AND j_name.record = redcap_data.record AND redcap_data.field_name = :field_name_3) AS j_current
-    '''
+
+      >>> c3, j3, w3 = eav_join(redcap_data,
+      ...                       ['project_id', 'record'],
+      ...                       ['disclaimer_id', 'url', 'current'],
+      ...                       'field_name', 'value')
+      >>> print select(c3).where(w3).apply_labels()
+      SELECT j_disclaimer_id.value AS j_disclaimer_id_value, j_url.value AS j_url_value, j_current.value AS j_current_value 
+      FROM redcap_data AS j_disclaimer_id, redcap_data AS j_url, redcap_data AS j_current 
+      WHERE j_disclaimer_id.field_name = :field_name_1 AND j_disclaimer_id.project_id = j_url.project_id AND j_disclaimer_id.record = j_url.record AND j_url.field_name = :field_name_2 AND j_disclaimer_id.project_id = j_current.project_id AND j_disclaimer_id.record = j_current.record AND j_current.field_name = :field_name_3
+      '''
 
     #aliases = dict([(n, t.alias('t_' + n)) for n in attrs])
 
     # use itertools rather than for loop for fold?
     #a0 = aliases[attrs[0]]
-    product = t.select().where(t.columns[acol] == attrs[0])
-    vcols = [t.columns[vcol]]
-    vcolnum = t.columns.keys().index(vcol)
+    t0 = t.alias('j_' + attrs[0])
+    product = t0
+    where = t0.columns[acol] == attrs[0]
+    vcols = [t0.columns[vcol]]
 
     for n in attrs[1:]:
-        where = and_(colsmatch(product, t, keycols), (t.columns[acol] == n))
-        product = product.join(t, where).alias('j_' + n)
-        vcols.append(product.columns[product.columns.keys()[vcolnum]])
+        tn = t.alias('j_' + n)
+        wn = colsmatch(product, tn, keycols)
+        where = and_(where, wn, (tn.columns[acol] == n))
+        product = product.join(tn, wn)
+        vcols.append(tn.columns[vcol])
 
-    return vcols, product
+    return vcols, product, where
 
 
 class Disclaimer(object):
-    pass
-
+    def __str__(self):
+        return 'Disclaimer%s' % (
+            (self.disclaimer_id, self.url, self.current),)
+   
 
 def make_map():
-    fields = ('disclaimer_id', 'name', 'url', 'current')
+    fields = ('disclaimer_id', 'url', 'current')
 
-    cols, j = eav_join(redcap_data,
+    cols, j, w = eav_join(redcap_data.select().where(
+            redcap_data.c.project_id==35).alias('disclaimers'),  #@@
                        ('project_id', 'record'),
                        fields,
                        'field_name', 'value')
 
-    mapper(Disclaimer, select(cols),
-           properties=dict(dict(zip(fields, cols)),
-                           project_id=j.c.project_id,
-                           record=j.c.record))
+    mapper(Disclaimer, select(cols).where(w).apply_labels().alias(),
+           primary_key=[cols[0]],
+           properties=dict(dict(zip(fields, cols))))
 
 
 def rt_engine(ini, section=REDCAPDB_CONFIG_SECTION, driver='mysql+mysqldb'):
@@ -165,4 +162,5 @@ if __name__ == '__main__':
     print sm
     s = sm()
     print s
-    print s.query(Disclaimer).all()
+    for d in s.query(Disclaimer).all():
+        print d
