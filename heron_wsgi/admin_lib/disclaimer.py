@@ -3,7 +3,11 @@
   >>> e = create_engine('sqlite://')
 '''
 
+import StringIO
+
 # from pypi
+from lxml import etree
+import urllib2
 import sqlalchemy
 from sqlalchemy import Table, Column, text
 from sqlalchemy.types import INTEGER, VARCHAR, TEXT, Integer, String
@@ -111,7 +115,38 @@ class Disclaimer(object):
     def __str__(self):
         return 'Disclaimer%s' % (
             (self.disclaimer_id, self.url, self.current),)
-   
+
+    def content(self, ua):
+        r'''
+           >>> d = Disclaimer()
+           >>> d.url = 'http://example/'
+           >>> d.content(_TestUrlOpener())
+           '<div id="blog-main">\nmain blog copy...\n</div>\n...\n'
+        '''
+        body = ua.open(self.url).read()
+        kludge = StringIO.StringIO(body.replace('&larr;', ''
+                                                ).replace('&rarr;', '')
+                                   )  #KLUDGE
+        elt = etree.parse(kludge).xpath('//*[@id="blog-main"]')[0]
+        return etree.tostring(elt)
+
+_test_doc='''
+<!DOCTYPE html>
+<html><head><title>...</title></head>
+<body>
+...
+<div id='blog-main'>
+main blog copy...
+</div>
+...
+</body>
+</html>
+'''
+
+class _TestUrlOpener(object):
+    def open(self, addr):
+        return StringIO.StringIO(_test_doc)
+
 
 def make_map():
     fields = ('disclaimer_id', 'url', 'current')
@@ -159,8 +194,7 @@ if __name__ == '__main__':
     engine = rt_engine('integration-test.ini')
     Base.metadata.bind = engine
     sm = sessionmaker(engine)
-    print sm
     s = sm()
-    print s
-    for d in s.query(Disclaimer).all():
+    for d in s.query(Disclaimer).filter(Disclaimer.current==1):
         print d
+        print d.content(urllib2.build_opener())
