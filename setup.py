@@ -27,6 +27,7 @@ requires = [
     'injector',
     'PasteDeploy',
     'PasteScript',
+    'pyinotify'
     ]
 
 if sys.version_info[:3] < (2,5,0):
@@ -44,6 +45,7 @@ setup(name='heron_wsgi',
       author=__author__.split('<')[0][:-1],
       author_email=__author__.split('<')[1][:-1],
       url=__contact__,
+      license=__license__,
       keywords='web wsgi hipaa policy enforcement',
       packages=find_packages(),
       include_package_data=True,
@@ -51,10 +53,12 @@ setup(name='heron_wsgi',
 # TODO: learn how test_suite works
 #     test_suite='heron_acct',
       install_requires = requires,
-      entry_points = """\
-      [paste.app_factory]
-      main = heron_wsgi.heron_srv:app_factory
-      """,
+      entry_points = {
+        'console_scripts':
+            ['logwatch=heron_wsgi.logwatch:main'],
+        'paste.app_factory':
+            ['main = heron_wsgi.heron_srv:app_factory']
+        },
       paster_plugins=['pyramid'],
       )
 
