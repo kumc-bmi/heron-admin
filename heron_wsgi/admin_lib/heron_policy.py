@@ -237,11 +237,11 @@ def datasource(ini, section=REDCAPDB_CONFIG_SECTION):
     '''
     .. todo: refactor into datasource
     '''
-    rt = config.RuntimeOptions('user password host sid engine'.split())
+    rt = config.RuntimeOptions('user password host port sid engine'.split())
     rt.load(ini, section)
     def get_connection():
         #return oracle_connect(rt.user, rt.password, rt.host, 1521, rt.sid)
-        return mysql_connect(rt.user, rt.password, rt.host, 3306, 'redcap')
+        return mysql_connect(rt.user, rt.password, rt.host, int(rt.port), 'redcap')
     return get_connection
 
 
