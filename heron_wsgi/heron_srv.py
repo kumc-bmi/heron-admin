@@ -29,6 +29,8 @@ import datetime
 from urllib import URLopener, urlencode
 import urllib2
 import itertools
+from os import path
+import logging
 
 from paste.httpexceptions import HTTPSeeOther, HTTPForbidden
 from paste.exceptions.errormiddleware import handle_exception
@@ -55,9 +57,11 @@ KCASApp = injector.Key('CASApp')
 KErrorOptions = injector.Key('ErrorOptions')
 KTopApp = injector.Key('TopApp')
 
+log = logging.getLogger(__name__)
+
 
 class HeronAccessPartsApp(object):
-    htdocs = 'htdocs-heron/'
+    htdocs = path.join(path.dirname(__file__), 'htdocs-heron/')
     base_path='/'
     login_path='/login'
     logout_path='/logout'
@@ -348,6 +352,7 @@ def err_handler(app, rt, template = 'oops.html'):
 
     def handle(environ, start_response):
         try:
+            log.debug('path: %s', environ.get('PATH_INFO', ''))
             return app(environ, start_response)
         except Exception, e:
             exc_info = sys.exc_info()
