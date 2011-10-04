@@ -20,7 +20,9 @@ CHANGES = '@@TODO' #open(os.path.join(here, 'CHANGES.txt')).read()
 requires = [
     'SQLAlchemy',
     'cx_Oracle',
+    'MySQL-python',
     'lxml',
+    'python-ldap',
     'beaker',
     'paste',
     'genshi',
@@ -59,6 +61,6 @@ setup(name='heron_wsgi',
         'paste.app_factory':
             ['main = heron_wsgi.heron_srv:app_factory']
         },
-      paster_plugins=['pyramid'],
+      #paster_plugins=['pyramid'],
       )
 
