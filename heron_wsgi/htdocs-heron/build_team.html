@@ -10,7 +10,7 @@
 
 <h1>HERON 
  <py:if test="not
- is_data_request">Sponsorship</py:if><py:if test="is_data_request">Data
+ is_data_request=='1'">Sponsorship</py:if><py:if test="is_data_request=='1'">Data
  Usage</py:if>:
  Select Team</h1>
 
@@ -44,9 +44,9 @@ ${peopleTable(team, 'r')}
 <form method="get" action="">
 <p>Look up a team member by giving the first letters of their surname, given name, or KUMC id:
 <dl>
-<dt><label for='sn'>Surname:</label></dt>
+<dt><label for='sn'>Last Name:</label></dt>
 <dd><input name='sn' /></dd>
-<dt><label for='givenname'>Given name:</label></dt>
+<dt><label for='givenname'>First Name:</label></dt>
 <dd><input name='givenname' /></dd>
 <dt><label for='cn'>KUMC id:</label></dt>
 <dd><input name='cn' /></dd>
