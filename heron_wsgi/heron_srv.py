@@ -199,12 +199,13 @@ class HeronAccessPartsApp(object):
         team = [self._m.affiliate(n) for n in uids]
         team.sort(key = lambda(a): (a.sn, a.givenname))
 
+        base = environ['SCRIPT_NAME']
         parts = dict(self._checklist.parts_for(session['user']),
-                     logout_path=self.logout_path,
-                     saa_path=self.saa_path,
-                     i2b2_login_path=self.i2b2_login_path,
-                     oversight_path=self.oversight_path,
-                     done_path=self.team_done_path,
+                     logout_path=base+self.logout_path,
+                     saa_path=base+self.saa_path,
+                     i2b2_login_path=base+self.i2b2_login_path,
+                     oversight_path=base+self.oversight_path,
+                     done_path=base+self.team_done_path,
                      team=team,
                      uids=' '.join(uids),
                      candidates=candidates)
@@ -353,6 +354,7 @@ def err_handler(app, rt, template = 'oops.html'):
     def handle(environ, start_response):
         try:
             log.debug('path: %s', environ.get('PATH_INFO', ''))
+            log.debug('script name: %s', environ['SCRIPT_NAME'])
             return app(environ, start_response)
         except Exception, e:
             exc_info = sys.exc_info()
