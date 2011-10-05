@@ -200,4 +200,5 @@ if __name__ == '__main__':
     pm = depgraph.get(I2B2PM)
 
     user_login_ok = hr.q_any(mc.affiliate(user_id))
-    pm.ensure_account(user_login_ok)
+    user_access = hr.repositoryAccess(user_login_ok)
+    pm.ensure_account(user_access)
