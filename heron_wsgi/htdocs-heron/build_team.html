@@ -8,6 +8,12 @@
 </head>
 <body>
 
+<h1>HERON 
+ <py:if test="not
+ is_data_request">Sponsorship</py:if><py:if test="is_data_request">Data
+ Usage</py:if>:
+ Select Team</h1>
+
 <py:def function="peopleTable(people, pfx)">
 <table py:if="people">
   <tr>
@@ -26,10 +32,12 @@
 ${peopleTable(team, 'r')}
 <p><input type="submit" name='goal' value="Remove" /></p>
 <input type="hidden" name="uids" value="${uids}" />
+<input type="hidden" name="is_data_request" value="${is_data_request}" />
 </form>
 
 <form py:if="team" method="get" action="${done_path}">
 <input type="hidden" name="uids" value="${uids}" />
+<input type="hidden" name="is_data_request" value="${is_data_request}" />
 <p><input type="submit" name="continue" value="Done Choosing People" /></p>
 </form>
 
@@ -45,6 +53,7 @@ ${peopleTable(team, 'r')}
 </dl>
 <input type="submit" name='goal' value="Search" />
 <input type="hidden" name="uids" value="${uids}" />
+<input type="hidden" name="is_data_request" value="${is_data_request}" />
 </p>
 </form>
 
@@ -52,6 +61,7 @@ ${peopleTable(team, 'r')}
 ${peopleTable(candidates, 'a')}
 <p><input type="submit" name='goal' value="Add" /></p>
 <input type="hidden" name="uids" value="${uids}" />
+<input type="hidden" name="is_data_request" value="${is_data_request}" />
 </form>
 </div>
 

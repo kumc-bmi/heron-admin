@@ -168,7 +168,7 @@ class HeronAccessPartsApp(object):
                                   dict(team_params(self._m, uids),
                                        multi='yes',
                                        user_id=uid, full_name=full_name,
-                                       is_data_request='0'),
+                                       is_data_request='1' if params.get('is_data_request', '') else '0'),
                                   environ, start_response, multi=True)
 
     def parts(self, environ, session):
@@ -207,6 +207,7 @@ class HeronAccessPartsApp(object):
                      oversight_path=base+self.oversight_path,
                      done_path=base+self.team_done_path,
                      team=team,
+                     is_data_request=params.get('is_data_request', '0'),
                      uids=' '.join(uids),
                      candidates=candidates)
         return parts
