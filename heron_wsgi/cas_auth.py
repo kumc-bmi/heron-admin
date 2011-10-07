@@ -196,34 +196,12 @@ from pyramid.events import subscriber
 from pyramid.authentication import CallbackAuthenticationPolicy
 from pyramid.authentication import AuthTktAuthenticationPolicy
 
-from admin_lib.config import Options, TestTimeOptions
+from admin_lib.config import Options, TestTimeOptions, RuntimeOptions
 
 log = logging.getLogger(__name__)
 
 CONFIG_SECTION='cas'
 PERMISSION='enterprise'
-
-class Redirector(object):
-    def __init__(self, cas_addr):
-        self._a = cas_addr
-
-    def configure(self, config):
-        config.add_view(self,
-                        context=pyramid.exceptions.HTTPForbidden,
-                        permission=pyramid.security.NO_PERMISSION_REQUIRED)
-
-    def __call__(self, context, request):
-        import sys
-        if 'ticket' in request.params:
-            # already been here before
-            raise HTTPForbidden
-
-        log.debug("redirector from: %s", request.url)
-        there = (urllib.basejoin(self._a, 'login') + '?' +
-                 urllib.urlencode(dict(service=request.url)))
-        log.debug("redirector to: %s, %s, %s", there, self._a, request.url)
-        return HTTPFound(there)
-
 
 class Validator(object):
     def __init__(self, cas_addr, ua=None):
@@ -241,6 +219,21 @@ class Validator(object):
         
     def configure(self, config):
         config.add_subscriber(self.check, pyramid.events.NewRequest)
+        config.add_view(self.redirect,
+                        context=pyramid.exceptions.HTTPForbidden,
+                        permission=pyramid.security.NO_PERMISSION_REQUIRED)
+
+    def redirect(self, context, request):
+        import sys
+        if 'ticket' in request.params:
+            # already been here before
+            raise HTTPForbidden
+
+        log.debug("redirector from: %s", request.url)
+        there = (urllib.basejoin(self._a, 'login') + '?' +
+                 urllib.urlencode(dict(service=request.url)))
+        log.debug("redirector to: %s, %s, %s", there, self._a, request.url)
+        return HTTPFound(there)
 
     def check(self, event):
         req = event.request
@@ -292,6 +285,30 @@ class Validator(object):
         return u
 
 
+class CapabilityStyle(object):
+    def __init__(self, auditor, permission):
+        self._aud = auditor
+        self._perm = permission
+
+    def permits(self, context, principals, permission):
+        log.debug('CapabilityStyle.permits? %s %s %s',
+                  context, principals, permission)
+
+        if permission == self._perm:
+            for cap in principals:
+                try:
+                    self._aud.audit(cap)
+                    return True
+                except TypeError:
+                    pass
+
+        log.debug('permits: False')
+        return False
+
+    def principals_allowed_by_permission(self, context, permission):
+        raise NotImplementedError
+
+
 class SetUp(injector.Module):
     @provides(CallbackAuthenticationPolicy)
     @inject(guard=Validator,
@@ -307,26 +324,22 @@ class SetUp(injector.Module):
     def validator(self, rt, ua):
         return Validator(rt.base, ua)
         
-    @provides(Redirector)
-    @inject(rt=(Options, CONFIG_SECTION))
-    def redirector(self, rt):
-        return Redirector(rt.base)
 
-
-class TestTime(injector.Module):
-    def __init__(self, base):
-        self._base = base
+class RunTime(injector.Module):
+    def __init__(self, ini):
+        self._ini = ini
 
     def configure(self, binder):
         binder.bind((Options, CONFIG_SECTION),
-                    to=TestTimeOptions({'base': self._base,
-                                        'app_secret': 'sekrit'}))
+                    RuntimeOptions(['base', 'app_secret']
+                                   ).load(self._ini, 'cas'))
+
         binder.bind(urllib.URLopener,
                     to=injector.InstanceProvider(urllib2.build_opener()))
 
     @classmethod
-    def depgraph(cls):
-        return injector.Injector([SetUp(), Mock()])
+    def depgraph(cls, ini):
+        return injector.Injector([SetUp(), RunTime(ini)])
 
 
 class Mock(injector.Module):
@@ -343,19 +356,7 @@ class Mock(injector.Module):
         return injector.Injector([SetUp(), Mock()])
 
 
-class _TestAuthz(object):
-    def permits(self, context, principals, permission):
-        log.debug('permits? %s %s %s', context, principals, permission)
-        if permission == PERMISSION:
-            return 'system.Authenticated' in principals
-
-        return True
-
-    def principals_allowed_by_permission(self, context, permission):
-        raise NotImplementedError
-
-
-def _integration_test(cas_base, host='127.0.0.1', port=8123):
+def _integration_test(ini, host='127.0.0.1', port=8123):
     from pyramid.config import Configurator
     from pyramid.response import Response
     from paste import httpserver
@@ -365,19 +366,17 @@ def _integration_test(cas_base, host='127.0.0.1', port=8123):
     def protected_view(req):
         return Response(app_iter=['I am: ', req.remote_user])
 
-    depgraph = injector.Injector([TestTime(cas_base), SetUp()])
-    val = depgraph.get(Validator)
+    depgraph = RunTime.depgraph(ini)
+    guard = depgraph.get(Validator)
     rt = depgraph.get((Options, CONFIG_SECTION))
     config = Configurator(settings={'pyramid.debug_routematch': True},
-                          authentication_policy=val.policy(rt.app_secret),
-                          authorization_policy=_TestAuthz(),
+                          authentication_policy=guard.policy(rt.app_secret),
+                          authorization_policy=CapabilityStyle(guard,
+                                                               PERMISSION),
                           default_permission=PERMISSION
                           )
 
-    rd = depgraph.get(Redirector)
-
-    val.configure(config)
-    rd.configure(config)
+    guard.configure(config)
 
     config.add_route('root', '')
     config.add_view(protected_view, route_name='root')
@@ -388,6 +387,6 @@ def _integration_test(cas_base, host='127.0.0.1', port=8123):
 
 if __name__ == '__main__':
     import sys
-    cas_base = sys.argv[1]
-    _integration_test(cas_base)
+    ini = sys.argv[1]
+    _integration_test(ini)
 
