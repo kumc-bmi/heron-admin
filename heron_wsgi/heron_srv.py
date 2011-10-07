@@ -32,6 +32,7 @@ import itertools
 from os import path
 import logging
 
+# see setup.py and http://pypi.python.org/pypi
 from paste.httpexceptions import HTTPSeeOther, HTTPForbidden
 from paste.exceptions.errormiddleware import handle_exception
 from paste.request import parse_querystring
@@ -39,7 +40,9 @@ from genshi.template import TemplateLoader
 import injector # http://pypi.python.org/pypi/injector/
                 # 0.3.1 7deba485e5b966300ef733c3393c98c6
 from injector import inject, provides
+from pyramid.view import view_config
 
+# modules in this package
 import cas_auth
 from cas_auth import route_if_prefix, prefix_router
 from usrv import TemplateApp, SessionMiddleware
@@ -58,6 +61,21 @@ KErrorOptions = injector.Key('ErrorOptions')
 KTopApp = injector.Key('TopApp')
 
 log = logging.getLogger(__name__)
+
+
+class CheckListTestView(object):
+    @inject(checklist=Checklist)
+    def __init__(self, checklist):
+        self._checklist = checklist
+
+    def configure(self, config, route_name):
+        config.add_view(self.get, route_name=route_name, request_method='GET')
+
+    def get(self, req):
+        from pyramid.response import Response
+        parts = self._checklist.parts_for(req.remote_user)
+        return Response(app_iter=['%s: %s' % (k, v)
+                                  for k, v in parts.iteritems()])
 
 
 class HeronAccessPartsApp(object):
