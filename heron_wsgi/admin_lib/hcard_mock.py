@@ -19,9 +19,11 @@ Search by cn and return a couple attributes::
 
 import os
 import re
+import logging
 
 from lxml import etree  # http://codespeak.net/lxml/ or python-lxml in ubuntu
 
+log = logging.getLogger(__name__)
 
 TEST_FILE = os.path.join(os.path.dirname(__file__), 'mockDirectory.html')
 
@@ -65,10 +67,15 @@ def _l2x(q):
     '''
     >>> _l2x('(cn=john.smith)')
     '//*[@id="john.smith"]'
+    >>> _l2x('(cn=john.smith*)')
+    '//*[@id="john.smith"]'
     '''
-    m = re.match(r'\(cn=([^)]+)\)', q)
+    log.debug('_l2x q: %s', q)
+    m = re.match(r'\(cn=([^*)]+)\*?\)', q)
     if m:
-        return _id_xpath(m.group(1))
+        xp = _id_xpath(m.group(1))
+        log.debug('_l2x xpath: %s', xp)
+        return xp
     raise ValueError
 
 

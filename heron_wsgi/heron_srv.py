@@ -224,6 +224,54 @@ class RepositoryLogin(object):
             return HTTPForbidden(detail=np.message)
 
 
+class TeamBuilder(object):
+    @inject(checklist=Checklist)
+    def __init__(self, checklist):
+        self._m = checklist.medcenter()
+
+    def configure(self, config, route_name):
+        config.add_view(self.get, route_name=route_name,
+                        request_method='GET', renderer='build_team.html')
+
+    def get(self, res, req, max_search_hits=15):
+        r'''
+          >>> t, r1 = test_grant_access_with_valid_cas_ticket()
+          >>> t.get('/build_team', status=200)
+          <Response 200 OK '<!DOCTYPE html>\n<htm'>
+          >>> c1 = t.get('/build_team?goal=Search&cn=john.smith', status=200)
+          >>> 'Smith, John' in c1
+          True
+          >>> done = t.get('/team_done?continue=Done&uids=john.smith',
+          ...              status=302)
+          >>> dict(done.headers)['Location']
+          'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&is_data_request=0&multi=yes&name_etc_1=Smith%2C+John%0AChair+of+Department+of+Neurology%0A&user_id=john.smith&user_id_1=john.smith'
+        '''
+        params = req.GET
+        uids, goal = edit_team(params)
+
+        if goal == 'Search':
+            log.debug('cn: %s', params.get('cn', ''))
+            candidates = self._m.affiliateSearch(max_search_hits,
+                                                 params.get('cn', ''),
+                                                 params.get('sn', ''),
+                                                 params.get('givenname', ''))
+            log.debug('candidates: %s', candidates)
+            candidates.sort(key = lambda(a): (a.sn, a.givenname))
+        else:
+            candidates = []
+
+        # Since we're the only supposed to supply these names,
+        # it seems OK to throw KeyError if we hit a bad one.
+        team = [self._m.affiliate(n) for n in uids]
+        team.sort(key = lambda(a): (a.sn, a.givenname))
+
+        return dict(done_path=req.route_url('team_done'),
+                    team=team,
+                    is_data_request=req.GET.get('is_data_request', '0'),
+                    uids=' '.join(uids),
+                    candidates=candidates)
+
+
 class HeronAccessPartsApp(object):
     i2b2_login_path='/i2b2'
     oversight_path='/build_team.html'
@@ -265,23 +313,6 @@ class HeronAccessPartsApp(object):
         path = environ['PATH_INFO']
         if path.startswith(self.oops_path):
             return {}
-
-        params = dict(parse_querystring(environ))
-        uids, goal = edit_team(params)
-
-        if goal == 'Search':
-            candidates = self._m.affiliateSearch(15,
-                                           params.get('cn', ''),
-                                           params.get('sn', ''),
-                                           params.get('givenname', ''))
-            candidates.sort(key = lambda(a): (a.sn, a.givenname))
-        else:
-            candidates = []
-
-        # Since we're the only supposed to supply these names,
-        # it seems OK to throw KeyError if we hit a bad one.
-        team = [self._m.affiliate(n) for n in uids]
-        team.sort(key = lambda(a): (a.sn, a.givenname))
 
         base = environ['SCRIPT_NAME']
         parts = dict(self._checklist.parts_for(session['user']),
@@ -431,8 +462,9 @@ class HeronAdminConfig(Configurator):
             cas_rt=(Options, cas_auth.CONFIG_SECTION),
             clv=CheckListView,
             rcv=REDCapLink,
-            repo=RepositoryLogin)
-    def __init__(self, guard, settings, cas_rt, clv, rcv, repo):
+            repo=RepositoryLogin,
+            tb=TeamBuilder)
+    def __init__(self, guard, settings, cas_rt, clv, rcv, repo, tb):
         log.debug('HeronAdminConfig settings: %s', settings)
         Configurator.__init__(self, settings=settings)
         guard.configure(self, cas_rt.app_secret)
@@ -453,9 +485,12 @@ class HeronAdminConfig(Configurator):
         self.add_route('i2b2_login', 'i2b2')
         repo.configure(self, 'i2b2_login')
 
+        # todo: split into 2 paths rather than using is_data_request param
+        self.add_route('oversight', 'build_team')
+        tb.configure(self, 'oversight')
+
         # todo: views for these routes
         self.add_route('logout', 'logout')
-        self.add_route('oversight', 'build_team.html')
 
 
 class RunTime(injector.Module):
