@@ -196,12 +196,12 @@ from pyramid.events import subscriber
 from pyramid.authentication import CallbackAuthenticationPolicy
 from pyramid.authentication import AuthTktAuthenticationPolicy
 
-from admin_lib import config
+from admin_lib.config import Options, TestTimeOptions
 
 log = logging.getLogger(__name__)
 
 CONFIG_SECTION='cas'
-
+PERMISSION='enterprise'
 
 class Redirector(object):
     def __init__(self, cas_addr):
@@ -219,9 +219,10 @@ class Redirector(object):
             raise HTTPForbidden
 
         log.debug("redirector from: %s", request.url)
-        return HTTPFound(self._a + '/login?' + # urljoin?
-                         urllib.urlencode(dict(service=request.url))
-                         )
+        there = (urllib.basejoin(self._a, 'login') + '?' +
+                 urllib.urlencode(dict(service=request.url)))
+        log.debug("redirector to: %s, %s, %s", there, self._a, request.url)
+        return HTTPFound(there)
 
 
 class Validator(object):
@@ -231,7 +232,16 @@ class Validator(object):
         self._ua = ua
         self._a = cas_addr
 
-    #@@ hmm... @subscriber(NewRequest)
+    def __str__(self):
+        return 'Validator(cas_addr=%s)' % self._a
+
+    def policy(self, app_secret):
+        return AuthTktAuthenticationPolicy(
+            app_secret, callback=self.cap)    
+        
+    def configure(self, config):
+        config.add_subscriber(self.check, pyramid.events.NewRequest)
+
     def check(self, event):
         req = event.request
 
@@ -282,76 +292,102 @@ class Validator(object):
         return u
 
 
-class Setup(injector.Module):
+class SetUp(injector.Module):
     @provides(CallbackAuthenticationPolicy)
     @inject(guard=Validator,
-            rt=(config.Options, CONFIG_SECTION))
+            rt=(Options, CONFIG_SECTION))
     def policy(self, guard, rt):
+        log.debug('making policy from %s, %s', rt.app_secret, guard)
         return AuthTktAuthenticationPolicy(
             rt.app_secret, callback=guard.cap)    
         
     @provides(Validator)
-    @inject(rt=(config.Options, CONFIG_SECTION),
+    @inject(rt=(Options, CONFIG_SECTION),
             ua=urllib.URLopener)
     def validator(self, rt, ua):
         return Validator(rt.base, ua)
         
     @provides(Redirector)
-    @inject(rt=(config.Options, CONFIG_SECTION))
+    @inject(rt=(Options, CONFIG_SECTION))
     def redirector(self, rt):
         return Redirector(rt.base)
 
 
+class TestTime(injector.Module):
+    def __init__(self, base):
+        self._base = base
+
+    def configure(self, binder):
+        binder.bind((Options, CONFIG_SECTION),
+                    to=TestTimeOptions({'base': self._base,
+                                        'app_secret': 'sekrit'}))
+        binder.bind(urllib.URLopener,
+                    to=injector.InstanceProvider(urllib2.build_opener()))
+
+    @classmethod
+    def depgraph(cls):
+        return injector.Injector([SetUp(), Mock()])
+
+
 class Mock(injector.Module):
     def configure(self, binder):
-        binder.bind((config.Options, CONFIG_SECTION),
-                    to=config.TestTimeOptions({'base': 'http://example/cas/',
-                                               'app_secret': 'sekrit'}))
+        binder.bind((Options, CONFIG_SECTION),
+                    to=TestTimeOptions({'base': 'http://example/cas/',
+                                        'app_secret': 'sekrit'}))
         binder.bind(urllib.URLopener,
                     to=injector.InstanceProvider(LinesUrlOpener(
                     ['yes', 'john.smith'])))
 
     @classmethod
     def depgraph(cls):
-        return injector.Injector([Setup(), Mock()])
+        return injector.Injector([SetUp(), Mock()])
 
 
 class _TestAuthz(object):
     def permits(self, context, principals, permission):
         log.debug('permits? %s %s %s', context, principals, permission)
+        if permission == PERMISSION:
+            return 'system.Authenticated' in principals
+
         return True
 
     def principals_allowed_by_permission(self, context, permission):
         raise NotImplementedError
 
 
-def _test(host='127.0.0.1', port=8123):
+def _integration_test(cas_base, host='127.0.0.1', port=8123):
     from pyramid.config import Configurator
     from pyramid.response import Response
     from paste import httpserver
 
+    logging.basicConfig(level=logging.DEBUG)
+
     def protected_view(req):
         return Response(app_iter=['I am: ', req.remote_user])
 
-    depgraph = Mock.depgraph()
-    ap = depgraph.get(CallbackAuthenticationPolicy)
+    depgraph = injector.Injector([TestTime(cas_base), SetUp()])
+    val = depgraph.get(Validator)
+    rt = depgraph.get((Options, CONFIG_SECTION))
     config = Configurator(settings={'pyramid.debug_routematch': True},
-                          authentication_policy=ap,
+                          authentication_policy=val.policy(rt.app_secret),
                           authorization_policy=_TestAuthz(),
-                          default_permission='enterprise'
+                          default_permission=PERMISSION
                           )
 
     rd = depgraph.get(Redirector)
+
+    val.configure(config)
     rd.configure(config)
 
     config.add_route('root', '')
     config.add_view(protected_view, route_name='root')
 
-    logging.basicConfig(level=logging.DEBUG)
     app = config.make_wsgi_app()
     httpserver.serve(app, host, port)
 
 
 if __name__ == '__main__':
-    _test()
+    import sys
+    cas_base = sys.argv[1]
+    _integration_test(cas_base)
 
