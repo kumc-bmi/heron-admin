@@ -2,47 +2,58 @@
 
 .. _CAS: http://www.jasig.org/cas
 
-Suppose we have an app that we want protected by CAS::
-  >>> def protected(environ, start_response):
-  ...     session = environ['beaker.session']
-  ...     u = session['user']
-  ...     start_response('200 OK', [('content-type', 'text/plain')])
-  ...     return ['logged in user:', u]
+Suppose we have a viewp that we want protected by CAS::
+  >>> from pyramid.response import Response
+  >>> def protected_view(req):
+  ...     return Response(app_iter=['I am: ', req.remote_user])
 
-Let's wrap it in `cas_required`::
-  >>> import urllib
-  >>> addr = 'http://example/cas/'
-  >>> session_opts = make_session('ex', uuid_maker=lambda: '1234-5678')
-  >>> cr = cas_required(addr, session_opts, prefix_router, '/login', '/logout', protected)
+Let's set up authorization and authentication::
+  >>> depgraph = Mock.depgraph()
 
-An initial visit to the root page redirects to the login path and sets a cookie::
+  >>> rt = depgraph.get((Options, CONFIG_SECTION))
+  >>> rt.base
+  'http://example/cas/'
+
+  >>> guard = depgraph.get(Validator)
+
+  >>> from pyramid.config import Configurator
+  >>> config = Configurator(authentication_policy=guard.policy(rt.app_secret),
+  ...                       authorization_policy=CapabilityStyle(guard,
+  ...                                                            PERMISSION),
+  ...                       default_permission=PERMISSION)
+  >>> guard.configure(config)
+  >>> config.add_route('root', '')
+  >>> config.add_view(protected_view, route_name='root')
+
+An initial visit redirects to the CAS service with the `service` param
+set to our login address::
+
   >>> from paste.fixture import TestApp
-  >>> t = TestApp(cr)
+  >>> t = TestApp(config.make_wsgi_app())
   >>> r1 = t.get('/', status=303)
   >>> def _loc(headers):
   ...    return [v for (n, v) in headers if n.lower() == 'location'][0]
   >>> _loc(r1.headers)
-  '/login'
-  >>> ['Found cookie' for (n, v) in r1.headers if n.lower() == 'set-cookie']
-  ['Found cookie']
-
-The next step is a link to the CAS service with the `service` param set to our login address::
-   >>> r2 = r1.follow()
-   >>> _loc(r2.headers)
-   'http://example/cas/login?service=http%3A%2F%2Flocalhost%2Flogin'
+  'http://example/cas/login?service=http%3A%2F%2Flocalhost%2F'
 
 The the CAS service redirects back with a ticket::
 
    >>> with default_urlopener(LinesUrlOpener(['yes', 'john.smith'])):
-   ...     r3 = t.get('/login?ticket=ST-381409-fsFVbSPrkoD9nANruV4B-example', status=303)
+   ...     r3 = t.get('/?ticket=ST-381409-fsFVbSPrkoD9nANruV4B-example',
+   ...                status=302)
    >>> _loc(r3.headers)
    'http://localhost/'
 
-And finally, our protected app runs:
+And finally, our protected app runs inside an `auth_tkt` session::
+
    >>> r3.follow(status=200)
-   <Response 200 OK 'logged in user:john.'>
+   <Response 200 OK 'I am: john.smith'>
+   >>> [v.split('=', 1)[0] for (n, v) in r3.headers
+   ...  if n.lower() == 'set-cookie']
+   ['auth_tkt', 'auth_tkt', 'auth_tkt']
 '''
 
+########## DEAD CODE
 import uuid
 from cgi import parse_qs, escape
 from urlparse import urljoin
@@ -169,12 +180,7 @@ def default_urlopener(u):
         urllib._urlopener = sv
 
 
-
-
-
-
-
-
+########## END DEAD CODE
 
 
 # python stdlib 1st, per PEP8
@@ -190,7 +196,7 @@ import pyramid
 from pyramid import security
 from pyramid.view import view_config
 from pyramid.httpexceptions import HTTPUnauthorized, HTTPBadRequest
-from pyramid.httpexceptions import HTTPForbidden, HTTPFound
+from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPSeeOther
 from pyramid.events import NewRequest
 from pyramid.events import subscriber
 from pyramid.authentication import CallbackAuthenticationPolicy
@@ -233,7 +239,7 @@ class Validator(object):
         there = (urllib.basejoin(self._a, 'login') + '?' +
                  urllib.urlencode(dict(service=request.url)))
         log.debug("redirector to: %s, %s, %s", there, self._a, request.url)
-        return HTTPFound(there)
+        return HTTPSeeOther(there)
 
     def check(self, event):
         req = event.request
