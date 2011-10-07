@@ -3,7 +3,8 @@
 
 Main features:
 
-  * :class:`CASWrap` restricts access using CAS login
+@@@@out of date
+  * :class:`Validator` restricts access using CAS login
     - see :func:`test_grant_access_with_valid_cas_ticket`
 
   * :class:`HeronAccessPartsApp` provides:
@@ -40,7 +41,9 @@ from genshi.template import TemplateLoader
 import injector # http://pypi.python.org/pypi/injector/
                 # 0.3.1 7deba485e5b966300ef733c3393c98c6
 from injector import inject, provides
+from pyramid.config import Configurator
 from pyramid.view import view_config
+from pyramid.httpexceptions import HTTPFound, HTTPSeeOther
 
 # modules in this package
 import cas_auth
@@ -51,16 +54,47 @@ from admin_lib.medcenter import MedCenter
 from admin_lib import heron_policy
 from admin_lib.checklist import Checklist
 from admin_lib import redcap_connect
-from admin_lib import config
+from admin_lib.config import Options, TestTimeOptions, RuntimeOptions
 from admin_lib import i2b2pm
+import genshi_render
 
+KAppSettings = injector.Key('AppSettings')
 KI2B2Address = injector.Key('I2B2Address')
-KCASOptions = injector.Key('CASOptions')
-KCASApp = injector.Key('CASApp')
 KErrorOptions = injector.Key('ErrorOptions')
-KTopApp = injector.Key('TopApp')
 
 log = logging.getLogger(__name__)
+
+
+def test_home_page_redirects_to_cas():
+    '''A plain request for the homepage redirects us to the CAS login page:
+
+      >>> t, r1 = test_home_page_redirects_to_cas()
+      >>> dict(r1.headers)['Location']
+      'https://example/cas/login?service=http%3A%2F%2Flocalhost%2F'
+    '''
+    from paste.fixture import TestApp
+    heron_policy._test_datasource(reset=True)
+    t = TestApp(Mock.make().make_wsgi_app())
+    r1 = t.get('/', status=303)
+    return t, r1
+
+
+def test_grant_access_with_valid_cas_ticket(t=None, r2=None):
+    '''After CAS login, we validate the ticket and grant access::
+
+      >>> t, r2 = test_home_page_redirects_to_cas()
+      >>> t, r4 = test_grant_access_with_valid_cas_ticket(t, r2)
+      >>> 'John Smith' in r4
+      True
+    '''
+    if t is None:
+        t, r2 = test_home_page_redirects_to_cas()
+
+    r3 = t.get('/?ticket=ST-381409-fsFVbSPrkoD9nANruV4B-example',
+               status=302)
+    r4 = r3.follow(status=200)
+    return t, r4
+
 
 
 class CheckListView(object):
@@ -89,6 +123,75 @@ class CheckListView(object):
                     candidates=[])
 
 
+class REDCapLink(object):
+    @inject(checklist=Checklist,
+            urlopener=URLopener)
+    def __init__(self, checklist, urlopener):
+        self._m = checklist.medcenter()
+        self._hr = checklist.heron_records()
+        self._saa_opts = self._hr.saa_opts()
+        self._oversight_opts = self._hr.oversight_opts()
+        self._urlopener = urlopener
+
+    def configure(self, config, rsaa, rtd):
+        config.add_view(self.saa_redir, route_name=rsaa,
+                        request_method='GET')
+        config.add_view(self.oversight_redir, route_name=rtd,
+                        request_method='GET')
+
+    def saa_redir(self, req):
+        '''Redirect to a per-user System Access Agreement REDCap survey.
+
+          >>> t, r4 = test_grant_access_with_valid_cas_ticket()
+          >>> r5 = t.get('/saa_survey', status=302)
+          >>> dict(r5.headers)['Location']
+          'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&user_id=john.smith'
+
+        Hmm... we're doing a POST to the REDCap API inside a GET.
+        Kinda iffy, w.r.t. safety and such.
+        '''
+
+        _, uid, full_name = self._request_agent(req)
+        return self._survey_redir(self._saa_opts, uid, {
+                'user_id': uid, 'full_name': full_name}, req)
+
+    def _request_agent(self, req):
+        uid = req.remote_user
+
+        a = self._m.affiliate(uid)
+        full_name = "%s, %s" % (a.sn, a.givenname)
+        return a, uid, full_name
+
+    def _survey_redir(self, opts, uid, params, req, multi=False):
+        rc = redcap_connect.survey_setup(opts, self._urlopener)
+        there = self._saa_link = rc(uid, params, multi)
+        return HTTPFound(there)
+
+    def oversight_redir(self, req):
+        '''Redirect to a per-user sponsorship/data-use REDCap survey.
+
+          >>> t, r4 = test_grant_access_with_valid_cas_ticket()
+          >>> r5 = t.get('/team_done', status=302)
+          >>> dict(r5.headers)['Location']
+          'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&is_data_request=0&multi=yes&user_id=john.smith'
+
+        Hmm... we're doing a POST to the REDCap API inside a GET.
+        Kinda iffy, w.r.t. safety and such.
+        '''
+
+        _, uid, full_name = self._request_agent(req)
+
+        uids = _request_uids(req.GET)
+
+        dr = '1' if req.GET.get('is_data_request', '') == '1' else '0'
+        return self._survey_redir(self._oversight_opts, uid,
+                                  dict(team_params(self._m, uids),
+                                       multi='yes',
+                                       user_id=uid, full_name=full_name,
+                                       is_data_request=dr),
+                                  req, multi=True)
+
+
 class HeronAccessPartsApp(object):
     htdocs = path.join(path.dirname(__file__), 'htdocs-heron/')
     base_path='/'
@@ -107,10 +210,6 @@ class HeronAccessPartsApp(object):
         self._checklist = checklist
         self._pm = pm
         self._m = checklist.medcenter()
-        self._hr = checklist.heron_records()
-        self._saa_opts = self._hr.saa_opts()
-        self._oversight_opts = self._hr.oversight_opts()
-        self._urlopener = urlopener
         self._i2b2_tool_addr = i2b2_tool_addr
 
         self._tplapp = TemplateApp(self.parts, self.htdocs)
@@ -146,59 +245,6 @@ class HeronAccessPartsApp(object):
             ans = HTTPMethodNotAllowed()
 
         return ans.wsgi_application(environ, start_response)
-
-    def saa_redir(self, environ, start_response):
-        '''Redirect to a per-user System Access Agreement REDCap survey.
-
-          >>> t, r4 = test_grant_access_with_valid_cas_ticket()
-          >>> r5 = t.get(HeronAccessPartsApp.saa_path, status=303)
-          >>> dict(r5.headers)['location']
-          'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&user_id=john.smith'
-
-        Hmm... we're doing a POST to the REDCap API inside a GET.
-        Kinda iffy, w.r.t. safety and such.
-        '''
-
-        _, uid, full_name = self._request_agent(environ)
-        return self._survey_redir(self._saa_opts, uid, {
-                'user_id': uid, 'full_name': full_name},
-                                  environ, start_response)
-
-    def _request_agent(self, environ):
-        session = environ['beaker.session']
-        uid = session['user']
-
-        a = self._m.affiliate(uid)
-        full_name = "%s, %s" % (a.sn, a.givenname)
-        return a, uid, full_name
-
-    def _survey_redir(self, opts, uid, params, environ, start_response, multi=False):
-        there = self._saa_link = redcap_connect.survey_setup(opts, self._urlopener)(uid, params, multi)
-        return HTTPSeeOther(there).wsgi_application(environ, start_response)
-
-    def oversight_redir(self, environ, start_response):
-        '''Redirect to a per-user sponsorship/data-use REDCap survey.
-
-          >>> t, r4 = test_grant_access_with_valid_cas_ticket()
-          >>> r5 = t.get(HeronAccessPartsApp.team_done_path, status=303)
-          >>> dict(r5.headers)['location']
-          'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&is_data_request=0&multi=yes&user_id=john.smith'
-
-        Hmm... we're doing a POST to the REDCap API inside a GET.
-        Kinda iffy, w.r.t. safety and such.
-        '''
-
-        _, uid, full_name = self._request_agent(environ)
-
-        params = dict(parse_querystring(environ))
-        uids = _request_uids(params)
-
-        return self._survey_redir(self._oversight_opts, uid,
-                                  dict(team_params(self._m, uids),
-                                       multi='yes',
-                                       user_id=uid, full_name=full_name,
-                                       is_data_request='1' if params.get('is_data_request', '') == '1' else '0'),
-                                  environ, start_response, multi=True)
 
     def parts(self, environ, session):
         '''
@@ -294,59 +340,6 @@ def _request_uids(params):
     return v.split(' ') if v else []
 
 
-class CASWrap(injector.Module):
-    '''
-    .. todo:: refactor into paste.filter_factory
-    http://pythonpaste.org/deploy/#paste-filter-factory
-    '''
-    def configure(self, binder):
-        pass
-
-    @provides(KCASApp)
-    @inject(app=HeronAccessPartsApp, cas_settings=KCASOptions)
-    def wrap(self, app, cas_settings, session_key='heron'):
-        session_opts = cas_auth.make_session(session_key)
-        cas_app = cas_auth.cas_required(cas_settings.base, session_opts,
-                                        prefix_router,
-                                        app.login_path, app.logout_path,
-                                        SessionMiddleware(app, session_opts))
-        return prefix_router(app.base_path, cas_app, app)
-
-
-def test_home_page_redirects_to_cas():
-    '''
-    A plain request for the homepage redirects us to the CAS login page:
-
-      >>> t, r2 = test_home_page_redirects_to_cas()
-      >>> dict(r2.headers)['location']
-      'https://example/cas/login?service=http%3A%2F%2Flocalhost%2Flogin'
-    '''
-    from paste.fixture import TestApp
-    heron_policy._test_datasource(reset=True)
-    t = TestApp(Mock.make())
-    r1 = t.get('http://localhost/', status=303)
-    return t, r1.follow()
-
-
-def test_grant_access_with_valid_cas_ticket(t=None, r2=None):
-    '''After CAS login, we validate the ticket and grant access::
-
-      >>> t, r2 = test_home_page_redirects_to_cas()
-      >>> t, r4 = test_grant_access_with_valid_cas_ticket(t, r2)
-      >>> 'John Smith' in r4
-      True
-    '''
-    if t is None:
-        t, r2 = test_home_page_redirects_to_cas()
-
-    from cas_auth import default_urlopener, LinesUrlOpener
-    with default_urlopener(LinesUrlOpener(['yes', 'john.smith'])):
-        r3 = t.get('/login?ticket=ST-381409-fsFVbSPrkoD9nANruV4B-example',
-                   status=303)
-    r4 = r3.follow(status=200)
-    return t, r4
-
-
 ERR_SECTION='errors'
 _sample_err_settings = dict(
     debug=False,
@@ -372,7 +365,7 @@ def err_handler(app, rt, template = 'oops.html'):
     '''
     Error handling needs configuration::
 
-      >>> print config.TestTimeOptions(_sample_err_settings).inifmt(ERR_SECTION)
+      >>> print TestTimeOptions(_sample_err_settings).inifmt(ERR_SECTION)
       [errors]
       debug=False
       error_email=sysadmin@example.edu
@@ -417,28 +410,62 @@ class ErrorHandling(injector.Module):
     def configure(self, binder):
         pass
 
-    @provides(KTopApp)
-    @inject(app=KCASApp, rt=KErrorOptions)
+    #@@ @provides(KTopApp)
+    #@@ @inject(app=KCASApp, rt=KErrorOptions)
     def err_handler(self, app, rt):
         return err_handler(app, rt)
 
 
+class HeronAdminConfig(Configurator):
+    @inject(guard=cas_auth.Validator,
+            settings=KAppSettings,
+            cas_rt=(Options, cas_auth.CONFIG_SECTION),
+            clv=CheckListView,
+            rcv=REDCapLink)
+    def __init__(self, guard, settings, cas_rt, clv, rcv):
+        log.debug('HeronAdminConfig settings: %s', settings)
+        Configurator.__init__(self, settings=settings)
+        guard.configure(self, cas_rt.app_secret)
+        cap_style = cas_auth.CapabilityStyle(guard, cas_auth.PERMISSION)
+        self.set_authorization_policy(cap_style)
+        self.add_static_view('av', 'heron_wsgi:htdocs-heron/av/',
+                             cache_max_age=3600)
+
+        self.add_renderer(name='.html', factory=genshi_render.Factory)
+
+        self.add_route('heron_home', '')
+        clv.configure(self, 'heron_home')
+
+        self.add_route('saa', 'saa_survey')
+        self.add_route('team_done', 'team_done')
+        rcv.configure(self, 'saa', 'team_done')
+
+        # todo: views for these routes
+        self.add_route('logout', 'logout')
+        self.add_route('i2b2_login', '/i2b2')
+        self.add_route('oversight', 'build_team.html')
+
+
 class RunTime(injector.Module):
-    def __init__(self, webapp_ini, admin_ini):
-        self._webapp_ini = webapp_ini
-        self._admin_ini = admin_ini
+    def __init__(self, settings):
+        log.debug('RunTime settings: %s', settings)
+        self._settings = settings
+        self._webapp_ini = settings['webapp_ini']
+        self._admin_ini = settings['admin_ini']
 
     def configure(self, binder):
-        i2b2_settings = config.RuntimeOptions(['cas_login']).load(
+        binder.bind(KAppSettings, self._settings)
+
+        i2b2_settings = RuntimeOptions(['cas_login']).load(
             self._webapp_ini, 'i2b2')
         binder.bind(KI2B2Address, to=i2b2_settings.cas_login)
 
         saa_section = heron_policy.SAA_CONFIG_SECTION
         droc_section = heron_policy.OVERSIGHT_CONFIG_SECTION
-        binder.bind((config.Options, saa_section),
+        binder.bind((Options, saa_section),
                     redcap_connect.settings(self._admin_ini,
                                             saa_section))
-        binder.bind((config.Options, droc_section),
+        binder.bind((Options, droc_section),
                      redcap_connect.settings(self._admin_ini,
                                              droc_section,
                                              ['project_id']))
@@ -446,39 +473,56 @@ class RunTime(injector.Module):
         binder.bind(URLopener,
                     injector.InstanceProvider(urllib2.build_opener()))
 
-        binder.bind(KCASOptions,
-                    config.RuntimeOptions('base'
-                                          ).load(self._webapp_ini, 'cas'))
+        #@@ todo: get this working again. test it?
         binder.bind(KErrorOptions,
-                    config.RuntimeOptions(_sample_err_settings.keys()
-                                          ).load(self._webapp_ini, 'errors'))
+                    RuntimeOptions(_sample_err_settings.keys()
+                                   ).load(self._webapp_ini, 'errors'))
 
     @classmethod
-    def depgraph(cls, webapp_ini, admin_ini):
-        return injector.Injector([class_(admin_ini)
-                                  for class_ in i2b2pm.IntegrationTest.deps()]
-                                 + [RunTime(webapp_ini, admin_ini),
-                                    ErrorHandling(), CASWrap()])
+    def mods(cls, settings):
+        webapp_ini = settings['webapp_ini']
+        admin_ini = settings['admin_ini']
+        #@@ todo: restore Oops.html error handling and such
+        return (cas_auth.RunTime.mods(webapp_ini) +
+                [class_(admin_ini)
+                 for class_ in i2b2pm.IntegrationTest.deps()]
+                + [RunTime(settings)])
+
+    @classmethod
+    def depgraph(cls, settings):
+        return injector.Injector(cls.mods(settings))
+
+    @classmethod
+    def make(cls, settings):
+        return cls.depgraph(settings).get(HeronAdminConfig)
 
 
 class Mock(injector.Module):
     '''An injector module to build a mock version of this WSGI application.
 
-    Use this module and a couple others to mock up to HeronAccessPartsApp::
-      >>> depgraph = Mock.depgraph()
-      >>> happ = depgraph.get(HeronAccessPartsApp)
+    # logging.basicConfig(level=logging.DEBUG)
 
-    Then automatically inject it into a CAS and Error handling wrappers::
-      >>> tapp = depgraph.get(KTopApp)
+    Use this module and a couple others to mock up a HeronAdminConfig::
+      >>> [x.__class__ for x in Mock.mods() if type(x) is type(Mock())]
+      [<class 'heron_srv.Mock'>]
+      >>> depgraph = Mock.depgraph()
+      >>> type(depgraph)
+      <class 'injector.Injector'>
+      >>> c = Mock.make()
+      >>> type(c)
+      <class 'heron_srv.HeronAdminConfig'>
+
+    Then make a WSGI app out of it::
+      >>> tapp = c.make_wsgi_app()
 
     Make sure we override the saa opts so that they have what
     redcap_connect needs, and not just what heron_polic needs::
 
-      >>> rt = depgraph.get((config.Options, heron_policy.SAA_CONFIG_SECTION))
+      >>> rt = depgraph.get((Options, heron_policy.SAA_CONFIG_SECTION))
       >>> rt.domain
       'example.edu'
 
-      >>> rt = depgraph.get((config.Options,
+      >>> rt = depgraph.get((Options,
       ...                    heron_policy.OVERSIGHT_CONFIG_SECTION))
       >>> rt.project_id
       34
@@ -487,39 +531,68 @@ class Mock(injector.Module):
 
     @classmethod
     def make(cls):
-        return cls.depgraph().get(KTopApp)
+        return cls.depgraph().get(HeronAdminConfig)
+
+    @classmethod
+    def mods(cls):
+        return (cas_auth.Mock.mods() + [
+                    i2b2pm.Mock(), heron_policy.Mock(),
+                    medcenter.Mock(), Mock()])
 
     @classmethod
     def depgraph(cls):
-        return injector.Injector([ErrorHandling(), CASWrap(),
-                                  i2b2pm.Mock(), heron_policy.Mock(),
-                                  medcenter.Mock(), Mock()])
+        ms = cls.mods()
+        log.debug('RunTime mods: %s', ms)
+        return injector.Injector(ms)
 
     def configure(self, binder):
-        binder.bind((config.Options, heron_policy.SAA_CONFIG_SECTION),
+        log.debug('configure binder: %s', binder)
+        binder.bind(KAppSettings,
+                    injector.InstanceProvider({}))
+
+        binder.bind((Options, heron_policy.SAA_CONFIG_SECTION),
                     redcap_connect._test_settings)
-        binder.bind((config.Options, heron_policy.OVERSIGHT_CONFIG_SECTION),
+        binder.bind((Options, heron_policy.OVERSIGHT_CONFIG_SECTION),
                     redcap_connect._test_settings)
 
         binder.bind(URLopener,
-                    # avoid UnknownProvider: couldn't determine provider ...
-                    injector.InstanceProvider(redcap_connect._TestUrlOpener()))
+                    injector.InstanceProvider(_TestUrlOpener(
+                    ['yes', 'john.smith'])))
 
         binder.bind(KI2B2Address, to='http://example/i2b2')
 
-        binder.bind(KCASOptions,
-                    config.TestTimeOptions(
-                        {'base': 'https://example/cas/'}))
+        binder.bind((Options, cas_auth.CONFIG_SECTION),
+                    TestTimeOptions(
+                        {'base': 'https://example/cas/',
+                         'app_secret': 'sekrit'}))
 
         binder.bind(KErrorOptions,
-                    config.TestTimeOptions(dict(_sample_err_settings,
+                    TestTimeOptions(dict(_sample_err_settings,
                                                 debug=True)))
 
 
+class _TestUrlOpener(object):
+    '''An URL opener to help with CAS testing
+    '''
+    def __init__(self, lines):
+        from cas_auth import LinesUrlOpener
+        self._ua1 = cas_auth.LinesUrlOpener(lines)
+        self._ua2 = redcap_connect._TestUrlOpener()
+
+    def open(self, addr, body=None):
+        if body:
+            return self._ua2.open(addr, body)
+        else:
+            return self._ua1.open(addr)
+
+
+#@@ todo: test or delete this
 def app_factory(global_config,
                 webapp_ini='integration-test.ini',
                 admin_ini='admin_lib/integration-test.ini'):
-    return RunTime.depgraph(webapp_ini, admin_ini).get(KTopApp)
+    log.debug('app_factory@@')
+    return RunTime.make(dict(webapp_ini=webapp_ini,
+                             admin_ini=admin_ini)).make_wsgi_app()
 
 
 if __name__ == '__main__':  # pragma nocover
@@ -528,6 +601,8 @@ if __name__ == '__main__':  # pragma nocover
     from paste import fileapp
     import sys
     host, port = sys.argv[1:3]
+
+    logging.basicConfig(level=logging.DEBUG)
 
     # In production use, static A/V media files would be
     # served with apache, but for test purposes, we'll use

@@ -259,6 +259,7 @@ class Validator(object):
         a = self._a + 'validate?' + urllib.urlencode(dict(service=req.path_url,
                                                           ticket=t))
         log.debug('cas validation request: %s', a)
+        log.debug('ua: %s', self._ua)
         lines = self._ua.open(a).read().split('\n')
 
         log.debug('cas validation result: %s', lines)
@@ -367,8 +368,12 @@ class Mock(injector.Module):
                     ['yes', 'john.smith'])))
 
     @classmethod
+    def mods(cls):
+        return [SetUp(), Mock()]
+
+    @classmethod
     def depgraph(cls):
-        return injector.Injector([SetUp(), Mock()])
+        return injector.Injector(cls.mods())
 
 
 def _integration_test(ini, host='127.0.0.1', port=8123):
