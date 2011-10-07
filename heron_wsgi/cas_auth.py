@@ -344,8 +344,12 @@ class RunTime(injector.Module):
                     to=injector.InstanceProvider(urllib2.build_opener()))
 
     @classmethod
+    def deps(cls, ini):
+        return [SetUp(), RunTime(ini)]
+
+    @classmethod
     def depgraph(cls, ini):
-        return injector.Injector([SetUp(), RunTime(ini)])
+        return injector.Injector(cls.deps(ini))
 
 
 class Mock(injector.Module):
