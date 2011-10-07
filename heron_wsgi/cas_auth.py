@@ -167,3 +167,191 @@ def default_urlopener(u):
         yield None
     finally:
         urllib._urlopener = sv
+
+
+
+
+
+
+
+
+
+
+# python stdlib 1st, per PEP8
+import urllib
+import urllib2
+import logging
+
+# from pypi
+import injector
+from injector import inject, provides
+
+import pyramid
+from pyramid import security
+from pyramid.view import view_config
+from pyramid.httpexceptions import HTTPUnauthorized, HTTPBadRequest
+from pyramid.httpexceptions import HTTPForbidden, HTTPFound
+from pyramid.events import NewRequest
+from pyramid.events import subscriber
+from pyramid.authentication import CallbackAuthenticationPolicy
+from pyramid.authentication import AuthTktAuthenticationPolicy
+
+from admin_lib import config
+
+log = logging.getLogger(__name__)
+
+CONFIG_SECTION='cas'
+
+
+class Redirector(object):
+    def __init__(self, cas_addr):
+        self._a = cas_addr
+
+    def configure(self, config):
+        config.add_view(self,
+                        context=pyramid.exceptions.HTTPForbidden,
+                        permission=pyramid.security.NO_PERMISSION_REQUIRED)
+
+    def __call__(self, context, request):
+        import sys
+        if 'ticket' in request.params:
+            # already been here before
+            raise HTTPForbidden
+
+        log.debug("redirector from: %s", request.url)
+        return HTTPFound(self._a + '/login?' + # urljoin?
+                         urllib.urlencode(dict(service=request.url))
+                         )
+
+
+class Validator(object):
+    def __init__(self, cas_addr, ua=None):
+        if ua is None:
+            ua = urllib2.build_opener()
+        self._ua = ua
+        self._a = cas_addr
+
+    #@@ hmm... @subscriber(NewRequest)
+    def check(self, event):
+        req = event.request
+
+        log.debug('check %s', req.url)
+
+        t = req.GET.get('ticket')
+        if not t:
+            log.debug('no ticket arg')
+            return None  # or: raise HTTPBadRequest()
+
+        a = self._a + 'validate?' + urllib.urlencode(dict(service=req.path_url,
+                                                          ticket=t))
+        log.debug('cas validation request: %s', a)
+        lines = self._ua.open(a).read().split('\n')
+
+        log.debug('cas validation result: %s', lines)
+
+        if not(lines and lines[0] == 'yes'):
+            return None  # or: raise HTTPForbidden()
+
+        uid = lines[1].strip()
+
+        hdrs = security.remember(req, uid)
+        log.debug("new headers: %s", hdrs)
+
+        response = HTTPFound(req.path_url)
+        response.headers.extend(hdrs)
+        raise response
+
+    def cap(self, uid, req):
+        import sys
+        log.debug('cap: %s %s', uid, req)
+        def cap():
+            return (self, uid)
+
+        req.remote_user = uid
+        req.login_cap = cap
+        return [cap]
+        
+    def audit(self, cap):
+        '''unsealer, sorta
+
+        @raises TypeError on audit failure
+        '''
+        x, u = cap()
+        if x is not self:
+            raise TypeError
+        return u
+
+
+class Setup(injector.Module):
+    @provides(CallbackAuthenticationPolicy)
+    @inject(guard=Validator,
+            rt=(config.Options, CONFIG_SECTION))
+    def policy(self, guard, rt):
+        return AuthTktAuthenticationPolicy(
+            rt.app_secret, callback=guard.cap)    
+        
+    @provides(Validator)
+    @inject(rt=(config.Options, CONFIG_SECTION),
+            ua=urllib.URLopener)
+    def validator(self, rt, ua):
+        return Validator(rt.base, ua)
+        
+    @provides(Redirector)
+    @inject(rt=(config.Options, CONFIG_SECTION))
+    def redirector(self, rt):
+        return Redirector(rt.base)
+
+
+class Mock(injector.Module):
+    def configure(self, binder):
+        binder.bind((config.Options, CONFIG_SECTION),
+                    to=config.TestTimeOptions({'base': 'http://example/cas/',
+                                               'app_secret': 'sekrit'}))
+        binder.bind(urllib.URLopener,
+                    to=injector.InstanceProvider(LinesUrlOpener(
+                    ['yes', 'john.smith'])))
+
+    @classmethod
+    def depgraph(cls):
+        return injector.Injector([Setup(), Mock()])
+
+
+class _TestAuthz(object):
+    def permits(self, context, principals, permission):
+        log.debug('permits? %s %s %s', context, principals, permission)
+        return True
+
+    def principals_allowed_by_permission(self, context, permission):
+        raise NotImplementedError
+
+
+def _test(host='127.0.0.1', port=8123):
+    from pyramid.config import Configurator
+    from pyramid.response import Response
+    from paste import httpserver
+
+    def protected_view(req):
+        return Response(app_iter=['I am: ', req.remote_user])
+
+    depgraph = Mock.depgraph()
+    ap = depgraph.get(CallbackAuthenticationPolicy)
+    config = Configurator(settings={'pyramid.debug_routematch': True},
+                          authentication_policy=ap,
+                          authorization_policy=_TestAuthz(),
+                          default_permission='enterprise'
+                          )
+
+    rd = depgraph.get(Redirector)
+    rd.configure(config)
+
+    config.add_route('root', '')
+    config.add_view(protected_view, route_name='root')
+
+    logging.basicConfig(level=logging.DEBUG)
+    app = config.make_wsgi_app()
+    httpserver.serve(app, host, port)
+
+
+if __name__ == '__main__':
+    _test()
+
