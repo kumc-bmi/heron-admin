@@ -2,12 +2,15 @@
 
 .. _CAS: http://www.jasig.org/cas
 
-Suppose we have a viewp that we want protected by CAS::
+Suppose we have a pyramid view that we want protected by CAS::
   >>> from pyramid.response import Response
   >>> def protected_view(req):
   ...     return Response(app_iter=['I am: ', req.remote_user])
 
 Let's set up authorization and authentication::
+  >>> from pyramid.config import Configurator
+  >>> config = Configurator()
+
   >>> depgraph = Mock.depgraph()
 
   >>> rt = depgraph.get((Options, CONFIG_SECTION))
@@ -16,12 +19,9 @@ Let's set up authorization and authentication::
 
   >>> guard = depgraph.get(Validator)
 
-  >>> from pyramid.config import Configurator
-  >>> config = Configurator(authentication_policy=guard.policy(rt.app_secret),
-  ...                       authorization_policy=CapabilityStyle(guard,
-  ...                                                            PERMISSION),
-  ...                       default_permission=PERMISSION)
-  >>> guard.configure(config)
+  >>> guard.configure(config, rt.app_secret)
+  >>> config.set_authorization_policy(CapabilityStyle(guard, PERMISSION))
+
   >>> config.add_route('root', '')
   >>> config.add_view(protected_view, route_name='root')
 
@@ -223,8 +223,13 @@ class Validator(object):
         return AuthTktAuthenticationPolicy(
             app_secret, callback=self.cap)    
         
-    def configure(self, config):
+    def configure(self, config, app_secret):
+        pwho = self.policy(app_secret)
+        config.set_authentication_policy(pwho)
+        config.set_default_permission(PERMISSION)
+
         config.add_subscriber(self.check, pyramid.events.NewRequest)
+
         config.add_view(self.redirect,
                         context=pyramid.exceptions.HTTPForbidden,
                         permission=pyramid.security.NO_PERMISSION_REQUIRED)
@@ -344,12 +349,12 @@ class RunTime(injector.Module):
                     to=injector.InstanceProvider(urllib2.build_opener()))
 
     @classmethod
-    def deps(cls, ini):
+    def mods(cls, ini):
         return [SetUp(), RunTime(ini)]
 
     @classmethod
     def depgraph(cls, ini):
-        return injector.Injector(cls.deps(ini))
+        return injector.Injector(cls.mods(ini))
 
 
 class Mock(injector.Module):
@@ -376,17 +381,15 @@ def _integration_test(ini, host='127.0.0.1', port=8123):
     def protected_view(req):
         return Response(app_iter=['I am: ', req.remote_user])
 
+    config = Configurator(settings={'pyramid.debug_routematch': True})
+
     depgraph = RunTime.depgraph(ini)
     guard = depgraph.get(Validator)
     rt = depgraph.get((Options, CONFIG_SECTION))
-    config = Configurator(settings={'pyramid.debug_routematch': True},
-                          authentication_policy=guard.policy(rt.app_secret),
-                          authorization_policy=CapabilityStyle(guard,
-                                                               PERMISSION),
-                          default_permission=PERMISSION
-                          )
+    guard.configure(config, rt.app_secret)
 
-    guard.configure(config)
+    pwhat = CapabilityStyle(guard, PERMISSION)
+    config.set_authorization_policy(pwhat)
 
     config.add_route('root', '')
     config.add_view(protected_view, route_name='root')
