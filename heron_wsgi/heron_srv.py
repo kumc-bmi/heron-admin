@@ -34,7 +34,6 @@ from os import path
 import logging
 
 # see setup.py and http://pypi.python.org/pypi
-from paste.httpexceptions import HTTPSeeOther, HTTPForbidden
 from paste.exceptions.errormiddleware import handle_exception
 from paste.request import parse_querystring
 from genshi.template import TemplateLoader
@@ -43,7 +42,7 @@ import injector # http://pypi.python.org/pypi/injector/
 from injector import inject, provides
 from pyramid.config import Configurator
 from pyramid.view import view_config
-from pyramid.httpexceptions import HTTPFound, HTTPSeeOther
+from pyramid.httpexceptions import HTTPFound, HTTPSeeOther, HTTPForbidden
 
 # modules in this package
 import cas_auth
@@ -192,13 +191,40 @@ class REDCapLink(object):
                                   req, multi=True)
 
 
+class RepositoryLogin(object):
+    @inject(checklist=Checklist,
+            pm=i2b2pm.I2B2PM,
+            i2b2_tool_addr=KI2B2Address)
+    def __init__(self, pm, i2b2_tool_addr, checklist):
+        self._hr = checklist.heron_records()
+        self._m = checklist.medcenter()
+        self._pm = pm
+        self._i2b2_tool_addr = i2b2_tool_addr
+
+    def configure(self, config, route):
+        config.add_view(self.i2b2_login, route_name=route,
+                        request_method='POST')
+
+    def i2b2_login(self, req):
+        '''Check credentials, establish account, and loging to i2b2
+
+          >>> t, r1 = test_grant_access_with_valid_cas_ticket()
+          >>> r2 = t.post('/i2b2', status=303)
+          >>> dict(r2.headers)['Location']
+          'http://example/i2b2-webclient'
+
+        '''
+        try:
+            agt = self._m.affiliate(req.remote_user)
+            q = self._hr.q_any(agt)
+            a = self._hr.repositoryAccess(q)
+            self._pm.ensure_account(a)
+            return HTTPSeeOther(self._i2b2_tool_addr)
+        except heron_policy.NoPermission, np:
+            return HTTPForbidden(detail=np.message)
+
+
 class HeronAccessPartsApp(object):
-    htdocs = path.join(path.dirname(__file__), 'htdocs-heron/')
-    base_path='/'
-    login_path='/login'
-    logout_path='/logout'
-    saa_path='/saa_survey'
-    team_done_path='/team_done'
     i2b2_login_path='/i2b2'
     oversight_path='/build_team.html'
     oops_path='/oops.html'
@@ -228,23 +254,6 @@ class HeronAccessPartsApp(object):
             return self.oversight_redir(environ, start_response)
         else:
             return self._tplapp(environ, start_response)
-
-    def i2b2_login(self, environ, start_response):
-        session = environ['beaker.session']
-        if environ['REQUEST_METHOD'] == "POST":
-            try:
-                agt = self._m.affiliate(session['user'])
-                q = self._hr.q_any(agt)
-                a = self._hr.repositoryAccess(q)
-                self._pm.ensure_account(a)
-                ans = HTTPSeeOther(self._i2b2_tool_addr)
-            except heron_policy.NoPermission, np:
-                ans = HTTPForbidden(detail=np.message).wsgi_application(
-                    environ, start_response)
-        else:
-            ans = HTTPMethodNotAllowed()
-
-        return ans.wsgi_application(environ, start_response)
 
     def parts(self, environ, session):
         '''
@@ -421,8 +430,9 @@ class HeronAdminConfig(Configurator):
             settings=KAppSettings,
             cas_rt=(Options, cas_auth.CONFIG_SECTION),
             clv=CheckListView,
-            rcv=REDCapLink)
-    def __init__(self, guard, settings, cas_rt, clv, rcv):
+            rcv=REDCapLink,
+            repo=RepositoryLogin)
+    def __init__(self, guard, settings, cas_rt, clv, rcv, repo):
         log.debug('HeronAdminConfig settings: %s', settings)
         Configurator.__init__(self, settings=settings)
         guard.configure(self, cas_rt.app_secret)
@@ -440,9 +450,11 @@ class HeronAdminConfig(Configurator):
         self.add_route('team_done', 'team_done')
         rcv.configure(self, 'saa', 'team_done')
 
+        self.add_route('i2b2_login', 'i2b2')
+        repo.configure(self, 'i2b2_login')
+
         # todo: views for these routes
         self.add_route('logout', 'logout')
-        self.add_route('i2b2_login', '/i2b2')
         self.add_route('oversight', 'build_team.html')
 
 
@@ -559,7 +571,7 @@ class Mock(injector.Module):
                     injector.InstanceProvider(_TestUrlOpener(
                     ['yes', 'john.smith'])))
 
-        binder.bind(KI2B2Address, to='http://example/i2b2')
+        binder.bind(KI2B2Address, to='http://example/i2b2-webclient')
 
         binder.bind((Options, cas_auth.CONFIG_SECTION),
                     TestTimeOptions(
