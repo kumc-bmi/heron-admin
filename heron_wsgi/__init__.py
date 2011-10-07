@@ -16,6 +16,7 @@ from admin_lib.config import Options
 import cas_auth
 import heron_srv
 from admin_lib import i2b2pm  #@@
+import genshi_render
 
 KAppSettings = injector.Key('AppSettings')
 
@@ -59,7 +60,7 @@ class HeronAdminConfig(Configurator):
     @inject(guard=cas_auth.Validator,
             settings=KAppSettings,
             cas_rt=(Options, cas_auth.CONFIG_SECTION),
-            clv=heron_srv.CheckListTestView)
+            clv=heron_srv.CheckListView)
     def __init__(self, guard, settings, cas_rt, clv):
         Configurator.__init__(self, settings=settings)
         guard.configure(self, cas_rt.app_secret)
@@ -67,7 +68,16 @@ class HeronAdminConfig(Configurator):
         self.set_authorization_policy(cap_style)
         self.add_static_view('av', 'heron_wsgi:htdocs-heron/av/',
                              cache_max_age=3600)
+
+        self.add_renderer(name='.html', factory=genshi_render.Factory)
+
         self.add_route('heron_home', '')
+        self.add_route('logout', 'logout')
+        self.add_route('saa', 'saa_survey')
+        self.add_route('team_done', 'team_done')
+        self.add_route('i2b2_login', '/i2b2')
+        self.add_route('oversight', 'build_team.html')
+
         clv.configure(self, 'heron_home')
 
 

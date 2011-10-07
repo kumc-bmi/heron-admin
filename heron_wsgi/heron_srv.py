@@ -63,19 +63,30 @@ KTopApp = injector.Key('TopApp')
 log = logging.getLogger(__name__)
 
 
-class CheckListTestView(object):
+class CheckListView(object):
     @inject(checklist=Checklist)
     def __init__(self, checklist):
         self._checklist = checklist
 
     def configure(self, config, route_name):
-        config.add_view(self.get, route_name=route_name, request_method='GET')
+        config.add_view(self.get, route_name=route_name, request_method='GET',
+                        renderer='index.html')
 
     def get(self, req):
         from pyramid.response import Response
         parts = self._checklist.parts_for(req.remote_user)
-        return Response(app_iter=['%s: %s' % (k, v)
-                                  for k, v in parts.iteritems()])
+        return dict(parts,
+                    # req.route_url('i2b2_login')
+                    logout_path=req.route_url('logout'),
+                    saa_path=req.route_url('saa'),
+                    i2b2_login_path=req.route_url('i2b2_login'),
+                    oversight_path=req.route_url('oversight'),
+                    #@@ move these to another view
+                    done_path=req.route_url('team_done'),
+                    team=[],
+                    is_data_request='0',
+                    uids=' ',
+                    candidates=[])
 
 
 class HeronAccessPartsApp(object):

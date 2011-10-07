@@ -277,7 +277,7 @@ class Validator(object):
 
     def cap(self, uid, req):
         import sys
-        log.debug('cap: %s %s', uid, req)
+        log.debug('cap: %s', uid)
         def cap():
             return (self, uid)
 

@@ -17,18 +17,27 @@ here = os.path.abspath(os.path.dirname(__file__))
 README = '@@TODO'  #open(os.path.join(here, 'README.txt')).read()
 CHANGES = '@@TODO' #open(os.path.join(here, 'CHANGES.txt')).read()
 
+# TODO: fix zope.interface dependency
+# (haenv)$ paster serve development.ini 
+# Traceback (most recent call last):
+# ...
+# pkg_resources.VersionConflict: (zope.interface 3.6.1 (/usr/lib/python2.7/dist-packages), Requirement.parse('zope.interface>=3.8.0'))
+#
+# work-around:
+# $ pip install --upgrade zope.interface
+# Downloading/unpacking zope.interface
+# ...
+# Successfully installed distribute zope.interface
+
 requires = [
     'SQLAlchemy',
     'cx_Oracle',
     'MySQL-python',
     'lxml',
     'python-ldap',
-    'beaker',
-    'paste',
+    'pyramid',
     'genshi',
     'injector',
-    'PasteDeploy',
-    'PasteScript',
     'pyinotify'
     ]
 
@@ -59,7 +68,8 @@ setup(name='heron_wsgi',
         'console_scripts':
             ['logwatch=heron_wsgi.logwatch:main'],
         'paste.app_factory':
-            ['main = heron_wsgi.heron_srv:app_factory']
+            #['main = heron_wsgi.heron_srv:app_factory']
+            ['main = heron_wsgi:main']
         },
       #paster_plugins=['pyramid'],
       )
