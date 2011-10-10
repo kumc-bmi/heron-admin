@@ -17,6 +17,6 @@ class Factory(object):
         self._loader = TemplateLoader([self.docroot], auto_reload=True)
 
     def __call__(self, value, system):
-        log.debug('genshi factory system: %s', system)
+        log.debug('genshi template: %s', system['renderer_name'])
         tmpl = self._loader.load(system['renderer_name'])
         return tmpl.generate(**value).render('xhtml')
