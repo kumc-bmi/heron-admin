@@ -469,7 +469,7 @@ class HeronAdminConfig(Configurator):
     def __init__(self, guard, settings, cas_rt, clv, rcv, repo, tb):
         log.debug('HeronAdminConfig settings: %s', settings)
         Configurator.__init__(self, settings=settings)
-        guard.configure(self, cas_rt.app_secret)
+
         self.set_default_permission(guard.permission)
         cap_style = cas_auth.CapabilityStyle([guard])
         self.set_authorization_policy(cap_style)
@@ -492,8 +492,8 @@ class HeronAdminConfig(Configurator):
         self.add_route('oversight', 'build_team')
         tb.configure(self, 'oversight')
 
-        # todo: views for these routes
         self.add_route('logout', 'logout')
+        guard.configure(self, 'logout', cas_rt.app_secret)
 
 
 class RunTime(injector.Module):

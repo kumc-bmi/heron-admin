@@ -19,7 +19,8 @@ Let's set up authorization and authentication::
 
   >>> guard = depgraph.get(Validator)
 
-  >>> guard.configure(config, rt.app_secret)
+  >>> config.add_route('logout', 'logout')
+  >>> guard.configure(config, 'logout', rt.app_secret)
   >>> config.set_authorization_policy(CapabilityStyle([guard]))
 
   >>> config.add_route('root', '')
@@ -39,18 +40,29 @@ set to our login address::
 
 The the CAS service redirects back with a ticket::
 
-   >>> r3 = t.get('/?ticket=ST-381409-fsFVbSPrkoD9nANruV4B-example',
-   ...            status=302)
-   >>> _loc(r3.headers)
-   'http://localhost/'
+  >>> r3 = t.get('/?ticket=ST-381409-fsFVbSPrkoD9nANruV4B-example',
+  ...            status=302)
+  >>> _loc(r3.headers)
+  'http://localhost/'
 
-And finally, our protected app runs inside an `auth_tkt` session::
+Now, our protected app runs inside an `auth_tkt` session::
 
-   >>> r3.follow(status=200)
-   <Response 200 OK 'I am: john.smith'>
-   >>> [v.split('=', 1)[0] for (n, v) in r3.headers
-   ...  if n.lower() == 'set-cookie']
-   ['auth_tkt', 'auth_tkt', 'auth_tkt']
+  >>> r3.follow(status=200)
+  <Response 200 OK 'I am: john.smith'>
+  >>> [v.split('=', 1)[0] for (n, v) in r3.headers
+  ...  if n.lower() == 'set-cookie']
+  ['auth_tkt', 'auth_tkt', 'auth_tkt']
+
+
+Finally, log out; then we should get a challenge on the next request::
+
+  >>> r8 = t.post('/logout', status=303)
+  >>> _loc(r8.headers)
+  'http://example/cas/logout'
+
+  >>> r0 = t.get('/', status=303)
+  >>> _loc(r1.headers)
+  'http://example/cas/login?service=http%3A%2F%2Flocalhost%2F'
 '''
 
 # python stdlib 1st, per PEP8
@@ -92,9 +104,11 @@ class Validator(object):
 
     def policy(self, app_secret):
         return AuthTktAuthenticationPolicy(
-            app_secret, callback=self.cap)    
+            app_secret, callback=self.cap,
+            debug=True #@@
+            )
         
-    def configure(self, config, app_secret):
+    def configure(self, config, logout_route, app_secret):
         pwho = self.policy(app_secret)
         config.set_authentication_policy(pwho)
 
@@ -103,6 +117,8 @@ class Validator(object):
         config.add_view(self.redirect,
                         context=pyramid.exceptions.HTTPForbidden,
                         permission=pyramid.security.NO_PERMISSION_REQUIRED)
+        config.add_view(self.logout, route_name=logout_route,
+                        request_method='POST')
 
     def redirect(self, context, request):
         import sys
@@ -123,7 +139,7 @@ class Validator(object):
 
         t = req.GET.get('ticket')
         if not t:
-            log.debug('no ticket arg')
+            log.debug('no ticket arg; redirect to CAS service')
             return None  # or: raise HTTPBadRequest()
 
         a = self._a + 'validate?' + urllib.urlencode(dict(service=req.path_url,
@@ -146,7 +162,6 @@ class Validator(object):
         raise response
 
     def cap(self, uid, req):
-        import sys
         log.debug('issuing CAS validation capability for: %s', uid)
         def cap():
             return (self, uid)
@@ -164,6 +179,11 @@ class Validator(object):
         if x is not self:
             raise TypeError
         return u
+
+    def logout(self, context, req):
+        response = HTTPSeeOther(urllib.basejoin(self._a, 'logout'))
+        response.headers.extend(security.forget(req))
+        raise response
 
 
 class CapabilityStyle(object):
@@ -195,9 +215,13 @@ class SetUp(injector.Module):
     @inject(guard=Validator,
             rt=(Options, CONFIG_SECTION))
     def policy(self, guard, rt):
+        '''
+        .. todo:: use a SessionPolicy
+        '''
         log.debug('making policy from %s, %s', rt.app_secret, guard)
         return AuthTktAuthenticationPolicy(
-            rt.app_secret, callback=guard.cap)    
+            rt.app_secret, callback=guard.cap,
+            timeout=20*60, reissue_time=2*60)
         
     @provides(Validator)
     @inject(rt=(Options, CONFIG_SECTION),
@@ -277,7 +301,8 @@ def _integration_test(ini, host='127.0.0.1', port=8123):
     depgraph = RunTime.depgraph(ini)
     guard = depgraph.get(Validator)
     rt = depgraph.get((Options, CONFIG_SECTION))
-    guard.configure(config, rt.app_secret)
+    config.add_route('logout', 'logout')
+    guard.configure(config, 'logout', rt.app_secret)
 
     pwhat = CapabilityStyle([guard])
     config.set_authorization_policy(pwhat)
