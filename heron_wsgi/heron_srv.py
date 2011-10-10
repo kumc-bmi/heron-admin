@@ -46,8 +46,6 @@ from pyramid.httpexceptions import HTTPFound, HTTPSeeOther, HTTPForbidden
 
 # modules in this package
 import cas_auth
-from cas_auth import route_if_prefix, prefix_router
-from usrv import TemplateApp, SessionMiddleware
 from admin_lib import medcenter
 from admin_lib.medcenter import MedCenter
 from admin_lib import heron_policy
@@ -97,13 +95,17 @@ def test_grant_access_with_valid_cas_ticket(t=None, r2=None):
 
 
 class CheckListView(object):
+    permission = 'checklist'
+
     @inject(checklist=Checklist)
     def __init__(self, checklist):
         self._checklist = checklist
 
     def configure(self, config, route_name):
         config.add_view(self.get, route_name=route_name, request_method='GET',
-                        renderer='index.html')
+                        renderer='index.html'
+                        #, permission=self.permission
+                        )
 
     def get(self, req):
         from pyramid.response import Response
@@ -468,7 +470,8 @@ class HeronAdminConfig(Configurator):
         log.debug('HeronAdminConfig settings: %s', settings)
         Configurator.__init__(self, settings=settings)
         guard.configure(self, cas_rt.app_secret)
-        cap_style = cas_auth.CapabilityStyle(guard, cas_auth.PERMISSION)
+        self.set_default_permission(guard.permission)
+        cap_style = cas_auth.CapabilityStyle([guard])
         self.set_authorization_policy(cap_style)
         self.add_static_view('av', 'heron_wsgi:htdocs-heron/av/',
                              cache_max_age=3600)
