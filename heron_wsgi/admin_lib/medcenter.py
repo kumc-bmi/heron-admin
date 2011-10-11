@@ -1,15 +1,24 @@
 '''medcenter.py -- academic medical center directory/policy
 
-  >>> depgraph = injector.Injector([Mock()])
-  >>> m = depgraph.get(MedCenter)
+  # logging.basicConfig(level=logging.DEBUG)
+  >>> m, mock, mods, depgraph = Mock.make_stuff()
+  >>> app_secret = depgraph.get(KAppSecret)
 
-Look someone up in the enterprise directory::
+Assuming CAS login asked us to issue a login capability::
 
-  >>> a1 = m.affiliate('john.smith')
-  >>> a1
-  John Smith <john.smith@js.example>
-  >>> a1.title
+  >>> box, req = mock.login_info('john.smith')
+  >>> login_caps = m.issue(box, req)
+
+We can exercise an enterprise directory capability::
+
+  >>> a1 = req.idvault_entry
+  >>> m.withId(a1, lambda a: '%s %s <%s>' % (
+  ...                         a['givenname'], a['sn'], a['mail']))
+  'John Smith <john.smith@js.example>'
+  >>> m.withId(a1, lambda a: a['title'])
   'Chair of Department of Neurology'
+
+Note: KUMC uses ou for department. @@test
 
 We use an outboard service to check human subjects "chalk" training::
 
@@ -18,39 +27,51 @@ We use an outboard service to check human subjects "chalk" training::
   param=userid
   url=http://localhost:8080/chalk-checker
 
-  >>> m.trainedThru(a1)
+  >>> m.training(a1)
   '2012-01-01'
 
 '''
 
+import logging
 import os
 import sys
 import urllib
 import urllib2
 
 import injector
-from injector import inject, provides
+from injector import inject, provides, singleton
 
 import config
 import ldaplib
+import sealing
+
+log = logging.getLogger(__name__)
 
 KTrainingFunction = injector.Key('TrainingFunction')
+KAppSecret = injector.Key('AppSecret')
 
 CHALK_CONFIG_SECTION='chalk'
+PERM_ID=__file__ + '.idvault'
 
+@singleton
 class MedCenter(object):
     excluded_jobcode = "24600"
+    permissions=(PERM_ID,)
 
     @inject(searchsvc=ldaplib.LDAPService,
-            trainingfn=KTrainingFunction)
-    def __init__(self, searchsvc, trainingfn):
+            trainingfn=KTrainingFunction,
+            app_secret=KAppSecret)
+    def __init__(self, searchsvc, trainingfn, app_secret):
+        log.debug('MedCenter.__init__ again?')
         self._svc = searchsvc
         self._training = trainingfn
+        self._app_secret = app_secret
+        self.sealer, self._unsealer = sealing.makeBrandPair('MedCenter')
 
     def __repr__(self):
         return "MedCenter(s, t)"
 
-    def affiliate(self, name):
+    def _lookup(self, name):
         matches = self._svc.search('(cn=%s)' % name, AccountHolder.attributes)
         if len(matches) != 1:
             if len(matches) == 0:
@@ -58,23 +79,56 @@ class MedCenter(object):
             else: # pragma nocover
                 raise ValueError, name  # ambiguous
 
-        dn, attrs = matches[0]
+        dn, ldapattrs = matches[0]
+        return AccountHolder.rezip(ldapattrs)
 
-        return AccountHolder(extract_values(attrs))
+    def issue(self, loginbox, req):
+        u, s = self._unsealer.unseal(loginbox)
+        if s != self._app_secret:
+            log.warn('expected app_secret [%s] got [%s]',
+                     self._app_secret, s)
+            return []
+        cap = self.sealer.seal(self._lookup(u))
+        req.idvault_entry = cap
+        return [cap]
 
-    def trainedThru(self, who):
-        return self._training(who.userid())
+    def audit(self, cap, p):
+        log.info('MedCenter.audit(%s, %s)' % (cap, p))
+        if not isinstance(cap, object):
+            raise TypeError
+        self._unsealer.unseal(cap)
 
+    def lookup(self, namebox):
+        name = self._unsealer.unseal(namebox)
+        return self.sealer.seal(self._lookup(name))
 
-    def checkFaculty(self, who):
-        if (who.kumcPersonJobcode != self.excluded_jobcode
-            and who.kumcPersonFaculty == 'Y'):
-            return
-        raise NotFaculty()
+    def withId(self, attrsbox, thunk):
+        '''Exercise thunk(attrs) provided attrsbox unseals.
+        '''
+        attrs = self._unsealer.unseal(attrsbox)
+        return thunk(attrs)
 
-    def affiliateSearch(self, max_qty, cn, sn, givenname):
+    def withFaculty(self, attrsbox, thunk):
+        '''Exercise thunk(attrs) provided attrsbox unseals as faculty.
+        @raises: TypeError on unsealing failure
+        @raises: NotFaculty
+        '''
+        attrs = self._unsealer.unseal(attrsbox)
+        log.debug('withFaculty: %s', attrs)
+        if (attrs['kumcPersonJobcode'] == self.excluded_jobcode
+            or attrs['kumcPersonFaculty'] != 'Y'):
+            raise NotFaculty
+
+        return thunk(attrs)
+
+    def training(self, attrbox):
+        return self._training(self._unsealer.unseal(attrbox)['cn'])
+
+    def search(self, max_qty, cn, sn, givenname):
         clauses = ['(%s=%s*)' % (n, v)
-                   for (n, v) in (('cn', cn), ('sn', sn), ('givenname', givenname))
+                   for (n, v) in (('cn', cn),
+                                  ('sn', sn),
+                                  ('givenname', givenname))
                    if v]
         if len(clauses) == 0:
             return ()
@@ -85,11 +139,11 @@ class MedCenter(object):
             q = clauses[0]
 
         results = self._svc.search(q, AccountHolder.attributes)[:max_qty]
-        return [AccountHolder(extract_values(attrs))
-                for dn, attrs in results]
+        return [AccountHolder.rezip(ldapattrs)
+                for dn, ldapattrs in results]
 
 
-def extract_values(attrs):
+def _extract_values(attrs):
     return [attrs.get(n, [None])[0]
             for n in AccountHolder.attributes]
 
@@ -105,8 +159,13 @@ class AccountHolder(object):
     attributes = ["cn", "ou", "sn", "givenname", "title", "mail",
                   "kumcPersonFaculty", "kumcPersonJobcode"]
 
-    def __init__(self, values):
-        self._attrs = dict(zip(self.attributes, values))
+    @classmethod
+    def rezip(cls, ldapattrs):
+        return dict(zip(cls.attributes, _extract_values(ldapattrs)))
+
+    def __init__(self, cap, attrs):
+        self.cap = cap
+        self._attrs = attrs
 
     def __str__(self):
         return '%s %s <%s>' % (self.givenname, self.sn, self.mail)
@@ -119,7 +178,7 @@ class AccountHolder(object):
         return self.cn
 
     def __getattr__(self, n):
-        if n not in self.attributes:
+        if n.startswith('_') or n not in self.attributes:
             raise AttributeError
         return self._attrs[n]
 
@@ -153,11 +212,36 @@ class Mock(injector.Module):
                     injector.InstanceProvider(d))
         binder.bind(KTrainingFunction,
                     injector.InstanceProvider(d.trainedThru))
+        self._app_secret = 'sekrit'
+        binder.bind(KAppSecret, 
+                    injector.InstanceProvider(self._app_secret))
+
+    def set_medcenter(self, mc):
+        self._mc = mc
+
+    def login_info(self, cn):
+        box = self._mc.sealer.seal((cn, self._app_secret))
+        req = MockRequest()
+        return box, req
 
     @classmethod
-    def make(cls):
-        depgraph = injector.Injector(Mock())
-        return depgraph.get(MedCenter)
+    def mods(cls):
+        return [Mock()]
+
+    @classmethod
+    def make_stuff(cls):
+        mods = cls.mods()
+        mod = mods[-1]
+        depgraph = injector.Injector(mods)
+        mc = depgraph.get(MedCenter)
+        mod.set_medcenter(mc)
+        return mc, mod, mods, depgraph
+
+
+class MockRequest(dict):
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+        self.__dict__ = self
 
 class IntegrationTest(injector.Module):
     def __init__(self, ini='integration-test.ini'):
