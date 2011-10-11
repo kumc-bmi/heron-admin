@@ -1,58 +1,86 @@
 '''heron_policy.py -- HERON policy decisions, records
 
-  >>> depgraph = injector.Injector([Mock(), medcenter.Mock()])
-  >>> m = depgraph.get(medcenter.MedCenter)
-  >>> hp = depgraph.get(HeronRecords)
+  # logging.basicConfig(level=logging.DEBUG)
+  >>> mc, hp, mcmock, depgraph = Mock.make_stuff()
 
 .. todo:: explain our use of injector a bit
 
-Look up an investigator and a student::
+Suppose an investigator and some students log in::
 
-  >>> fac = m.affiliate('john.smith')
-  >>> fac
-  John Smith <john.smith@js.example>
-  >>> stu = m.affiliate('bill.student')
-  >>> stu2 = m.affiliate('some.one')
+  >>> facbox, facreq = mcmock.login_info('john.smith')
+  >>> mc.issue(facbox, facreq)
+  [<MedCenter sealed box>]
+  >>> stubox, stureq = mcmock.login_info('bill.student')
+  >>> mc.issue(stubox, stureq)
+  [<MedCenter sealed box>]
+  >>> stu2box, stu2req = mcmock.login_info('some.one')
+  >>> mc.issue(stu2box, stu2req)
+  [<MedCenter sealed box>]
 
 See if they're qualified faculty::
 
   >>> _test_datasource(reset=True) and None
-  >>> hp.q_faculty(fac)
-  OK:John Smith <john.smith@js.example>
-  >>> hp.q_faculty(stu)
+  >>> hp.issue(facbox, facreq)
+  [Prof. John Smith <john.smith@js.example>]
+  >>> facreq.role
+  Prof. John Smith <john.smith@js.example>
+
+  >>> facreq.role.ensure_saa_survey()
+  'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&user_id=john.smith'
+
+  >>> hp.issue(stubox, stureq)
+  [Bill Student <bill.student@js.example>]
+  >>> stureq.role.ensure_oversight_survey(dict(title='cure everything'))
   Traceback (most recent call last):
     ...
   NotFaculty
+  >>> facreq.role.ensure_oversight_survey(dict(title='cure everything'))
+  'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&is_data_request=False&multi=yes&title=cure+everything&user_id=john.smith'
 
 See if the students are qualified in some way::
 
   >>> _test_datasource(reset=True) and None
-  >>> hp.q_any(stu)
+  >>> stureq.role.repository_access()
   Traceback (most recent call last):
     ...
   NotSponsored
 
-  >>> hp.q_any(stu2)
-  OK:Some One <some.one@js.example>
+  >>> hp.issue(stu2box, stu2req)
+  [Some One <some.one@js.example>]
+
+.. todo:: secure represention of sponsor rather than True/False?
+  >>> stu2req.role.sponsor()
+  True
+
+  >>> stu2req.role.training()
+  '2012-01-01'
+  >>> stu2req.role.repository_access()
+  Traceback (most recent call last):
+  ...
+  NoAgreement
+
 
 Get an actual access qualification; i.e. check for
 system access agreement and human subjects training::
 
   >>> _test_datasource(reset=True) and None
-  >>> hp.repositoryAccess(hp.q_any(fac))
-  Access(John Smith <john.smith@js.example>)
+  >>> facreq.role.repository_access()
+  Access(Prof. John Smith <john.smith@js.example>)
 
 Make sure we recover, eventually, after database errors::
 
-    >>> [hp.q_any(stu2) for i in range(1, 10)]
+    >>> [facreq.role.signature() for i in range(1, 10)]
     Traceback (most recent call last):
       ...
     IOError: databases fail sometimes; deal
 
-    >>> hp.q_any(stu2)
-    OK:Some One <some.one@js.example>
+    >>> facreq.role.repository_access()
+    Access(Prof. John Smith <john.smith@js.example>)
 
 '''
+
+import urllib
+import logging
 
 import injector
 from injector import inject
@@ -60,41 +88,93 @@ from injector import inject
 from db_util import transaction, oracle_connect, mysql_connect
 import config
 import medcenter
+import redcap_connect
+import sealing
 
 REDCAPDB_CONFIG_SECTION='redcapdb'
 SAA_CONFIG_SECTION='saa_survey'
 OVERSIGHT_CONFIG_SECTION='oversight_survey'
+PERM_FACULTY=__file__ + '.faculty'
 
 KDataSource = injector.Key('HERONDataSource')
 KTimeSource = injector.Key('TimeSource')
 
 class HeronRecords(object):
+    permissions = (PERM_FACULTY,)
     qty_institutions = len(('kuh', 'kupi', 'kumc'))
 
-    @inject(datasource=KDataSource,
-            mc=medcenter.MedCenter,
-            timesrc=KTimeSource,
+    @inject(mc=medcenter.MedCenter,
             saa_opts=(config.Options, SAA_CONFIG_SECTION),
-            oversight_opts=(config.Options, OVERSIGHT_CONFIG_SECTION))
-    def __init__(self, datasource, mc, timesrc,
-                 saa_opts, oversight_opts):
+            oversight_opts=(config.Options, OVERSIGHT_CONFIG_SECTION),
+            datasource=KDataSource,
+            timesrc=KTimeSource,
+            urlopener=urllib.URLopener)
+    def __init__(self, mc, saa_opts, oversight_opts,
+                 datasource, timesrc, urlopener):
         # TODO: connection pooling/management?
         self._datasrc = datasource
-        self._m = mc
+        self._mc = mc
         self._t = timesrc
-        self._saa_opts = saa_opts
         self._saa_survey_id = saa_opts.survey_id
-        self._oversight_opts = oversight_opts
+        ## refactor so these two are passed in rather than opts/urlopener?
+        self._saa_rc = redcap_connect.survey_setup(saa_opts, urlopener)
+        self._oversight_rc = redcap_connect.survey_setup(oversight_opts,
+                                                         urlopener)
         self._oversight_project_id = oversight_opts.project_id
+        self.sealer, self._unsealer = sealing.makeBrandPair('HeronRecords')
 
-    def saa_opts(self):
-        return self._saa_opts
+    def mc_sealer(self):
+        return self._mc.sealer
 
-    def oversight_opts(self):
-        return self._oversight_opts
+    def issue(self, uidbox, req):
+        mc = self._mc
 
-    def check_saa_signed(self, agent):
-        '''Test for an authenticated SAA survey response bearing the agent's email address.
+        # limit capabilities of self to one user
+        def attr(n):
+            return mc.withId(req.idvault_entry, lambda a: a[n])
+
+        hr = self
+        class Record(object):
+            def ensure_saa(self, params):
+                uid = attr('cn')
+                return hr._saa_rc(uid, params)
+
+            def get_sig(self):
+                mail = attr('mail')
+                return hr._check_saa_signed(mail)  #@@seal date
+
+            def ensure_oversight(self, params):
+                uid = attr('cn')
+                return hr._oversight_rc(uid, params, multi=True)
+
+            def get_training(self):
+                return mc.training(req.idvault_entry)
+
+            def get_sponsor(self):
+                uid = attr('cn')
+                return hr._sponsored(uid)  #@@ seal sponsor uid
+
+            def repository_access(self, user, sponsor, sig, training):
+                return Access(user, sponsor, sig, training,
+                              i2b2acct=None  #@@
+                              )
+
+        try:
+            role = mc.withFaculty(req.idvault_entry,
+                                  lambda attrs: Faculty(attrs, Record()))
+        except medcenter.NotFaculty:
+            role = mc.withId(req.idvault_entry,
+                             lambda attrs: Affiliate(attrs, Record()))
+        req.role = role
+        return [role]
+
+    def audit(self, cap, p=medcenter.PERM_ID):
+        log.info('HeronRecords.audit(%s, %s)' % (cap, p))
+        if not isinstance(cap, Affiliate if p is PERM_FACULTY else Faculty):
+            raise TypeError
+
+    def _check_saa_signed(self, mail):
+        '''Test for an authenticated SAA survey response.
         '''
         with transaction(self._datasrc()) as q:
             q.execute(
@@ -102,7 +182,7 @@ class HeronRecords(object):
  		   from redcap_surveys_response r
                      join redcap_surveys_participants p on p.participant_id = r.participant_id 
 		   where p.participant_email=%(mail)s and p.survey_id = %(survey_id)s''',
-                {'mail': agent.mail, 'survey_id': self._saa_survey_id})
+                {'mail': mail, 'survey_id': self._saa_survey_id})
             ok = len(q.fetchmany()) > 0
         if not ok:
             raise NoAgreement()
@@ -122,7 +202,7 @@ class HeronRecords(object):
         self._m.checkFaculty(agent)
         return OK(agent)
 
-    def q_sponsored(self, agent):
+    def _sponsored(self, uid):
         '''Test for sponsorship approval from each participating institution.
 
         In the oversight_project, we assume userid of sponsored users
@@ -154,13 +234,13 @@ where decision=1 and userid=%(userid)s
 having count(*) = %(qty)s
 '''
                       , dict(project_id=self._oversight_project_id,
-                             userid=agent.userid(),
+                             userid=uid,
                              qty=self.qty_institutions))
             answers = q.fetchall()
 
         if not answers:
             raise NotSponsored()
-        return OK(agent)
+        return True
 
     def q_any(self, agent):
         try:
@@ -209,20 +289,87 @@ class NoAgreement(NoPermission):
     pass
 
 
-class OK(object):
-    def __init__(self, agent):
-        self.agent = agent
+
+class Affiliate(object):
+    '''
+      >>> a = Affiliate(dict(sn='Doe', givenname='John',
+      ...                    mail='john.doe@example'), None)
+      >>> a
+      John Doe <john.doe@example>
+      >>> a.sn
+      'Doe'
+    '''
+    attributes = medcenter.AccountHolder.attributes
+
+    def __init__(self, attrs, record):
+        self._attrs = attrs
+        self.record = record
+
+    def __getattr__(self, n):
+        if n.startswith('_') or n not in self.attributes:
+            raise AttributeError
+        return self._attrs[n]
+
     def __repr__(self):
-        return 'OK:' + repr(self.agent)
+        return '%s %s <%s>' % (self.givenname, self.sn, self.mail)
+
+    def sort_name(self):
+        '''
+          >>> Affiliate(dict(sn='Doe', givenname='John'), None).sort_name()
+          'Doe, John'
+        '''
+        return "%s, %s" % (self.sn, self.givenname)
+        
+    def ensure_saa_survey(self):
+        return self.record.ensure_saa(dict(user_id=self.cn,
+                                           full_name=self.sort_name()))
+
+
+    def ensure_oversight_survey(self, params):
+        raise medcenter.NotFaculty
+
+    def signature(self):
+        return self.record.get_sig()
+
+    def training(self):
+        return self.record.get_training()
+
+    def sponsor(self):
+        return self.record.get_sponsor()
+
+    def repository_access(self):
+        return self.record.repository_access(self,
+                                             self.sponsor(),
+                                             self.signature(),
+                                             self.training())
+
+class Faculty(Affiliate):
+    '''
+    '''
+    def __repr__(self):
+        return 'Prof. %s %s <%s>' % (self.givenname, self.sn, self.mail)
+
+    def sponsor(self):
+        return self
+
+    def ensure_oversight_survey(self, team_params, data_req=False):
+        return self.record.ensure_oversight(dict(team_params,
+                                                 user_id=self.cn,
+                                                 full_name=self.sort_name(),
+                                                 is_data_request=data_req,
+                                                 multi='yes'))
+
 
 class Access(object):
-    def __init__(self, agent, texp, discl):
-        self._agent = agent
+    def __init__(self, user, sponsor, sig, texp, i2b2acct):
+        self._agent = user
+        self._acct = i2b2acct
 
-    def __str__(self):
-        return 'Access(%s)' % self._agent
     def __repr__(self):
-        return str(self)
+        return 'Access(%s)' % self._agent
+
+    def ensure_i2b2_account(self):
+        return self._acct.login(user, sponsor, sig, texp)
 
 
 class Disclaimer(object):
@@ -251,9 +398,29 @@ class Mock(injector.Module):
                     injector.InstanceProvider(_test_datasource))
         binder.bind(KTimeSource, _TestTimeSource),
         binder.bind((config.Options, SAA_CONFIG_SECTION),
-                    config.TestTimeOptions({'survey_id': 11}))
+                    redcap_connect._test_settings)
         binder.bind((config.Options, OVERSIGHT_CONFIG_SECTION),
-                    config.TestTimeOptions({'project_id': 34}))
+                    redcap_connect._test_settings)
+
+        binder.bind(urllib.URLopener, redcap_connect._TestUrlOpener)
+
+    @classmethod
+    def mods(cls):
+        return medcenter.Mock.mods() + [Mock()]
+
+    @classmethod
+    def depgraph(cls):
+        return injector.Injector(cls.mods())
+
+    @classmethod
+    def make_stuff(cls):
+        mods = cls.mods()
+        depgraph = injector.Injector(mods)
+        mc = depgraph.get(medcenter.MedCenter)
+        hr = depgraph.get(HeronRecords)
+        mcmod = mods[-2]
+        mcmod.set_medcenter(mc)
+        return mc, hr, mcmod, depgraph
 
 
 class _TestTimeSource(object):
