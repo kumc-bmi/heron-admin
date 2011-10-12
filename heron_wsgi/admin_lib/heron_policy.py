@@ -118,6 +118,8 @@ PERM_FACULTY=__file__ + '.faculty'
 KDataSource = injector.Key('HERONDataSource')
 KTimeSource = injector.Key('TimeSource')
 
+log = logging.getLogger(__name__)
+
 class HeronRecords(object):
     permissions = (PERM_USER, PERM_FACULTY)
     qty_institutions = len(('kuh', 'kupi', 'kumc'))
@@ -134,6 +136,7 @@ class HeronRecords(object):
         # TODO: connection pooling/management?
         self._datasrc = datasource
         self._mc = mc
+        self._pm = pm
         self._t = timesrc
         self._saa_survey_id = saa_opts.survey_id
         ## refactor so these two are passed in rather than opts/urlopener?
@@ -143,7 +146,7 @@ class HeronRecords(object):
         self._oversight_project_id = oversight_opts.project_id
         self.sealer, self._unsealer = sealing.makeBrandPair('HeronRecords')
 
-    def issue(self, uidbox, req):
+    def issue(self, loginbox, req):
         mc = self._mc
 
         hr = self
@@ -155,7 +158,7 @@ class HeronRecords(object):
                 self.agent = agent
 
             def login(self):
-                self._pm.ensure_account(badge.cn)
+                hr._pm.ensure_account(badge.cn)
 
             def __repr__(self):
                 return 'Access(%s)' % self.agent
@@ -199,9 +202,10 @@ class HeronRecords(object):
 
         try:
             role = Faculty(mc.faculty_badge(req.idvault_entry),
+                           req.idvault_entry,
                            Record(), Browser())
         except medcenter.NotFaculty:
-            role = Affiliate(badge, Record(), Browser())
+            role = Affiliate(badge, req.idvault_entry, Record(), Browser())
         req.role = role
 
         return [role]
@@ -210,7 +214,7 @@ class HeronRecords(object):
         log.info('HeronRecords.audit(%s, %s)' % (cap, p))
         if not isinstance(cap, Affiliate if p is PERM_FACULTY else Faculty):
             raise TypeError
-        self._mc.read_badge(cap.badge)
+        self._mc.read_badge(cap.idcap)
 
     def _check_saa_signed(self, mail):
         '''Test for an authenticated SAA survey response.
@@ -299,8 +303,9 @@ class NoAgreement(NoPermission):
 
 
 class Affiliate(object):
-    def __init__(self, badge, record, browser):
+    def __init__(self, badge, idcap, record, browser):
         self.badge = badge
+        self.idcap = idcap
         self.record = record
         self.browser = browser
 

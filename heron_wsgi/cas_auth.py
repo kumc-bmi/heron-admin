@@ -1,10 +1,11 @@
-'''cas_auth - JA-SIG Central Authentication Service (CAS_) support
+r'''cas_auth - JA-SIG Central Authentication Service (CAS_) support
 
 .. _CAS: http://www.jasig.org/cas
 
 Suppose we have a pyramid view that we want protected by CAS::
   >>> from pyramid.response import Response
-  >>> def protected_view(req):
+  >>> def protected_view(context, req):
+  ...     log.debug('protected view: %s', ['I am: ', req.remote_user])
   ...     return Response(app_iter=['I am: ', req.remote_user])
 
 Let's set up authorization and authentication::
@@ -198,7 +199,7 @@ class Validator(object):
 
     def caps(self, uid, req):
         log.debug('issuing CAS login capabilities for: %s', uid)
-        return _flatten([issuer.issue(sealer.seal(uid), req)
+        return _flatten([issuer.issue(sealer.seal((uid, self._secret)), req)
                          for issuer, sealer in self._issuers])
         
     def logout(self, context, req):
@@ -222,6 +223,7 @@ class CapabilityStyle(object):
             if permission in auditor.permissions:
                 for cap in principals:
                     try:
+                        # maybe pass all principals to audit in one go?
                         auditor.audit(cap, permission)
                         return True
                     except TypeError:
@@ -301,7 +303,7 @@ class Mock(injector.Module):
 
 
 class MockIssuer(object):
-    permissions = ('treasure')
+    permissions = ('treasure',)
 
     @classmethod
     def make(cls):
@@ -310,10 +312,10 @@ class MockIssuer(object):
     def __init__(self):
         self.sealer, self._unsealer = sealing.makeBrandPair('treasure')
 
-    def issue(self, uidbox, req):
-        uid = self._unsealer.unseal(uidbox)
+    def issue(self, loginbox, req):
+        uid, secret = self._unsealer.unseal(loginbox)
         req.remote_user = uid
-        return [uidbox]
+        return [loginbox]
 
     def audit(self, cap, permission):
         try:
