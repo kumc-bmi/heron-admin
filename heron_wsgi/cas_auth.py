@@ -22,7 +22,7 @@ Let's set up authorization and authentication::
   >>> guard.add_issuer(guide, guide.sealer)
 
   >>> config.add_route('logout', 'logout')
-  >>> guard.configure(config, 'logout', rt.app_secret)
+  >>> guard.configure(config, 'logout')
   >>> config.set_authorization_policy(CapabilityStyle([guide]))
 
   >>> config.add_route('root', '')
@@ -128,6 +128,7 @@ class Validator(object):
             ua = urllib2.build_opener()
         self._ua = ua
         self._a = cas_addr
+        self._secret = app_secret
         self._issuers = []
 
     def __str__(self):
@@ -135,12 +136,12 @@ class Validator(object):
 
     def policy(self):
         return AuthTktAuthenticationPolicy(
-            app_secret, callback=self.caps,
+            self._secret, callback=self.caps,
             debug=True #@@
             )
         
-    def configure(self, config, logout_route, app_secret):
-        pwho = self.policy(app_secret)
+    def configure(self, config, logout_route):
+        pwho = self.policy()
         config.set_authentication_policy(pwho)
 
         config.add_subscriber(self.check, pyramid.events.NewRequest)
@@ -339,7 +340,7 @@ def _integration_test(ini, host='127.0.0.1', port=8123):
     guard.add_issuer(guide, guide.sealer)
     rt = depgraph.get((Options, CONFIG_SECTION))
     config.add_route('logout', 'logout')
-    guard.configure(config, 'logout', rt.app_secret)
+    guard.configure(config, 'logout')
 
     pwhat = CapabilityStyle([guide])
     config.set_authorization_policy(pwhat)
