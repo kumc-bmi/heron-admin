@@ -21,15 +21,15 @@ See if they're qualified faculty::
 
   >>> _test_datasource(reset=True) and None
   >>> hp.issue(facbox, facreq)
-  [Prof. John Smith <john.smith@js.example>]
+  [Faculty(John Smith <john.smith@js.example>)]
   >>> facreq.role
-  Prof. John Smith <john.smith@js.example>
+  Faculty(John Smith <john.smith@js.example>)
 
   >>> facreq.role.ensure_saa_survey()
   'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&user_id=john.smith'
 
   >>> hp.issue(stubox, stureq)
-  [Bill Student <bill.student@js.example>]
+  [Affiliate(Bill Student <bill.student@js.example>)]
   >>> stureq.role.ensure_oversight_survey(dict(title='cure everything'))
   Traceback (most recent call last):
     ...
@@ -46,7 +46,7 @@ See if the students are qualified in some way::
   NotSponsored
 
   >>> hp.issue(stu2box, stu2req)
-  [Some One <some.one@js.example>]
+  [Affiliate(Some One <some.one@js.example>)]
 
 .. todo:: secure represention of sponsor rather than True/False?
   >>> stu2req.role.sponsor()
@@ -65,7 +65,7 @@ system access agreement and human subjects training::
 
   >>> _test_datasource(reset=True) and None
   >>> facreq.role.repository_access()
-  Access(Prof. John Smith <john.smith@js.example>)
+  Access(Faculty(John Smith <john.smith@js.example>))
 
 Make sure we recover, eventually, after database errors::
 
@@ -75,7 +75,7 @@ Make sure we recover, eventually, after database errors::
     IOError: databases fail sometimes; deal
 
     >>> facreq.role.repository_access()
-    Access(Prof. John Smith <john.smith@js.example>)
+    Access(Faculty(John Smith <john.smith@js.example>))
 
 '''
 
@@ -129,30 +129,25 @@ class HeronRecords(object):
     def issue(self, uidbox, req):
         mc = self._mc
 
-        # limit capabilities of self to one user
-        def attr(n):
-            return mc.withId(req.idvault_entry, lambda a: a[n])
-
         hr = self
+        badge = mc.read_badge(req.idvault_entry)
+
+        # limit capabilities of self to one user
         class Record(object):
             def ensure_saa(self, params):
-                uid = attr('cn')
-                return hr._saa_rc(uid, params)
+                return hr._saa_rc(badge.cn, params)
 
             def get_sig(self):
-                mail = attr('mail')
-                return hr._check_saa_signed(mail)  #@@seal date
+                return hr._check_saa_signed(badge.mail)  #@@seal date
 
             def ensure_oversight(self, params):
-                uid = attr('cn')
-                return hr._oversight_rc(uid, params, multi=True)
+                return hr._oversight_rc(badge.cn, params, multi=True)
 
             def get_training(self):
                 return mc.training(req.idvault_entry)
 
             def get_sponsor(self):
-                uid = attr('cn')
-                return hr._sponsored(uid)  #@@ seal sponsor uid
+                return hr._sponsored(badge.cn)  #@@ seal sponsor uid
 
             def repository_access(self, user, sponsor, sig, training):
                 return Access(user, sponsor, sig, training,
@@ -160,11 +155,9 @@ class HeronRecords(object):
                               )
 
         try:
-            role = mc.withFaculty(req.idvault_entry,
-                                  lambda attrs: Faculty(attrs, Record()))
+            role = Faculty(mc.faculty_badge(req.idvault_entry), Record())
         except medcenter.NotFaculty:
-            role = mc.withId(req.idvault_entry,
-                             lambda attrs: Affiliate(attrs, Record()))
+            role = Affiliate(badge, Record())
         req.role = role
         return [role]
 
@@ -172,6 +165,7 @@ class HeronRecords(object):
         log.info('HeronRecords.audit(%s, %s)' % (cap, p))
         if not isinstance(cap, Affiliate if p is PERM_FACULTY else Faculty):
             raise TypeError
+        self._mc.read_badge(cap.badge)
 
     def _check_saa_signed(self, mail):
         '''Test for an authenticated SAA survey response.
@@ -291,37 +285,19 @@ class NoAgreement(NoPermission):
 
 
 class Affiliate(object):
-    '''
-      >>> a = Affiliate(dict(sn='Doe', givenname='John',
-      ...                    mail='john.doe@example'), None)
-      >>> a
-      John Doe <john.doe@example>
-      >>> a.sn
-      'Doe'
-    '''
-    attributes = medcenter.AccountHolder.attributes
-
-    def __init__(self, attrs, record):
-        self._attrs = attrs
+    def __init__(self, badge, record):
+        self.badge = badge
         self.record = record
 
-    def __getattr__(self, n):
-        if n.startswith('_') or n not in self.attributes:
-            raise AttributeError
-        return self._attrs[n]
-
     def __repr__(self):
-        return '%s %s <%s>' % (self.givenname, self.sn, self.mail)
+        return 'Affiliate(%s)' % (self.badge)
 
     def sort_name(self):
-        '''
-          >>> Affiliate(dict(sn='Doe', givenname='John'), None).sort_name()
-          'Doe, John'
-        '''
-        return "%s, %s" % (self.sn, self.givenname)
+        # law of demeter says move this to Badge()...
+        return "%s, %s" % (self.badge.sn, self.badge.givenname)
         
     def ensure_saa_survey(self):
-        return self.record.ensure_saa(dict(user_id=self.cn,
+        return self.record.ensure_saa(dict(user_id=self.badge.cn,
                                            full_name=self.sort_name()))
 
 
@@ -344,17 +320,15 @@ class Affiliate(object):
                                              self.training())
 
 class Faculty(Affiliate):
-    '''
-    '''
     def __repr__(self):
-        return 'Prof. %s %s <%s>' % (self.givenname, self.sn, self.mail)
+        return 'Faculty(%s)' % (self.badge)
 
     def sponsor(self):
         return self
 
     def ensure_oversight_survey(self, team_params, data_req=False):
         return self.record.ensure_oversight(dict(team_params,
-                                                 user_id=self.cn,
+                                                 user_id=self.badge.cn,
                                                  full_name=self.sort_name(),
                                                  is_data_request=data_req,
                                                  multi='yes'))

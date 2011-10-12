@@ -1,24 +1,55 @@
-'''medcenter.py -- academic medical center directory/policy
+'''medcenter --  academic medical center directory/policy
+==========================================================
 
-  # logging.basicConfig(level=logging.DEBUG)
+Login Capabilities
+------------------
+
+Suppose we have a login capability (see cas_auth.Issuer)::
+  >>> import sys
+  >>> logging.basicConfig(level=logging.INFO, stream=sys.stdout)
   >>> m, mock, mods, depgraph = Mock.make_stuff()
-  >>> app_secret = depgraph.get(KAppSecret)
-
-Assuming CAS login asked us to issue a login capability::
 
   >>> box, req = mock.login_info('john.smith')
+  >>> box, req
+  (<MedCenter sealed box>, {})
+
+Then we'll issue a login capability:
   >>> login_caps = m.issue(box, req)
+  >>> login_caps
+  [<MedCenter sealed box>]
+
+Note that it has to be our own login capability::
+  >>> foreign_box = Mock.make().sealer.seal('john.smith')
+  >>> m.issue(foreign_box, req)
+  Traceback (most recent call last):
+  ...
+  TypeError
+
+And we'll issue no capabilities unless the login capability bears
+the correct application secret::
+  >>> boxx = m.sealer.seal(('john.smith', 'wrong_sekrit'))
+  >>> m.issue(boxx, req)
+  WARNING:medcenter:unexpected app_secret [wrong_sekrit]
+  []
+
+
+Directory Lookup
+----------------
 
 We can exercise an enterprise directory capability::
 
-  >>> a1 = req.idvault_entry
-  >>> m.withId(a1, lambda a: '%s %s <%s>' % (
-  ...                         a['givenname'], a['sn'], a['mail']))
-  'John Smith <john.smith@js.example>'
-  >>> m.withId(a1, lambda a: a['title'])
+  >>> b1 = m.read_badge(req.idvault_entry)
+  >>> b1
+  John Smith <john.smith@js.example>
+  >>> b1.title
   'Chair of Department of Neurology'
 
-Note: KUMC uses ou for department. @@test
+Note: KUMC uses ou for department.
+  >>> b1.ou
+  ''
+
+Human Subjects Training
+-----------------------
 
 We use an outboard service to check human subjects "chalk" training::
 
@@ -27,7 +58,7 @@ We use an outboard service to check human subjects "chalk" training::
   param=userid
   url=http://localhost:8080/chalk-checker
 
-  >>> m.training(a1)
+  >>> m.training(req.idvault_entry)
   '2012-01-01'
 
 '''
@@ -55,6 +86,9 @@ PERM_ID=__file__ + '.idvault'
 
 @singleton
 class MedCenter(object):
+    '''This implemeted the cas_auth.Issuer protocol,
+    though we're avoiding an actual dependency in that direction just now.
+    '''
     excluded_jobcode = "24600"
     permissions=(PERM_ID,)
 
@@ -72,7 +106,7 @@ class MedCenter(object):
         return "MedCenter(s, t)"
 
     def _lookup(self, name):
-        matches = self._svc.search('(cn=%s)' % name, AccountHolder.attributes)
+        matches = self._svc.search('(cn=%s)' % name, Badge.attributes)
         if len(matches) != 1:
             if len(matches) == 0:
                 raise KeyError, name
@@ -80,46 +114,44 @@ class MedCenter(object):
                 raise ValueError, name  # ambiguous
 
         dn, ldapattrs = matches[0]
-        return AccountHolder.rezip(ldapattrs)
+        return Badge.from_ldap(ldapattrs)
 
     def issue(self, loginbox, req):
         u, s = self._unsealer.unseal(loginbox)
         if s != self._app_secret:
-            log.warn('expected app_secret [%s] got [%s]',
-                     self._app_secret, s)
+            log.warn('unexpected app_secret [%s]', s)
             return []
         cap = self.sealer.seal(self._lookup(u))
         req.idvault_entry = cap
         return [cap]
 
     def audit(self, cap, p):
+        '''See cas_auth.
+        '''
         log.info('MedCenter.audit(%s, %s)' % (cap, p))
         if not isinstance(cap, object):
             raise TypeError
         self._unsealer.unseal(cap)
 
-    def lookup(self, namebox):
+    def lookup(self, namebox):  #@@ dead code?
         name = self._unsealer.unseal(namebox)
         return self.sealer.seal(self._lookup(name))
 
-    def withId(self, attrsbox, thunk):
-        '''Exercise thunk(attrs) provided attrsbox unseals.
+    def read_badge(self, badgebox):
+        '''Read (unseal) badge.
         '''
-        attrs = self._unsealer.unseal(attrsbox)
-        return thunk(attrs)
+        return self._unsealer.unseal(badgebox)
 
-    def withFaculty(self, attrsbox, thunk):
-        '''Exercise thunk(attrs) provided attrsbox unseals as faculty.
+    def faculty_badge(self, badgebox):
+        '''Read faculty badge.
         @raises: TypeError on unsealing failure
         @raises: NotFaculty
         '''
-        attrs = self._unsealer.unseal(attrsbox)
-        log.debug('withFaculty: %s', attrs)
-        if (attrs['kumcPersonJobcode'] == self.excluded_jobcode
-            or attrs['kumcPersonFaculty'] != 'Y'):
+        badge = self._unsealer.unseal(badgebox)
+        if (badge.kumcPersonJobcode == self.excluded_jobcode
+            or badge.kumcPersonFaculty != 'Y'):
             raise NotFaculty
-
-        return thunk(attrs)
+        return badge
 
     def training(self, attrbox):
         return self._training(self._unsealer.unseal(attrbox)['cn'])
@@ -143,44 +175,60 @@ class MedCenter(object):
                 for dn, ldapattrs in results]
 
 
-def _extract_values(attrs):
-    return [attrs.get(n, [None])[0]
-            for n in AccountHolder.attributes]
-
-
 class NotFaculty(Exception):
     pass
 
 
-class AccountHolder(object):
+class AttrDict(dict):
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+        self.__dict__ = self
+
+
+class Badge(AttrDict):
     '''
+      >>> js = Badge(cn='john.smith', sn='Smith', givenname='John',
+      ...            mail='john.smith@example')
+      >>> js
+      John Smith <john.smith@example>
+      >>> js.sn
+      'Smith'
+      >>> js.sn_typo
+      Traceback (most recent call last):
+      ...
+      AttributeError: 'Badge' object has no attribute 'sn_typo'
+
+
     Note: KUMC uses ou for department.
     '''
     attributes = ["cn", "ou", "sn", "givenname", "title", "mail",
                   "kumcPersonFaculty", "kumcPersonJobcode"]
 
     @classmethod
-    def rezip(cls, ldapattrs):
-        return dict(zip(cls.attributes, _extract_values(ldapattrs)))
-
-    def __init__(self, cap, attrs):
-        self.cap = cap
-        self._attrs = attrs
-
-    def __str__(self):
-        return '%s %s <%s>' % (self.givenname, self.sn, self.mail)
+    def from_ldap(cls, ldapattrs):
+        r'''Get the 1st of each LDAP style list of values for each attribute.
+        
+          >>> Badge.from_ldap(
+          ...    {'kumcPersonJobcode': ['1234'],
+          ...     'kumcPersonFaculty': ['Y'],
+          ...      'cn': ['john.smith'],
+          ...      'title': ['Chair of Department of Neurology'],
+          ...      'sn': ['Smith'],
+          ...      'mail': ['john.smith@js.example'],
+          ...      'ou': [''],
+          ...      'givenname': ['John']})
+          John Smith <john.smith@js.example>
+        '''
+        return cls(
+            **dict([(n, ldapattrs.get(n, [None])[0])
+                    for n in cls.attributes]))
 
     def __repr__(self):
-        return str(self)
+        return '%s %s <%s>' % (self.givenname, self.sn, self.mail)
 
     def userid(self):
         # TODO: use python property stuff?
         return self.cn
-
-    def __getattr__(self, n):
-        if n.startswith('_') or n not in self.attributes:
-            raise AttributeError
-        return self._attrs[n]
 
 
 _sample_chalk_settings = config.TestTimeOptions(dict(
@@ -229,6 +277,10 @@ class Mock(injector.Module):
         return [Mock()]
 
     @classmethod
+    def make(cls):
+        return injector.Injector(cls.mods()).get(MedCenter)
+
+    @classmethod
     def make_stuff(cls):
         mods = cls.mods()
         mod = mods[-1]
@@ -238,10 +290,9 @@ class Mock(injector.Module):
         return mc, mod, mods, depgraph
 
 
-class MockRequest(dict):
-    def __init__(self, *args, **kwargs):
-        dict.__init__(self, *args, **kwargs)
-        self.__dict__ = self
+class MockRequest(AttrDict):
+    pass
+
 
 class IntegrationTest(injector.Module):
     def __init__(self, ini='integration-test.ini'):
