@@ -95,40 +95,36 @@ def test_grant_access_with_valid_cas_ticket(t=None, r2=None):
 
 
 class CheckListView(object):
-    permission = 'checklist'
-
     @inject(checklist=Checklist)
     def __init__(self, checklist):
         self._checklist = checklist
+        self.sealer, self._unsealer = sealing.makeBrandPair('checklist')
+
+    def issue(self, uidbox, req):
+        uid = self._unsealer.unseal(uidbox)
+        req.checklist_parts = self._checklist.parts_for(uid)
+
 
     def configure(self, config, route_name):
         config.add_view(self.get, route_name=route_name, request_method='GET',
                         renderer='index.html'
-                        #, permission=self.permission
+                        permission=self.permissions[0]
                         )
 
     def get(self, req):
-        from pyramid.response import Response
-        parts = self._checklist.parts_for(req.remote_user)
-        return dict(parts,
+        hr = self._checklist.heron_records()
+
+        return dict(req.checklist_parts,
                     # req.route_url('i2b2_login')
                     logout_path=req.route_url('logout'),
                     saa_path=req.route_url('saa'),
                     i2b2_login_path=req.route_url('i2b2_login'),
-                    oversight_path=req.route_url('oversight'),
-                    #@@ move these to another view
-                    done_path=req.route_url('team_done'),
-                    team=[],
-                    is_data_request='0',
-                    uids=' ',
-                    candidates=[])
+                    oversight_path=req.route_url('oversight'))
 
 
 class REDCapLink(object):
-    @inject(checklist=Checklist,
-            urlopener=URLopener)
-    def __init__(self, checklist, urlopener):
-        self._m = checklist.medcenter()
+    @inject(urlopener=URLopener)
+    def __init__(self, hr, urlopener):
         self._hr = checklist.heron_records()
         self._saa_opts = self._hr.saa_opts()
         self._oversight_opts = self._hr.oversight_opts()
@@ -136,9 +132,11 @@ class REDCapLink(object):
 
     def configure(self, config, rsaa, rtd):
         config.add_view(self.saa_redir, route_name=rsaa,
-                        request_method='GET')
+                        request_method='GET',
+                        permission=medcenter.PERM_ID)
         config.add_view(self.oversight_redir, route_name=rtd,
-                        request_method='GET')
+                        request_method='GET',
+                        permission=medcenter.PERM_FACULTY)
 
     def saa_redir(self, req):
         '''Redirect to a per-user System Access Agreement REDCap survey.
@@ -157,9 +155,8 @@ class REDCapLink(object):
                 'user_id': uid, 'full_name': full_name}, req)
 
     def _request_agent(self, req):
-        uid = req.remote_user
-
-        a = self._m.affiliate(uid)
+        a = req.agent
+        uid = a.userid()
         full_name = "%s, %s" % (a.sn, a.givenname)
         return a, uid, full_name
 
@@ -480,6 +477,7 @@ class HeronAdminConfig(Configurator):
 
         self.add_route('heron_home', '')
         clv.configure(self, 'heron_home')
+        guard.add_issuer(clv, clv.sealer)
 
         self.add_route('saa', 'saa_survey')
         self.add_route('team_done', 'team_done')

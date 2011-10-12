@@ -17,15 +17,17 @@ Let's set up authorization and authentication::
   >>> rt.base
   'http://example/cas/'
 
+  >>> guide = depgraph.get(Issuer)
   >>> guard = depgraph.get(Validator)
+  >>> guard.add_issuer(guide, guide.sealer)
 
   >>> config.add_route('logout', 'logout')
   >>> guard.configure(config, 'logout', rt.app_secret)
-  >>> config.set_authorization_policy(CapabilityStyle([guard]))
+  >>> config.set_authorization_policy(CapabilityStyle([guide]))
 
   >>> config.add_route('root', '')
   >>> config.add_view(protected_view, route_name='root',
-  ...                 permission=guard.permission)
+  ...                 permission=guide.permissions[0])
 
 An initial visit redirects to the CAS service with the `service` param
 set to our login address::
@@ -66,9 +68,10 @@ Finally, log out; then we should get a challenge on the next request::
 '''
 
 # python stdlib 1st, per PEP8
+import itertools
+import logging
 import urllib
 import urllib2
-import logging
 
 # from pypi
 import injector
@@ -81,30 +84,58 @@ from pyramid.httpexceptions import HTTPUnauthorized, HTTPBadRequest
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPSeeOther
 from pyramid.events import NewRequest
 from pyramid.events import subscriber
-from pyramid.authentication import CallbackAuthenticationPolicy
 from pyramid.authentication import AuthTktAuthenticationPolicy
 
 from admin_lib.config import Options, TestTimeOptions, RuntimeOptions
+from admin_lib import sealing
 
 log = logging.getLogger(__name__)
 
 CONFIG_SECTION='cas'
 
-class Validator(object):
-    permission=pyramid.security.Authenticated
+class Issuer(object):
+    '''Issuer of capabilities based on CAS login credentials.
 
-    def __init__(self, cas_addr, ua=None):
+    See MockIssuer for an example.
+    '''
+    permissions = ()
+
+    def issue(self, uidbox, req):
+        '''Issue capabilities based on CAS login.
+
+        @param uidbox: CAS userid, sealed by sealer given to add_issuer(),
+                       to prove that the userid comes from someone we
+                       have been introduced to.
+        @param req: request, which you may add attributes to
+        @return: a sequence of capabilities for this request, which
+                 will later be passed to audit in case this issuer's
+                 permission is required.
+        '''
+        raise NotImplemented
+
+    def audit(self, cap, permission):
+        '''Test whether cap permits permission.
+
+        @param cap: a capability issued by this issuer or any other
+        @permission: one of this issuer's permissions
+        '''
+        raise NotImplemented
+
+
+class Validator(object):
+    def __init__(self, cas_addr, app_secret, ua=None):
         if ua is None:
             ua = urllib2.build_opener()
         self._ua = ua
         self._a = cas_addr
+        self._issuers = []
 
     def __str__(self):
         return 'Validator(cas_addr=%s)' % self._a
 
-    def policy(self, app_secret):
+    def policy(self):
         return AuthTktAuthenticationPolicy(
-            app_secret, callback=self.cap,
+            app_secret, callback=self.caps,
             debug=True #@@
             )
         
@@ -161,30 +192,22 @@ class Validator(object):
         response.headers.extend(hdrs)
         raise response
 
-    def cap(self, uid, req):
-        log.debug('issuing CAS validation capability for: %s', uid)
-        def cap():
-            return (self, uid)
+    def add_issuer(self, issuer, sealer):
+        self._issuers.append((issuer, sealer))
 
-        req.remote_user = uid
-        req.login_cap = cap
-        return [cap]
+    def caps(self, uid, req):
+        log.debug('issuing CAS login capabilities for: %s', uid)
+        return _flatten([issuer.issue(sealer.seal(uid), req)
+                         for issuer, sealer in self._issuers])
         
-    def audit(self, cap):
-        '''unsealer, sorta
-
-        @raises TypeError on audit failure
-        '''
-        x, u = cap()
-        if x is not self:
-            raise TypeError
-        return u
-
     def logout(self, context, req):
         response = HTTPSeeOther(urllib.basejoin(self._a, 'logout'))
         response.headers.extend(security.forget(req))
         raise response
 
+
+def _flatten(listoflists):
+    return list(itertools.chain(*listoflists))
 
 class CapabilityStyle(object):
     def __init__(self, auditors):
@@ -195,10 +218,10 @@ class CapabilityStyle(object):
                   context, principals, permission)
 
         for auditor in self._auditors:
-            if permission == auditor.permission:
+            if permission in auditor.permissions:
                 for cap in principals:
                     try:
-                        auditor.audit(cap)
+                        auditor.audit(cap, permission)
                         return True
                     except TypeError:
                         pass
@@ -211,23 +234,11 @@ class CapabilityStyle(object):
 
 
 class SetUp(injector.Module):
-    @provides(CallbackAuthenticationPolicy)
-    @inject(guard=Validator,
-            rt=(Options, CONFIG_SECTION))
-    def policy(self, guard, rt):
-        '''
-        .. todo:: use a SessionPolicy
-        '''
-        log.debug('making policy from %s, %s', rt.app_secret, guard)
-        return AuthTktAuthenticationPolicy(
-            rt.app_secret, callback=guard.cap,
-            timeout=20*60, reissue_time=2*60)
-        
     @provides(Validator)
     @inject(rt=(Options, CONFIG_SECTION),
             ua=urllib.URLopener)
     def validator(self, rt, ua):
-        return Validator(rt.base, ua)
+        return Validator(rt.base, rt.app_secret, ua)
         
 
 class RunTime(injector.Module):
@@ -277,6 +288,8 @@ class Mock(injector.Module):
                     to=injector.InstanceProvider(LinesUrlOpener(
                     ['yes', 'john.smith'])))
 
+        binder.bind(Issuer, MockIssuer)
+
     @classmethod
     def mods(cls):
         return [SetUp(), Mock()]
@@ -284,6 +297,28 @@ class Mock(injector.Module):
     @classmethod
     def depgraph(cls):
         return injector.Injector(cls.mods())
+
+
+class MockIssuer(object):
+    permissions = ('treasure')
+
+    @classmethod
+    def make(cls):
+        s, u = sealing.makeBrandPair('treasure')
+
+    def __init__(self):
+        self.sealer, self._unsealer = sealing.makeBrandPair('treasure')
+
+    def issue(self, uidbox, req):
+        uid = self._unsealer.unseal(uidbox)
+        req.remote_user = uid
+        return [uidbox]
+
+    def audit(self, cap, permission):
+        try:
+            self._unsealer.unseal(cap)
+        except AttributeError:  # e.g. in case of string principals
+            raise TypeError
 
 
 def _integration_test(ini, host='127.0.0.1', port=8123):
@@ -299,16 +334,19 @@ def _integration_test(ini, host='127.0.0.1', port=8123):
     config = Configurator(settings={'pyramid.debug_routematch': True})
 
     depgraph = RunTime.depgraph(ini)
+    guide = MockIssuer()
     guard = depgraph.get(Validator)
+    guard.add_issuer(guide, guide.sealer)
     rt = depgraph.get((Options, CONFIG_SECTION))
     config.add_route('logout', 'logout')
     guard.configure(config, 'logout', rt.app_secret)
 
-    pwhat = CapabilityStyle([guard])
+    pwhat = CapabilityStyle([guide])
     config.set_authorization_policy(pwhat)
 
     config.add_route('root', '')
-    config.add_view(protected_view, route_name='root')
+    config.add_view(protected_view, route_name='root',
+                    permission=guide.permissions[0])
 
     app = config.make_wsgi_app()
     httpserver.serve(app, host, port)
