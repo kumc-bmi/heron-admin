@@ -112,8 +112,8 @@ import sealing
 REDCAPDB_CONFIG_SECTION='redcapdb'
 SAA_CONFIG_SECTION='saa_survey'
 OVERSIGHT_CONFIG_SECTION='oversight_survey'
-PERM_USER=__file__ + '.user'
-PERM_FACULTY=__file__ + '.faculty'
+PERM_USER=__name__ + '.user'
+PERM_FACULTY=__name__ + '.faculty'
 
 KDataSource = injector.Key('HERONDataSource')
 KTimeSource = injector.Key('TimeSource')
@@ -133,6 +133,7 @@ class HeronRecords(object):
             urlopener=urllib.URLopener)
     def __init__(self, mc, pm, saa_opts, oversight_opts,
                  datasource, timesrc, urlopener):
+        log.debug('HeronRecords.__init__ again?')
         # TODO: connection pooling/management?
         self._datasrc = datasource
         self._mc = mc
@@ -178,7 +179,12 @@ class HeronRecords(object):
                 return hr._saa_rc(badge.cn, params)
 
             def get_sig(self):
-                return hr._check_saa_signed(badge.mail)  #@@seal date
+                try:
+                    return hr._check_saa_signed(badge.mail)  #@@seal date
+                except: #@@narrow exceptions
+                    log.warn('Exception checking SAA. DB down?')
+                    log.debug('SAA error detail', exc_info=True)
+                    raise NoAgreement
 
             def ensure_oversight(self, params):
                 return hr._oversight_rc(badge.cn, params, multi=True)
@@ -186,7 +192,7 @@ class HeronRecords(object):
             def get_training(self):
                 try:
                     when = mc.training(req.idvault_entry)
-                except KeyError:
+                except (KeyError, IOError):
                     raise NoTraining
                 current = when >= hr._t.today().isoformat()
                 if not current:
@@ -194,7 +200,12 @@ class HeronRecords(object):
                 return when
 
             def get_sponsor(self):
-                return hr._sponsored(badge.cn)  #@@ seal sponsor uid
+                try:
+                    return hr._sponsored(badge.cn)  #@@ seal sponsor uid
+                except: #@@narrow exceptions
+                    log.warn('Exception checking sponsorship. DB down?')
+                    log.debug('sponsorship error detail', exc_info=True)
+                    raise NotSponsored
 
             def repository_account(self, user, sponsor, sig, training):
                 #@@ todo: check user, sponsor, sig, training?
@@ -212,7 +223,7 @@ class HeronRecords(object):
 
     def audit(self, cap, p=PERM_USER):
         log.info('HeronRecords.audit(%s, %s)' % (cap, p))
-        if not isinstance(cap, Affiliate if p is PERM_FACULTY else Faculty):
+        if not isinstance(cap, Faculty if p is PERM_FACULTY else Affiliate):
             raise TypeError
         self._mc.read_badge(cap.idcap)
 
@@ -289,7 +300,7 @@ class NotSponsored(NoPermission):
 
 
 class NoTraining(NoPermission):
-    def __init__(self, when):
+    def __init__(self, when=None):
         self.when = when
 
 

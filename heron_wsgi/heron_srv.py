@@ -119,7 +119,7 @@ class CheckListView(object):
             req.role.faculty_title()
             value = dict(value,
                          oversight_path=req.route_url('oversight'))
-        except heron_policy.NotFaculty:
+        except medcenter.NotFaculty:
             pass
 
         return value
