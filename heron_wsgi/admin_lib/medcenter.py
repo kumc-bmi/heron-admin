@@ -301,8 +301,8 @@ class RunTime(injector.Module, ModuleHelper):
         return chalkdb_queryfn(self._ini, CHALK_CONFIG_SECTION)
 
     @classmethod
-    def mods(cls):
-        return [cls(), ldaplib.RunTime()]
+    def mods(cls, ini='integration-test.ini'):
+        return [cls(ini), ldaplib.RunTime(ini)]
 
 
 if __name__ == '__main__': # pragma: no cover

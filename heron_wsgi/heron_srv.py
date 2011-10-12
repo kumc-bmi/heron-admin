@@ -446,15 +446,21 @@ class RunTime(injector.Module):
                     RuntimeOptions(_sample_err_settings.keys()
                                    ).load(self._webapp_ini, 'errors'))
 
+    @provides(medcenter.KAppSecret)
+    @inject(rt=(Options, cas_auth.CONFIG_SECTION))
+    def cas_app_secret(self, rt):
+        return rt.app_secret
+
     @classmethod
     def mods(cls, settings):
         webapp_ini = settings['webapp_ini']
         admin_ini = settings['admin_ini']
         #@@ todo: restore Oops.html error handling and such
-        return (cas_auth.RunTime.mods(webapp_ini) +
-                [class_(admin_ini)
-                 for class_ in i2b2pm.IntegrationTest.deps()]
-                + [RunTime(settings)])
+        return (medcenter.RunTime.mods(admin_ini) +
+                cas_auth.RunTime.mods(webapp_ini) +
+                [heron_policy.IntegrationTest(admin_ini),
+                 i2b2pm.IntegrationTest(admin_ini),
+                 RunTime(settings)])
 
     @classmethod
     def depgraph(cls, settings):
