@@ -1,19 +1,20 @@
 '''heron_policy.py -- HERON policy decisions, records
 
   # logging.basicConfig(level=logging.DEBUG)
-  >>> mc, hp, mcmock, depgraph = Mock.make_stuff()
+  >>> mc, hp, _ = Mock.make_stuff()
+  >>> mcmock = medcenter.Mock
 
 .. todo:: explain our use of injector a bit
 
 Suppose an investigator and some students log in::
 
-  >>> facbox, facreq = mcmock.login_info('john.smith')
+  >>> facbox, facreq = mcmock.login_info(mc, 'john.smith')
   >>> mc.issue(facbox, facreq)
   [<MedCenter sealed box>]
-  >>> stubox, stureq = mcmock.login_info('bill.student')
+  >>> stubox, stureq = mcmock.login_info(mc, 'bill.student')
   >>> mc.issue(stubox, stureq)
   [<MedCenter sealed box>]
-  >>> stu2box, stu2req = mcmock.login_info('some.one')
+  >>> stu2box, stu2req = mcmock.login_info(mc, 'some.one')
   >>> mc.issue(stu2box, stu2req)
   [<MedCenter sealed box>]
 
@@ -40,7 +41,7 @@ See if they're qualified faculty::
 See if the students are qualified in some way::
 
   >>> _test_datasource(reset=True) and None
-  >>> stureq.role.repository_access()
+  >>> stureq.role.repository_account()
   Traceback (most recent call last):
     ...
   NotSponsored
@@ -54,7 +55,7 @@ See if the students are qualified in some way::
 
   >>> stu2req.role.training()
   '2012-01-01'
-  >>> stu2req.role.repository_access()
+  >>> stu2req.role.repository_account()
   Traceback (most recent call last):
   ...
   NoAgreement
@@ -64,7 +65,7 @@ Get an actual access qualification; i.e. check for
 system access agreement and human subjects training::
 
   >>> _test_datasource(reset=True) and None
-  >>> facreq.role.repository_access()
+  >>> facreq.role.repository_account()
   Access(Faculty(John Smith <john.smith@js.example>))
 
 Make sure we recover, eventually, after database errors::
@@ -74,7 +75,7 @@ Make sure we recover, eventually, after database errors::
       ...
     IOError: databases fail sometimes; deal
 
-    >>> facreq.role.repository_access()
+    >>> facreq.role.repository_account()
     Access(Faculty(John Smith <john.smith@js.example>))
 
 '''
@@ -87,6 +88,7 @@ from injector import inject
 
 from db_util import transaction, oracle_connect, mysql_connect
 import config
+import i2b2pm
 import medcenter
 import redcap_connect
 import sealing
@@ -104,12 +106,13 @@ class HeronRecords(object):
     qty_institutions = len(('kuh', 'kupi', 'kumc'))
 
     @inject(mc=medcenter.MedCenter,
+            pm=i2b2pm.I2B2PM,
             saa_opts=(config.Options, SAA_CONFIG_SECTION),
             oversight_opts=(config.Options, OVERSIGHT_CONFIG_SECTION),
             datasource=KDataSource,
             timesrc=KTimeSource,
             urlopener=urllib.URLopener)
-    def __init__(self, mc, saa_opts, oversight_opts,
+    def __init__(self, mc, pm, saa_opts, oversight_opts,
                  datasource, timesrc, urlopener):
         # TODO: connection pooling/management?
         self._datasrc = datasource
@@ -133,6 +136,16 @@ class HeronRecords(object):
         badge = mc.read_badge(req.idvault_entry)
 
         # limit capabilities of self to one user
+        class I2B2Account(object):
+            def __init__(self, agent):
+                self.agent = agent
+
+            def login(self):
+                self._pm.ensure_account(badge.cn)
+
+            def __repr__(self):
+                return 'Access(%s)' % self.agent
+
         class Record(object):
             def ensure_saa(self, params):
                 return hr._saa_rc(badge.cn, params)
@@ -149,10 +162,9 @@ class HeronRecords(object):
             def get_sponsor(self):
                 return hr._sponsored(badge.cn)  #@@ seal sponsor uid
 
-            def repository_access(self, user, sponsor, sig, training):
-                return Access(user, sponsor, sig, training,
-                              i2b2acct=None  #@@
-                              )
+            def repository_account(self, user, sponsor, sig, training):
+                #@@ todo: check user, sponsor, sig, training?
+                return I2B2Account(user)
 
         try:
             role = Faculty(mc.faculty_badge(req.idvault_entry), Record())
@@ -296,10 +308,12 @@ class Affiliate(object):
         # law of demeter says move this to Badge()...
         return "%s, %s" % (self.badge.sn, self.badge.givenname)
         
+    def faculty_title(self):
+        raise medcenter.NotFaculty
+
     def ensure_saa_survey(self):
         return self.record.ensure_saa(dict(user_id=self.badge.cn,
                                            full_name=self.sort_name()))
-
 
     def ensure_oversight_survey(self, params):
         raise medcenter.NotFaculty
@@ -313,15 +327,18 @@ class Affiliate(object):
     def sponsor(self):
         return self.record.get_sponsor()
 
-    def repository_access(self):
-        return self.record.repository_access(self,
-                                             self.sponsor(),
-                                             self.signature(),
-                                             self.training())
+    def repository_account(self):
+        return self.record.repository_account(self,
+                                              self.sponsor(),
+                                              self.signature(),
+                                              self.training())
 
 class Faculty(Affiliate):
     def __repr__(self):
         return 'Faculty(%s)' % (self.badge)
+
+    def faculty_title(self):
+        return self.badge.title
 
     def sponsor(self):
         return self
@@ -332,18 +349,6 @@ class Faculty(Affiliate):
                                                  full_name=self.sort_name(),
                                                  is_data_request=data_req,
                                                  multi='yes'))
-
-
-class Access(object):
-    def __init__(self, user, sponsor, sig, texp, i2b2acct):
-        self._agent = user
-        self._acct = i2b2acct
-
-    def __repr__(self):
-        return 'Access(%s)' % self._agent
-
-    def ensure_i2b2_account(self):
-        return self._acct.login(user, sponsor, sig, texp)
 
 
 class Disclaimer(object):
@@ -380,22 +385,28 @@ class Mock(injector.Module):
 
     @classmethod
     def mods(cls):
-        return medcenter.Mock.mods() + [Mock()]
+        return medcenter.Mock.mods() + i2b2pm.Mock.mods() + [Mock()]
 
     @classmethod
     def depgraph(cls):
         return injector.Injector(cls.mods())
 
     @classmethod
-    def make_stuff(cls):
-        mods = cls.mods()
+    def make_stuff(cls, mods=None):
+        if not mods:
+            mods = cls.mods()
         depgraph = injector.Injector(mods)
         mc = depgraph.get(medcenter.MedCenter)
         hr = depgraph.get(HeronRecords)
-        mcmod = mods[-2]
-        mcmod.set_medcenter(mc)
-        return mc, hr, mcmod, depgraph
+        return mc, hr, depgraph
 
+    @classmethod
+    def login_sim(cls, mc, hr):
+        def mkrole(uid):
+            box, req = medcenter.Mock.login_info(mc, uid)
+            caps = mc.issue(box, req) + hr.issue(box, req)
+            return req.role
+        return mkrole
 
 class _TestTimeSource(object):
     def today(self):

@@ -7,9 +7,9 @@ Login Capabilities
 Suppose we have a login capability (see cas_auth.Issuer)::
   >>> import sys
   >>> logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-  >>> m, mock, mods, depgraph = Mock.make_stuff()
+  >>> m = Mock.make()
 
-  >>> box, req = mock.login_info('john.smith')
+  >>> box, req = Mock.login_info(m, 'john.smith')
   >>> box, req
   (<MedCenter sealed box>, {})
 
@@ -260,15 +260,12 @@ class Mock(injector.Module):
                     injector.InstanceProvider(d))
         binder.bind(KTrainingFunction,
                     injector.InstanceProvider(d.trainedThru))
-        self._app_secret = 'sekrit'
         binder.bind(KAppSecret, 
-                    injector.InstanceProvider(self._app_secret))
+                    injector.InstanceProvider('sekrit'))
 
-    def set_medcenter(self, mc):
-        self._mc = mc
-
-    def login_info(self, cn):
-        box = self._mc.sealer.seal((cn, self._app_secret))
+    @classmethod
+    def login_info(self, mc, cn):
+        box = mc.sealer.seal((cn, mc._app_secret))
         req = MockRequest()
         return box, req
 
@@ -279,15 +276,6 @@ class Mock(injector.Module):
     @classmethod
     def make(cls):
         return injector.Injector(cls.mods()).get(MedCenter)
-
-    @classmethod
-    def make_stuff(cls):
-        mods = cls.mods()
-        mod = mods[-1]
-        depgraph = injector.Injector(mods)
-        mc = depgraph.get(MedCenter)
-        mod.set_medcenter(mc)
-        return mc, mod, mods, depgraph
 
 
 class MockRequest(AttrDict):
