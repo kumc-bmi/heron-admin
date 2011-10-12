@@ -46,6 +46,11 @@ See if the students are qualified in some way::
     ...
   NotSponsored
 
+  >>> stureq.role.training()
+  Traceback (most recent call last):
+  ...
+  NoTraining
+
   >>> hp.issue(stu2box, stu2req)
   [Affiliate(Some One <some.one@js.example>)]
 
@@ -126,9 +131,6 @@ class HeronRecords(object):
         self._oversight_project_id = oversight_opts.project_id
         self.sealer, self._unsealer = sealing.makeBrandPair('HeronRecords')
 
-    def mc_sealer(self):
-        return self._mc.sealer
-
     def issue(self, uidbox, req):
         mc = self._mc
 
@@ -157,7 +159,14 @@ class HeronRecords(object):
                 return hr._oversight_rc(badge.cn, params, multi=True)
 
             def get_training(self):
-                return mc.training(req.idvault_entry)
+                try:
+                    when = mc.training(req.idvault_entry)
+                except KeyError:
+                    raise NoTraining
+                current = when >= hr._t.today().isoformat()
+                if not current:
+                    raise NoTraining(when)
+                return when
 
             def get_sponsor(self):
                 return hr._sponsored(badge.cn)  #@@ seal sponsor uid
@@ -202,12 +211,6 @@ class HeronRecords(object):
             raise NotExecutive()
         return OK(agent)
 
-    def q_faculty(self, agent):
-        '''Test whether the medcenter considers this agent to be faculty.
-        '''
-        self._m.checkFaculty(agent)
-        return OK(agent)
-
     def _sponsored(self, uid):
         '''Test for sponsorship approval from each participating institution.
 
@@ -248,49 +251,24 @@ having count(*) = %(qty)s
             raise NotSponsored()
         return True
 
-    def q_any(self, agent):
-        try:
-            return self.q_faculty(agent)
-        except medcenter.NotFaculty:
-            try:
-                return self.q_executive(agent)
-            except NoPermission:
-                return self.q_sponsored(agent)
-
-    def _agent_test(self, sql, k, agent):
-        with transaction(self._datasrc()) as q:
-            q.execute(sql, {k: agent.userid()})
-            return len(q.fetchall()) > 0
-
-    def repositoryAccess(self, q):
-        a = q.agent
-        try:
-            texp = self._m.trainedThru(a)
-        except KeyError:
-            raise NoTraining("no training on file")
-        if texp < self._t.today().isoformat():
-            raise NoTraining("training out of date")
-        self.check_saa_signed(a)
-        return Access(a, texp, Disclaimer(a))
-
-    def audit(self, access):
-        '''This mimics the sealer/unsealer pattern but doesn't actually
-        provide a secure implementation. We trust our codebase, for now.
-
-        .. todo: cite erights.org sealer/unsealer pattern
-        '''
-        return access._agent.userid()
-
-
 
 class NoPermission(Exception):
     pass
+
+
 class NotSponsored(NoPermission):
     pass
+
+
 class NoTraining(NoPermission):
-    pass
+    def __init__(self, when):
+        self.when = when
+
+
 class NotExecutive(NoPermission):
     pass
+
+
 class NoAgreement(NoPermission):
     pass
 

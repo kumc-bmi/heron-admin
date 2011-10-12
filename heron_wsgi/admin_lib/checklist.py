@@ -40,20 +40,20 @@ import heron_policy
 import medcenter
 
 class Checklist(object):
-    @inject(timesrc=heron_policy.KTimeSource)
-    def __init__(self, timesrc):
-        self._t = timesrc
+    '''@@there's no longer any reason for this to be a class.
+    '''
+    def __init__(self):
+        pass
 
     def __repr__(self):
-        return 'Checlist(m, hr, t)'
+        return 'Checlist()'
 
     def screen(self, agent):
         try:
             expiration = agent.training()
-            current = (expiration >= self._t.today().isoformat()
-                       and {'checked': 'checked'} or {})
-        except KeyError:
-            expiration = None
+            current = {'checked': 'checked'}
+        except heron_policy.NoTraining as e:
+            expiration = e.when
             current = {}
 
         def checkmark(f):
