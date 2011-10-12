@@ -251,7 +251,17 @@ def chalkdb_queryfn(ini, section=CHALK_CONFIG_SECTION):  # pragma nocover. not w
     return training_expiration
 
 
-class Mock(injector.Module):
+class ModuleHelper(object):
+    @classmethod
+    def depgraph(cls):
+        return injector.Injector(cls.mods())
+
+    @classmethod
+    def make(cls):
+        return cls.depgraph().get(MedCenter)
+
+
+class Mock(injector.Module, ModuleHelper):
     def configure(self, binder):
         import hcard_mock
         d = hcard_mock.MockDirectory(hcard_mock.TEST_FILE)
@@ -273,16 +283,12 @@ class Mock(injector.Module):
     def mods(cls):
         return [Mock()]
 
-    @classmethod
-    def make(cls):
-        return injector.Injector(cls.mods()).get(MedCenter)
-
 
 class MockRequest(AttrDict):
     pass
 
 
-class IntegrationTest(injector.Module):
+class RunTime(injector.Module, ModuleHelper):
     def __init__(self, ini='integration-test.ini'):
         injector.Module.__init__(self)
         self._ini = ini
@@ -292,19 +298,14 @@ class IntegrationTest(injector.Module):
         return chalkdb_queryfn(self._ini, CHALK_CONFIG_SECTION)
 
     @classmethod
-    def deps(cls):
-        return [IntegrationTest, ldaplib.IntegrationTest]
-
-    @classmethod
-    def depgraph(cls):
-        return injector.Injector([class_() for class_ in cls.deps()])
+    def mods(cls):
+        return [cls(), ldaplib.RunTime()]
 
 
 if __name__ == '__main__': # pragma: no cover
     import pprint
 
-    depgraph = IntegrationTest.depgraph()
-    m = depgraph.get(MedCenter)
+    m = RunTime.make()
 
     if '--search' in sys.argv:
         cn, sn, givenname = sys.argv[2:5]
@@ -313,6 +314,8 @@ if __name__ == '__main__': # pragma: no cover
         print m.affiliateSearch(10, cn, sn, givenname)
     else:
         uid = sys.argv[1]
-        who = m.affiliate(uid)
+        box, req = Mock.login_info(m, uid)
+        m.issue(box, req)
+        who = m.read_badge(req.idvault_entry)
         print who
-        print "training: ", m.trainedThru(who)
+        print "training: ", m.training(req.idvault_entry)

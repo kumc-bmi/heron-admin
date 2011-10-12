@@ -56,7 +56,7 @@ _sample_settings = config.TestTimeOptions(dict(
         base='ou=...,o=...'))
 
 
-class IntegrationTest(injector.Module):
+class RunTime(injector.Module):
     def __init__(self, ini='integration-test.ini'):
         injector.Module.__init__(self)
         self._ini = ini
@@ -66,13 +66,16 @@ class IntegrationTest(injector.Module):
         rt = config.RuntimeOptions('url userdn base password'.split())
         rt.load(self._ini, CONFIG_SECTION)
         return rt
-        
+
+    @classmethod
+    def make(cls):
+        depgraph = injector.Injector([cls()])
+        return depgraph.get(LDAPService)
 
 if __name__ == '__main__':  # pragma nocover
     import sys, pprint
     ldap_query = sys.argv[1]
     attrs = sys.argv[2].split(",") if sys.argv[2:] else []
 
-    depgraph = injector.Injector([IntegrationTest()])
-    ls = depgraph.get(LDAPService)
+    ls = RunTime.make()
     pprint.pprint(ls.search(ldap_query, attrs))
