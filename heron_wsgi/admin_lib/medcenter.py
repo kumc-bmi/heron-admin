@@ -48,6 +48,9 @@ Note: KUMC uses ou for department.
   >>> b1.ou
   ''
 
+  >>> m.search(10, 'john.smith', '', '')
+  [John Smith <john.smith@js.example>]
+
 Human Subjects Training
 -----------------------
 
@@ -170,8 +173,8 @@ class MedCenter(object):
         else:
             q = clauses[0]
 
-        results = self._svc.search(q, AccountHolder.attributes)[:max_qty]
-        return [AccountHolder.rezip(ldapattrs)
+        results = self._svc.search(q, Badge.attributes)[:max_qty]
+        return [Badge.from_ldap(ldapattrs)
                 for dn, ldapattrs in results]
 
 

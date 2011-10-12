@@ -73,6 +73,17 @@ system access agreement and human subjects training::
   >>> facreq.role.repository_account()
   Access(Faculty(John Smith <john.smith@js.example>))
 
+Directory Search
+----------------
+
+  >>> facreq.role.browser.lookup('some.one')
+  Some One <some.one@js.example>
+  >>> facreq.role.browser.search(5, 'john.smith', '', '')
+  [John Smith <john.smith@js.example>]
+
+Recovery from Database Errors
+-----------------------------
+
 Make sure we recover, eventually, after database errors::
 
     >>> [facreq.role.signature() for i in range(1, 10)]
@@ -101,13 +112,14 @@ import sealing
 REDCAPDB_CONFIG_SECTION='redcapdb'
 SAA_CONFIG_SECTION='saa_survey'
 OVERSIGHT_CONFIG_SECTION='oversight_survey'
+PERM_USER=__file__ + '.user'
 PERM_FACULTY=__file__ + '.faculty'
 
 KDataSource = injector.Key('HERONDataSource')
 KTimeSource = injector.Key('TimeSource')
 
 class HeronRecords(object):
-    permissions = (PERM_FACULTY,)
+    permissions = (PERM_USER, PERM_FACULTY)
     qty_institutions = len(('kuh', 'kupi', 'kumc'))
 
     @inject(mc=medcenter.MedCenter,
@@ -148,6 +160,16 @@ class HeronRecords(object):
             def __repr__(self):
                 return 'Access(%s)' % self.agent
 
+        class Browser(object):
+            ''''Users get to do LDAP searches,
+            but they don't get to exercise the rights of
+            the users they find.
+            '''
+            def lookup(self, uid):
+                return mc._lookup(uid)  #@@ peeking
+            def search(self, max, cn, sn, givenname):
+                return mc.search(max, cn, sn, givenname)
+
         class Record(object):
             def ensure_saa(self, params):
                 return hr._saa_rc(badge.cn, params)
@@ -176,13 +198,15 @@ class HeronRecords(object):
                 return I2B2Account(user)
 
         try:
-            role = Faculty(mc.faculty_badge(req.idvault_entry), Record())
+            role = Faculty(mc.faculty_badge(req.idvault_entry),
+                           Record(), Browser())
         except medcenter.NotFaculty:
-            role = Affiliate(badge, Record())
+            role = Affiliate(badge, Record(), Browser())
         req.role = role
+
         return [role]
 
-    def audit(self, cap, p=medcenter.PERM_ID):
+    def audit(self, cap, p=PERM_USER):
         log.info('HeronRecords.audit(%s, %s)' % (cap, p))
         if not isinstance(cap, Affiliate if p is PERM_FACULTY else Faculty):
             raise TypeError
@@ -275,9 +299,10 @@ class NoAgreement(NoPermission):
 
 
 class Affiliate(object):
-    def __init__(self, badge, record):
+    def __init__(self, badge, record, browser):
         self.badge = badge
         self.record = record
+        self.browser = browser
 
     def __repr__(self):
         return 'Affiliate(%s)' % (self.badge)
