@@ -334,7 +334,7 @@ def _integration_test(ini, host='127.0.0.1', port=8123):
     depgraph = RunTime.depgraph(ini)
     guide = MockIssuer()
     guard = depgraph.get(Validator)
-    guard.add_issuer(guide, guide.sealer)
+    guard.add_issuer(guide)
     rt = depgraph.get((Options, CONFIG_SECTION))
     config.add_route('logout', 'logout')
     guard.configure(config, 'logout')
