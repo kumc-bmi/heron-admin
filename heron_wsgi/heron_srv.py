@@ -454,9 +454,8 @@ class RunTime(injector.Module):
         #@@ todo: restore Oops.html error handling and such
         return (medcenter.RunTime.mods(admin_ini) +
                 cas_auth.RunTime.mods(webapp_ini) +
-                [heron_policy.IntegrationTest(admin_ini),
-                 i2b2pm.IntegrationTest(admin_ini),
-                 RunTime(settings)])
+                heron_policy.RunTime.mods(admin_ini) +
+                [RunTime(settings)])
 
     @classmethod
     def depgraph(cls, settings):

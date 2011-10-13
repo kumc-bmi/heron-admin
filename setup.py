@@ -17,28 +17,30 @@ here = os.path.abspath(os.path.dirname(__file__))
 README = '@@TODO'  #open(os.path.join(here, 'README.txt')).read()
 CHANGES = '@@TODO' #open(os.path.join(here, 'CHANGES.txt')).read()
 
-# TODO: fix zope.interface dependency
-# (haenv)$ paster serve development.ini 
-# Traceback (most recent call last):
-# ...
+# Be careful with site-packages dependencies. You don't want:
 # pkg_resources.VersionConflict: (zope.interface 3.6.1 (/usr/lib/python2.7/dist-packages), Requirement.parse('zope.interface>=3.8.0'))
 #
-# work-around:
-# $ pip install --upgrade zope.interface
-# Downloading/unpacking zope.interface
-# ...
-# Successfully installed distribute zope.interface
+
+# Starting from scratch seems to work, though it depends
+# on some Ubuntu modules.
+# $ sudo apt-get install libsasl2-dev libmysqlclient-dev python2.6-dev
+# $ curl -O https://raw.github.com/pypa/virtualenv/master/virtualenv.py
+# $ mv virtualenv.py ~/bin/virtualenv
+# $ chmod +x ~/bin/virtualenv
+# $ virtualenv --python=python2.6 --no-site-packages haenv/
+# $ . haenv/bin/activate
+# $ cd raven-frontiers
+# $ python setup.py develop
 
 requires = [
+    'injector',
+    'genshi',
+    'pyramid',
     'SQLAlchemy',
+    'python-ldap',
     'cx_Oracle',
     'MySQL-python',
-    'lxml',
-    'python-ldap',
-    'pyramid',
-    'genshi',
-    'injector',
-    'pyinotify'
+    #'pyinotify'
     ]
 
 if sys.version_info[:3] < (2,5,0):
@@ -64,6 +66,7 @@ setup(name='heron_wsgi',
 # TODO: learn how test_suite works
 #     test_suite='heron_acct',
       install_requires = requires,
+      tests_require = requires + ['lxml'],
       entry_points = {
         'console_scripts':
             ['logwatch=heron_wsgi.logwatch:main'],
@@ -71,6 +74,6 @@ setup(name='heron_wsgi',
             #['main = heron_wsgi.heron_srv:app_factory']
             ['main = heron_wsgi:main']
         },
-      #paster_plugins=['pyramid'],
+      paster_plugins=['pyramid'],
       )
 
