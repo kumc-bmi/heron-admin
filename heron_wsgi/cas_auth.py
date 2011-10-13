@@ -128,6 +128,9 @@ class Validator(object):
             ua = urllib2.build_opener()
         self._ua = ua
         self._a = cas_addr
+        # When this thing is missing from the config file,
+        # the stacktrace is really obscure.
+        assert app_secret
         self._secret = app_secret
         self._issuers = []
 
