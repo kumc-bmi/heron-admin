@@ -1,24 +1,21 @@
 '''
 
 
-  >>> depgraph = injector.Injector([Mock(),
-  ...                               heron_policy.Mock(), medcenter.Mock()])
-  >>> m = depgraph.get(medcenter.MedCenter)
-  >>> hr = depgraph.get(heron_policy.HeronRecords)
-  >>> cl = depgraph.get(Checklist)
+  >>> cl, hr, mc, depgraph = Mock.make_stuff()
+  >>> role = heron_policy.Mock.login_sim(mc, hr)
 
   >>> import pprint
-  >>> pprint.pprint(cl.parts_for('john.smith'))
+  >>> pprint.pprint(cl.screen(role('john.smith')))
   {'accessDisabled': {'name': 'login'},
    'affiliate': John Smith <john.smith@js.example>,
    'executive': {},
    'faculty': {'checked': 'checked'},
    'signatureOnFile': {'checked': 'checked'},
-   'sponsored': {},
+   'sponsored': {'checked': 'checked'},
    'trainingCurrent': {'checked': 'checked'},
    'trainingExpiration': '2012-01-01'}
 
-  >>> pprint.pprint(cl.parts_for('bill.student'))
+  >>> pprint.pprint(cl.screen(role('bill.student')))
   {'accessDisabled': {'disabled': 'disabled'},
    'affiliate': Bill Student <bill.student@js.example>,
    'executive': {},
@@ -28,7 +25,7 @@
    'trainingCurrent': {},
    'trainingExpiration': ''}
 
-  >>> pprint.pprint(cl.parts_for('nobody'))
+  >>> pprint.pprint(cl.screen(role('nobody')))
   Traceback (most recent call last):
     ...
   KeyError: 'nobody'
@@ -43,37 +40,25 @@ import heron_policy
 import medcenter
 
 class Checklist(object):
-    @inject(mc=medcenter.MedCenter,
-            heron_records=heron_policy.HeronRecords,
-            timesrc=heron_policy.KTimeSource)
-    def __init__(self, mc, heron_records, timesrc):
-        self._m = mc
-        self._hr = heron_records
-        self._t = timesrc
+    '''@@there's no longer any reason for this to be a class.
+    '''
+    def __init__(self):
+        pass
 
     def __repr__(self):
-        return 'Checlist(m, hr, t)'
+        return 'Checlist()'
 
-    def medcenter(self):
-        return self._m
-
-    def heron_records(self):
-        return self._hr
-
-    def parts_for(self, uid):
-        agt = self._m.affiliate(uid)
-
+    def screen(self, agent):
         try:
-            expiration = self._m.trainedThru(agt)
-            current = (expiration >= self._t.today().isoformat()
-                       and {'checked': 'checked'} or {})
-        except KeyError:
-            expiration = None
+            expiration = agent.training()
+            current = {'checked': 'checked'}
+        except heron_policy.NoTraining as e:
+            expiration = e.when
             current = {}
 
-        def check_perm(f):
+        def checkmark(f):
             try:
-                f(agt)
+                f()
                 return {'checked': 'checked'}
             except heron_policy.NoPermission:
                 return {}
@@ -81,29 +66,35 @@ class Checklist(object):
                 return {}
 
         try:
-            q = self._hr.q_any(agt)
-            access = self._hr.repositoryAccess(q)
+            access = agent.repository_account()
         except heron_policy.NoPermission:
             access = None
 
-        return {"affiliate": agt,
+        return {"affiliate": agent.badge,
                 "trainingCurrent": current,
                 "trainingExpiration": expiration,
-                "executive": check_perm(self._hr.q_executive),
-                "faculty": check_perm(self._m.checkFaculty),
-                "signatureOnFile": check_perm(self._hr.check_saa_signed),
-                "sponsored": check_perm(self._hr.q_sponsored),
+                "executive": {},  #@@todo
+                "faculty": checkmark(lambda: agent.faculty_title()),
+                "signatureOnFile": checkmark(lambda: agent.signature()),
+                "sponsored": checkmark(lambda: agent.sponsor()),
                 "accessDisabled": (access and {'name': 'login'}
                                    or {'disabled': 'disabled'})
-                #SPONSOR("as_sponsor"),
-                #REPOSITORY_TOOL("repositoryTool"),
-                #SPONSORSHIP_FORM("sponsorshipForm");
                 }
 
 
 class Mock(injector.Module):
     def configure(self, binder):
         pass
+
+    @classmethod
+    def mods(cls):
+        return [cls()] + heron_policy.Mock.mods()
+
+    @classmethod
+    def make_stuff(cls):
+        mc, hr, depgraph = heron_policy.Mock.make_stuff(cls.mods())
+        cl = depgraph.get(Checklist)
+        return cl, hr, mc, depgraph
 
 
 class IntegrationTest(injector.Module):

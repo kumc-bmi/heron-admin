@@ -1,23 +1,10 @@
 '''i2b2pm.py -- I2B2 Project Management cell client/proxy
 
 
-  >>> depgraph = injector.Injector([Mock(),
-  ...                               medcenter.Mock(), heron_policy.Mock()])
+Ensure account sets up the DB as the I2B2 project manager expects::
 
-  >>> pm = depgraph.get(I2B2PM)
-
-Now, suppose we go through our HeronRecords to get an access token for
-John Smith::
-
-  >>> mc = depgraph.get(medcenter.MedCenter)
-  >>> hp = depgraph.get(heron_policy.HeronRecords)
-  >>> okjs = hp.q_any(mc.affiliate('john.smith'))
-  >>> ajs = hp.repositoryAccess(okjs)
-
-Then calling the ensure_account method should ensure the following
-contents of the project management store::
-
-  >>> pm.ensure_account(ajs)
+  >>> pm, depgraph = Mock.make_stuff()
+  >>> pm.ensure_account('john.smith')
 
   >>> import pprint
   >>> dbsrc = depgraph.get((Session, __name__))
@@ -45,28 +32,22 @@ from sqlalchemy.types import String, Integer, Date, Enum
 import sqlalchemy
 
 import medcenter
-import heron_policy
 import config
 
 
 class I2B2PM(object):
-    @inject(datasrc=(Session, __name__),
-            hr=heron_policy.HeronRecords)
-    def __init__(self, datasrc, hr):
+    @inject(datasrc=(Session, __name__))
+    def __init__(self, datasrc):
         '''
         @param datasrc: a function that returns a sqlalchemy session
-        @param hr: a HeronRecords used to audit access capabilities.
         '''
         self._datasrc = datasrc
-        self._hr = hr
 
-    def ensure_account(self, access,
+    def ensure_account(self, uid,
                        project_id='BlueHeron',
                        roles = ('USER', 'DATA_LDS', 'DATA_OBFSC', 'DATA_AGG')):
         '''Ensure that an i2b2 account is ready for an authorized user.
         '''
-        uid = self._hr.audit(access)
-
         ds = self._datasrc()
         t = func.now()
 
@@ -169,8 +150,8 @@ class IntegrationTest(injector.Module):
                     injector.InstanceProvider(sessionmaker(engine)))
 
     @classmethod
-    def deps(cls):
-        return [IntegrationTest] + heron_policy.IntegrationTest.deps()
+    def mods(cls):
+        return [cls()]
 
     @classmethod
     def depgraph(cls, ini='integration-test.ini'):
@@ -188,6 +169,17 @@ class Mock(injector.Module):
         Base.metadata.create_all(engine)
         binder.bind((Session, __name__),
                     injector.InstanceProvider(sessionmaker(engine)))
+
+    @classmethod
+    def mods(cls):
+        return [cls()]
+
+    @classmethod
+    def make_stuff(cls, mods=None):
+        if mods is None:
+            mods = cls.mods()
+        depgraph = injector.Injector(mods)
+        return depgraph.get(I2B2PM), depgraph
 
 
 if __name__ == '__main__':

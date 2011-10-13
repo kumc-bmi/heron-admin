@@ -95,50 +95,45 @@ def test_grant_access_with_valid_cas_ticket(t=None, r2=None):
 
 
 class CheckListView(object):
-    permission = 'checklist'
-
     @inject(checklist=Checklist)
     def __init__(self, checklist):
         self._checklist = checklist
 
+    def issue(self, uidbox, req):
+        uid = self._unsealer.unseal(uidbox)
+        req.checklist_parts = self._checklist.parts_for(uid)
+
+
     def configure(self, config, route_name):
         config.add_view(self.get, route_name=route_name, request_method='GET',
-                        renderer='index.html'
-                        #, permission=self.permission
-                        )
+                        renderer='index.html',
+                        permission=heron_policy.PERM_USER)
 
     def get(self, req):
-        from pyramid.response import Response
-        parts = self._checklist.parts_for(req.remote_user)
-        return dict(parts,
-                    # req.route_url('i2b2_login')
-                    logout_path=req.route_url('logout'),
-                    saa_path=req.route_url('saa'),
-                    i2b2_login_path=req.route_url('i2b2_login'),
-                    oversight_path=req.route_url('oversight'),
-                    #@@ move these to another view
-                    done_path=req.route_url('team_done'),
-                    team=[],
-                    is_data_request='0',
-                    uids=' ',
-                    candidates=[])
+        value = dict(self._checklist.screen(req.role),
+                     # req.route_url('i2b2_login')
+                     logout_path=req.route_url('logout'),
+                     saa_path=req.route_url('saa'),
+                     i2b2_login_path=req.route_url('i2b2_login'))
+        try:
+            req.role.faculty_title()
+            value = dict(value,
+                         oversight_path=req.route_url('oversight'))
+        except medcenter.NotFaculty:
+            pass
+
+        return value
 
 
 class REDCapLink(object):
-    @inject(checklist=Checklist,
-            urlopener=URLopener)
-    def __init__(self, checklist, urlopener):
-        self._m = checklist.medcenter()
-        self._hr = checklist.heron_records()
-        self._saa_opts = self._hr.saa_opts()
-        self._oversight_opts = self._hr.oversight_opts()
-        self._urlopener = urlopener
-
+    # no longer needs to be a class?
     def configure(self, config, rsaa, rtd):
         config.add_view(self.saa_redir, route_name=rsaa,
-                        request_method='GET')
+                        request_method='GET',
+                        permission=heron_policy.PERM_USER)
         config.add_view(self.oversight_redir, route_name=rtd,
-                        request_method='GET')
+                        request_method='GET',
+                        permission=heron_policy.PERM_FACULTY)
 
     def saa_redir(self, req):
         '''Redirect to a per-user System Access Agreement REDCap survey.
@@ -152,21 +147,7 @@ class REDCapLink(object):
         Kinda iffy, w.r.t. safety and such.
         '''
 
-        _, uid, full_name = self._request_agent(req)
-        return self._survey_redir(self._saa_opts, uid, {
-                'user_id': uid, 'full_name': full_name}, req)
-
-    def _request_agent(self, req):
-        uid = req.remote_user
-
-        a = self._m.affiliate(uid)
-        full_name = "%s, %s" % (a.sn, a.givenname)
-        return a, uid, full_name
-
-    def _survey_redir(self, opts, uid, params, req, multi=False):
-        rc = redcap_connect.survey_setup(opts, self._urlopener)
-        there = self._saa_link = rc(uid, params, multi)
-        return HTTPFound(there)
+        return HTTPFound(req.role.ensure_saa_survey())
 
     def oversight_redir(self, req):
         '''Redirect to a per-user sponsorship/data-use REDCap survey.
@@ -180,35 +161,30 @@ class REDCapLink(object):
         Kinda iffy, w.r.t. safety and such.
         '''
 
-        _, uid, full_name = self._request_agent(req)
-
         uids = _request_uids(req.GET)
 
+        role = req.role
+
         dr = '1' if req.GET.get('is_data_request', '') == '1' else '0'
-        return self._survey_redir(self._oversight_opts, uid,
-                                  dict(team_params(self._m, uids),
-                                       multi='yes',
-                                       user_id=uid, full_name=full_name,
-                                       is_data_request=dr),
-                                  req, multi=True)
+
+        there = role.ensure_oversight_survey(
+            team_params(role.browser.lookup, uids), dr)
+
+        return HTTPFound(there)
 
 
 class RepositoryLogin(object):
-    @inject(checklist=Checklist,
-            pm=i2b2pm.I2B2PM,
-            i2b2_tool_addr=KI2B2Address)
-    def __init__(self, pm, i2b2_tool_addr, checklist):
-        self._hr = checklist.heron_records()
-        self._m = checklist.medcenter()
-        self._pm = pm
+    @inject(i2b2_tool_addr=KI2B2Address)
+    def __init__(self, i2b2_tool_addr):
         self._i2b2_tool_addr = i2b2_tool_addr
 
     def configure(self, config, route):
         config.add_view(self.i2b2_login, route_name=route,
-                        request_method='POST')
+                        request_method='POST',
+                        permission=heron_policy.PERM_USER)
 
     def i2b2_login(self, req):
-        '''Check credentials, establish account, and loging to i2b2
+        '''Log in to i2b2, provided credentials.
 
           >>> t, r1 = test_grant_access_with_valid_cas_ticket()
           >>> r2 = t.post('/i2b2', status=303)
@@ -217,23 +193,17 @@ class RepositoryLogin(object):
 
         '''
         try:
-            agt = self._m.affiliate(req.remote_user)
-            q = self._hr.q_any(agt)
-            a = self._hr.repositoryAccess(q)
-            self._pm.ensure_account(a)
+            req.role.repository_account().login()
             return HTTPSeeOther(self._i2b2_tool_addr)
         except heron_policy.NoPermission, np:
             return HTTPForbidden(detail=np.message)
 
 
 class TeamBuilder(object):
-    @inject(checklist=Checklist)
-    def __init__(self, checklist):
-        self._m = checklist.medcenter()
-
     def configure(self, config, route_name):
         config.add_view(self.get, route_name=route_name,
-                        request_method='GET', renderer='build_team.html')
+                        request_method='GET', renderer='build_team.html',
+                        permission=heron_policy.PERM_USER)
 
     def get(self, res, req, max_search_hits=15):
         r'''
@@ -253,7 +223,7 @@ class TeamBuilder(object):
 
         if goal == 'Search':
             log.debug('cn: %s', params.get('cn', ''))
-            candidates = self._m.affiliateSearch(max_search_hits,
+            candidates = req.role.browser.search(max_search_hits,
                                                  params.get('cn', ''),
                                                  params.get('sn', ''),
                                                  params.get('givenname', ''))
@@ -264,7 +234,7 @@ class TeamBuilder(object):
 
         # Since we're the only supposed to supply these names,
         # it seems OK to throw KeyError if we hit a bad one.
-        team = [self._m.affiliate(n) for n in uids]
+        team = [req.role.browser.lookup(n) for n in uids]
         team.sort(key = lambda(a): (a.sn, a.givenname))
 
         return dict(done_path=req.route_url('team_done'),
@@ -274,66 +244,10 @@ class TeamBuilder(object):
                     candidates=candidates)
 
 
-class HeronAccessPartsApp(object):
-    i2b2_login_path='/i2b2'
-    oversight_path='/build_team.html'
-    oops_path='/oops.html'
-
-    @inject(checklist=Checklist, pm=i2b2pm.I2B2PM,
-            urlopener=URLopener,
-            i2b2_tool_addr=KI2B2Address)
-    def __init__(self, checklist, pm, urlopener, i2b2_tool_addr):
-        self._checklist = checklist
-        self._pm = pm
-        self._m = checklist.medcenter()
-        self._i2b2_tool_addr = i2b2_tool_addr
-
-        self._tplapp = TemplateApp(self.parts, self.htdocs)
-
-    def __repr__(self):
-        return 'HeronAccessPartsApp(%s, %s, %s)' % (
-            self._checklist, self._m, self._i2b2_tool_addr)
-    
-    def __call__(self, environ, start_response):
-        path = environ['PATH_INFO']
-        if path.startswith(self.i2b2_login_path):
-            return self.i2b2_login(environ, start_response)
-        elif path.startswith(self.saa_path):
-            return self.saa_redir(environ, start_response)
-        elif path.startswith(self.team_done_path):
-            return self.oversight_redir(environ, start_response)
-        else:
-            return self._tplapp(environ, start_response)
-
-    def parts(self, environ, session):
-        '''
-        .. todo: pass param names such as 'goal' to the template rather than manually maintaining.
-        '''
-        if 'user' not in session:
-            return {}
-
-        path = environ['PATH_INFO']
-        if path.startswith(self.oops_path):
-            return {}
-
-        base = environ['SCRIPT_NAME']
-        parts = dict(self._checklist.parts_for(session['user']),
-                     logout_path=base+self.logout_path,
-                     saa_path=base+self.saa_path,
-                     i2b2_login_path=base+self.i2b2_login_path,
-                     oversight_path=base+self.oversight_path,
-                     done_path=base+self.team_done_path,
-                     team=team,
-                     is_data_request=params.get('is_data_request', '0'),
-                     uids=' '.join(uids),
-                     candidates=candidates)
-        return parts
-
-
-def team_params(mc, uids):
+def team_params(lookup, uids):
     r'''
     >>> import pprint
-    >>> pprint.pprint(list(team_params(medcenter.Mock.make(),
+    >>> pprint.pprint(list(team_params(medcenter.Mock.make()._lookup,
     ...                                ['john.smith', 'bill.student'])))
     [('user_id_1', 'john.smith'),
      ('name_etc_1', 'Smith, John\nChair of Department of Neurology\n'),
@@ -345,7 +259,7 @@ def team_params(mc, uids):
                ('name_etc_%d' % (i+1), '%s, %s\n%s\n%s' % (
                     a.sn, a.givenname, a.title, a.ou))]
               for (i, uid, a) in 
-              [(i, uids[i], mc.affiliate(uids[i]))
+              [(i, uids[i], lookup(uids[i]))
                for i in range(0, len(uids))]]
     return itertools.chain.from_iterable(nested)
 
@@ -465,13 +379,17 @@ class HeronAdminConfig(Configurator):
             clv=CheckListView,
             rcv=REDCapLink,
             repo=RepositoryLogin,
-            tb=TeamBuilder)
-    def __init__(self, guard, settings, cas_rt, clv, rcv, repo, tb):
+            tb=TeamBuilder,
+            mc=medcenter.MedCenter,
+            hr=heron_policy.HeronRecords)
+    def __init__(self, guard, settings, cas_rt, clv, rcv, repo, tb, mc, hr):
         log.debug('HeronAdminConfig settings: %s', settings)
         Configurator.__init__(self, settings=settings)
 
-        self.set_default_permission(guard.permission)
-        cap_style = cas_auth.CapabilityStyle([guard])
+        guard.add_issuer(mc, mc.sealer)
+        guard.add_issuer(hr, hr.sealer)
+
+        cap_style = cas_auth.CapabilityStyle([mc, hr])
         self.set_authorization_policy(cap_style)
         self.add_static_view('av', 'heron_wsgi:htdocs-heron/av/',
                              cache_max_age=3600)
@@ -493,7 +411,7 @@ class HeronAdminConfig(Configurator):
         tb.configure(self, 'oversight')
 
         self.add_route('logout', 'logout')
-        guard.configure(self, 'logout', cas_rt.app_secret)
+        guard.configure(self, 'logout')
 
 
 class RunTime(injector.Module):
@@ -528,15 +446,21 @@ class RunTime(injector.Module):
                     RuntimeOptions(_sample_err_settings.keys()
                                    ).load(self._webapp_ini, 'errors'))
 
+    @provides(medcenter.KAppSecret)
+    @inject(rt=(Options, cas_auth.CONFIG_SECTION))
+    def cas_app_secret(self, rt):
+        return rt.app_secret
+
     @classmethod
     def mods(cls, settings):
         webapp_ini = settings['webapp_ini']
         admin_ini = settings['admin_ini']
         #@@ todo: restore Oops.html error handling and such
-        return (cas_auth.RunTime.mods(webapp_ini) +
-                [class_(admin_ini)
-                 for class_ in i2b2pm.IntegrationTest.deps()]
-                + [RunTime(settings)])
+        return (medcenter.RunTime.mods(admin_ini) +
+                cas_auth.RunTime.mods(webapp_ini) +
+                [heron_policy.IntegrationTest(admin_ini),
+                 i2b2pm.IntegrationTest(admin_ini),
+                 RunTime(settings)])
 
     @classmethod
     def depgraph(cls, settings):

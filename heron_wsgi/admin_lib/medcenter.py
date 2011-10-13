@@ -1,15 +1,58 @@
-'''medcenter.py -- academic medical center directory/policy
+'''medcenter --  academic medical center directory/policy
+==========================================================
 
-  >>> depgraph = injector.Injector([Mock()])
-  >>> m = depgraph.get(MedCenter)
+Login Capabilities
+------------------
 
-Look someone up in the enterprise directory::
+Suppose we have a login capability (see cas_auth.Issuer)::
+  >>> import sys
+  >>> logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+  >>> m = Mock.make()
 
-  >>> a1 = m.affiliate('john.smith')
-  >>> a1
+  >>> box, req = Mock.login_info(m, 'john.smith')
+  >>> box, req
+  (<MedCenter sealed box>, {})
+
+Then we'll issue a login capability:
+  >>> login_caps = m.issue(box, req)
+  >>> login_caps
+  [<MedCenter sealed box>]
+
+Note that it has to be our own login capability::
+  >>> foreign_box = Mock.make().sealer.seal('john.smith')
+  >>> m.issue(foreign_box, req)
+  Traceback (most recent call last):
+  ...
+  TypeError
+
+And we'll issue no capabilities unless the login capability bears
+the correct application secret::
+  >>> boxx = m.sealer.seal(('john.smith', 'wrong_sekrit'))
+  >>> m.issue(boxx, req)
+  WARNING:medcenter:unexpected app_secret [wrong_sekrit]
+  []
+
+
+Directory Lookup
+----------------
+
+We can exercise an enterprise directory capability::
+
+  >>> b1 = m.read_badge(req.idvault_entry)
+  >>> b1
   John Smith <john.smith@js.example>
-  >>> a1.title
+  >>> b1.title
   'Chair of Department of Neurology'
+
+Note: KUMC uses ou for department.
+  >>> b1.ou
+  ''
+
+  >>> m.search(10, 'john.smith', '', '')
+  [John Smith <john.smith@js.example>]
+
+Human Subjects Training
+-----------------------
 
 We use an outboard service to check human subjects "chalk" training::
 
@@ -18,63 +61,109 @@ We use an outboard service to check human subjects "chalk" training::
   param=userid
   url=http://localhost:8080/chalk-checker
 
-  >>> m.trainedThru(a1)
+  >>> m.training(req.idvault_entry)
   '2012-01-01'
 
 '''
 
+import logging
 import os
 import sys
 import urllib
 import urllib2
 
 import injector
-from injector import inject, provides
+from injector import inject, provides, singleton
 
 import config
 import ldaplib
+import sealing
+
+log = logging.getLogger(__name__)
 
 KTrainingFunction = injector.Key('TrainingFunction')
+KAppSecret = injector.Key('AppSecret')
 
 CHALK_CONFIG_SECTION='chalk'
+PERM_ID=__file__ + '.idvault'
 
+@singleton
 class MedCenter(object):
+    '''This implemeted the cas_auth.Issuer protocol,
+    though we're avoiding an actual dependency in that direction just now.
+    '''
     excluded_jobcode = "24600"
+    permissions=(PERM_ID,)
 
     @inject(searchsvc=ldaplib.LDAPService,
-            trainingfn=KTrainingFunction)
-    def __init__(self, searchsvc, trainingfn):
+            trainingfn=KTrainingFunction,
+            app_secret=KAppSecret)
+    def __init__(self, searchsvc, trainingfn, app_secret):
+        log.debug('MedCenter.__init__ again?')
         self._svc = searchsvc
         self._training = trainingfn
+        self._app_secret = app_secret
+        self.sealer, self._unsealer = sealing.makeBrandPair('MedCenter')
 
     def __repr__(self):
         return "MedCenter(s, t)"
 
-    def affiliate(self, name):
-        matches = self._svc.search('(cn=%s)' % name, AccountHolder.attributes)
+    def _lookup(self, name):
+        matches = self._svc.search('(cn=%s)' % name, Badge.attributes)
         if len(matches) != 1:
             if len(matches) == 0:
                 raise KeyError, name
             else: # pragma nocover
                 raise ValueError, name  # ambiguous
 
-        dn, attrs = matches[0]
+        dn, ldapattrs = matches[0]
+        return Badge.from_ldap(ldapattrs)
 
-        return AccountHolder(extract_values(attrs))
+    def issue(self, loginbox, req):
+        u, s = self._unsealer.unseal(loginbox)
+        if s != self._app_secret:
+            log.warn('unexpected app_secret [%s]', s)
+            return []
+        cap = self.sealer.seal(self._lookup(u))
+        req.idvault_entry = cap
+        return [cap]
 
-    def trainedThru(self, who):
-        return self._training(who.userid())
+    def audit(self, cap, p):
+        '''See cas_auth.
+        '''
+        log.info('MedCenter.audit(%s, %s)' % (cap, p))
+        if not isinstance(cap, object):
+            raise TypeError
+        self._unsealer.unseal(cap)
 
+    def lookup(self, namebox):  #@@ dead code?
+        name = self._unsealer.unseal(namebox)
+        return self.sealer.seal(self._lookup(name))
 
-    def checkFaculty(self, who):
-        if (who.kumcPersonJobcode != self.excluded_jobcode
-            and who.kumcPersonFaculty == 'Y'):
-            return
-        raise NotFaculty()
+    def read_badge(self, badgebox):
+        '''Read (unseal) badge.
+        '''
+        return self._unsealer.unseal(badgebox)
 
-    def affiliateSearch(self, max_qty, cn, sn, givenname):
+    def faculty_badge(self, badgebox):
+        '''Read faculty badge.
+        @raises: TypeError on unsealing failure
+        @raises: NotFaculty
+        '''
+        badge = self._unsealer.unseal(badgebox)
+        if (badge.kumcPersonJobcode == self.excluded_jobcode
+            or badge.kumcPersonFaculty != 'Y'):
+            raise NotFaculty
+        return badge
+
+    def training(self, attrbox):
+        return self._training(self._unsealer.unseal(attrbox)['cn'])
+
+    def search(self, max_qty, cn, sn, givenname):
         clauses = ['(%s=%s*)' % (n, v)
-                   for (n, v) in (('cn', cn), ('sn', sn), ('givenname', givenname))
+                   for (n, v) in (('cn', cn),
+                                  ('sn', sn),
+                                  ('givenname', givenname))
                    if v]
         if len(clauses) == 0:
             return ()
@@ -84,44 +173,65 @@ class MedCenter(object):
         else:
             q = clauses[0]
 
-        results = self._svc.search(q, AccountHolder.attributes)[:max_qty]
-        return [AccountHolder(extract_values(attrs))
-                for dn, attrs in results]
-
-
-def extract_values(attrs):
-    return [attrs.get(n, [None])[0]
-            for n in AccountHolder.attributes]
+        results = self._svc.search(q, Badge.attributes)[:max_qty]
+        return [Badge.from_ldap(ldapattrs)
+                for dn, ldapattrs in results]
 
 
 class NotFaculty(Exception):
     pass
 
 
-class AccountHolder(object):
+class AttrDict(dict):
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+        self.__dict__ = self
+
+
+class Badge(AttrDict):
     '''
+      >>> js = Badge(cn='john.smith', sn='Smith', givenname='John',
+      ...            mail='john.smith@example')
+      >>> js
+      John Smith <john.smith@example>
+      >>> js.sn
+      'Smith'
+      >>> js.sn_typo
+      Traceback (most recent call last):
+      ...
+      AttributeError: 'Badge' object has no attribute 'sn_typo'
+
+
     Note: KUMC uses ou for department.
     '''
     attributes = ["cn", "ou", "sn", "givenname", "title", "mail",
                   "kumcPersonFaculty", "kumcPersonJobcode"]
 
-    def __init__(self, values):
-        self._attrs = dict(zip(self.attributes, values))
-
-    def __str__(self):
-        return '%s %s <%s>' % (self.givenname, self.sn, self.mail)
+    @classmethod
+    def from_ldap(cls, ldapattrs):
+        r'''Get the 1st of each LDAP style list of values for each attribute.
+        
+          >>> Badge.from_ldap(
+          ...    {'kumcPersonJobcode': ['1234'],
+          ...     'kumcPersonFaculty': ['Y'],
+          ...      'cn': ['john.smith'],
+          ...      'title': ['Chair of Department of Neurology'],
+          ...      'sn': ['Smith'],
+          ...      'mail': ['john.smith@js.example'],
+          ...      'ou': [''],
+          ...      'givenname': ['John']})
+          John Smith <john.smith@js.example>
+        '''
+        return cls(
+            **dict([(n, ldapattrs.get(n, [None])[0])
+                    for n in cls.attributes]))
 
     def __repr__(self):
-        return str(self)
+        return '%s %s <%s>' % (self.givenname, self.sn, self.mail)
 
     def userid(self):
         # TODO: use python property stuff?
         return self.cn
-
-    def __getattr__(self, n):
-        if n not in self.attributes:
-            raise AttributeError
-        return self._attrs[n]
 
 
 _sample_chalk_settings = config.TestTimeOptions(dict(
@@ -144,7 +254,17 @@ def chalkdb_queryfn(ini, section=CHALK_CONFIG_SECTION):  # pragma nocover. not w
     return training_expiration
 
 
-class Mock(injector.Module):
+class ModuleHelper(object):
+    @classmethod
+    def depgraph(cls):
+        return injector.Injector(cls.mods())
+
+    @classmethod
+    def make(cls):
+        return cls.depgraph().get(MedCenter)
+
+
+class Mock(injector.Module, ModuleHelper):
     def configure(self, binder):
         import hcard_mock
         d = hcard_mock.MockDirectory(hcard_mock.TEST_FILE)
@@ -153,13 +273,25 @@ class Mock(injector.Module):
                     injector.InstanceProvider(d))
         binder.bind(KTrainingFunction,
                     injector.InstanceProvider(d.trainedThru))
+        binder.bind(KAppSecret, 
+                    injector.InstanceProvider('sekrit'))
 
     @classmethod
-    def make(cls):
-        depgraph = injector.Injector(Mock())
-        return depgraph.get(MedCenter)
+    def login_info(self, mc, cn):
+        box = mc.sealer.seal((cn, mc._app_secret))
+        req = MockRequest()
+        return box, req
 
-class IntegrationTest(injector.Module):
+    @classmethod
+    def mods(cls):
+        return [Mock()]
+
+
+class MockRequest(AttrDict):
+    pass
+
+
+class RunTime(injector.Module, ModuleHelper):
     def __init__(self, ini='integration-test.ini'):
         injector.Module.__init__(self)
         self._ini = ini
@@ -169,19 +301,14 @@ class IntegrationTest(injector.Module):
         return chalkdb_queryfn(self._ini, CHALK_CONFIG_SECTION)
 
     @classmethod
-    def deps(cls):
-        return [IntegrationTest, ldaplib.IntegrationTest]
-
-    @classmethod
-    def depgraph(cls):
-        return injector.Injector([class_() for class_ in cls.deps()])
+    def mods(cls, ini='integration-test.ini'):
+        return [cls(ini), ldaplib.RunTime(ini)]
 
 
 if __name__ == '__main__': # pragma: no cover
     import pprint
 
-    depgraph = IntegrationTest.depgraph()
-    m = depgraph.get(MedCenter)
+    m = RunTime.make()
 
     if '--search' in sys.argv:
         cn, sn, givenname = sys.argv[2:5]
@@ -190,6 +317,8 @@ if __name__ == '__main__': # pragma: no cover
         print m.affiliateSearch(10, cn, sn, givenname)
     else:
         uid = sys.argv[1]
-        who = m.affiliate(uid)
+        box, req = Mock.login_info(m, uid)
+        m.issue(box, req)
+        who = m.read_badge(req.idvault_entry)
         print who
-        print "training: ", m.trainedThru(who)
+        print "training: ", m.training(req.idvault_entry)
