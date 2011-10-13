@@ -295,8 +295,8 @@ if __name__ == '__main__': # pragma: no cover
         print m.affiliateSearch(10, cn, sn, givenname)
     else:
         uid = sys.argv[1]
-        box, req = Mock.login_info(uid)
-        m.issue(box, req)
+        req = Mock.login_info(uid)
+        m.issue(req)
         who = m.read_badge(req.idvault_entry)
         print who
         print "training: ", m.training(req.idvault_entry)

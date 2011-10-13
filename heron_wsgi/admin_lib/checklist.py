@@ -107,25 +107,31 @@ class Mock(injector.Module):
         return cl, hr, mc, depgraph
 
 
-class IntegrationTest(injector.Module):
+class RunTime(injector.Module):
     def configure(self, binder):
         pass
 
     @classmethod
-    def deps(cls):
-        return [cls] + heron_policy.IntegrationTest.deps()
+    def mods(cls):
+        return [cls()] + heron_policy.RunTime.mods()
 
     @classmethod
-    def depgraph(cls):
-        return injector.Injector([class_() for class_ in cls.deps()])
-
+    def make_stuff(cls):
+        depgraph = injector.Injector(cls.mods())
+        cl = depgraph.get(Checklist)
+        hr = depgraph.get(heron_policy.HeronRecords)
+        mc = depgraph.get(medcenter.MedCenter)
+        return mc, hr, cl
 
 if __name__ == '__main__':  # pragma nocover
     import sys
     uid = sys.argv[1]
 
-    depgraph = IntegrationTest.depgraph()
-    check = depgraph.get(Checklist)
+    mc, hr, check = RunTime.make_stuff()
+
+    req = medcenter.Mock.login_info(uid)
+    mc.issue(req)
+    hr.issue(req)
 
     import pprint
-    pprint.pprint(check.parts_for(uid))
+    pprint.pprint(check.screen(req.user, req.faculty, req.executive))

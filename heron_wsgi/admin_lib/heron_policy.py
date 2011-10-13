@@ -509,13 +509,14 @@ class _TestTrx():
         pass
 
 
-class IntegrationTest(injector.Module):  # pragma nocover
-    def __init__(self, ini='integration-test.ini'):
+class RunTime(injector.Module):  # pragma nocover
+    def __init__(self, ini):
         injector.Module.__init__(self)
         self._ini = ini
 
     def configure(self, binder):
         import datetime
+        import urllib2
         binder.bind(KTimeSource,
                     injector.InstanceProvider(datetime.date))
 
@@ -526,26 +527,31 @@ class IntegrationTest(injector.Module):  # pragma nocover
         srt.load(self._ini, SAA_CONFIG_SECTION)
         binder.bind((config.Options, SAA_CONFIG_SECTION), srt)
 
-        ort = config.RuntimeOptions(['project_id'])
+        ort = config.RuntimeOptions(['project_id', 'executives'])
         ort.load(self._ini, OVERSIGHT_CONFIG_SECTION)
         binder.bind((config.Options, OVERSIGHT_CONFIG_SECTION), ort)
 
+        binder.bind(urllib.URLopener,
+                    injector.InstanceProvider(urllib2.build_opener()))
+
     @classmethod
-    def deps(cls):
-        return [IntegrationTest] + medcenter.IntegrationTest.deps()
+    def mods(cls, ini='integration-test.ini'):
+        return (medcenter.RunTime.mods(ini) +
+                i2b2pm.RunTime.mods(ini) +
+                [cls(ini)])
 
     @classmethod
     def depgraph(cls):
-        return injector.Injector([class_() for class_ in cls.deps()])
+        return injector.Injector(cls.mods())
 
 
 if __name__ == '__main__':  # pragma nocover
     import sys
 
     userid = sys.argv[1]
-    depgraph = IntegrationTest.depgraph()
+    depgraph = RunTime.depgraph()
+    req = medcenter.Mock.login_info(userid)
     hr = depgraph.get(HeronRecords)
-    a = hr._m.affiliate(userid)
-    q = hr.q_any(a)
-    print "qualified?", q
-    print hr.repositoryAccess(q)
+    hr._mc.issue(req) # umm... peeking
+    hr.issue(req)
+    print req.user.repository_account()

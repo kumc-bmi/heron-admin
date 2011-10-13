@@ -133,8 +133,8 @@ class UserRole(Base, Audited):
 
 CONFIG_SECTION='i2b2pm'
 
-class IntegrationTest(injector.Module):
-    def __init__(self, ini='integration-test.ini'):
+class RunTime(injector.Module):
+    def __init__(self, ini):
         injector.Module.__init__(self)
         self._ini = ini
 
@@ -150,12 +150,12 @@ class IntegrationTest(injector.Module):
                     injector.InstanceProvider(sessionmaker(engine)))
 
     @classmethod
-    def mods(cls):
-        return [cls()]
+    def mods(cls, ini):
+        return [cls(ini)]
 
     @classmethod
     def depgraph(cls, ini='integration-test.ini'):
-        return injector.Injector([class_(ini) for class_ in cls.deps()])
+        return injector.Injector(cls.mods(ini))
 
 
 class Mock(injector.Module):
@@ -186,11 +186,7 @@ if __name__ == '__main__':
     import sys
     user_id = sys.argv[1]
 
-    depgraph = IntegrationTest.depgraph()
-    mc = depgraph.get(medcenter.MedCenter)
-    hr = depgraph.get(heron_policy.HeronRecords)
+    depgraph = RunTime.depgraph()
     pm = depgraph.get(I2B2PM)
 
-    user_login_ok = hr.q_any(mc.affiliate(user_id))
-    user_access = hr.repositoryAccess(user_login_ok)
-    pm.ensure_account(user_access)
+    pm.ensure_account(user_id)
