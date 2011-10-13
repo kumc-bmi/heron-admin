@@ -71,6 +71,16 @@ system access agreement and human subjects training::
   >>> facreq.user.repository_account()
   Access(Faculty(John Smith <john.smith@js.example>))
 
+Executives don't need sponsorship::
+  >>> exreq = mcmock.login_info('big.wig')
+  >>> mc.issue(exreq)
+  [<MedCenter sealed box>]
+  >>> hp.issue(exreq)
+  [Executive(Big Wig <big.wig@js.example>)]
+  >>> exreq.user.repository_account()
+  Access(Executive(Big Wig <big.wig@js.example>))
+
+
 Directory Search
 ----------------
 
@@ -143,6 +153,7 @@ class HeronRecords(object):
         self._oversight_rc = redcap_connect.survey_setup(oversight_opts,
                                                          urlopener)
         self._oversight_project_id = oversight_opts.project_id
+        self._executives = oversight_opts.executives.split()
 
     def issue(self, req):
         mc = self._mc
@@ -198,16 +209,22 @@ class HeronRecords(object):
                 #@@ todo: check user, sponsor, sig, training?
                 return I2B2Account(user)
 
-        try:
-            fac = Faculty(mc.faculty_badge(req.idvault_entry),
+        ex = fac = user = None
+        if badge.cn in self._executives:
+            ex = Executive(badge,
                            req.idvault_entry,
                            Record(), Browser())
-            user = fac
-        except medcenter.NotFaculty:
-            fac = None
-            user = Affiliate(badge, req.idvault_entry, Record(), Browser())
+            user = ex
+        else:
+            try:
+                fac = Faculty(mc.faculty_badge(req.idvault_entry),
+                               req.idvault_entry,
+                               Record(), Browser())
+                user = fac
+            except medcenter.NotFaculty:
+                user = Affiliate(badge, req.idvault_entry, Record(), Browser())
             
-        req.executive = None #@@ todo
+        req.executive = ex
         req.faculty = fac
         req.user = user
 
@@ -338,6 +355,14 @@ class Affiliate(object):
                                               self.signature(),
                                               self.training())
 
+class Executive(Affiliate):
+    def __repr__(self):
+        return 'Executive(%s)' % (self.badge)
+
+    def sponsor(self):
+        return self
+
+    
 class Faculty(Affiliate):
     def __repr__(self):
         return 'Faculty(%s)' % (self.badge)
@@ -444,16 +469,21 @@ class _TestDBConn(object):
 
 
 class _TestTrx():
-    def __init__(self, fail=False):
+    def __init__(self, fail=False,
+                signed_users=['john.smith@js.example',
+                              'big.wig@js.example']):
         self._results = None
         self._fail = fail
+        self.signed_users = signed_users
 
     def execute(self, q, params=[]):
         if self._fail:
             raise IOError, 'databases fail sometimes; deal'
 
-        if params == {'mail': 'john.smith@js.example', 'survey_id': 11}:
-            self._results = [(11, 'john.smith@js.example', 123, 123, '2011-01-01')]
+        if ('mail' in params and 'survey_id' in params
+            and params['mail'] in self.signed_users):
+            self._results = [(params['survey_id'],
+                              params['mail'], 123, 123, '2011-01-01')]
         elif 'count' in q:  # assume it's the sponsored query
             if 'some.one' in params.get('userid', ''):
                 self._results = [(9, 3)]

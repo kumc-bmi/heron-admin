@@ -432,7 +432,7 @@ class RunTime(injector.Module):
         binder.bind((Options, droc_section),
                      redcap_connect.settings(self._admin_ini,
                                              droc_section,
-                                             ['project_id']))
+                                             ['project_id', 'executives']))
 
         binder.bind(URLopener,
                     injector.InstanceProvider(urllib2.build_opener()))

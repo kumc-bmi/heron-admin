@@ -136,9 +136,7 @@ class Validator(object):
 
     def policy(self):
         return AuthTktAuthenticationPolicy(
-            self._secret, callback=self.caps,
-            debug=True #@@
-            )
+            self._secret, callback=self.caps)
         
     def configure(self, config, logout_route):
         pwho = self.policy()

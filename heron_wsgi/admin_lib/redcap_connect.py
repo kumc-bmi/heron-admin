@@ -68,6 +68,7 @@ _test_settings = config.TestTimeOptions(dict(
     api_url='http://redcap-host/redcap/api/',
     survey_url='http://bmidev1/redcap-host/surveys/',
     domain='example.edu',
+    executives='big.wig',
     survey_id=11,
     project_id=34))
 
