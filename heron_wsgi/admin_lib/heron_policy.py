@@ -8,59 +8,57 @@
 
 Suppose an investigator and some students log in::
 
-  >>> facbox, facreq = mcmock.login_info(mc, 'john.smith')
-  >>> mc.issue(facbox, facreq)
+  >>> facreq = mcmock.login_info('john.smith')
+  >>> mc.issue(facreq)
   [<MedCenter sealed box>]
-  >>> stubox, stureq = mcmock.login_info(mc, 'bill.student')
-  >>> mc.issue(stubox, stureq)
+  >>> stureq = mcmock.login_info('bill.student')
+  >>> mc.issue(stureq)
   [<MedCenter sealed box>]
-  >>> stu2box, stu2req = mcmock.login_info(mc, 'some.one')
-  >>> mc.issue(stu2box, stu2req)
+  >>> stu2req = mcmock.login_info('some.one')
+  >>> mc.issue(stu2req)
   [<MedCenter sealed box>]
 
 See if they're qualified faculty::
 
   >>> _test_datasource(reset=True) and None
-  >>> hp.issue(facbox, facreq)
+  >>> hp.issue(facreq)
   [Faculty(John Smith <john.smith@js.example>)]
-  >>> facreq.role
+  >>> facreq.faculty
   Faculty(John Smith <john.smith@js.example>)
 
-  >>> facreq.role.ensure_saa_survey()
+  >>> facreq.user.ensure_saa_survey()
   'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&user_id=john.smith'
 
-  >>> hp.issue(stubox, stureq)
+  >>> hp.issue(stureq)
   [Affiliate(Bill Student <bill.student@js.example>)]
-  >>> stureq.role.ensure_oversight_survey(dict(title='cure everything'))
-  Traceback (most recent call last):
-    ...
-  NotFaculty
-  >>> facreq.role.ensure_oversight_survey(dict(title='cure everything'))
+  >>> stureq.faculty is None
+  True
+  >>> facreq.faculty.ensure_oversight_survey(dict(title='cure everything'))
   'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&is_data_request=False&multi=yes&title=cure+everything&user_id=john.smith'
 
 See if the students are qualified in some way::
 
   >>> _test_datasource(reset=True) and None
-  >>> stureq.role.repository_account()
+  >>> stureq.user.repository_account()
   Traceback (most recent call last):
     ...
   NotSponsored
 
-  >>> stureq.role.training()
+  >>> stureq.user.training()
   Traceback (most recent call last):
   ...
   NoTraining
 
-  >>> hp.issue(stu2box, stu2req)
+  >>> hp.issue(stu2req)
   [Affiliate(Some One <some.one@js.example>)]
 
 .. todo:: secure represention of sponsor rather than True/False?
-  >>> stu2req.role.sponsor()
+  >>> stu2req.user.sponsor()
   True
 
-  >>> stu2req.role.training()
+  >>> stu2req.user.training()
   '2012-01-01'
-  >>> stu2req.role.repository_account()
+  >>> stu2req.user.repository_account()
   Traceback (most recent call last):
   ...
   NoAgreement
@@ -70,15 +68,15 @@ Get an actual access qualification; i.e. check for
 system access agreement and human subjects training::
 
   >>> _test_datasource(reset=True) and None
-  >>> facreq.role.repository_account()
+  >>> facreq.user.repository_account()
   Access(Faculty(John Smith <john.smith@js.example>))
 
 Directory Search
 ----------------
 
-  >>> facreq.role.browser.lookup('some.one')
+  >>> facreq.user.browser.lookup('some.one')
   Some One <some.one@js.example>
-  >>> facreq.role.browser.search(5, 'john.smith', '', '')
+  >>> facreq.user.browser.search(5, 'john.smith', '', '')
   [John Smith <john.smith@js.example>]
 
 Recovery from Database Errors
@@ -86,12 +84,12 @@ Recovery from Database Errors
 
 Make sure we recover, eventually, after database errors::
 
-    >>> [facreq.role.signature() for i in range(1, 10)]
+    >>> [facreq.user.signature() for i in range(1, 10)]
     Traceback (most recent call last):
       ...
     IOError: databases fail sometimes; deal
 
-    >>> facreq.role.repository_account()
+    >>> facreq.user.repository_account()
     Access(Faculty(John Smith <john.smith@js.example>))
 
 '''
@@ -145,13 +143,12 @@ class HeronRecords(object):
         self._oversight_rc = redcap_connect.survey_setup(oversight_opts,
                                                          urlopener)
         self._oversight_project_id = oversight_opts.project_id
-        self.sealer, self._unsealer = sealing.makeBrandPair('HeronRecords')
 
-    def issue(self, loginbox, req):
+    def issue(self, req):
         mc = self._mc
 
         hr = self
-        badge = mc.read_badge(req.idvault_entry)
+        badge = req.badge
 
         # limit capabilities of self to one user
         class I2B2Account(object):
@@ -179,12 +176,7 @@ class HeronRecords(object):
                 return hr._saa_rc(badge.cn, params)
 
             def get_sig(self):
-                try:
-                    return hr._check_saa_signed(badge.mail)  #@@seal date
-                except: #@@narrow exceptions
-                    log.warn('Exception checking SAA. DB down?')
-                    log.debug('SAA error detail', exc_info=True)
-                    raise NoAgreement
+                return hr._check_saa_signed(badge.mail)  #@@seal date
 
             def ensure_oversight(self, params):
                 return hr._oversight_rc(badge.cn, params, multi=True)
@@ -200,26 +192,26 @@ class HeronRecords(object):
                 return when
 
             def get_sponsor(self):
-                try:
-                    return hr._sponsored(badge.cn)  #@@ seal sponsor uid
-                except: #@@narrow exceptions
-                    log.warn('Exception checking sponsorship. DB down?')
-                    log.debug('sponsorship error detail', exc_info=True)
-                    raise NotSponsored
+                return hr._sponsored(badge.cn)  #@@ seal sponsor uid
 
             def repository_account(self, user, sponsor, sig, training):
                 #@@ todo: check user, sponsor, sig, training?
                 return I2B2Account(user)
 
         try:
-            role = Faculty(mc.faculty_badge(req.idvault_entry),
+            fac = Faculty(mc.faculty_badge(req.idvault_entry),
                            req.idvault_entry,
                            Record(), Browser())
+            user = fac
         except medcenter.NotFaculty:
-            role = Affiliate(badge, req.idvault_entry, Record(), Browser())
-        req.role = role
+            fac = None
+            user = Affiliate(badge, req.idvault_entry, Record(), Browser())
+            
+        req.executive = None #@@ todo
+        req.faculty = fac
+        req.user = user
 
-        return [role]
+        return [user]
 
     def audit(self, cap, p=PERM_USER):
         log.info('HeronRecords.audit(%s, %s)' % (cap, p))
@@ -327,15 +319,9 @@ class Affiliate(object):
         # law of demeter says move this to Badge()...
         return "%s, %s" % (self.badge.sn, self.badge.givenname)
         
-    def faculty_title(self):
-        raise medcenter.NotFaculty
-
     def ensure_saa_survey(self):
         return self.record.ensure_saa(dict(user_id=self.badge.cn,
                                            full_name=self.sort_name()))
-
-    def ensure_oversight_survey(self, params):
-        raise medcenter.NotFaculty
 
     def signature(self):
         return self.record.get_sig()
@@ -355,9 +341,6 @@ class Affiliate(object):
 class Faculty(Affiliate):
     def __repr__(self):
         return 'Faculty(%s)' % (self.badge)
-
-    def faculty_title(self):
-        return self.badge.title
 
     def sponsor(self):
         return self
@@ -422,9 +405,9 @@ class Mock(injector.Module):
     @classmethod
     def login_sim(cls, mc, hr):
         def mkrole(uid):
-            box, req = medcenter.Mock.login_info(mc, uid)
-            caps = mc.issue(box, req) + hr.issue(box, req)
-            return req.role
+            req = medcenter.Mock.login_info(uid)
+            caps = mc.issue(req) + hr.issue(req)
+            return req.user, req.faculty, req.executive
         return mkrole
 
 class _TestTimeSource(object):

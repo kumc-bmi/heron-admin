@@ -1,7 +1,7 @@
 '''medcenter --  academic medical center directory/policy
 ==========================================================
 
-Login Capabilities
+Badge Capabilities from Directory Lookup
 ------------------
 
 Suppose we have a login capability (see cas_auth.Issuer)::
@@ -9,36 +9,18 @@ Suppose we have a login capability (see cas_auth.Issuer)::
   >>> logging.basicConfig(level=logging.INFO, stream=sys.stdout)
   >>> m = Mock.make()
 
-  >>> box, req = Mock.login_info(m, 'john.smith')
-  >>> box, req
-  (<MedCenter sealed box>, {})
+  >>> req = Mock.login_info('john.smith')
+  >>> req
+  {'remote_user': 'john.smith'}
 
-Then we'll issue a login capability:
-  >>> login_caps = m.issue(box, req)
+Then we'll issue a badge capability to the request and authorization to use it:
+  >>> login_caps = m.issue(req)
   >>> login_caps
   [<MedCenter sealed box>]
+  >>> m.audit(login_caps[0], m.permissions[0])
+  INFO:medcenter:MedCenter.audit(<MedCenter sealed box>, medcenter.py.idvault)
 
-Note that it has to be our own login capability::
-  >>> foreign_box = Mock.make().sealer.seal('john.smith')
-  >>> m.issue(foreign_box, req)
-  Traceback (most recent call last):
-  ...
-  TypeError
-
-And we'll issue no capabilities unless the login capability bears
-the correct application secret::
-  >>> boxx = m.sealer.seal(('john.smith', 'wrong_sekrit'))
-  >>> m.issue(boxx, req)
-  WARNING:medcenter:unexpected app_secret [wrong_sekrit]
-  []
-
-
-Directory Lookup
-----------------
-
-We can exercise an enterprise directory capability::
-
-  >>> b1 = m.read_badge(req.idvault_entry)
+  >>> b1 = req.badge
   >>> b1
   John Smith <john.smith@js.example>
   >>> b1.title
@@ -60,6 +42,8 @@ We use an outboard service to check human subjects "chalk" training::
   [chalk]
   param=userid
   url=http://localhost:8080/chalk-checker
+
+You can only check your own training, so you need the badge authorization::
 
   >>> m.training(req.idvault_entry)
   '2012-01-01'
@@ -119,14 +103,12 @@ class MedCenter(object):
         dn, ldapattrs = matches[0]
         return Badge.from_ldap(ldapattrs)
 
-    def issue(self, loginbox, req):
-        u, s = self._unsealer.unseal(loginbox)
-        if s != self._app_secret:
-            log.warn('unexpected app_secret [%s]', s)
-            return []
-        cap = self.sealer.seal(self._lookup(u))
-        req.idvault_entry = cap
-        return [cap]
+    def issue(self, req):
+        cap = self._lookup(req.remote_user)
+        auth = self.sealer.seal(cap)
+        req.badge = cap
+        req.idvault_entry = auth
+        return [auth]
 
     def audit(self, cap, p):
         '''See cas_auth.
@@ -135,10 +117,6 @@ class MedCenter(object):
         if not isinstance(cap, object):
             raise TypeError
         self._unsealer.unseal(cap)
-
-    def lookup(self, namebox):  #@@ dead code?
-        name = self._unsealer.unseal(namebox)
-        return self.sealer.seal(self._lookup(name))
 
     def read_badge(self, badgebox):
         '''Read (unseal) badge.
@@ -277,10 +255,10 @@ class Mock(injector.Module, ModuleHelper):
                     injector.InstanceProvider('sekrit'))
 
     @classmethod
-    def login_info(self, mc, cn):
-        box = mc.sealer.seal((cn, mc._app_secret))
+    def login_info(self, cn):
         req = MockRequest()
-        return box, req
+        req.remote_user = cn
+        return req
 
     @classmethod
     def mods(cls):
@@ -317,7 +295,7 @@ if __name__ == '__main__': # pragma: no cover
         print m.affiliateSearch(10, cn, sn, givenname)
     else:
         uid = sys.argv[1]
-        box, req = Mock.login_info(m, uid)
+        box, req = Mock.login_info(uid)
         m.issue(box, req)
         who = m.read_badge(req.idvault_entry)
         print who

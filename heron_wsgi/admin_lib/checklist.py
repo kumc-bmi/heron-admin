@@ -2,10 +2,10 @@
 
 
   >>> cl, hr, mc, depgraph = Mock.make_stuff()
-  >>> role = heron_policy.Mock.login_sim(mc, hr)
+  >>> roles = heron_policy.Mock.login_sim(mc, hr)
 
   >>> import pprint
-  >>> pprint.pprint(cl.screen(role('john.smith')))
+  >>> pprint.pprint(cl.screen(*roles('john.smith')))
   {'accessDisabled': {'name': 'login'},
    'affiliate': John Smith <john.smith@js.example>,
    'executive': {},
@@ -15,7 +15,7 @@
    'trainingCurrent': {'checked': 'checked'},
    'trainingExpiration': '2012-01-01'}
 
-  >>> pprint.pprint(cl.screen(role('bill.student')))
+  >>> pprint.pprint(cl.screen(*roles('bill.student')))
   {'accessDisabled': {'disabled': 'disabled'},
    'affiliate': Bill Student <bill.student@js.example>,
    'executive': {},
@@ -25,7 +25,7 @@
    'trainingCurrent': {},
    'trainingExpiration': ''}
 
-  >>> pprint.pprint(cl.screen(role('nobody')))
+  >>> pprint.pprint(cl.screen(*roles('nobody')))
   Traceback (most recent call last):
     ...
   KeyError: 'nobody'
@@ -48,7 +48,7 @@ class Checklist(object):
     def __repr__(self):
         return 'Checlist()'
 
-    def screen(self, agent):
+    def screen(self, agent, faculty, executive):
         try:
             expiration = agent.training()
             current = {'checked': 'checked'}
@@ -64,17 +64,27 @@ class Checklist(object):
                 return {}
             except medcenter.NotFaculty:
                 return {}
+            except: #@@narrow exceptions to IO/DB error
+                log.warn('Exception in checklist. DB down?')
+                log.debug('Checklist error detail', exc_info=True)
+                # @@TODO: show user an indication of the error
+                return {}
 
         try:
             access = agent.repository_account()
         except heron_policy.NoPermission:
             access = None
+        except: #@@narrow exceptions to IO/DB error
+            log.warn('Exception checking repository access. DB down?')
+            log.debug('Repository access error detail', exc_info=True)
+            # @@TODO: show user an indication of the error
+            access = None
 
         return {"affiliate": agent.badge,
                 "trainingCurrent": current,
                 "trainingExpiration": expiration,
-                "executive": {},  #@@todo
-                "faculty": checkmark(lambda: agent.faculty_title()),
+                "executive": {'checked': 'checked'} if executive else {},
+                "faculty": {'checked': 'checked'} if faculty else {},
                 "signatureOnFile": checkmark(lambda: agent.signature()),
                 "sponsored": checkmark(lambda: agent.sponsor()),
                 "accessDisabled": (access and {'name': 'login'}

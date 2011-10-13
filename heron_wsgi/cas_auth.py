@@ -20,7 +20,7 @@ Let's set up authorization and authentication::
 
   >>> guide = depgraph.get(Issuer)
   >>> guard = depgraph.get(Validator)
-  >>> guard.add_issuer(guide, guide.sealer)
+  >>> guard.add_issuer(guide)
 
   >>> config.add_route('logout', 'logout')
   >>> guard.configure(config, 'logout')
@@ -101,23 +101,22 @@ class Issuer(object):
     '''
     permissions = ()
 
-    def issue(self, uidbox, req):
+    def issue(self, req):
         '''Issue capabilities based on CAS login.
 
-        @param uidbox: CAS userid, sealed by sealer given to add_issuer(),
-                       to prove that the userid comes from someone we
-                       have been introduced to.
-        @param req: request, which you may add attributes to
-        @return: a sequence of capabilities for this request, which
-                 will later be passed to audit in case this issuer's
-                 permission is required.
+        @param req: request, bearing CAS userid in remote_user,
+                    which you may add capability attributes to
+        @return: a sequence of authorizations for this capabilities
+                 added to this request, which will later be passed to
+                 audit in case this issuer's permission is required.
         '''
         raise NotImplemented
 
     def audit(self, cap, permission):
-        '''Test whether cap permits permission.
+        '''Test whether cap authorizes permission.
 
-        @param cap: a capability issued by this issuer or any other
+        @param cap: any object, which should be tested to see if it is
+                    an authorization we issued.
         @permission: one of this issuer's permissions
         '''
         raise NotImplemented
@@ -194,13 +193,15 @@ class Validator(object):
         response.headers.extend(hdrs)
         raise response
 
-    def add_issuer(self, issuer, sealer):
-        self._issuers.append((issuer, sealer))
+    def add_issuer(self, issuer):
+        self._issuers.append(issuer)
 
     def caps(self, uid, req):
         log.debug('issuing CAS login capabilities for: %s', uid)
-        return _flatten([issuer.issue(sealer.seal((uid, self._secret)), req)
-                         for issuer, sealer in self._issuers])
+        # 1st capability is the user id itself
+        req.remote_user = uid
+        return _flatten([issuer.issue(req)
+                         for issuer in self._issuers])
         
     def logout(self, context, req):
         response = HTTPSeeOther(urllib.basejoin(self._a, 'logout'))
@@ -305,17 +306,13 @@ class Mock(injector.Module):
 class MockIssuer(object):
     permissions = ('treasure',)
 
-    @classmethod
-    def make(cls):
-        s, u = sealing.makeBrandPair('treasure')
-
     def __init__(self):
         self.sealer, self._unsealer = sealing.makeBrandPair('treasure')
 
-    def issue(self, loginbox, req):
-        uid, secret = self._unsealer.unseal(loginbox)
-        req.remote_user = uid
-        return [loginbox]
+    def issue(self, req):
+        cap = 'Canary Islands'
+        req.treasure_location = cap
+        return [self.sealer.seal(cap)]
 
     def audit(self, cap, permission):
         try:

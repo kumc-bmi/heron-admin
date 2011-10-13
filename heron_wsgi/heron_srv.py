@@ -110,17 +110,15 @@ class CheckListView(object):
                         permission=heron_policy.PERM_USER)
 
     def get(self, req):
-        value = dict(self._checklist.screen(req.role),
+        value = dict(self._checklist.screen(req.user, req.faculty,
+                                            req.executive),
                      # req.route_url('i2b2_login')
                      logout_path=req.route_url('logout'),
                      saa_path=req.route_url('saa'),
                      i2b2_login_path=req.route_url('i2b2_login'))
-        try:
-            req.role.faculty_title()
+        if req.faculty:
             value = dict(value,
                          oversight_path=req.route_url('oversight'))
-        except medcenter.NotFaculty:
-            pass
 
         return value
 
@@ -147,7 +145,7 @@ class REDCapLink(object):
         Kinda iffy, w.r.t. safety and such.
         '''
 
-        return HTTPFound(req.role.ensure_saa_survey())
+        return HTTPFound(req.user.ensure_saa_survey())
 
     def oversight_redir(self, req):
         '''Redirect to a per-user sponsorship/data-use REDCap survey.
@@ -163,12 +161,10 @@ class REDCapLink(object):
 
         uids = _request_uids(req.GET)
 
-        role = req.role
-
         dr = '1' if req.GET.get('is_data_request', '') == '1' else '0'
 
-        there = role.ensure_oversight_survey(
-            team_params(role.browser.lookup, uids), dr)
+        there = req.faculty.ensure_oversight_survey(
+            team_params(req.faculty.browser.lookup, uids), dr)
 
         return HTTPFound(there)
 
@@ -193,7 +189,7 @@ class RepositoryLogin(object):
 
         '''
         try:
-            req.role.repository_account().login()
+            req.user.repository_account().login()
             return HTTPSeeOther(self._i2b2_tool_addr)
         except heron_policy.NoPermission, np:
             return HTTPForbidden(detail=np.message)
@@ -223,7 +219,7 @@ class TeamBuilder(object):
 
         if goal == 'Search':
             log.debug('cn: %s', params.get('cn', ''))
-            candidates = req.role.browser.search(max_search_hits,
+            candidates = req.user.browser.search(max_search_hits,
                                                  params.get('cn', ''),
                                                  params.get('sn', ''),
                                                  params.get('givenname', ''))
@@ -234,7 +230,7 @@ class TeamBuilder(object):
 
         # Since we're the only supposed to supply these names,
         # it seems OK to throw KeyError if we hit a bad one.
-        team = [req.role.browser.lookup(n) for n in uids]
+        team = [req.user.browser.lookup(n) for n in uids]
         team.sort(key = lambda(a): (a.sn, a.givenname))
 
         return dict(done_path=req.route_url('team_done'),
@@ -386,8 +382,8 @@ class HeronAdminConfig(Configurator):
         log.debug('HeronAdminConfig settings: %s', settings)
         Configurator.__init__(self, settings=settings)
 
-        guard.add_issuer(mc, mc.sealer)
-        guard.add_issuer(hr, hr.sealer)
+        guard.add_issuer(mc)
+        guard.add_issuer(hr)
 
         cap_style = cas_auth.CapabilityStyle([mc, hr])
         self.set_authorization_policy(cap_style)
