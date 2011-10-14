@@ -13,6 +13,8 @@ apache-conf-raven - mod_wsgi configuration for the python approach
 
 heron_wsgi - the python approach
 
+TODO: administrative interface: POST to re-read config files
+
 .hgignore - stuff to ignore from version control (e.g. maven's target/)
 
 pom.xml - maven package object model (build file) for the Java approach,
