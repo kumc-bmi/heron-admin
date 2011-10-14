@@ -129,6 +129,13 @@ class MedCenter(object):
         @raises: NotFaculty
         '''
         badge = self._unsealer.unseal(badgebox)
+
+        #@@ horrible kludge for testing
+        log.debug('testing faculty badge kludge for %s', badge.cn)
+        if ('faculty:' + badge.cn) in self._app_secret:
+            log.debug('faculty badge granted to %s by configuration', badge.cn)
+            return badge
+
         if (badge.kumcPersonJobcode == self.excluded_jobcode
             or badge.kumcPersonFaculty != 'Y'):
             raise NotFaculty
