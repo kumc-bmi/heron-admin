@@ -16,13 +16,17 @@
 
 '''
 
+import json
+import logging
+import pprint
 import sys
 import urllib
 import urllib2
-import pprint
-import json
 
 import config
+
+log = logging.getLogger(__name__)
+
 
 def settings(ini, section, extras=[]):
     rt = config.RuntimeOptions('token api_url survey_url domain survey_id'.split() + extras)
@@ -30,18 +34,18 @@ def settings(ini, section, extras=[]):
     return rt
 
 
-def survey_setup(rt, urlopener, ans_cb=None):
+def survey_setup(rt, urlopener):
     def setup(userid, params, multi=False):
         email = '%s@%s' % (userid, rt.domain)
-        body = urllib.urlencode({'token': rt.token,
-                                 'content': 'survey',
-                                 'format': 'json',
-                                 'multi': 'yes' if multi else 'no',
-                                 'email': email})
-        body = urlopener.open(rt.api_url, body).read()
+        params = {'token': rt.token,
+                  'content': 'survey',
+                  'format': 'json',
+                  'multi': 'yes' if multi else 'no',
+                  'email': email}
+        log.debug('POSTing %s to redcap at %s', params, rt.api_url)
+        body = urlopener.open(rt.api_url, urllib.urlencode(params)).read()
         ans = json.loads(body)
-        if ans_cb:
-            ans_cb(ans)
+        log.info('REDCap API answer: %s', ans)
         surveycode = ans['hash']
         params = urllib.urlencode([('s', surveycode)] + sorted(params.iteritems()))
         return rt.survey_url + '?' + params
@@ -74,13 +78,12 @@ _test_settings = config.TestTimeOptions(dict(
     project_id=34))
 
 
-def _show_ans(ans):
-    print >>sys.stderr, ans
-
-
-def _integration_test(ini='integration-test.ini', section='oversight_survey'):  # pragma nocover
-    return survey_setup(settings(ini, section), urllib.URLopener(), _show_ans)
-
+def _integration_test(ini='integration-test.ini',
+                      section1='saa_survey',
+                      section2='oversight_survey'):  # pragma nocover
+    s1 = survey_setup(settings(ini, section1), urllib.URLopener())
+    s2 = survey_setup(settings(ini, section2), urllib.URLopener())
+    return s1, s2
 
 def _test_multi_use(c, uid, full_name, ua):
     '''Test that a user can use the same survey to make multiple requests.
@@ -105,13 +108,18 @@ def _test_multi_use(c, uid, full_name, ua):
     
 
 if __name__ == '__main__':  # pragma nocover
+    logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
+
     from pprint import pprint
     userid, fullName = sys.argv[1:3]
-    c = _integration_test()
+    c1, c2 = _integration_test()
     try:
-        pprint(c(userid, {'email': userid + '@kumc.edu', 'full_name': fullName}))
+        pprint(c1(userid, {'email': userid + '@kumc.edu',
+                           'full_name': fullName}))
+        pprint(c2(userid, {'email': userid + '@kumc.edu',
+                           'full_name': fullName}))
     except IOError, e:
         print e.message
         print e
 
-    _test_multi_use(c, userid, fullName, urllib.URLopener())
+    _test_multi_use(c2, userid, fullName, urllib.URLopener())
