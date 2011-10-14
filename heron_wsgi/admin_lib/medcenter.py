@@ -18,7 +18,7 @@ Then we'll issue a badge capability to the request and authorization to use it:
   >>> login_caps
   [<MedCenter sealed box>]
   >>> m.audit(login_caps[0], m.permissions[0])
-  INFO:medcenter:MedCenter.audit(<MedCenter sealed box>, medcenter.py.idvault)
+  INFO:medcenter:MedCenter.audit(<MedCenter sealed box>, medcenter.idvault)
 
   >>> b1 = req.badge
   >>> b1
@@ -69,7 +69,7 @@ KTrainingFunction = injector.Key('TrainingFunction')
 KAppSecret = injector.Key('AppSecret')
 
 CHALK_CONFIG_SECTION='chalk'
-PERM_ID=__file__ + '.idvault'
+PERM_ID=__name__ + '.idvault'
 
 @singleton
 class MedCenter(object):

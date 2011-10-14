@@ -9,9 +9,9 @@
 <body>
 
 <h1>HERON 
- <py:if test="not
- is_data_request=='1'">Sponsorship</py:if><py:if test="is_data_request=='1'">Data
- Usage</py:if>:
+ <py:if test="
+ what_for=='sponsorship'">Sponsorship:</py:if>
+ <py:if test="what_for=='data_use'">Data Use:</py:if>
  Select Team</h1>
 
 <p>Choose up to 10 people per request.</p>
@@ -20,11 +20,14 @@
 <table py:if="people">
   <tr>
     <th>&#160;</th>
-    <th>User ID</th><th>Name</th><th>Title</th><th>Department</th>
+    <th>Name</th><th>User ID</th><th>Title</th><th>Department</th>
   </tr>
   <tr py:for="who in people">
-    <td><input type="checkbox" name="${pfx}_${who.cn}" /></td>
-    <td>${who.cn}</td><td>${who.sn}, ${who.givenname}</td><td>${who.title}</td><td>${who.ou}</td>
+    <td><input type="checkbox" name="${pfx}_${who.cn}"
+               id="${pfx}_${who.cn}" /></td>
+    <td><label for="${pfx}_${who.cn}">${who.sn}, ${who.givenname}</label></td>
+    <td><label for="${pfx}_${who.cn}">${who.cn}</label></td>
+    <td>${who.title}</td><td>${who.ou}</td>
   </tr>
 </table>
 </py:def>
@@ -34,28 +37,24 @@
 ${peopleTable(team, 'r')}
 <p><input type="submit" name='goal' value="Remove" /></p>
 <input type="hidden" name="uids" value="${uids}" />
-<input type="hidden" name="is_data_request" value="${is_data_request}" />
 </form>
 
 <form py:if="team" method="get" action="${done_path}">
 <input type="hidden" name="uids" value="${uids}" />
-<input type="hidden" name="is_data_request" value="${is_data_request}" />
-<p><input type="submit" name="continue" value="Done Choosing People" /></p>
+<p class="doit" style="text-align: center; margin-bottom: 2em">
+  <input type="submit" name="continue" value="Done Choosing People" />
+</p>
 </form>
 
 <form method="get" action="">
-<p>Look up a team member by giving the first letters of their surname, given name, or KUMC id:
-<dl>
-<dt><label for='sn'>Last Name:</label></dt>
-<dd><input name='sn' /></dd>
-<dt><label for='givenname'>First Name:</label></dt>
-<dd><input name='givenname' /></dd>
-<dt><label for='cn'>KUMC id:</label></dt>
-<dd><input name='cn' /></dd>
-</dl>
+<p>Look up a team member by giving the first letters of their first name, last name, or KUMC id:
+<p>
+<label>First: <input name='givenname' size="8"/></label>
+<label>Last: <input name='sn' size="15"/></label>
+<label>ID: <input name='cn' size="10"/></label>
 <input type="submit" name='goal' value="Search" />
+</p>
 <input type="hidden" name="uids" value="${uids}" />
-<input type="hidden" name="is_data_request" value="${is_data_request}" />
 </p>
 </form>
 
@@ -63,7 +62,6 @@ ${peopleTable(team, 'r')}
 ${peopleTable(candidates, 'a')}
 <p><input type="submit" name='goal' value="Add" /></p>
 <input type="hidden" name="uids" value="${uids}" />
-<input type="hidden" name="is_data_request" value="${is_data_request}" />
 </form>
 </div>
 

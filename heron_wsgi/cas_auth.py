@@ -157,7 +157,7 @@ class Validator(object):
         import sys
         if 'ticket' in request.params:
             # already been here before
-            raise HTTPForbidden
+            return HTTPForbidden()
 
         log.debug("redirector from: %s", request.url)
         there = (urllib.basejoin(self._a, 'login') + '?' +

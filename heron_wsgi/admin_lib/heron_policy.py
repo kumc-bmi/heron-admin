@@ -33,8 +33,9 @@ See if they're qualified faculty::
   [Affiliate(Bill Student <bill.student@js.example>)]
   >>> stureq.faculty is None
   True
-  >>> facreq.faculty.ensure_oversight_survey(dict(title='cure everything'))
-  'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&is_data_request=False&multi=yes&title=cure+everything&user_id=john.smith'
+  >>> facreq.faculty.ensure_oversight_survey(dict(title='cure everything'),
+  ...                                        what_for='2')
+  'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&multi=yes&title=cure+everything&user_id=john.smith&what_for=2'
 
 See if the students are qualified in some way::
 
@@ -364,17 +365,21 @@ class Executive(Affiliate):
 
     
 class Faculty(Affiliate):
+    oversight_request_purposes = ('1',  # sponsorship
+                                  '2')  # data use
     def __repr__(self):
         return 'Faculty(%s)' % (self.badge)
 
     def sponsor(self):
         return self
 
-    def ensure_oversight_survey(self, team_params, data_req=False):
+    def ensure_oversight_survey(self, team_params, what_for):
+        if what_for not in self.oversight_request_purposes:
+            raise TypeError
         return self.record.ensure_oversight(dict(team_params,
                                                  user_id=self.badge.cn,
                                                  full_name=self.sort_name(),
-                                                 is_data_request=data_req,
+                                                 what_for=what_for,
                                                  multi='yes'))
 
 

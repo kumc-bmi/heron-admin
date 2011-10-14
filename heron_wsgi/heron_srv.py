@@ -40,6 +40,7 @@ from genshi.template import TemplateLoader
 import injector # http://pypi.python.org/pypi/injector/
                 # 0.3.1 7deba485e5b966300ef733c3393c98c6
 from injector import inject, provides
+import pyramid
 from pyramid.config import Configurator
 from pyramid.view import view_config
 from pyramid.httpexceptions import HTTPFound, HTTPSeeOther, HTTPForbidden
@@ -98,16 +99,18 @@ class CheckListView(object):
     @inject(checklist=Checklist)
     def __init__(self, checklist):
         self._checklist = checklist
+        self._next_route = None
 
     def issue(self, uidbox, req):
         uid = self._unsealer.unseal(uidbox)
         req.checklist_parts = self._checklist.parts_for(uid)
 
 
-    def configure(self, config, route_name):
+    def configure(self, config, route_name, next_route):
         config.add_view(self.get, route_name=route_name, request_method='GET',
                         renderer='index.html',
                         permission=heron_policy.PERM_USER)
+        self._next_route = next_route
 
     def get(self, req):
         value = dict(self._checklist.screen(req.user, req.faculty,
@@ -117,14 +120,23 @@ class CheckListView(object):
                      saa_path=req.route_url('saa'),
                      i2b2_login_path=req.route_url('i2b2_login'))
         if req.faculty:
+            sp = req.route_url(self._next_route,
+                               what_for=REDCapLink.for_sponsorship)
+            dup = req.route_url(self._next_route,
+                                what_for=REDCapLink.for_data_use)
             value = dict(value,
-                         oversight_path=req.route_url('oversight'))
+                         sponsorship_path=sp,
+                         data_use_path=dup)
 
         return value
 
 
 class REDCapLink(object):
     # no longer needs to be a class?
+
+    for_sponsorship = 'sponsorship'
+    for_data_use = 'data_use'
+
     def configure(self, config, rsaa, rtd):
         config.add_view(self.saa_redir, route_name=rsaa,
                         request_method='GET',
@@ -151,20 +163,19 @@ class REDCapLink(object):
         '''Redirect to a per-user sponsorship/data-use REDCap survey.
 
           >>> t, r4 = test_grant_access_with_valid_cas_ticket()
-          >>> r5 = t.get('/team_done', status=302)
+          >>> r5 = t.get('/team_done/sponsorship', status=302)
           >>> dict(r5.headers)['Location']
-          'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&is_data_request=0&multi=yes&user_id=john.smith'
+          'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&multi=yes&user_id=john.smith&what_for=1'
 
         Hmm... we're doing a POST to the REDCap API inside a GET.
         Kinda iffy, w.r.t. safety and such.
         '''
 
         uids = _request_uids(req.GET)
-
-        dr = '1' if req.GET.get('is_data_request', '') == '1' else '0'
+        what_for = '2' if req.matchdict['what_for'] == '2' else '1'
 
         there = req.faculty.ensure_oversight_survey(
-            team_params(req.faculty.browser.lookup, uids), dr)
+            team_params(req.faculty.browser.lookup, uids), what_for)
 
         return HTTPFound(there)
 
@@ -204,15 +215,16 @@ class TeamBuilder(object):
     def get(self, res, req, max_search_hits=15):
         r'''
           >>> t, r1 = test_grant_access_with_valid_cas_ticket()
-          >>> t.get('/build_team', status=200)
+          >>> t.get('/build_team/sponsorship', status=200)
           <Response 200 OK '<!DOCTYPE html>\n<htm'>
-          >>> c1 = t.get('/build_team?goal=Search&cn=john.smith', status=200)
+          >>> c1 = t.get('/build_team/sponsorship?goal=Search&cn=john.smith',
+          ...            status=200)
           >>> 'Smith, John' in c1
           True
-          >>> done = t.get('/team_done?continue=Done&uids=john.smith',
+          >>> done = t.get('/team_done/sponsorship?continue=Done&uids=john.smith',
           ...              status=302)
           >>> dict(done.headers)['Location']
-          'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&is_data_request=0&multi=yes&name_etc_1=Smith%2C+John%0AChair+of+Department+of+Neurology%0A&user_id=john.smith&user_id_1=john.smith'
+          'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&multi=yes&name_etc_1=Smith%2C+John%0AChair+of+Department+of+Neurology%0A&user_id=john.smith&user_id_1=john.smith&what_for=1'
         '''
         params = req.GET
         uids, goal = edit_team(params)
@@ -233,9 +245,10 @@ class TeamBuilder(object):
         team = [req.user.browser.lookup(n) for n in uids]
         team.sort(key = lambda(a): (a.sn, a.givenname))
 
-        return dict(done_path=req.route_url('team_done'),
+        what_for = req.matchdict['what_for']
+        return dict(done_path=req.route_url('team_done', what_for=what_for),
+                    what_for=what_for,
                     team=team,
-                    is_data_request=req.GET.get('is_data_request', '0'),
                     uids=' '.join(uids),
                     candidates=candidates)
 
@@ -292,80 +305,21 @@ def _request_uids(params):
     return v.split(' ') if v else []
 
 
-ERR_SECTION='errors'
-_sample_err_settings = dict(
-    debug=False,
-    smtp_server='smtp.example.edu',
-    error_email='sysadmin@example.edu',
-    error_email_from='heron@example.edu',
-    error_subject_prefix='HERON crash')
+def make_internal_error(req):
+    x = 1/0
 
 
-def error_mapper(code, message, environ, global_conf):
-    if code in [500]:
-        params = {'message':message, 'code':code}
-        url = HeronAccessPartsApp.oops_path + '?' + urlencode(params)
-
-        print "@@url:", url
-        import pprint
-        pprint.pprint(environ)
-        return url
-    else:
-        return None
-
-def err_handler(app, rt, template = 'oops.html'):
+def server_error_view(context, req):
     '''
-    Error handling needs configuration::
+    @param context: an Exception
 
-      >>> print TestTimeOptions(_sample_err_settings).inifmt(ERR_SECTION)
-      [errors]
-      debug=False
-      error_email=sysadmin@example.edu
-      error_email_from=heron@example.edu
-      error_subject_prefix=HERON crash
-      smtp_server=smtp.example.edu
+    .. todo:: configure pyramid_exclog for sending mail.
+    https://pylonsproject.org/projects/pyramid_exclog/dev/
     '''
-
-    def handle(environ, start_response):
-        try:
-            log.debug('path: %s', environ.get('PATH_INFO', ''))
-            log.debug('script name: %s', environ['SCRIPT_NAME'])
-            return app(environ, start_response)
-        except Exception, e:
-            exc_info = sys.exc_info()
-            try:
-                if rt.debug and int(rt.debug):
-                    handle_exception(exc_info, environ['wsgi.errors'], debug_mode=True, html=False,
-                                     show_exceptions_in_wsgi_errors=True)
-                else:
-                    handle_exception(exc_info, environ['wsgi.errors'], debug_mode=False, html=False,
-                                     show_exceptions_in_wsgi_errors=True,
-                                     error_email=rt.error_email,
-                                     error_email_from=rt.error_email_from,
-                                     smtp_server=rt.smtp_server,
-                                     error_subject_prefix=rt.error_subject_prefix)
-
-                # TODO: share loader with the the TemplateApp
-                loader = TemplateLoader([HeronAccessPartsApp.htdocs], auto_reload=True)
-                tmpl = loader.load(template)
-                stream = tmpl.generate(error_info=str(e))
-                body = stream.render('xhtml')
-
-                start_response('500 internal server error', [('Content-type', 'text/html;charset=utf-8')])
-                return body
-            finally:
-                exc_info = None
-    return handle
-
-
-class ErrorHandling(injector.Module):
-    def configure(self, binder):
-        pass
-
-    #@@ @provides(KTopApp)
-    #@@ @inject(app=KCASApp, rt=KErrorOptions)
-    def err_handler(self, app, rt):
-        return err_handler(app, rt)
+    log.error('Exception raised: %s', str(context))
+    log.debug('Exception trace:', exc_info=context)
+    req.response.status = 500
+    return dict(error_info=str(context))
 
 
 class HeronAdminConfig(Configurator):
@@ -393,21 +347,38 @@ class HeronAdminConfig(Configurator):
         self.add_renderer(name='.html', factory=genshi_render.Factory)
 
         self.add_route('heron_home', '')
-        clv.configure(self, 'heron_home')
+        clv.configure(self, 'heron_home', 'oversight')
 
         self.add_route('saa', 'saa_survey')
-        self.add_route('team_done', 'team_done')
+        self.add_route('team_done', 'team_done/{what_for:%s|%s}' % (
+                REDCapLink.for_sponsorship,
+                REDCapLink.for_data_use))
         rcv.configure(self, 'saa', 'team_done')
+
+        self.add_route('oversight', 'build_team/{what_for:%s|%s}' % (
+                REDCapLink.for_sponsorship,
+                REDCapLink.for_data_use))
+        tb.configure(self, 'oversight')
 
         self.add_route('i2b2_login', 'i2b2')
         repo.configure(self, 'i2b2_login')
 
-        # todo: split into 2 paths rather than using is_data_request param
-        self.add_route('oversight', 'build_team')
-        tb.configure(self, 'oversight')
-
         self.add_route('logout', 'logout')
         guard.configure(self, 'logout')
+
+        # for testing
+        self.add_route('err', 'err')
+        self.add_view(make_internal_error, route_name='err',
+                      permission=pyramid.security.NO_PERMISSION_REQUIRED)
+
+        # https://pylonsproject.org/projects/pyramid_exclog/dev/
+        # self.include('pyramid_exclog')
+        self.add_view(server_error_view,
+                      renderer='oops.html',
+                      context=Exception,
+                      permission=pyramid.security.NO_PERMISSION_REQUIRED)
+
+
 
 
 class RunTime(injector.Module):
@@ -437,11 +408,6 @@ class RunTime(injector.Module):
         binder.bind(URLopener,
                     injector.InstanceProvider(urllib2.build_opener()))
 
-        #@@ todo: get this working again. test it?
-        binder.bind(KErrorOptions,
-                    RuntimeOptions(_sample_err_settings.keys()
-                                   ).load(self._webapp_ini, 'errors'))
-
     @provides(medcenter.KAppSecret)
     @inject(rt=(Options, cas_auth.CONFIG_SECTION))
     def cas_app_secret(self, rt):
@@ -451,7 +417,6 @@ class RunTime(injector.Module):
     def mods(cls, settings):
         webapp_ini = settings['webapp_ini']
         admin_ini = settings['admin_ini']
-        #@@ todo: restore Oops.html error handling and such
         return (medcenter.RunTime.mods(admin_ini) +
                 cas_auth.RunTime.mods(webapp_ini) +
                 heron_policy.RunTime.mods(admin_ini) +
@@ -534,10 +499,6 @@ class Mock(injector.Module):
                     TestTimeOptions(
                         {'base': 'https://example/cas/',
                          'app_secret': 'sekrit'}))
-
-        binder.bind(KErrorOptions,
-                    TestTimeOptions(dict(_sample_err_settings,
-                                                debug=True)))
 
 
 class _TestUrlOpener(object):

@@ -4,6 +4,7 @@
   [survey_xyz]
   api_url=http://redcap-host/redcap/api/
   domain=example.edu
+  executives=big.wig
   project_id=34
   survey_id=11
   survey_url=http://bmidev1/redcap-host/surveys/
