@@ -37,13 +37,13 @@ def settings(ini, section, extras=[]):
 def survey_setup(rt, urlopener):
     def setup(userid, params, multi=False):
         email = '%s@%s' % (userid, rt.domain)
-        params = {'token': rt.token,
-                  'content': 'survey',
-                  'format': 'json',
-                  'multi': 'yes' if multi else 'no',
-                  'email': email}
-        log.debug('POSTing %s to redcap at %s', params, rt.api_url)
-        body = urlopener.open(rt.api_url, urllib.urlencode(params)).read()
+        args = {'token': rt.token,
+                'content': 'survey',
+                'format': 'json',
+                'multi': 'yes' if multi else 'no',
+                'email': email}
+        log.debug('POSTing %s to redcap at %s', args, rt.api_url)
+        body = urlopener.open(rt.api_url, urllib.urlencode(args)).read()
         ans = json.loads(body)
         log.info('REDCap API answer: %s', ans)
         surveycode = ans['hash']
