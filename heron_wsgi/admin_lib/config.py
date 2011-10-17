@@ -19,6 +19,9 @@ class Options(object):
         lines = ['%s=%s' % (k, s[k]) for k in sorted(s.keys())]
         return '\n'.join(["[%s]" % section] + lines)
 
+    def settings(self):
+        return self._d
+
     def __repr__(self):
         return 'Options(%s / %s)' % (sorted(self._attrs),
                                      sorted(self._d.keys()))
