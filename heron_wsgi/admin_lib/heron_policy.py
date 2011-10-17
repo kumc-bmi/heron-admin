@@ -213,21 +213,23 @@ class HeronRecords(object):
                 return I2B2Account(user)
 
         ex = fac = user = None
+        req.disclaimer, ack = self._disclaimer_acknowledgement(badge.cn)
+        log.debug('disclaimer: %s', req.disclaimer)
+        log.debug('ack: %s', ack)
         if badge.cn in self._executives:
             ex = Executive(badge,
                            req.idvault_entry,
-                           Record(), Browser())
+                           Record(), Browser(), ack)
             user = ex
         else:
             try:
                 fac = Faculty(mc.faculty_badge(req.idvault_entry),
                                req.idvault_entry,
-                               Record(), Browser())
+                               Record(), Browser(), ack)
                 user = fac
             except medcenter.NotFaculty:
-                user = Affiliate(badge, req.idvault_entry, Record(), Browser())
+                user = Affiliate(badge, req.idvault_entry, Record(), Browser(), ack)
 
-        req.disclaimer = self._disclaimer_acknowledgement(badge.cn)
         req.executive = ex
         req.faculty = fac
         req.user = user
@@ -242,17 +244,17 @@ class HeronRecords(object):
 
     def _disclaimer_acknowledgement(self, user_id):
         '''
-        @returns: None if not found.
+        @returns: (current disclaimer, acknowledgement of user_id); ack is None if not found.
         '''
         s = self._smaker()
 
-        q = s.query(Acknowledgement, Disclaimer \
-                        ).filter(Acknowledgement.user_id==user_id and \
-                                     Acknowledgement.disclaimer_address==Disclaimer.url)
-        log.debug('disclaimer_acknowledgement query: %s', q)
-        it = q.first()
-        log.debug('disclaimer_acknowledgement result: %s', it)
-        return it
+        d = s.query(Disclaimer).filter(Disclaimer.current==1).first()
+
+        log.debug('current disclaimer address: %s', d.url)
+        a = s.query(Acknowledgement \
+                        ).filter(Acknowledgement.disclaimer_address==d.url
+                                 ).filter(Acknowledgement.user_id==user_id).first()
+        return d, a
 
     def _check_saa_signed(self, mail):
         '''Test for an authenticated SAA survey response.
@@ -340,11 +342,12 @@ class NoAgreement(NoPermission):
 
 
 class Affiliate(object):
-    def __init__(self, badge, idcap, record, browser):
+    def __init__(self, badge, idcap, record, browser, ack):
         self.badge = badge
         self.idcap = idcap
         self.record = record
         self.browser = browser
+        self.acknowledgement = ack
 
     def __repr__(self):
         return 'Affiliate(%s)' % (self.badge)
@@ -365,9 +368,6 @@ class Affiliate(object):
 
     def sponsor(self):
         return self.record.get_sponsor()
-
-    def current_disclaimer(self):
-        return self.record.current_disclaimer()
 
     def repository_account(self):
         return self.record.repository_account(self,

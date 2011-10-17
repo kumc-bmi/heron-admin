@@ -181,15 +181,20 @@ class REDCapLink(object):
 
 
 class RepositoryLogin(object):
-    @inject(i2b2_tool_addr=KI2B2Address)
-    def __init__(self, i2b2_tool_addr):
+    @inject(i2b2_tool_addr=KI2B2Address,
+            ua=URLopener)
+    def __init__(self, i2b2_tool_addr, ua):
         self._i2b2_tool_addr = i2b2_tool_addr
         self._disclaimer_route = None
+        self._ua = ua
 
     def configure(self, config, route, disclaimer_route):
         config.add_view(self.i2b2_login, route_name=route,
                         request_method='POST',
                         permission=heron_policy.PERM_USER)
+        config.add_view(self.disclaimer, route_name=disclaimer_route,
+                        permission=heron_policy.PERM_USER,
+                        renderer='disclaimer.html')
         self._disclaimer_route = disclaimer_route  # mutable state. I'm lazy.
 
     def i2b2_login(self, req):
@@ -202,7 +207,7 @@ class RepositoryLogin(object):
 
         '''
 
-        if not req.disclaimer:
+        if not req.user.acknowledgement:
             return HTTPSeeOther(req.route_url(self._disclaimer_route))
 
         try:
@@ -211,6 +216,12 @@ class RepositoryLogin(object):
         except heron_policy.NoPermission, np:
             return HTTPForbidden(detail=np.message)
 
+    def disclaimer(self, req):
+        if req.method == 'GET':
+            return {'url': req.disclaimer.url,
+                    'content': req.disclaimer.content(self._ua)}
+        else:
+            raise NotImplemented  #@@
 
 class TeamBuilder(object):
     def configure(self, config, route_name):
@@ -367,7 +378,8 @@ class HeronAdminConfig(Configurator):
         tb.configure(self, 'oversight')
 
         self.add_route('i2b2_login', 'i2b2')
-        repo.configure(self, 'i2b2_login')
+        self.add_route('disclaimer', 'disclaimer')
+        repo.configure(self, 'i2b2_login', 'disclaimer')
 
         self.add_route('logout', 'logout')
         guard.configure(self, 'logout')

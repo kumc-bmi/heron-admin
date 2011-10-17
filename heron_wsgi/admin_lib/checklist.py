@@ -93,6 +93,7 @@ class Checklist(object):
                 "faculty": {'checked': 'checked'} if faculty else {},
                 "signatureOnFile": checkmark(lambda: agent.signature()),
                 "sponsored": checkmark(lambda: agent.sponsor()),
+                "acknowledgement": agent.acknowledgement,
                 "accessDisabled": (access and {'name': 'login'}
                                    or {'disabled': 'disabled'})
                 }
