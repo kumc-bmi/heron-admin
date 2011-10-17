@@ -33,11 +33,17 @@
 
 '''
 
+import logging
+
 import injector
 from injector import inject
 
 import heron_policy
 import medcenter
+
+
+log = logging.getLogger(__name__)
+
 
 class Checklist(object):
     '''@@there's no longer any reason for this to be a class.
@@ -126,6 +132,8 @@ class RunTime(injector.Module):
 if __name__ == '__main__':  # pragma nocover
     import sys
     uid = sys.argv[1]
+
+    logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
     mc, hr, check = RunTime.make_stuff()
 
