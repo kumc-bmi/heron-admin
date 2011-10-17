@@ -120,8 +120,9 @@ def redcap_eav_map(pid, cls, fields, alias='eav'):
 
     mapper(cls, select(cols).where(w).apply_labels().alias(),
            primary_key=[cols[0]],
-           properties=dict(dict(zip(fields, cols))))
+           properties=dict(zip(fields, cols)))
 
+    return cols, w
 
 
 class RunTime(injector.Module):

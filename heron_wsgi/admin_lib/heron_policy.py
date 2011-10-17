@@ -20,7 +20,7 @@ Suppose an investigator and some students log in::
 
 See if they're qualified faculty::
 
-  >>> _test_datasource(reset=True) and None
+  >>> _TestDataSource().connect(reset=True) and None
   >>> hp.issue(facreq)
   [Faculty(John Smith <john.smith@js.example>)]
   >>> facreq.faculty
@@ -39,7 +39,7 @@ See if they're qualified faculty::
 
 See if the students are qualified in some way::
 
-  >>> _test_datasource(reset=True) and None
+  >>> _TestDataSource().connect(reset=True) and None
   >>> stureq.user.repository_account()
   Traceback (most recent call last):
     ...
@@ -68,7 +68,7 @@ See if the students are qualified in some way::
 Get an actual access qualification; i.e. check for
 system access agreement and human subjects training::
 
-  >>> _test_datasource(reset=True) and None
+  >>> _TestDataSource().connect(reset=True) and None
   >>> facreq.user.repository_account()
   Access(Faculty(John Smith <john.smith@js.example>))
 
@@ -109,22 +109,21 @@ import urllib
 import logging
 
 import injector
-from injector import inject
+from injector import inject, provides
+import sqlalchemy
 
-from db_util import transaction, oracle_connect, mysql_connect
 import config
 import i2b2pm
 import medcenter
 import redcap_connect
 import sealing
+import redcapdb
 
-REDCAPDB_CONFIG_SECTION='redcapdb'
 SAA_CONFIG_SECTION='saa_survey'
 OVERSIGHT_CONFIG_SECTION='oversight_survey'
 PERM_USER=__name__ + '.user'
 PERM_FACULTY=__name__ + '.faculty'
 
-KDataSource = injector.Key('HERONDataSource')
 KTimeSource = injector.Key('TimeSource')
 
 log = logging.getLogger(__name__)
@@ -137,7 +136,7 @@ class HeronRecords(object):
             pm=i2b2pm.I2B2PM,
             saa_opts=(config.Options, SAA_CONFIG_SECTION),
             oversight_opts=(config.Options, OVERSIGHT_CONFIG_SECTION),
-            datasource=KDataSource,
+            datasource=(sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION),
             timesrc=KTimeSource,
             urlopener=urllib.URLopener)
     def __init__(self, mc, pm, saa_opts, oversight_opts,
@@ -240,15 +239,14 @@ class HeronRecords(object):
     def _check_saa_signed(self, mail):
         '''Test for an authenticated SAA survey response.
         '''
-        with transaction(self._datasrc()) as q:
-            q.execute(
-                '''select p.survey_id, p.participant_email, r.response_id, r.record, r.completion_time
- 		   from redcap_surveys_response r
-                     join redcap_surveys_participants p on p.participant_id = r.participant_id 
-		   where p.participant_email=%(mail)s and p.survey_id = %(survey_id)s''',
-                {'mail': mail, 'survey_id': self._saa_survey_id})
-            ok = len(q.fetchmany()) > 0
-        if not ok:
+        ans = self._datasrc.execute(
+            '''select p.survey_id, p.participant_email, r.response_id, r.record, r.completion_time
+               from redcap_surveys_response r
+                 join redcap_surveys_participants p on p.participant_id = r.participant_id 
+               where p.participant_email=%(mail)s and p.survey_id = %(survey_id)s''',
+            {'mail': mail, 'survey_id': self._saa_survey_id})
+
+        if not ans.fetchmany():
             raise NoAgreement()
 
     def q_executive(self, agent):
@@ -268,9 +266,10 @@ class HeronRecords(object):
         approval decisions are stored in fields with names like
         approve_%, with a distinct approve_% field for each
         participating institution and coded yes=1/no=2/defer=3.
+
+        .. todo:: check expiration date
         '''
-        with transaction(self._datasrc()) as q:
-            q.execute('''
+        ans = self._datasrc.execute('''
 select record, count(*)
 from (
 select distinct
@@ -291,12 +290,11 @@ where decision=1 and userid=%(userid)s
 ) review
 having count(*) = %(qty)s
 '''
-                      , dict(project_id=self._oversight_project_id,
-                             userid=uid,
-                             qty=self.qty_institutions))
-            answers = q.fetchall()
+                                    , dict(project_id=self._oversight_project_id,
+                                           userid=uid,
+                                           qty=self.qty_institutions))
 
-        if not answers:
+        if not ans.fetchall():
             raise NotSponsored()
         return True
 
@@ -350,6 +348,9 @@ class Affiliate(object):
     def sponsor(self):
         return self.record.get_sponsor()
 
+    def current_disclaimer(self):
+        return self.record.current_disclaimer()
+
     def repository_account(self):
         return self.record.repository_account(self,
                                               self.sponsor(),
@@ -391,22 +392,10 @@ class Disclaimer(object):
         self._agent = agent
 
 
-def datasource(ini, section=REDCAPDB_CONFIG_SECTION):
-    '''
-    .. todo: refactor into datasource
-    '''
-    rt = config.RuntimeOptions('user password host port sid engine'.split())
-    rt.load(ini, section)
-    def get_connection():
-        #return oracle_connect(rt.user, rt.password, rt.host, 1521, rt.sid)
-        return mysql_connect(rt.user, rt.password, rt.host, int(rt.port), 'redcap')
-    return get_connection
-
-
 class Mock(injector.Module):
     def configure(self, binder):
-        binder.bind(KDataSource,
-                    injector.InstanceProvider(_test_datasource))
+        binder.bind((sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION),
+                    _TestDataSource)
         binder.bind(KTimeSource, _TestTimeSource),
         binder.bind((config.Options, SAA_CONFIG_SECTION),
                     redcap_connect._test_settings)
@@ -440,6 +429,7 @@ class Mock(injector.Module):
             return req.user, req.faculty, req.executive
         return mkrole
 
+
 class _TestTimeSource(object):
     def today(self):
         import datetime
@@ -447,56 +437,53 @@ class _TestTimeSource(object):
 
 
 _d = None
-def _test_datasource(reset=False):
-    global _d
-    if reset or _d is None or _d.hosed:
-        _d = _TestDBConn()
+class _TestDataSource(object):
 
-    return _d
+    def connect(self, reset=False):
+        global _d
+
+        if reset or _d is None or _d.hosed:
+            _d = _TestDBConn()
+
+        return _d
+
+    def execute(self, q, params=[]):
+        return self.connect().execute(q, params)
 
 
 class _TestDBConn(object):
+    signed_users=['john.smith@js.example',
+                  'big.wig@js.example']
     def __init__(self):
         self._ticks = 0
         self.hosed = False
 
-    def cursor(self):
+    def execute(self, q, params=[]):
         self._ticks += 1
         if self._ticks % 7 == 0:
             self.hosed = True
-        return _TestTrx(self.hosed)
 
-    def commit(self):
-        pass
-
-    def rollback(self):
-        pass
-
-
-class _TestTrx():
-    def __init__(self, fail=False,
-                signed_users=['john.smith@js.example',
-                              'big.wig@js.example']):
-        self._results = None
-        self._fail = fail
-        self.signed_users = signed_users
-
-    def execute(self, q, params=[]):
-        if self._fail:
+        if self.hosed:
             raise IOError, 'databases fail sometimes; deal'
 
         if ('mail' in params and 'survey_id' in params
             and params['mail'] in self.signed_users):
-            self._results = [(params['survey_id'],
-                              params['mail'], 123, 123, '2011-01-01')]
+            results = [(params['survey_id'],
+                        params['mail'], 123, 123, '2011-01-01')]
         elif 'count' in q:  # assume it's the sponsored query
             if 'some.one' in params.get('userid', ''):
-                self._results = [(9, 3)]
+                results = [(9, 3)]
             else:
-                self._results = []
+                results = []
         else:
-            self._results = []
+            results = []
 
+        return _TestResults(results)
+
+
+class _TestResults():
+    def __init__(self, results):
+        self._results = results
         self._row = 0
 
     def fetchmany(self):
@@ -510,9 +497,6 @@ class _TestTrx():
         self._row += 1
         return row
 
-    def close(self):
-        pass
-
 
 class RunTime(injector.Module):  # pragma nocover
     def __init__(self, ini):
@@ -525,24 +509,21 @@ class RunTime(injector.Module):  # pragma nocover
         binder.bind(KTimeSource,
                     injector.InstanceProvider(datetime.date))
 
-        binder.bind(KDataSource,
-                    injector.InstanceProvider(datasource(self._ini)))
+        def bind_options(names, section):
+            rt = config.RuntimeOptions(names)
+            rt.load(self._ini, section)
+            binder.bind((config.Options, section), rt)
 
-        srt = config.RuntimeOptions(['survey_id'])
-        srt.load(self._ini, SAA_CONFIG_SECTION)
-        binder.bind((config.Options, SAA_CONFIG_SECTION), srt)
+        bind_options(['survey_id'], SAA_CONFIG_SECTION)
+        bind_options(['project_id', 'executives'], OVERSIGHT_CONFIG_SECTION)
 
-        ort = config.RuntimeOptions(['project_id', 'executives'])
-        ort.load(self._ini, OVERSIGHT_CONFIG_SECTION)
-        binder.bind((config.Options, OVERSIGHT_CONFIG_SECTION), ort)
-
-        binder.bind(urllib.URLopener,
-                    injector.InstanceProvider(urllib2.build_opener()))
+        binder.bind(urllib.URLopener, urllib2.build_opener)
 
     @classmethod
     def mods(cls, ini='integration-test.ini'):
         return (medcenter.RunTime.mods(ini) +
                 i2b2pm.RunTime.mods(ini) +
+                redcapdb.RunTime.mods(ini) +
                 [cls(ini)])
 
     @classmethod

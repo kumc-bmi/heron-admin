@@ -10,11 +10,11 @@ from lxml import etree
 import urllib2
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import DeclarativeMeta
 
 import config
 from db_util import mysql_connect
 import redcapdb
+from orm_base import Base
 
 DISCLAIMERS_SECTION='disclaimers'
 ACKNOWLEGEMENTS_SECTION='disclaimer_acknowledgements'
@@ -76,41 +76,43 @@ class RunTime(injector.Module):
             rt = config.RuntimeOptions(names)
             rt.load(self._ini, section)
             binder.bind((config.Options, section), rt)
+            return rt
 
-        bind_options('project_id'.split(),
-                     DISCLAIMERS_SECTION)
-        bind_options('token'.split(),
-                     ACKNOWLEGEMENTS_SECTION)
-
-    @provides(DeclarativeMeta)
-    @inject(drt=(config.Options, DISCLAIMERS_SECTION))
-    def mappings(self, drt):
+        drt = bind_options('project_id'.split(),
+                           DISCLAIMERS_SECTION)
         redcapdb.redcap_eav_map(pid=drt.project_id,
-                                cls=Disclaimer, fields=Disclaimer.fields, alias='disclaimers')
-        return redcapdb.Base
+                                cls=Disclaimer, fields=Disclaimer.fields,
+                                alias='disclaimers')
+        art = bind_options('project_id token'.split(),
+                           ACKNOWLEGEMENTS_SECTION)
+        redcapdb.redcap_eav_map(pid=art.project_id,
+                                cls=Acknowledgement, fields=Acknowledgement.fields,
+                                alias='acknowledgement')
 
     @classmethod
     def mods(cls, ini):
         return redcapdb.RunTime.mods(ini) + [cls(ini)]
 
     @classmethod
-    def make_stuff(cls, ini):
+    def make(cls, ini, what=(sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION)):
         depgraph = injector.Injector(cls.mods(ini))
-        base = depgraph.get(DeclarativeMeta)
-        ds = depgraph.get((sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION))
-        return ds, base
+        return depgraph.get(what)
 
 
 if __name__ == '__main__':
-    engine, base = RunTime.make_stuff('integration-test.ini')
+    engine = RunTime.make('integration-test.ini')
 
-    base.metadata.bind = engine
+    Base.metadata.bind = engine
     sm = sessionmaker(engine)
     s = sm()
 
     print "all disclaimers:"
     for d in s.query(Disclaimer):
         print d
+
+    print 'all acknowledgements:'
+    for ack in s.query(Acknowledgement):
+        print ack
 
     print "current disclaimer and content:"
     for d in s.query(Disclaimer).filter(Disclaimer.current==1):

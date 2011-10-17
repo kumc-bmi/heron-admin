@@ -281,6 +281,12 @@ class RunTime(injector.Module, ModuleHelper):
         injector.Module.__init__(self)
         self._ini = ini
 
+    @provides(KAppSecret)
+    def trivial_secret(self):
+        '''Note: other modules need to override KAppSecret
+        '''
+        return 'sekrit'
+
     @provides(KTrainingFunction)
     def training(self):
         return chalkdb_queryfn(self._ini, CHALK_CONFIG_SECTION)

@@ -23,7 +23,6 @@ import injector
 from injector import inject
 from sqlalchemy import Column, ForeignKey, Unicode
 from sqlalchemy import func
-from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm import sessionmaker
@@ -33,6 +32,7 @@ import sqlalchemy
 
 import medcenter
 import config
+from orm_base import Base
 
 
 class I2B2PM(object):
@@ -77,8 +77,6 @@ class I2B2PM(object):
         ds.flush()
 
 
-
-Base = declarative_base()
 
 class Audited(object):
     change_date = Column(Date)
@@ -139,8 +137,6 @@ class RunTime(injector.Module):
         self._ini = ini
 
     def configure(self, binder):
-        binder.bind(DeclarativeMeta, Base)
-
         rt = config.RuntimeOptions(['url'])
         rt.load(self._ini, CONFIG_SECTION)
         settings = rt._d  # KLUDGE!
@@ -162,8 +158,6 @@ class Mock(injector.Module):
     '''Mock up I2B2PM dependencies: SQLite datasource
     '''
     def configure(self, binder):
-        binder.bind(DeclarativeMeta, Base)
-
         engine = sqlalchemy.create_engine('sqlite://')
         Base.metadata.bind = engine
         Base.metadata.create_all(engine)
