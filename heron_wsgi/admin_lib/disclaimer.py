@@ -23,7 +23,7 @@ ACKNOWLEGEMENTS_SECTION='disclaimer_acknowledgements'
 class Disclaimer(object):
     fields = ('disclaimer_id', 'url', 'current')
 
-    def __str__(self):
+    def __repr__(self):
         return 'Disclaimer%s' % (
             (self.disclaimer_id, self.url, self.current),)
 
@@ -62,7 +62,7 @@ class _TestUrlOpener(object):
 class Acknowledgement(object):
     fields = ('timestamp', 'user_id', 'disclaimer_address')
 
-    def __str__(self):
+    def __repr__(self):
         return 'Acknowledgement%s' % (
             (self.timestamp, self.user_id, self.disclaimer_address),)
 

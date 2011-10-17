@@ -149,6 +149,23 @@ class RunTime(injector.Module):
         # inverted w.r.t. object capability style, no?
         return sqlalchemy.create_engine(u)
 
+    # abusing Session a bit; this really provides a subclass, not an instance, of Session
+    @provides((sqlalchemy.orm.session.Session, CONFIG_SECTION))
+    @inject(engine=(sqlalchemy.engine.base.Connectable, CONFIG_SECTION))
+    def redcap_sessionmaker(self, engine):
+        return sqlalchemy.orm.sessionmaker(engine)
+
     @classmethod
     def mods(cls, ini):
         return [cls(ini)]
+
+    @classmethod
+    def make(cls, ini, what=(sqlalchemy.orm.session.Session, CONFIG_SECTION)):
+        return injector.Injector([cls(ini)]).get(what)
+    
+
+if __name__ == '__main__':
+    sm = RunTime.make('integration-test.ini')
+    print sm().query(redcap_data).slice(1, 10)
+    print sm().query(redcap_data).slice(1, 10).all()
+

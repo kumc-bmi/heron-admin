@@ -20,7 +20,7 @@ Suppose an investigator and some students log in::
 
 See if they're qualified faculty::
 
-  >>> _TestDataSource().connect(reset=True) and None
+  >>> _TestEngine().connect(reset=True) and None
   >>> hp.issue(facreq)
   [Faculty(John Smith <john.smith@js.example>)]
   >>> facreq.faculty
@@ -39,7 +39,7 @@ See if they're qualified faculty::
 
 See if the students are qualified in some way::
 
-  >>> _TestDataSource().connect(reset=True) and None
+  >>> _TestEngine().connect(reset=True) and None
   >>> stureq.user.repository_account()
   Traceback (most recent call last):
     ...
@@ -68,7 +68,7 @@ See if the students are qualified in some way::
 Get an actual access qualification; i.e. check for
 system access agreement and human subjects training::
 
-  >>> _TestDataSource().connect(reset=True) and None
+  >>> _TestEngine().connect(reset=True) and None
   >>> facreq.user.repository_account()
   Access(Faculty(John Smith <john.smith@js.example>))
 
@@ -118,6 +118,8 @@ import medcenter
 import redcap_connect
 import sealing
 import redcapdb
+import disclaimer
+from disclaimer import Disclaimer, Acknowledgement
 
 SAA_CONFIG_SECTION='saa_survey'
 OVERSIGHT_CONFIG_SECTION='oversight_survey'
@@ -136,14 +138,15 @@ class HeronRecords(object):
             pm=i2b2pm.I2B2PM,
             saa_opts=(config.Options, SAA_CONFIG_SECTION),
             oversight_opts=(config.Options, OVERSIGHT_CONFIG_SECTION),
-            datasource=(sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION),
+            engine=(sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION),
+            smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
             timesrc=KTimeSource,
             urlopener=urllib.URLopener)
     def __init__(self, mc, pm, saa_opts, oversight_opts,
-                 datasource, timesrc, urlopener):
+                 engine, smaker, timesrc, urlopener):
         log.debug('HeronRecords.__init__ again?')
-        # TODO: connection pooling/management?
-        self._datasrc = datasource
+        self._engine = engine
+        self._smaker = smaker
         self._mc = mc
         self._pm = pm
         self._t = timesrc
@@ -223,7 +226,8 @@ class HeronRecords(object):
                 user = fac
             except medcenter.NotFaculty:
                 user = Affiliate(badge, req.idvault_entry, Record(), Browser())
-            
+
+        req.disclaimer = self._disclaimer_acknowledgement(badge.cn)
         req.executive = ex
         req.faculty = fac
         req.user = user
@@ -236,10 +240,24 @@ class HeronRecords(object):
             raise TypeError
         self._mc.read_badge(cap.idcap)
 
+    def _disclaimer_acknowledgement(self, user_id):
+        '''
+        @returns: None if not found.
+        '''
+        s = self._smaker()
+
+        q = s.query(Acknowledgement, Disclaimer \
+                        ).filter(Acknowledgement.user_id==user_id and \
+                                     Acknowledgement.disclaimer_address==Disclaimer.url)
+        log.debug('disclaimer_acknowledgement query: %s', q)
+        it = q.first()
+        log.debug('disclaimer_acknowledgement result: %s', it)
+        return it
+
     def _check_saa_signed(self, mail):
         '''Test for an authenticated SAA survey response.
         '''
-        ans = self._datasrc.execute(
+        ans = self._engine.execute(
             '''select p.survey_id, p.participant_email, r.response_id, r.record, r.completion_time
                from redcap_surveys_response r
                  join redcap_surveys_participants p on p.participant_id = r.participant_id 
@@ -269,7 +287,7 @@ class HeronRecords(object):
 
         .. todo:: check expiration date
         '''
-        ans = self._datasrc.execute('''
+        ans = self._engine.execute('''
 select record, count(*)
 from (
 select distinct
@@ -384,18 +402,8 @@ class Faculty(Affiliate):
                                                  multi='yes'))
 
 
-class Disclaimer(object):
-    '''
-    .. todo: route users thru disclaimer
-    '''
-    def __init__(self, agent):
-        self._agent = agent
-
-
 class Mock(injector.Module):
     def configure(self, binder):
-        binder.bind((sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION),
-                    _TestDataSource)
         binder.bind(KTimeSource, _TestTimeSource),
         binder.bind((config.Options, SAA_CONFIG_SECTION),
                     redcap_connect._test_settings)
@@ -403,6 +411,10 @@ class Mock(injector.Module):
                     redcap_connect._test_settings)
 
         binder.bind(urllib.URLopener, redcap_connect._TestUrlOpener)
+
+    @provides((sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION))
+    def mock_engine(self):
+        return _TestEngine()
 
     @classmethod
     def mods(cls):
@@ -437,7 +449,7 @@ class _TestTimeSource(object):
 
 
 _d = None
-class _TestDataSource(object):
+class _TestEngine(object):
 
     def connect(self, reset=False):
         global _d
@@ -524,6 +536,7 @@ class RunTime(injector.Module):  # pragma nocover
         return (medcenter.RunTime.mods(ini) +
                 i2b2pm.RunTime.mods(ini) +
                 redcapdb.RunTime.mods(ini) +
+                disclaimer.RunTime.mods(ini) +
                 [cls(ini)])
 
     @classmethod

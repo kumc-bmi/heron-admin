@@ -7,7 +7,7 @@ Ensure account sets up the DB as the I2B2 project manager expects::
   >>> pm.ensure_account('john.smith')
 
   >>> import pprint
-  >>> dbsrc = depgraph.get((Session, __name__))
+  >>> dbsrc = depgraph.get((Session, CONFIG_SECTION))
   >>> ans = dbsrc().execute('select project_id, user_id, '
   ...                       ' user_role_cd, status_cd'
   ...                       ' from pm_project_user_roles')
@@ -20,7 +20,7 @@ Ensure account sets up the DB as the I2B2 project manager expects::
 '''
 
 import injector
-from injector import inject
+from injector import inject, provides
 from sqlalchemy import Column, ForeignKey, Unicode
 from sqlalchemy import func
 from sqlalchemy.orm import relationship
@@ -34,9 +34,11 @@ import medcenter
 import config
 from orm_base import Base
 
+CONFIG_SECTION='i2b2pm'
+
 
 class I2B2PM(object):
-    @inject(datasrc=(Session, __name__))
+    @inject(datasrc=(Session, CONFIG_SECTION))
     def __init__(self, datasrc):
         '''
         @param datasrc: a function that returns a sqlalchemy session
@@ -129,21 +131,27 @@ class UserRole(Base, Audited):
                                            self.user_role_cd)
 
 
-CONFIG_SECTION='i2b2pm'
-
 class RunTime(injector.Module):
     def __init__(self, ini):
         injector.Module.__init__(self)
         self._ini = ini
 
     def configure(self, binder):
-        rt = config.RuntimeOptions(['url'])
-        rt.load(self._ini, CONFIG_SECTION)
-        settings = rt._d  # KLUDGE!
-        engine = sqlalchemy.engine_from_config(settings, 'sqlalchemy.')
-        Base.metadata.bind = engine
-        binder.bind((Session, __name__),
-                    injector.InstanceProvider(sessionmaker(engine)))
+        def bind_options(names, section):
+            rt = config.RuntimeOptions(names)
+            rt.load(self._ini, section)
+            binder.bind((config.Options, section), rt)
+            return rt
+
+        rt = bind_options(['url'], CONFIG_SECTION)
+
+
+    # abusing Session a bit; this really provides a subclass, not an instance, of Session
+    @provides((sqlalchemy.orm.session.Session, CONFIG_SECTION))
+    @inject(rt=(config.Options, CONFIG_SECTION))
+    def pm_sessionmaker(self, rt):
+        engine = sqlalchemy.engine_from_config(rt.settings(), 'sqlalchemy.')
+        return sessionmaker(engine)
 
     @classmethod
     def mods(cls, ini):

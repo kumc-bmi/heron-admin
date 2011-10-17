@@ -184,14 +184,16 @@ class RepositoryLogin(object):
     @inject(i2b2_tool_addr=KI2B2Address)
     def __init__(self, i2b2_tool_addr):
         self._i2b2_tool_addr = i2b2_tool_addr
+        self._disclaimer_route = None
 
-    def configure(self, config, route):
+    def configure(self, config, route, disclaimer_route):
         config.add_view(self.i2b2_login, route_name=route,
                         request_method='POST',
                         permission=heron_policy.PERM_USER)
+        self._disclaimer_route = disclaimer_route  # mutable state. I'm lazy.
 
     def i2b2_login(self, req):
-        '''Log in to i2b2, provided credentials.
+        '''Log in to i2b2, provided credentials and current disclaimer.
 
           >>> t, r1 = test_grant_access_with_valid_cas_ticket()
           >>> r2 = t.post('/i2b2', status=303)
@@ -199,6 +201,10 @@ class RepositoryLogin(object):
           'http://example/i2b2-webclient'
 
         '''
+
+        if not req.disclaimer:
+            return HTTPSeeOther(req.route_url(self._disclaimer_route))
+
         try:
             req.user.repository_account().login()
             return HTTPSeeOther(self._i2b2_tool_addr)
