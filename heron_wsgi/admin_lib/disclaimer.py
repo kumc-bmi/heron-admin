@@ -32,14 +32,16 @@ class Disclaimer(object):
            >>> d = Disclaimer()
            >>> d.url = 'http://example/'
            >>> d.content(_TestUrlOpener())
-           '<div id="blog-main">\nmain blog copy...\n</div>\n...\n'
+           ('<div id="blog-main">\n<h1 class="blog-title">headline</h1>main blog copy...\n</div>\n...\n', 'headline')
         '''
         body = ua.open(self.url).read()
         kludge = StringIO.StringIO(body.replace('&larr;', ''
                                                 ).replace('&rarr;', '')
                                    )  #KLUDGE
         elt = etree.parse(kludge).xpath('//*[@id="blog-main"]')[0]
-        return etree.tostring(elt)
+        headline = elt.xpath('.//*[@class="blog-title"]/text()')[0]
+
+        return etree.tostring(elt), headline
 
 _test_doc='''
 <!DOCTYPE html>
@@ -47,7 +49,7 @@ _test_doc='''
 <body>
 ...
 <div id='blog-main'>
-main blog copy...
+<h1 class='blog-title'>headline</h1>main blog copy...
 </div>
 ...
 </body>

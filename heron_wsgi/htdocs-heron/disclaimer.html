@@ -10,10 +10,53 @@
 <h1>HERON Status Disclaimer</h1>
 
 <div id="main">
-@@width etc.
+<div class="span-20">
+
+<style type='text/css'>
+.main-action { text-align: center }
+
+blockquote { border: 1px solid #ccc;
+  padding-left: 1em;
+  padding-top: 1em
+ }
+/* The links in this copy of the blog item are broken;
+ let's make them less of an attractive nuisance. */
+blockquote a { color: inherit }
+
+/* Table border style excerpt from trac.css */
+table.wiki {
+ border: 1px solid #ccc;
+ border-collapse: collapse;
+ border-spacing: 0;
+}
+table.wiki td { border: 1px solid #ccc;  padding: .1em .25em; }
+table.wiki th {
+ border: 1px solid #bbb;
+ padding: .1em .25em;
+ background-color: #f7f7f7;
+}
+</style>
+
+<p><em>See <cite><a href="${url}">${headline}</a></cite> for
+the original status update with working links.</em></p>
+
+
+<form method='POST'>
+<p>Please review the status disclaimer below and acknowledge.</p>
+<p class='main-action'>
+<input type='submit' value='Acknowledge' />
+</p>
+
 <blockquote>
 ${Markup(content)}
 </blockquote>
+
+<p class='main-action'>
+<input type='submit' value='Acknowledge' />
+</p>
+</form>
+
+</div>
 </div>
 
 </body>

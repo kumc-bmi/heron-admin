@@ -218,8 +218,10 @@ class RepositoryLogin(object):
 
     def disclaimer(self, req):
         if req.method == 'GET':
+            content, headline = req.disclaimer.content(self._ua)
             return {'url': req.disclaimer.url,
-                    'content': req.disclaimer.content(self._ua)}
+                    'headline': headline,
+                    'content': content}
         else:
             raise NotImplemented  #@@
 
