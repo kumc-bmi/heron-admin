@@ -20,7 +20,7 @@ Ensure account sets up the DB as the I2B2 project manager expects::
 '''
 
 import injector
-from injector import inject, provides
+from injector import inject, provides, singleton
 from sqlalchemy import Column, ForeignKey, Unicode
 from sqlalchemy import func
 from sqlalchemy.orm import relationship
@@ -147,6 +147,7 @@ class RunTime(injector.Module):
 
 
     # abusing Session a bit; this really provides a subclass, not an instance, of Session
+    @singleton
     @provides((sqlalchemy.orm.session.Session, CONFIG_SECTION))
     @inject(rt=(config.Options, CONFIG_SECTION))
     def pm_sessionmaker(self, rt):
@@ -165,12 +166,12 @@ class RunTime(injector.Module):
 class Mock(injector.Module):
     '''Mock up I2B2PM dependencies: SQLite datasource
     '''
-    def configure(self, binder):
+    @singleton
+    @provides((sqlalchemy.orm.session.Session, CONFIG_SECTION))
+    def pm_sessionmaker(self):
         engine = sqlalchemy.create_engine('sqlite://')
-        Base.metadata.bind = engine
         Base.metadata.create_all(engine)
-        binder.bind((Session, __name__),
-                    injector.InstanceProvider(sessionmaker(engine)))
+        return sessionmaker(engine)
 
     @classmethod
     def mods(cls):

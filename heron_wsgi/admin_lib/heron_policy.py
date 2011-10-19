@@ -1,7 +1,6 @@
 '''heron_policy.py -- HERON policy decisions, records
 
-  >>> import sys
-  >>> logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)  #@@
+  # logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)  #@@
   >>> mc, hp, _ = Mock.make_stuff()
   >>> mcmock = medcenter.Mock
 
@@ -102,6 +101,7 @@ import datetime
 import injector
 from injector import inject, provides, singleton
 import sqlalchemy
+from sqlalchemy.sql import select, and_, func
 
 import config
 import i2b2pm
@@ -255,14 +255,7 @@ class HeronRecords(object):
     def _check_saa_signed(self, mail):
         '''Test for an authenticated SAA survey response.
         '''
-        ans = self._engine.execute(
-            '''select p.survey_id, p.participant_email, r.response_id, r.record, r.completion_time
-               from redcap_surveys_response r
-                 join redcap_surveys_participants p on p.participant_id = r.participant_id 
-               where p.participant_email=? and p.survey_id = ?''',
-            (mail, self._saa_survey_id))
-
-        if not ans.fetchmany():
+        if not self._engine.execute(_saa_query(mail, self._saa_survey_id)).fetchall():
             raise NoAgreement()
 
     def q_executive(self, agent):
@@ -292,6 +285,22 @@ class HeronRecords(object):
             raise NotSponsored()
         return True
 
+
+def _saa_query(mail, survey_id):
+    '''
+      >>> q = _saa_query('john.smith@js.example', 11)
+      >>> print str(q)
+      SELECT r.response_id, r.participant_id, r.record, r.first_submit_time, r.completion_time, r.return_code, p.participant_id, p.survey_id, p.arm_id, p.hash, p.legacy_hash, p.participant_email, p.participant_identifier 
+      FROM redcap_surveys_response AS r JOIN redcap_surveys_participants AS p ON r.participant_id = p.participant_id 
+      WHERE p.participant_email = :participant_email_1 AND p.survey_id = :survey_id_1
+
+    '''
+    r = redcapdb.redcap_surveys_response.alias('r')
+    p = redcapdb.redcap_surveys_participants.alias('p')
+    return r.join(p, r.c.participant_id == p.c.participant_id).select().where(
+            and_(p.c.participant_email==mail, p.c.survey_id==survey_id))
+
+
 def _sponsor_query(uid, oversight_project_id, institutions):
     '''
       >>> q = _sponsor_query('john.smith', 123, HeronRecords.institutions)
@@ -312,9 +321,6 @@ def _sponsor_query(uid, oversight_project_id, institutions):
     # but for this price, we can run it on sqlite for testing as well as mysql
     # and sqlalchemy will take care of the bind parameter syntax
     rd = redcapdb.redcap_data
-    select = sqlalchemy.sql.select # too lazy to import
-    and_ = sqlalchemy.sql.and_
-    func = sqlalchemy.sql.func
 
     candidate = select((rd.c.record, rd.c.value.label('userid'))).where(
         and_(rd.c.project_id==oversight_project_id,
@@ -426,7 +432,7 @@ class Faculty(Affiliate):
                                                  multi='yes'))
 
 
-class SetUp(disclaimer.SetUp):
+class TestSetUp(disclaimer.TestSetUp):
     @singleton
     @provides((sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
     @inject(engine=(sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION),
@@ -434,7 +440,7 @@ class SetUp(disclaimer.SetUp):
             srt=(config.Options, SAA_CONFIG_SECTION),
             ort=(config.Options, OVERSIGHT_CONFIG_SECTION))
     def redcap_sessionmaker(self, engine, timesrc, srt, ort):
-        smaker = super(SetUp, self).redcap_sessionmaker(engine=engine)
+        smaker = super(TestSetUp, self).redcap_sessionmaker(engine=engine)
         s = smaker()
         def insert_eav(e, n, v):
             s.execute(redcapdb.redcap_data.insert().values(
@@ -476,13 +482,14 @@ class Mock(injector.Module):
         return redcap_connect._test_settings
 
     @provides(urllib.URLopener)
-    def web_ua(self):
+    def redcap_connect_web_ua(self):
         return redcap_connect._TestUrlOpener()
 
     @classmethod
     def mods(cls):
         log.debug('heron_policy.Mock.mods')
-        return medcenter.Mock.mods() + i2b2pm.Mock.mods() + disclaimer.Mock.mods() + [SetUp(), Mock()]
+        return medcenter.Mock.mods() + i2b2pm.Mock.mods() + disclaimer.Mock.mods() + [
+            TestSetUp(), Mock()]
 
     @classmethod
     def depgraph(cls):
@@ -514,7 +521,7 @@ class RunTime(injector.Module):  # pragma nocover
         import datetime
         import urllib2
         binder.bind(KTimeSource,
-                    injector.InstanceProvider(datetime.date))
+                    injector.InstanceProvider(datetime.datetime))
 
         def bind_options(names, section):
             rt = config.RuntimeOptions(names)

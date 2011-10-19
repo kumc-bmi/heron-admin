@@ -40,6 +40,7 @@ from genshi.template import TemplateLoader
 import injector # http://pypi.python.org/pypi/injector/
                 # 0.3.1 7deba485e5b966300ef733c3393c98c6
 from injector import inject, provides
+import sqlalchemy  # leaky; factor out test foo?
 import pyramid
 from pyramid.config import Configurator
 from pyramid.view import view_config
@@ -47,6 +48,7 @@ from pyramid.httpexceptions import HTTPFound, HTTPSeeOther, HTTPForbidden
 
 # modules in this package
 import cas_auth
+import genshi_render
 from admin_lib import medcenter
 from admin_lib.medcenter import MedCenter
 from admin_lib import heron_policy
@@ -54,7 +56,7 @@ from admin_lib.checklist import Checklist
 from admin_lib import redcap_connect
 from admin_lib.config import Options, TestTimeOptions, RuntimeOptions
 from admin_lib import i2b2pm
-import genshi_render
+from admin_lib import disclaimer, redcapdb
 
 KAppSettings = injector.Key('AppSettings')
 KI2B2Address = injector.Key('I2B2Address')
@@ -71,7 +73,6 @@ def test_home_page_redirects_to_cas():
       'https://example/cas/login?service=http%3A%2F%2Flocalhost%2F'
     '''
     from paste.fixture import TestApp
-    heron_policy._test_datasource(reset=True)
     t = TestApp(Mock.make().make_wsgi_app())
     r1 = t.get('/', status=303)
     return t, r1
@@ -181,37 +182,49 @@ class REDCapLink(object):
 
 
 class RepositoryLogin(object):
+    '''
+      >>> t, r1 = test_grant_access_with_valid_cas_ticket()
+      >>> r2 = t.post('/i2b2', status=303)
+      >>> dict(r2.headers)['Location']
+      'http://localhost/disclaimer'
+
+      >>> r3 = t.post('/disclaimer', status=303)
+      >>> dict(r3.headers)['Location']
+      'http://localhost/i2b2'
+
+      >>> r3 = t.get('/i2b2', status=303)
+      >>> dict(r3.headers)['Location']
+      'http://example/i2b2-webclient'
+    '''
     @inject(i2b2_tool_addr=KI2B2Address,
-            ua=URLopener)
-    def __init__(self, i2b2_tool_addr, ua):
+            ua=URLopener,
+            acks=disclaimer.AcknowledgementsProject)
+    def __init__(self, i2b2_tool_addr, ua, acks):
         self._i2b2_tool_addr = i2b2_tool_addr
         self._disclaimer_route = None
         self._ua = ua
+        self._acks = acks
+        self._login_route = None
 
     def configure(self, config, route, disclaimer_route):
         config.add_view(self.i2b2_login, route_name=route,
-                        request_method='POST',
                         permission=heron_policy.PERM_USER)
         config.add_view(self.disclaimer, route_name=disclaimer_route,
                         permission=heron_policy.PERM_USER,
                         renderer='disclaimer.html')
         self._disclaimer_route = disclaimer_route  # mutable state. I'm lazy.
+        self._login_route = route
 
     def i2b2_login(self, req):
         '''Log in to i2b2, provided credentials and current disclaimer.
-
-          >>> t, r1 = test_grant_access_with_valid_cas_ticket()
-          >>> r2 = t.post('/i2b2', status=303)
-          >>> dict(r2.headers)['Location']
-          'http://example/i2b2-webclient'
-
         '''
 
         if not req.user.acknowledgement:
             return HTTPSeeOther(req.route_url(self._disclaimer_route))
 
         try:
-            req.user.repository_account().login()
+            if req.method == 'POST':
+                req.user.repository_account().login()
             return HTTPSeeOther(self._i2b2_tool_addr)
         except heron_policy.NoPermission, np:
             return HTTPForbidden(detail=np.message)
@@ -223,7 +236,9 @@ class RepositoryLogin(object):
                     'headline': headline,
                     'content': content}
         else:
-            raise NotImplemented  #@@
+            self._acks.add_record(req.user.badge.cn, req.disclaimer.url)
+            return HTTPSeeOther(req.route_url(self._login_route))
+
 
 class TeamBuilder(object):
     def configure(self, config, route_name):
@@ -391,15 +406,6 @@ class HeronAdminConfig(Configurator):
         self.add_view(make_internal_error, route_name='err',
                       permission=pyramid.security.NO_PERMISSION_REQUIRED)
 
-        # https://pylonsproject.org/projects/pyramid_exclog/dev/
-        # self.include('pyramid_exclog')
-        self.add_view(server_error_view,
-                      renderer='oops.html',
-                      context=Exception,
-                      permission=pyramid.security.NO_PERMISSION_REQUIRED)
-
-
-
 
 class RunTime(injector.Module):
     def __init__(self, settings):
@@ -437,8 +443,7 @@ class RunTime(injector.Module):
     def mods(cls, settings):
         webapp_ini = settings['webapp_ini']
         admin_ini = settings['admin_ini']
-        return (medcenter.RunTime.mods(admin_ini) +
-                cas_auth.RunTime.mods(webapp_ini) +
+        return (cas_auth.RunTime.mods(webapp_ini) +
                 heron_policy.RunTime.mods(admin_ini) +
                 [RunTime(settings)])
 
@@ -489,9 +494,7 @@ class Mock(injector.Module):
 
     @classmethod
     def mods(cls):
-        return (cas_auth.Mock.mods() + [
-                    i2b2pm.Mock(), heron_policy.Mock(),
-                    medcenter.Mock(), Mock()])
+        return (cas_auth.Mock.mods() + heron_policy.Mock.mods() + [Mock()])
 
     @classmethod
     def depgraph(cls):
@@ -509,31 +512,61 @@ class Mock(injector.Module):
         binder.bind((Options, heron_policy.OVERSIGHT_CONFIG_SECTION),
                     redcap_connect._test_settings)
 
-        binder.bind(URLopener,
-                    injector.InstanceProvider(_TestUrlOpener(
-                    ['yes', 'john.smith'])))
-
         binder.bind(KI2B2Address, to='http://example/i2b2-webclient')
 
         binder.bind((Options, cas_auth.CONFIG_SECTION),
                     TestTimeOptions(
                         {'base': 'https://example/cas/',
                          'app_secret': 'sekrit'}))
+    @provides(URLopener)
+    @inject(smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
+            art=(Options, disclaimer.ACKNOWLEGEMENTS_SECTION))
+    def web_ua(self, smaker, art):
+        return _TestUrlOpener(['yes', 'john.smith'], smaker, art)
 
 
 class _TestUrlOpener(object):
     '''An URL opener to help with CAS testing
     '''
-    def __init__(self, lines):
+    def __init__(self, lines, smaker, art):
         from cas_auth import LinesUrlOpener
+
         self._ua1 = cas_auth.LinesUrlOpener(lines)
         self._ua2 = redcap_connect._TestUrlOpener()
+        self._smaker = smaker
+        self._art = art
 
     def open(self, addr, body=None):
-        if body:
-            return self._ua2.open(addr, body)
-        else:
+        import urlparse  # lazy
+        import StringIO
+        import csv
+
+        if not body:
             return self._ua1.open(addr)
+
+        params = urlparse.parse_qs(body)
+        if 'content' in params:
+            if params['content'] == ['survey']:
+                return self._ua2.open(addr, body)
+            elif params['content'] == ['record']:
+                rows = csv.reader(StringIO.StringIO(params['data'][0]))
+                schema = rows.next()
+                if schema == ['ack','timestamp','user_id','disclaimer_address']:
+                    values = dict(zip(schema, rows.next()))
+                    record = hash(values['user_id'])
+                    s = self._smaker()
+                    insert_data = redcapdb.redcap_data.insert()
+                    for n, v in values.iteritems():
+                        s.execute(insert_data.values(event_id=1,
+                                                     project_id=self._art.project_id, record=record,
+                                                     field_name=n, value=v))
+                else:
+                    raise IOError, 'bad request: bad acknowledgement schema: ' + str(schema)
+            else:
+                raise IOError, "unknown content param: " + str(params)
+        else:
+            raise IOError, "no content param: " + str(params)
+
 
 
 #@@ todo: test or delete this
@@ -541,8 +574,17 @@ def app_factory(global_config,
                 webapp_ini='integration-test.ini',
                 admin_ini='admin_lib/integration-test.ini'):
     log.debug('app_factory@@')
-    return RunTime.make(dict(webapp_ini=webapp_ini,
-                             admin_ini=admin_ini)).make_wsgi_app()
+    config = RunTime.make(dict(webapp_ini=webapp_ini,
+                             admin_ini=admin_ini))
+
+    # https://pylonsproject.org/projects/pyramid_exclog/dev/
+    # self.include('pyramid_exclog')
+    config.add_view(server_error_view,
+                    renderer='oops.html',
+                    context=Exception,
+                    permission=pyramid.security.NO_PERMISSION_REQUIRED)
+
+    return config.make_wsgi_app()
 
 
 if __name__ == '__main__':  # pragma nocover

@@ -148,7 +148,7 @@ class Mock(redcapdb.SetUp, ModuleHelper, redcapdb.ModuleHelper):
 
     @classmethod
     def mods(cls, ini=''):
-        return redcapdb.Mock.mods(ini) + [cls(), SetUp()]
+        return redcapdb.Mock.mods(ini) + [cls(), TestSetUp()]
 
     @provides((config.Options, DISCLAIMERS_SECTION))
     def disclaimer_options(self):
@@ -163,19 +163,25 @@ class Mock(redcapdb.SetUp, ModuleHelper, redcapdb.ModuleHelper):
     def web_ua(self):
         return _TestURLopener()
 
+    @provides((types.FunctionType, uuid.UUID))
+    def uuidgen_func(self):
+        def _mock_uuidgen():
+            return uuid.UUID('8bd21cf4-3e5f-4f09-9936-10301aa37b0a')
+        return _mock_uuidgen
+
     @provides(KTimeSource)
     def time_source(self):
         return _TestTimeSource()
 
 
-class SetUp(redcapdb.SetUp):
+class TestSetUp(redcapdb.SetUp):
     @singleton
     @provides((sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
     @inject(engine=(sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION),
             drt=(config.Options, DISCLAIMERS_SECTION),
             art=(config.Options, ACKNOWLEGEMENTS_SECTION))
     def redcap_sessionmaker(self, engine, drt, art):
-        smaker = super(SetUp, self).redcap_sessionmaker(engine=engine)
+        smaker = super(TestSetUp, self).redcap_sessionmaker(engine=engine)
         Disclaimer.eav_map(drt.project_id)
         Acknowledgement.eav_map(art.project_id)
         s = smaker()
@@ -192,10 +198,6 @@ class SetUp(redcapdb.SetUp):
         s.commit()
 
         return smaker
-
-
-def _mock_uuidgen():
-    return uuid.UUID('8bd21cf4-3e5f-4f09-9936-10301aa37b0a')
 
 
 class _TestTimeSource(object):
