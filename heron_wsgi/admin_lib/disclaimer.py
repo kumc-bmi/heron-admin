@@ -142,38 +142,40 @@ class ModuleHelper(object):
         return [depgraph.get(what) for what in stuff]
 
 
-class Mock(injector.Module, ModuleHelper, redcapdb.ModuleHelper):
+class Mock(redcapdb.SetUp, ModuleHelper, redcapdb.ModuleHelper):
     def __init__(self):
         sqlalchemy.orm.clear_mappers()
 
     @classmethod
     def mods(cls, ini=''):
-        return [cls()] + redcapdb.Mock.mods(ini)
+        return redcapdb.Mock.mods(ini) + [cls(), SetUp()]
 
-    def configure(self, binder):
-        def bind_options(names, section):
-            rt = config.RuntimeOptions(names)
-            rt.load(self._ini, section)
-            return rt
+    @provides((config.Options, DISCLAIMERS_SECTION))
+    def disclaimer_options(self):
+        return config.TestTimeOptions(dict(project_id='123'))
 
-        drt = config.TestTimeOptions(dict(project_id='123'))
-        binder.bind((config.Options, DISCLAIMERS_SECTION), drt)
-        art = config.TestTimeOptions(dict(project_id='1234',
-                                          api_url='http://example/recap/API',
-                                          token='12345token'))
-        binder.bind((config.Options, ACKNOWLEGEMENTS_SECTION), art)
+    @provides((config.Options, ACKNOWLEGEMENTS_SECTION))
+    def acknowledgements_options(self):
+        return config.TestTimeOptions(dict(project_id='1234',
+                                           api_url='http://example/recap/API',
+                                           token='12345token'))
+    @provides(urllib.URLopener)
+    def web_ua(self):
+        return _TestURLopener()
 
-        # function returning uuid.UUID
-        binder.bind((types.FunctionType, uuid.UUID),
-                    injector.InstanceProvider(_mock_uuidgen))
-        binder.bind(urllib.URLopener, _TestURLopener)
-
-    @singleton
     @provides(KTimeSource)
-    @inject(smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
+    def time_source(self):
+        return _TestTimeSource()
+
+
+class SetUp(redcapdb.SetUp):
+    @singleton
+    @provides((sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
+    @inject(engine=(sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION),
             drt=(config.Options, DISCLAIMERS_SECTION),
             art=(config.Options, ACKNOWLEGEMENTS_SECTION))
-    def setup_db_before_time(self, smaker, drt, art):
+    def redcap_sessionmaker(self, engine, drt, art):
+        smaker = super(SetUp, self).redcap_sessionmaker(engine=engine)
         Disclaimer.eav_map(drt.project_id)
         Acknowledgement.eav_map(art.project_id)
         s = smaker()
@@ -189,11 +191,7 @@ class Mock(injector.Module, ModuleHelper, redcapdb.ModuleHelper):
             log.debug('inserted: %s, %s', field_name, value)
         s.commit()
 
-        #s2 = smaker()
-        #log.debug('redcap_data: %s', s.execute(redcapdb.redcap_data.select()).fetchall())
-
-        # todo: add big.wig etc. as from _TestEngine below
-        return _TestTimeSource()
+        return smaker
 
 
 def _mock_uuidgen():

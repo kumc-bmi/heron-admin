@@ -85,7 +85,7 @@ def eav_join(t, keycols, attrs, acol, vcol):
       >>> print select(cols1).where(w1)
       SELECT j_url.value 
       FROM redcap_data AS j_url 
-      WHERE j_url.field_name = ?
+      WHERE j_url.field_name = :field_name_1
 
       >>> c2, j2, w2 = eav_join(redcap_data,
       ...                       ['project_id', 'record'],
@@ -94,7 +94,7 @@ def eav_join(t, keycols, attrs, acol, vcol):
       >>> print select(c2).where(w2)
       SELECT j_url.value, j_name.value 
       FROM redcap_data AS j_url, redcap_data AS j_name 
-      WHERE j_url.field_name = ? AND j_url.project_id = j_name.project_id AND j_url.record = j_name.record AND j_name.field_name = ?
+      WHERE j_url.field_name = :field_name_1 AND j_url.project_id = j_name.project_id AND j_url.record = j_name.record AND j_name.field_name = :field_name_2
 
 
       >>> c3, j3, w3 = eav_join(redcap_data,
@@ -104,7 +104,7 @@ def eav_join(t, keycols, attrs, acol, vcol):
       >>> print select(c3).where(w3).apply_labels()
       SELECT j_disclaimer_id.value AS j_disclaimer_id_value, j_url.value AS j_url_value, j_current.value AS j_current_value 
       FROM redcap_data AS j_disclaimer_id, redcap_data AS j_url, redcap_data AS j_current 
-      WHERE j_disclaimer_id.field_name = ? AND j_disclaimer_id.project_id = j_url.project_id AND j_disclaimer_id.record = j_url.record AND j_url.field_name = ? AND j_disclaimer_id.project_id = j_current.project_id AND j_disclaimer_id.record = j_current.record AND j_current.field_name = ?
+      WHERE j_disclaimer_id.field_name = :field_name_1 AND j_disclaimer_id.project_id = j_url.project_id AND j_disclaimer_id.record = j_url.record AND j_url.field_name = :field_name_2 AND j_disclaimer_id.project_id = j_current.project_id AND j_disclaimer_id.record = j_current.record AND j_current.field_name = :field_name_3
       '''
 
     #aliases = dict([(n, t.alias('t_' + n)) for n in attrs])

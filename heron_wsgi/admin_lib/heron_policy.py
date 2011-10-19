@@ -1,6 +1,7 @@
 '''heron_policy.py -- HERON policy decisions, records
 
-  # logging.basicConfig(level=logging.DEBUG)
+  >>> import sys
+  >>> logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)  #@@
   >>> mc, hp, _ = Mock.make_stuff()
   >>> mcmock = medcenter.Mock
 
@@ -300,11 +301,11 @@ def _sponsor_query(uid, oversight_project_id, institutions):
       FROM (SELECT candidate.record AS candidate_record, candidate.userid AS candidate_userid, review.record AS review_record, review.institution AS review_institution, review.decision AS review_decision 
       FROM (SELECT redcap_data.record AS record, redcap_data.value AS userid 
       FROM redcap_data 
-      WHERE redcap_data.project_id = ? AND redcap_data.field_name LIKE ?) AS candidate JOIN (SELECT redcap_data.record AS record, redcap_data.field_name AS institution, redcap_data.value AS decision 
+      WHERE redcap_data.project_id = :project_id_1 AND redcap_data.field_name LIKE :field_name_1) AS candidate JOIN (SELECT redcap_data.record AS record, redcap_data.field_name AS institution, redcap_data.value AS decision 
       FROM redcap_data 
-      WHERE redcap_data.project_id = ? AND redcap_data.field_name LIKE ?) AS review ON candidate.record = review.record) AS decision 
-      WHERE decision.review_decision = ? AND decision.candidate_userid = ?) GROUP BY candidate_record 
-      HAVING count(*) = ?
+      WHERE redcap_data.project_id = :project_id_2 AND redcap_data.field_name LIKE :field_name_2) AS review ON candidate.record = review.record) AS decision 
+      WHERE decision.review_decision = :review_decision_1 AND decision.candidate_userid = :candidate_userid_1) GROUP BY candidate_record 
+      HAVING count(*) = :count_2
 
     '''
     # grumble... sql in python clothing
@@ -425,20 +426,15 @@ class Faculty(Affiliate):
                                                  multi='yes'))
 
 
-class Mock(injector.Module):
-    def configure(self, binder):
-        binder.bind((config.Options, SAA_CONFIG_SECTION),
-                    redcap_connect._test_settings)
-        binder.bind((config.Options, OVERSIGHT_CONFIG_SECTION),
-                    redcap_connect._test_settings)
-
+class SetUp(disclaimer.SetUp):
     @singleton
-    @provides(urllib.URLopener)
-    @inject(smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
+    @provides((sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
+    @inject(engine=(sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION),
             timesrc=KTimeSource,
             srt=(config.Options, SAA_CONFIG_SECTION),
             ort=(config.Options, OVERSIGHT_CONFIG_SECTION))
-    def setup_db_before_web_access(self, smaker, timesrc, srt, ort):
+    def redcap_sessionmaker(self, engine, timesrc, srt, ort):
+        smaker = super(SetUp, self).redcap_sessionmaker(engine=engine)
         s = smaker()
         def insert_eav(e, n, v):
             s.execute(redcapdb.redcap_data.insert().values(
@@ -453,7 +449,7 @@ class Mock(injector.Module):
                 for n, v in {'approve_' + org: 1}.iteritems():
                     insert_eav(hash(userid), n, v)
 
-        # add SAA records
+        log.debug('add SAA records')
         redcapdb.redcap_surveys_participants.create(s.bind)
         s.commit()
         redcapdb.redcap_surveys_response.create(s.bind)
@@ -467,11 +463,26 @@ class Mock(injector.Module):
                     participant_id=abs(hash(email))))
 
         s.commit()
+        return smaker
+
+class Mock(injector.Module):
+
+    @provides((config.Options, SAA_CONFIG_SECTION))
+    def saa_settions(self):
+        return redcap_connect._test_settings
+
+    @provides((config.Options, OVERSIGHT_CONFIG_SECTION))
+    def oversight_settings(self):
+        return redcap_connect._test_settings
+
+    @provides(urllib.URLopener)
+    def web_ua(self):
         return redcap_connect._TestUrlOpener()
 
     @classmethod
     def mods(cls):
-        return medcenter.Mock.mods() + i2b2pm.Mock.mods() + disclaimer.Mock.mods() + [Mock()]
+        log.debug('heron_policy.Mock.mods')
+        return medcenter.Mock.mods() + i2b2pm.Mock.mods() + disclaimer.Mock.mods() + [SetUp(), Mock()]
 
     @classmethod
     def depgraph(cls):
