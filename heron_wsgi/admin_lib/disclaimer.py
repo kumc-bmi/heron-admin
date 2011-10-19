@@ -1,31 +1,58 @@
 '''disclaimer -- access disclaimers and acknowledgements from REDCap EAV DB
+
+:class:`Disclaimer` and :class:`Acknowledgement` provide read-only access via SQL queries.
+:class:`AcknowledgementsProject`: supports adding records via the REDCap API.
+
+Let's get a sessionmaker and an AcknowledgementsProject, which causes the database to get set up::
+
+  >>> smaker, acksproj = Mock.make_stuff('', stuff=(
+  ...       (sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
+  ...        AcknowledgementsProject))
+  >>> s = smaker()
+  >>> for row in s.execute(redcapdb.redcap_data.select()).fetchall():
+  ...     print row
+  (123, 1, u'1', u'disclaimer_id', u'1')
+  (123, 1, u'1', u'url', u'http://example/blog/item/heron-release-xyz')
+  (123, 1, u'1', u'current', u'1')
+
+Now note the mapping to the Disclaimer class::
+
+  >>> s.query(Disclaimer).all()
+  [Disclaimer(disclaimer_id=1, url=http://example/blog/item/heron-release-xyz, current=1)]
+
 '''
 
+# python stdlib http://docs.python.org/library/
 import StringIO
+import csv
+import datetime
+import logging
+import urllib
+import urllib2
+import uuid
+import types
 
 # from pypi
 import injector
-from injector import inject, provides
+from injector import inject, provides, singleton
 from lxml import etree
-import urllib2
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
 
+# from this package
 import config
-from db_util import mysql_connect
 import redcapdb
 from orm_base import Base
 
 DISCLAIMERS_SECTION='disclaimers'
 ACKNOWLEGEMENTS_SECTION='disclaimer_acknowledgements'
+KTimeSource = injector.Key('TimeSource')
+
+log = logging.getLogger(__name__)
 
 
-class Disclaimer(object):
+class Disclaimer(redcapdb.REDCapRecord):
     fields = ('disclaimer_id', 'url', 'current')
-
-    def __repr__(self):
-        return 'Disclaimer%s' % (
-            (self.disclaimer_id, self.url, self.current),)
 
     def content(self, ua):
         r'''
@@ -61,15 +88,136 @@ class _TestUrlOpener(object):
         return StringIO.StringIO(_test_doc)
 
 
-class Acknowledgement(object):
-    fields = ('timestamp', 'user_id', 'disclaimer_address')
-
-    def __repr__(self):
-        return 'Acknowledgement%s' % (
-            (self.timestamp, self.user_id, self.disclaimer_address),)
+class Acknowledgement(redcapdb.REDCapRecord):
+    fields = ('ack', 'timestamp', 'user_id', 'disclaimer_address')
 
 
-class RunTime(injector.Module):
+class AcknowledgementsProject(object):
+    '''AcknowledgementsProject serves as a REDCap API proxy for adding Acknowledgement records.
+    '''
+    @inject(rt=(config.Options, ACKNOWLEGEMENTS_SECTION),
+            ua=urllib.URLopener,
+            timesrc=KTimeSource,
+            uuidgen=(types.FunctionType, uuid.UUID))
+    def __init__(self, rt, ua, timesrc, uuidgen):
+        '''
+        Note sources of non-determinism (timesrc, uuidgen) are passed in as constructor args.
+        .. todo:: collect notes on object-capability style and testability.
+        '''
+        self._token = rt.token
+        self._api_url = rt.api_url
+        self._ua = ua
+        self._timesrc = timesrc
+        self._uuidgen = uuidgen
+
+    def add_record(self, user_id, disclaimer_address):
+        # Rather than keeping track of the next record ID, we just use random IDs.
+        ack = self._uuidgen()
+        # YYYY-MM-DD hh:mm:ss
+        timestamp = self._timesrc.now().isoformat(sep=' ')[:19]
+
+        buf = StringIO.StringIO()
+        rowbuf = csv.writer(buf)
+        rowbuf.writerow(Acknowledgement.fields)
+        record = (ack, timestamp, user_id, disclaimer_address)
+        rowbuf.writerow(record)
+        log.debug('adding record: %s' , record)
+
+        args = {'token': self._token,
+                'content': 'record',
+                'type': 'flat',
+                'format': 'csv',
+                'data': buf.getvalue()}
+        log.debug('posting %s to: %s', args, self._api_url)
+        body = urllib.urlencode(args)
+        self._ua.open(self._api_url, body)
+        return record
+
+
+class ModuleHelper(object):
+    @classmethod
+    def make_stuff(cls, ini, stuff=((sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION),
+                                    AcknowledgementsProject)):
+        depgraph = injector.Injector(cls.mods(ini))
+        return [depgraph.get(what) for what in stuff]
+
+
+class Mock(injector.Module, ModuleHelper, redcapdb.ModuleHelper):
+    def __init__(self):
+        sqlalchemy.orm.clear_mappers()
+
+    @classmethod
+    def mods(cls, ini=''):
+        return [cls()] + redcapdb.Mock.mods(ini)
+
+    def configure(self, binder):
+        def bind_options(names, section):
+            rt = config.RuntimeOptions(names)
+            rt.load(self._ini, section)
+            return rt
+
+        drt = config.TestTimeOptions(dict(project_id='123'))
+        binder.bind((config.Options, DISCLAIMERS_SECTION), drt)
+        art = config.TestTimeOptions(dict(project_id='1234',
+                                          api_url='http://example/recap/API',
+                                          token='12345token'))
+        binder.bind((config.Options, ACKNOWLEGEMENTS_SECTION), art)
+
+        # function returning uuid.UUID
+        binder.bind((types.FunctionType, uuid.UUID),
+                    injector.InstanceProvider(_mock_uuidgen))
+        binder.bind(urllib.URLopener, _TestURLopener)
+
+    @singleton
+    @provides(KTimeSource)
+    @inject(smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
+            drt=(config.Options, DISCLAIMERS_SECTION),
+            art=(config.Options, ACKNOWLEGEMENTS_SECTION))
+    def setup_db_before_time(self, smaker, drt, art):
+        Disclaimer.eav_map(drt.project_id)
+        Acknowledgement.eav_map(art.project_id)
+        s = smaker()
+        insert_data = redcapdb.redcap_data.insert()
+        for field_name, value in (
+             ('disclaimer_id', '1'),
+             ('url', 'http://example/blog/item/heron-release-xyz'),
+             ('current', 1)):
+            s.execute(insert_data.values(event_id=1,
+                                         project_id=drt.project_id, record=1,
+                                         field_name=field_name, value=value))
+
+            log.debug('inserted: %s, %s', field_name, value)
+        s.commit()
+
+        #s2 = smaker()
+        #log.debug('redcap_data: %s', s.execute(redcapdb.redcap_data.select()).fetchall())
+
+        # todo: add big.wig etc. as from _TestEngine below
+        return _TestTimeSource()
+
+
+def _mock_uuidgen():
+    return uuid.UUID('8bd21cf4-3e5f-4f09-9936-10301aa37b0a')
+
+
+class _TestTimeSource(object):
+    def now(self):
+        return datetime.datetime(2011, 9, 2)
+
+    def today(self):
+        return datetime.date(2011, 9, 2)
+
+
+class _TestURLopener(object):
+    def open(self, addr, data=None):
+        if addr.startswith('http://example/recap/API'):
+            # todo: verify contents?
+            return StringIO.StringIO('')
+        else:
+            raise IOError, '404 not found'
+
+
+class RunTime(injector.Module, ModuleHelper):
     def __init__(self, ini):
         self._ini = ini
 
@@ -82,32 +230,40 @@ class RunTime(injector.Module):
 
         drt = bind_options('project_id'.split(),
                            DISCLAIMERS_SECTION)
-        redcapdb.redcap_eav_map(pid=drt.project_id,
-                                cls=Disclaimer, fields=Disclaimer.fields,
-                                alias='disclaimers')
-        art = bind_options('project_id token'.split(),
+        Disclaimer.eav_map(drt.project_id)
+
+        art = bind_options('project_id api_url token'.split(),
                            ACKNOWLEGEMENTS_SECTION)
-        redcapdb.redcap_eav_map(pid=art.project_id,
-                                cls=Acknowledgement, fields=Acknowledgement.fields,
-                                alias='acknowledgement')
+        Acknowledgement.eav_map(art.project_id)
+
+        # function returning uuid.UUID
+        binder.bind((types.FunctionType, uuid.UUID),
+                    injector.InstanceProvider(uuid.uuid4))
+        binder.bind(KTimeSource, injector.InstanceProvider(datetime.datetime))
+        binder.bind(urllib.URLopener, urllib2.build_opener)
+
 
     @classmethod
     def mods(cls, ini):
         return redcapdb.RunTime.mods(ini) + [cls(ini)]
 
-    @classmethod
-    def make(cls, ini, what=(sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION)):
-        depgraph = injector.Injector(cls.mods(ini))
-        return depgraph.get(what)
-
 
 if __name__ == '__main__':
-    engine = RunTime.make('integration-test.ini')
+    import sys
+    logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
+
+    engine, acks = RunTime.make_stuff('integration-test.ini')
 
     Base.metadata.bind = engine
     sm = sessionmaker(engine)
-    s = sm()
 
+    if '--ack' in sys.argv:
+        s = sm()
+        user_id = sys.argv[2]
+        d = s.query(Disclaimer).filter(Disclaimer.current==1).first()
+        acks.add_record(user_id, d.url)
+
+    s = sm()
     print "all disclaimers:"
     for d in s.query(Disclaimer):
         print d
@@ -119,4 +275,6 @@ if __name__ == '__main__':
     print "current disclaimer and content:"
     for d in s.query(Disclaimer).filter(Disclaimer.current==1):
         print d
-        print d.content(urllib2.build_opener())
+        c, h = d.content(urllib2.build_opener())
+        print h
+        print c[:100]

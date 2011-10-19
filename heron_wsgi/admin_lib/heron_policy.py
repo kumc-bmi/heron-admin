@@ -20,7 +20,6 @@ Suppose an investigator and some students log in::
 
 See if they're qualified faculty::
 
-  >>> _TestEngine().connect(reset=True) and None
   >>> hp.issue(facreq)
   [Faculty(John Smith <john.smith@js.example>)]
   >>> facreq.faculty
@@ -39,7 +38,6 @@ See if they're qualified faculty::
 
 See if the students are qualified in some way::
 
-  >>> _TestEngine().connect(reset=True) and None
   >>> stureq.user.repository_account()
   Traceback (most recent call last):
     ...
@@ -68,7 +66,6 @@ See if the students are qualified in some way::
 Get an actual access qualification; i.e. check for
 system access agreement and human subjects training::
 
-  >>> _TestEngine().connect(reset=True) and None
   >>> facreq.user.repository_account()
   Access(Faculty(John Smith <john.smith@js.example>))
 
@@ -93,23 +90,16 @@ Directory Search
 Recovery from Database Errors
 -----------------------------
 
-Make sure we recover, eventually, after database errors::
-
-    >>> [facreq.user.signature() for i in range(1, 10)]
-    Traceback (most recent call last):
-      ...
-    IOError: databases fail sometimes; deal
-
-    >>> facreq.user.repository_account()
-    Access(Faculty(John Smith <john.smith@js.example>))
+We count on sqlalchemy to do this.
 
 '''
 
 import urllib
 import logging
+import datetime
 
 import injector
-from injector import inject, provides
+from injector import inject, provides, singleton
 import sqlalchemy
 
 import config
@@ -119,20 +109,19 @@ import redcap_connect
 import sealing
 import redcapdb
 import disclaimer
-from disclaimer import Disclaimer, Acknowledgement
+from disclaimer import Disclaimer, Acknowledgement, KTimeSource
 
 SAA_CONFIG_SECTION='saa_survey'
 OVERSIGHT_CONFIG_SECTION='oversight_survey'
 PERM_USER=__name__ + '.user'
 PERM_FACULTY=__name__ + '.faculty'
 
-KTimeSource = injector.Key('TimeSource')
-
 log = logging.getLogger(__name__)
+
 
 class HeronRecords(object):
     permissions = (PERM_USER, PERM_FACULTY)
-    qty_institutions = len(('kuh', 'kupi', 'kumc'))
+    institutions = ('kuh', 'kupi', 'kumc')
 
     @inject(mc=medcenter.MedCenter,
             pm=i2b2pm.I2B2PM,
@@ -250,10 +239,16 @@ class HeronRecords(object):
 
         d = s.query(Disclaimer).filter(Disclaimer.current==1).first()
 
-        log.debug('current disclaimer address: %s', d.url)
-        a = s.query(Acknowledgement \
-                        ).filter(Acknowledgement.disclaimer_address==d.url
-                                 ).filter(Acknowledgement.user_id==user_id).first()
+        if d:
+            log.debug('current disclaimer address: %s', d.url)
+            a = s.query(Acknowledgement \
+                            ).filter(Acknowledgement.disclaimer_address==d.url
+                                     ).filter(Acknowledgement.user_id==user_id).first()
+        else:
+            log.warn('no current disclaimer!')
+            log.debug('session engine: %s', s.bind)
+            a = None
+
         return d, a
 
     def _check_saa_signed(self, mail):
@@ -263,8 +258,8 @@ class HeronRecords(object):
             '''select p.survey_id, p.participant_email, r.response_id, r.record, r.completion_time
                from redcap_surveys_response r
                  join redcap_surveys_participants p on p.participant_id = r.participant_id 
-               where p.participant_email=%(mail)s and p.survey_id = %(survey_id)s''',
-            {'mail': mail, 'survey_id': self._saa_survey_id})
+               where p.participant_email=? and p.survey_id = ?''',
+            (mail, self._saa_survey_id))
 
         if not ans.fetchmany():
             raise NoAgreement()
@@ -289,34 +284,62 @@ class HeronRecords(object):
 
         .. todo:: check expiration date
         '''
-        ans = self._engine.execute('''
-select record, count(*)
-from (
-select distinct
-  candidate.record, candidate.userid, review.institution, review.decision
-from (
-  select record, value as userid
-  from redcap_data
-  where project_id=%(project_id)s
-  and field_name like 'user_id_%%'
-) as candidate
-join  (
-  select record, field_name as institution, value as decision
-  from redcap_data
-  where project_id=%(project_id)s
-  and field_name like 'approve_%%'
-) as review on review.record = candidate.record
-where decision=1 and userid=%(userid)s
-) review
-having count(*) = %(qty)s
-'''
-                                    , dict(project_id=self._oversight_project_id,
-                                           userid=uid,
-                                           qty=self.qty_institutions))
 
-        if not ans.fetchall():
+
+        if not self._engine.execute(_sponsor_query(uid, self._oversight_project_id, self.institutions)
+                                    ).fetchall():
             raise NotSponsored()
         return True
+
+def _sponsor_query(uid, oversight_project_id, institutions):
+    '''
+      >>> q = _sponsor_query('john.smith', 123, HeronRecords.institutions)
+      >>> print str(q)
+      SELECT candidate_record, count(*) AS count_1 
+      FROM (SELECT DISTINCT decision.candidate_record AS candidate_record, decision.candidate_userid AS candidate_userid, decision.review_institution AS review_institution, decision.review_decision AS review_decision 
+      FROM (SELECT candidate.record AS candidate_record, candidate.userid AS candidate_userid, review.record AS review_record, review.institution AS review_institution, review.decision AS review_decision 
+      FROM (SELECT redcap_data.record AS record, redcap_data.value AS userid 
+      FROM redcap_data 
+      WHERE redcap_data.project_id = ? AND redcap_data.field_name LIKE ?) AS candidate JOIN (SELECT redcap_data.record AS record, redcap_data.field_name AS institution, redcap_data.value AS decision 
+      FROM redcap_data 
+      WHERE redcap_data.project_id = ? AND redcap_data.field_name LIKE ?) AS review ON candidate.record = review.record) AS decision 
+      WHERE decision.review_decision = ? AND decision.candidate_userid = ?) GROUP BY candidate_record 
+      HAVING count(*) = ?
+
+    '''
+    # grumble... sql in python clothing
+    # but for this price, we can run it on sqlite for testing as well as mysql
+    # and sqlalchemy will take care of the bind parameter syntax
+    rd = redcapdb.redcap_data
+    select = sqlalchemy.sql.select # too lazy to import
+    and_ = sqlalchemy.sql.and_
+    func = sqlalchemy.sql.func
+
+    candidate = select((rd.c.record, rd.c.value.label('userid'))).where(
+        and_(rd.c.project_id==oversight_project_id,
+             rd.c.field_name.like('user_id_%'))).alias('candidate')
+    log.debug('candidate query: %s', candidate)
+
+    review = select((rd.c.record, rd.c.field_name.label('institution'),
+                     rd.c.value.label('decision'))).where(
+        and_(rd.c.project_id==oversight_project_id,
+             rd.c.field_name.like('approve_%'))).alias('review')
+    log.debug('review query: %s', review)
+
+    j = candidate.join(review, candidate.c.record == review.c.record).alias('decision')
+    log.debug('sponsor_query join: %s', j)
+
+    decision = select((j.c.candidate_record, j.c.candidate_userid,
+                       j.c.review_institution, j.c.review_decision),
+                      distinct=True).where(and_(j.c.review_decision==1,
+                                                j.c.candidate_userid==uid))
+    log.debug('sponsor_query decision: %s', decision)
+    q = select((decision.c.candidate_record, func.count())
+               ).group_by(decision.c.candidate_record).having(
+        func.count() == len(institutions))
+
+    log.debug('sponsor query: %s', q)
+    return q
 
 
 class NoPermission(Exception):
@@ -404,34 +427,63 @@ class Faculty(Affiliate):
 
 class Mock(injector.Module):
     def configure(self, binder):
-        binder.bind(KTimeSource, _TestTimeSource),
         binder.bind((config.Options, SAA_CONFIG_SECTION),
                     redcap_connect._test_settings)
         binder.bind((config.Options, OVERSIGHT_CONFIG_SECTION),
                     redcap_connect._test_settings)
 
-        binder.bind(urllib.URLopener, redcap_connect._TestUrlOpener)
+    @singleton
+    @provides(urllib.URLopener)
+    @inject(smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
+            timesrc=KTimeSource,
+            srt=(config.Options, SAA_CONFIG_SECTION),
+            ort=(config.Options, OVERSIGHT_CONFIG_SECTION))
+    def setup_db_before_web_access(self, smaker, timesrc, srt, ort):
+        s = smaker()
+        def insert_eav(e, n, v):
+            s.execute(redcapdb.redcap_data.insert().values(
+                    project_id=ort.project_id,
+                    record=e, event_id=1, field_name=n, value=v))
 
-    @provides((sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION))
-    def mock_engine(self):
-        return _TestEngine()
+        # approve some.one
+        for userid in ['some.one']:
+            for n, v in {'user_id_1': userid}.iteritems():
+                insert_eav(hash(userid), n, v)
+            for org in HeronRecords.institutions:
+                for n, v in {'approve_' + org: 1}.iteritems():
+                    insert_eav(hash(userid), n, v)
+
+        # add SAA records
+        redcapdb.redcap_surveys_participants.create(s.bind)
+        s.commit()
+        redcapdb.redcap_surveys_response.create(s.bind)
+        for email in ['john.smith@js.example', 'big.wig@js.example']:
+            s.execute(redcapdb.redcap_surveys_participants.insert().values(
+                    participant_id=abs(hash(email)),
+                    survey_id=srt.survey_id, participant_email=email))
+            s.execute(redcapdb.redcap_surveys_response.insert().values(
+                    response_id=abs(hash(email)), record=abs(hash(email)),
+                    completion_time=timesrc.today() + datetime.timedelta(days=-7),
+                    participant_id=abs(hash(email))))
+
+        s.commit()
+        return redcap_connect._TestUrlOpener()
 
     @classmethod
     def mods(cls):
-        return medcenter.Mock.mods() + i2b2pm.Mock.mods() + [Mock()]
+        return medcenter.Mock.mods() + i2b2pm.Mock.mods() + disclaimer.Mock.mods() + [Mock()]
 
     @classmethod
     def depgraph(cls):
         return injector.Injector(cls.mods())
 
     @classmethod
-    def make_stuff(cls, mods=None):
+    def make_stuff(cls, mods=None, what=(medcenter.MedCenter, HeronRecords, None)):
         if not mods:
             mods = cls.mods()
         depgraph = injector.Injector(mods)
-        mc = depgraph.get(medcenter.MedCenter)
-        hr = depgraph.get(HeronRecords)
-        return mc, hr, depgraph
+        return [depgraph.get(kls) if kls else depgraph
+                for kls in what]
 
     @classmethod
     def login_sim(cls, mc, hr):
@@ -440,74 +492,6 @@ class Mock(injector.Module):
             caps = mc.issue(req) + hr.issue(req)
             return req.user, req.faculty, req.executive
         return mkrole
-
-
-class _TestTimeSource(object):
-    def today(self):
-        import datetime
-        return datetime.date(2011, 9, 2)
-
-
-_d = None
-class _TestEngine(object):
-
-    def connect(self, reset=False):
-        global _d
-
-        if reset or _d is None or _d.hosed:
-            _d = _TestDBConn()
-
-        return _d
-
-    def execute(self, q, params=[]):
-        return self.connect().execute(q, params)
-
-
-class _TestDBConn(object):
-    signed_users=['john.smith@js.example',
-                  'big.wig@js.example']
-    def __init__(self):
-        self._ticks = 0
-        self.hosed = False
-
-    def execute(self, q, params=[]):
-        self._ticks += 1
-        if self._ticks % 7 == 0:
-            self.hosed = True
-
-        if self.hosed:
-            raise IOError, 'databases fail sometimes; deal'
-
-        if ('mail' in params and 'survey_id' in params
-            and params['mail'] in self.signed_users):
-            results = [(params['survey_id'],
-                        params['mail'], 123, 123, '2011-01-01')]
-        elif 'count' in q:  # assume it's the sponsored query
-            if 'some.one' in params.get('userid', ''):
-                results = [(9, 3)]
-            else:
-                results = []
-        else:
-            results = []
-
-        return _TestResults(results)
-
-
-class _TestResults():
-    def __init__(self, results):
-        self._results = results
-        self._row = 0
-
-    def fetchmany(self):
-        return self._results
-
-    def fetchall(self):
-        return self._results
-
-    def fetchone(self):
-        row = self._results[self._row]
-        self._row += 1
-        return row
 
 
 class RunTime(injector.Module):  # pragma nocover

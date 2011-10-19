@@ -7,6 +7,7 @@
   >>> import pprint
   >>> pprint.pprint(cl.screen(*roles('john.smith')))
   {'accessDisabled': {'name': 'login'},
+   'acknowledgement': None,
    'affiliate': John Smith <john.smith@js.example>,
    'executive': {},
    'faculty': {'checked': 'checked'},
@@ -17,6 +18,7 @@
 
   >>> pprint.pprint(cl.screen(*roles('bill.student')))
   {'accessDisabled': {'disabled': 'disabled'},
+   'acknowledgement': None,
    'affiliate': Bill Student <bill.student@js.example>,
    'executive': {},
    'faculty': {},
