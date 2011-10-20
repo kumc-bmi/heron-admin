@@ -14,8 +14,6 @@
  <py:if test="what_for=='data_use'">Data Use:</py:if>
  Select Team</h1>
 
-<p>Choose up to 10 people per request.</p>
-
 <py:def function="peopleTable(people, pfx)">
 <table py:if="people">
   <tr>
@@ -33,6 +31,9 @@
 </py:def>
 
 <div id="main">
+
+<p>Choose up to 10 people per request.</p>
+
 <form py:if="team" method="get" action="">
 ${peopleTable(team, 'r')}
 <p><input type="submit" name='goal' value="Remove" /></p>
