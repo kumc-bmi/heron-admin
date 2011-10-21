@@ -31,13 +31,14 @@ import urllib
 import urllib2
 import uuid
 import types
+from xml.dom.minidom import parse
 
 # from pypi
 import injector
 from injector import inject, provides, singleton
-from lxml import etree
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
+import xpath  # py-dom-xpath-0.1.tar.gz 4bbca5671245421e93ef2c1ea4e6e36810ccecbc
 
 # from this package
 import config
@@ -59,16 +60,16 @@ class Disclaimer(redcapdb.REDCapRecord):
            >>> d = Disclaimer()
            >>> d.url = 'http://example/'
            >>> d.content(_TestUrlOpener())
-           ('<div id="blog-main">\n<h1 class="blog-title">headline</h1>main blog copy...\n</div>\n...\n', 'headline')
+           (u'<div id="blog-main">\n<h1 class="blog-title">headline</h1>main blog copy...\n</div>', u'headline')
         '''
         body = ua.open(self.url).read()
         kludge = StringIO.StringIO(body.replace('&larr;', ''
                                                 ).replace('&rarr;', '')
                                    )  #KLUDGE
-        elt = etree.parse(kludge).xpath('//*[@id="blog-main"]')[0]
-        headline = elt.xpath('.//*[@class="blog-title"]/text()')[0]
+        elt = xpath.findnode('//*[@id="blog-main"]', parse(kludge))
+        headline = xpath.findvalue('.//*[@class="blog-title"]/text()', elt)
 
-        return etree.tostring(elt), headline
+        return elt.toxml(), headline
 
 _test_doc='''
 <!DOCTYPE html>
