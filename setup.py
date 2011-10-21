@@ -24,6 +24,8 @@ CHANGES = '@@TODO' #open(os.path.join(here, 'CHANGES.txt')).read()
 # Starting from scratch seems to work, though it depends
 # on some Ubuntu modules.
 # $ sudo apt-get install libsasl2-dev libmysqlclient-dev python2.6-dev
+# or:
+# $ sudo zypper install libmysqlclient-devel
 # $ curl -O https://raw.github.com/pypa/virtualenv/master/virtualenv.py
 # $ mv virtualenv.py ~/bin/virtualenv
 # $ chmod +x ~/bin/virtualenv
