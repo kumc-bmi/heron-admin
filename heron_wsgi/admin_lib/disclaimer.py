@@ -38,7 +38,7 @@ import injector
 from injector import inject, provides, singleton
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
-import xpath  # py-dom-xpath-0.1.tar.gz 4bbca5671245421e93ef2c1ea4e6e36810ccecbc
+import xpath
 
 # from this package
 import config

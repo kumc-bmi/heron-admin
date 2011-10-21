@@ -42,6 +42,7 @@ requires = [
     'python-ldap',
     'cx_Oracle',
     'MySQL-python',
+    'py-dom-xpath'   # py-dom-xpath-0.1.tar.gz 4bbca5671245421e93ef2c1ea4e6e36810ccecbc
     #'pyinotify'
     ]
 
