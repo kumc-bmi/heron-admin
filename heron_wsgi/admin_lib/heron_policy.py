@@ -339,7 +339,7 @@ def _sponsor_query(uid, oversight_project_id, institutions):
     decision = select((j.c.candidate_record, j.c.candidate_userid,
                        j.c.review_institution, j.c.review_decision),
                       distinct=True).where(and_(j.c.review_decision==1,
-                                                j.c.candidate_userid==uid))
+                                                j.c.candidate_userid==uid)).alias('mysql_workaround')
     log.debug('sponsor_query decision: %s', decision)
     q = select((decision.c.candidate_record, func.count())
                ).group_by(decision.c.candidate_record).having(
