@@ -305,7 +305,7 @@ def _sponsor_query(uid, oversight_project_id, institutions):
     '''
       >>> q = _sponsor_query('john.smith', 123, HeronRecords.institutions)
       >>> print str(q)
-      SELECT candidate_record, count(*) AS count_1 
+      SELECT mysql_workaround.candidate_record, count(*) AS count_1 
       FROM (SELECT DISTINCT decision.candidate_record AS candidate_record, decision.candidate_userid AS candidate_userid, decision.review_institution AS review_institution, decision.review_decision AS review_decision 
       FROM (SELECT candidate.record AS candidate_record, candidate.userid AS candidate_userid, review.record AS review_record, review.institution AS review_institution, review.decision AS review_decision 
       FROM (SELECT redcap_data.record AS record, redcap_data.value AS userid 
@@ -313,7 +313,7 @@ def _sponsor_query(uid, oversight_project_id, institutions):
       WHERE redcap_data.project_id = :project_id_1 AND redcap_data.field_name LIKE :field_name_1) AS candidate JOIN (SELECT redcap_data.record AS record, redcap_data.field_name AS institution, redcap_data.value AS decision 
       FROM redcap_data 
       WHERE redcap_data.project_id = :project_id_2 AND redcap_data.field_name LIKE :field_name_2) AS review ON candidate.record = review.record) AS decision 
-      WHERE decision.review_decision = :review_decision_1 AND decision.candidate_userid = :candidate_userid_1) GROUP BY candidate_record 
+      WHERE decision.review_decision = :review_decision_1 AND decision.candidate_userid = :candidate_userid_1) AS mysql_workaround GROUP BY mysql_workaround.candidate_record 
       HAVING count(*) = :count_2
 
     '''
