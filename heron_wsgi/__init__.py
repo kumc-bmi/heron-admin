@@ -17,12 +17,9 @@ KAppSettings = injector.Key('AppSettings')
 log = logging.getLogger(__name__)
 
 def main(global_config, **settings):
-    #@@engine = engine_from_config(settings, 'sqlalchemy.')
-    #initialize_sql(engine)
-
-    config = heron_srv.RunTime.make(settings)
-
-    return config.make_wsgi_app()
+    return heron_srv.app_factory(global_config,
+                                 settings['webapp_ini'],
+                                 settings['admin_ini'])
 
 
 if __name__ == '__main__':
