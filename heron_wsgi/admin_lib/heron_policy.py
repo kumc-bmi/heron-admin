@@ -92,6 +92,15 @@ Recovery from Database Errors
 
 We count on sqlalchemy to do this.
 
+
+Oversight Decisions
+-------------------
+
+Which users should we notify?
+
+  >>> hp.oversight_decisions()
+  [(u'-6113127513747448330', u'1', u'some.one', u'john.smith', u'John Smith')]
+
 '''
 
 import urllib
@@ -279,11 +288,52 @@ class HeronRecords(object):
         .. todo:: check expiration date
         '''
 
+        candidate, review, exp, decision = _sponsor_queries(
+            self._oversight_project_id)
 
-        if not self._engine.execute(_sponsor_query(uid, self._oversight_project_id, self.institutions)
-                                    ).fetchall():
+        q = select((decision.c.record, func.count())
+                   ).where(and_(decision.c.review_decision=='1',
+                                decision.c.candidate_userid==uid)
+                           ).group_by(decision.c.record).having(
+                       func.count() == len(self.institutions))
+
+        if not self._engine.execute(q).fetchall():
             raise NotSponsored()
+
         return True
+
+    def oversight_decisions(self):
+        '''In order to facilitate email notification of committee
+        decisions, find all the decisions.
+        '''
+        candidate, review, exp, decision = _sponsor_queries(
+            self._oversight_project_id)
+
+        # committee decisions
+        cd = select((decision.c.record,
+                     decision.c.review_decision,
+                     decision.c.candidate_userid,
+                     func.count())
+                   ).where(and_()
+                           ).group_by(decision.c.record,
+                                      decision.c.review_decision,
+                                      decision.c.candidate_userid
+                                      ).having(
+                               func.count() == len(self.institutions)
+                               ).alias('cd')
+        rd = redcapdb.redcap_data
+
+        # committee decision with investigator user_id, full_name
+        uid = rd.select().where(rd.c.field_name == 'user_id').alias('uid')
+        fn = rd.select().where(rd.c.field_name == 'full_name').alias('fn')
+        j = cd.join(uid, uid.c.record == cd.c.record
+                    ).join(fn, fn.c.record == cd.c.record)
+        q = select([j.c.cd_record, j.c.cd_review_decision,
+                    j.c.cd_candidate_userid,
+                    uid.c.value.label('user_id'),
+                    fn.c.value.label('full_name')],
+                   distinct=True)  #not sure why distinct is needed...
+        return self._engine.execute(q).fetchall()
 
 
 def _saa_query(mail, survey_id):
@@ -301,20 +351,75 @@ def _saa_query(mail, survey_id):
             and_(p.c.participant_email==mail, p.c.survey_id==survey_id))
 
 
-def _sponsor_query(uid, oversight_project_id, institutions):
+def _sponsor_queries(oversight_project_id):
     '''
-      >>> q = _sponsor_query('john.smith', 123, HeronRecords.institutions)
-      >>> print str(q)
-      SELECT mysql_workaround.candidate_record, count(*) AS count_1 
-      FROM (SELECT DISTINCT decision.candidate_record AS candidate_record, decision.candidate_userid AS candidate_userid, decision.review_institution AS review_institution, decision.review_decision AS review_decision 
-      FROM (SELECT candidate.record AS candidate_record, candidate.userid AS candidate_userid, review.record AS review_record, review.institution AS review_institution, review.decision AS review_decision 
-      FROM (SELECT redcap_data.record AS record, redcap_data.value AS userid 
+      >>> from pprint import pprint
+      >>> candidate, review, exp, decision = _sponsor_queries(123)
+      >>> print str(candidate) # doctest: +NORMALIZE_WHITESPACE
+      SELECT redcap_data.project_id, redcap_data.record,
+             redcap_data.value AS userid 
       FROM redcap_data 
-      WHERE redcap_data.project_id = :project_id_1 AND redcap_data.field_name LIKE :field_name_1) AS candidate JOIN (SELECT redcap_data.record AS record, redcap_data.field_name AS institution, redcap_data.value AS decision 
+      WHERE redcap_data.project_id = :project_id_1
+        AND redcap_data.field_name LIKE :field_name_1
+
+      >>> pprint(candidate.compile().params)
+      {u'field_name_1': 'user_id_%', u'project_id_1': 123}
+
+      >>> print str(review) # doctest: +NORMALIZE_WHITESPACE
+      SELECT redcap_data.project_id, redcap_data.record,
+             redcap_data.field_name AS institution,
+             redcap_data.value AS decision 
       FROM redcap_data 
-      WHERE redcap_data.project_id = :project_id_2 AND redcap_data.field_name LIKE :field_name_2) AS review ON candidate.record = review.record) AS decision 
-      WHERE decision.review_decision = :review_decision_1 AND decision.candidate_userid = :candidate_userid_1) AS mysql_workaround GROUP BY mysql_workaround.candidate_record 
-      HAVING count(*) = :count_2
+      WHERE redcap_data.field_name LIKE :field_name_1
+      >>> pprint(review.compile().params)
+      {u'field_name_1': 'approve_%'}
+
+      >>> print str(decision) # doctest: +NORMALIZE_WHITESPACE
+      SELECT DISTINCT decision.candidate_record AS record,
+                      decision.candidate_userid,
+                      decision.exp_dt_exp,
+                      decision.review_institution,
+                      decision.review_decision 
+      FROM
+       (SELECT candidate.project_id AS candidate_project_id,
+               candidate.record AS candidate_record,
+               candidate.userid AS candidate_userid,
+               review.project_id AS review_project_id,
+               review.record AS review_record,
+               review.institution AS review_institution,
+               review.decision AS review_decision,
+               exp.project_id AS exp_project_id,
+               exp.record AS exp_record,
+               exp.dt_exp AS exp_dt_exp 
+        FROM
+         (SELECT redcap_data.project_id AS project_id,
+                 redcap_data.record AS record,
+                 redcap_data.value AS userid 
+          FROM redcap_data 
+          WHERE redcap_data.project_id = :project_id_1
+            AND redcap_data.field_name LIKE :field_name_1) AS candidate
+         JOIN (SELECT redcap_data.project_id AS project_id,
+                      redcap_data.record AS record,
+                      redcap_data.field_name AS institution,
+                      redcap_data.value AS decision 
+               FROM redcap_data 
+               WHERE redcap_data.field_name LIKE :field_name_2) AS review
+          ON candidate.record = review.record
+         AND candidate.project_id = review.project_id
+         LEFT OUTER JOIN
+           (SELECT redcap_data.project_id AS project_id,
+                   redcap_data.record AS record,
+                   redcap_data.value AS dt_exp 
+            FROM redcap_data 
+            WHERE redcap_data.field_name = :field_name_3) AS exp
+          ON exp.record = review.record
+         AND exp.project_id = review.project_id) AS decision
+
+      >>> pprint(decision.compile().params)
+      {u'field_name_1': 'user_id_%',
+       u'field_name_2': 'approve_%',
+       u'field_name_3': 'date_of_expiration',
+       u'project_id_1': 123}
 
     '''
     # grumble... sql in python clothing
@@ -322,31 +427,36 @@ def _sponsor_query(uid, oversight_project_id, institutions):
     # and sqlalchemy will take care of the bind parameter syntax
     rd = redcapdb.redcap_data
 
-    candidate = select((rd.c.record, rd.c.value.label('userid'))).where(
+    # todo: consider combining record, event, project_id into one attr
+    candidate = select((rd.c.project_id, rd.c.record,
+                        rd.c.value.label('userid'))).where(
         and_(rd.c.project_id==oversight_project_id,
              rd.c.field_name.like('user_id_%'))).alias('candidate')
-    log.debug('candidate query: %s', candidate)
 
-    review = select((rd.c.record, rd.c.field_name.label('institution'),
+    review = select((rd.c.project_id, rd.c.record,
+                     rd.c.field_name.label('institution'),
                      rd.c.value.label('decision'))).where(
-        and_(rd.c.project_id==oversight_project_id,
-             rd.c.field_name.like('approve_%'))).alias('review')
-    log.debug('review query: %s', review)
+        rd.c.field_name.like('approve_%')).alias('review')
 
-    j = candidate.join(review, candidate.c.record == review.c.record).alias('decision')
-    log.debug('sponsor_query join: %s', j)
+    exp = select((rd.c.project_id, rd.c.record,
+                  rd.c.value.label('dt_exp'))).where(
+        rd.c.field_name == 'date_of_expiration').alias('exp')
 
-    decision = select((j.c.candidate_record, j.c.candidate_userid,
+    j = candidate.join(
+        review,
+        and_(candidate.c.record == review.c.record,
+             candidate.c.project_id == review.c.project_id)
+        ).outerjoin(exp,
+                    and_(exp.c.record == review.c.record,
+                         exp.c.project_id == review.c.project_id)
+                    ).alias('decision')
+
+    decision = select((j.c.candidate_record.label('record'),
+                       j.c.candidate_userid, j.c.exp_dt_exp,
                        j.c.review_institution, j.c.review_decision),
-                      distinct=True).where(and_(j.c.review_decision==1,
-                                                j.c.candidate_userid==uid)).alias('mysql_workaround')
-    log.debug('sponsor_query decision: %s', decision)
-    q = select((decision.c.candidate_record, func.count())
-               ).group_by(decision.c.candidate_record).having(
-        func.count() == len(institutions))
+                      distinct=True).alias('mysql_workaround')
 
-    log.debug('sponsor query: %s', q)
-    return q
+    return candidate, review, exp, decision
 
 
 class NoPermission(Exception):
@@ -449,10 +559,22 @@ class TestSetUp(disclaimer.TestSetUp):
 
         # approve some.one
         for userid in ['some.one']:
-            for n, v in {'user_id_1': userid}.iteritems():
+            for n, v in {'user_id_1': userid,
+                         'user_id': 'john.smith',
+                         'full_name': 'John Smith'}.iteritems():
                 insert_eav(hash(userid), n, v)
             for org in HeronRecords.institutions:
                 for n, v in {'approve_' + org: 1}.iteritems():
+                    insert_eav(hash(userid), n, v)
+
+        # some rejections for bill.student:
+        for userid in ['bill.student']:
+            for n, v in {'user_id_1': userid,
+                         'user_id': 'john.smith',
+                         'full_name': 'John Smith'}.iteritems():
+                insert_eav(hash(userid), n, v)
+            for org in HeronRecords.institutions[:2]:
+                for n, v in {'approve_' + org: 2}.iteritems():
                     insert_eav(hash(userid), n, v)
 
         log.debug('add SAA records')
