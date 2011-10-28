@@ -259,7 +259,16 @@ class RunTime(injector.Module, ModuleHelper):
 
 
 if __name__ == '__main__':
-    sm = RunTime.make('integration-test.ini')
+    import sys, pprint
+
+    ini = 'integration-test.ini'
+    sm = RunTime.make(ini)
     print sm().query(redcap_data).slice(1, 10)
     print sm().query(redcap_data).slice(1, 10).all()
 
+    rt = config.RuntimeOptions('project_id')
+    rt.load(ini, 'oversight_survey')  # peeking
+    ans = sm().execute(select([redcap_data.c.field_name], distinct=True
+                              ).where(redcap_data.c.project_id ==
+                                      rt.project_id))
+    pprint.pprint(ans.fetchall())
