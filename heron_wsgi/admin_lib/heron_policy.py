@@ -613,6 +613,7 @@ class TestSetUp(disclaimer.TestSetUp):
         redcapdb.redcap_surveys_participants.create(s.bind)
         s.commit()
         redcapdb.redcap_surveys_response.create(s.bind)
+        noticelog.notice_log.schema = None  # sqlite doesn't grok schemas
         noticelog.notice_log.create(s.bind)
         for email in ['john.smith@js.example', 'big.wig@js.example']:
             s.execute(redcapdb.redcap_surveys_participants.insert().values(

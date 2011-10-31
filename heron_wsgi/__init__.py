@@ -17,9 +17,7 @@ KAppSettings = injector.Key('AppSettings')
 log = logging.getLogger(__name__)
 
 def main(global_config, **settings):
-    return heron_srv.app_factory(global_config,
-                                 settings['webapp_ini'],
-                                 settings['admin_ini'])
+    return heron_srv.app_factory(global_config, **settings)
 
 
 if __name__ == '__main__':

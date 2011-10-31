@@ -1,19 +1,6 @@
 '''heron_srv.py -- HERON administrative web interface
 -----------------------------------------------------
 
-Main features:
-
-@@@@out of date
-  * :class:`Validator` restricts access using CAS login
-    - see :func:`test_grant_access_with_valid_cas_ticket`
-
-  * :class:`HeronAccessPartsApp` provides:
-    - REDCap integration for System Access Agreement
-    - I2B2 access to qualified faculty and users they sponsor
-    - Investigator requests
-      - building a list of people to sponsor
-      - REDCap integration
-
 .. todo:: DROC oversight reports
 
 See also: `HERON training materials`__
@@ -21,7 +8,6 @@ See also: `HERON training materials`__
 __ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
 
 .. todo:: automated test for LDAP failure
-.. todo:: automated test for database failure
 
 '''
 
@@ -47,6 +33,7 @@ from pyramid.httpexceptions import HTTPFound, HTTPSeeOther, HTTPForbidden
 # modules in this package
 import cas_auth
 import genshi_render
+import drocnotice
 from admin_lib import medcenter
 from admin_lib.medcenter import MedCenter
 from admin_lib import heron_policy
@@ -334,6 +321,14 @@ def server_error_view(context, req):
 
 
 class HeronAdminConfig(Configurator):
+    '''
+    >>> from paste.fixture import TestApp
+    >>> t = TestApp(Mock.make().make_wsgi_app())
+    >>> r1 = t.post('/decision_notifier', status=200)
+    >>> r1
+    <Response 200 OK 'notice sent for reco'>
+
+    '''
     @inject(guard=cas_auth.Validator,
             settings=KAppSettings,
             cas_rt=(Options, cas_auth.CONFIG_SECTION),
@@ -342,8 +337,9 @@ class HeronAdminConfig(Configurator):
             repo=RepositoryLogin,
             tb=TeamBuilder,
             mc=medcenter.MedCenter,
-            hr=heron_policy.HeronRecords)
-    def __init__(self, guard, settings, cas_rt, clv, rcv, repo, tb, mc, hr):
+            hr=heron_policy.HeronRecords,
+            dn=drocnotice.DROCNotice)
+    def __init__(self, guard, settings, cas_rt, clv, rcv, repo, tb, mc, hr, dn):
         log.debug('HeronAdminConfig settings: %s', settings)
         Configurator.__init__(self, settings=settings)
 
@@ -377,6 +373,11 @@ class HeronAdminConfig(Configurator):
 
         self.add_route('logout', 'logout')
         guard.configure(self, 'logout')
+
+        # Decision notifications
+        self.add_route('notifier', 'decision_notifier')
+        dn.configure(self, 'notifier',
+                     permission=pyramid.security.NO_PERMISSION_REQUIRED)
 
         # for testing
         self.add_route('err', 'err')
@@ -416,20 +417,25 @@ class RunTime(injector.Module):
     def cas_app_secret(self, rt):
         return rt.app_secret
 
+    @provides(drocnotice.KMailSettings)
+    def settings(self):
+        log.debug('mail settings: %s', self._settings)
+        return self._settings
+
     @classmethod
     def mods(cls, settings):
         webapp_ini = settings['webapp_ini']
         admin_ini = settings['admin_ini']
         return (cas_auth.RunTime.mods(webapp_ini) +
                 heron_policy.RunTime.mods(admin_ini) +
-                [RunTime(settings)])
+                [drocnotice.Setup(), RunTime(settings)])
 
     @classmethod
     def depgraph(cls, settings):
         return injector.Injector(cls.mods(settings))
 
     @classmethod
-    def make(cls, settings):
+    def make(cls, global_config, settings):
         return cls.depgraph(settings).get(HeronAdminConfig)
 
 
@@ -546,12 +552,9 @@ class _TestUrlOpener(object):
 
 
 
-def app_factory(global_config,
-                webapp_ini='integration-test.ini',
-                admin_ini='admin_lib/integration-test.ini'):
+def app_factory(global_config, **settings):
     log.debug('in app_factory')
-    config = RunTime.make(dict(webapp_ini=webapp_ini,
-                             admin_ini=admin_ini))
+    config = RunTime.make(global_config, settings)
 
     # https://pylonsproject.org/projects/pyramid_exclog/dev/
     # self.include('pyramid_exclog')
