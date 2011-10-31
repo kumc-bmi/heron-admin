@@ -99,29 +99,24 @@ Oversight Decisions
 Which users should we notify?
 
   >>> ds = dr.oversight_decisions()
-  >>> ds  # doctest: +NORMALIZE_WHITESPACE
-  [(u'-8650809471427594162', u'1', u'some.one', 3),
-   (u'-8650809471427594162', u'1', u'someone.else', 3)]
+  >>> ds
+  [(34, u'-8650809471427594162', u'1', 3)]
 
 Get details that we might want to use in composing the notification::
   >>> from pprint import pprint
-  >>> for record, decision, team_uid, qty in ds:
+  >>> for pid, record, decision, qty in ds:
   ...    pprint(dr.decision_detail(record))
-  {u'approve_kuh': u'1',
-   u'approve_kumc': u'1',
-   u'approve_kupi': u'1',
-   u'full_name': u'John Smith',
-   u'user_id': u'john.smith',
-   u'user_id_1': u'some.one',
-   u'user_id_2': u'someone.else'}
-  {u'approve_kuh': u'1',
-   u'approve_kumc': u'1',
-   u'approve_kupi': u'1',
-   u'full_name': u'John Smith',
-   u'user_id': u'john.smith',
-   u'user_id_1': u'some.one',
-   u'user_id_2': u'someone.else'}
-   
+  (John Smith <john.smith@js.example>,
+   [Some One <some.one@js.example>, Carol Student <carol.student@js.example>],
+   {u'approve_kuh': u'1',
+    u'approve_kumc': u'1',
+    u'approve_kupi': u'1',
+    u'full_name': u'John Smith',
+    u'project_title': u'Cure Warts',
+    u'user_id': u'john.smith',
+    u'user_id_1': u'some.one',
+    u'user_id_2': u'carol.student'})
+
 '''
 
 import datetime
@@ -203,7 +198,7 @@ class HeronRecords(object):
             the users they find.
             '''
             def lookup(self, uid):
-                return mc._lookup(uid)  #@@ peeking
+                return mc.lookup(uid)
             def search(self, max, cn, sn, givenname):
                 return mc.search(max, cn, sn, givenname)
 
@@ -315,14 +310,9 @@ class HeronRecords(object):
         .. todo:: check expiration date
         '''
 
-        candidate, review, decision = _sponsor_queries(
-            self._oversight_project_id)
+        decision, candidate, dc = _sponsor_queries(self._oversight_project_id)
 
-        q = select((decision.c.record, func.count())
-                   ).where(and_(decision.c.review_decision=='1',
-                                decision.c.candidate_userid==uid)
-                           ).group_by(decision.c.record).having(
-                       func.count() == len(self.institutions))
+        q = dc.select(dc.c.candidate==uid)
 
         if not self._engine.execute(q).fetchall():
             raise NotSponsored()
@@ -333,30 +323,20 @@ class HeronRecords(object):
 class DecisionRecords(object):
     @inject(rt=(config.Options, OVERSIGHT_CONFIG_SECTION),
             engine=(sqlalchemy.engine.base.Connectable,
-                    redcapdb.CONFIG_SECTION))
-    def __init__(self, rt, engine):
+                    redcapdb.CONFIG_SECTION),
+            smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
+            mc=medcenter.MedCenter)
+    def __init__(self, rt, engine, mc, smaker):
         self._oversight_project_id = rt.project_id
         self._engine = engine
+        self._mc = mc
+        #smaker is just to pull in dependencies. hm.
 
     def oversight_decisions(self):
         '''In order to facilitate email notification of committee
         decisions, find decisions where notification has not been sent.
         '''
-        candidate, review, decision = _sponsor_queries(
-            self._oversight_project_id)
-
-        # committee decisions
-        cd = select((decision.c.record,
-                     decision.c.review_decision,
-                     decision.c.candidate_userid,
-                     func.count())
-                   ).where(and_()
-                           ).group_by(decision.c.record,
-                                      decision.c.review_decision,
-                                      decision.c.candidate_userid
-                                      ).having(
-                               func.count() == len(HeronRecords.institutions)
-                               ).alias('cd')
+        cd, who, cdwho = _sponsor_queries(self._oversight_project_id)
 
         # decisions without notifications
         nl = noticelog.notice_log
@@ -365,9 +345,17 @@ class DecisionRecords(object):
         return self._engine.execute(dwn).fetchall()
 
     def decision_detail(self, record):
-        return dict(list(redcapdb.allfields(self._engine,
-                                            self._oversight_project_id,
-                                            record)))
+        avl = list(redcapdb.allfields(self._engine,
+                                      self._oversight_project_id,
+                                      record))
+        mc = self._mc
+        team = [mc.lookup(user_id)
+                for user_id in
+                [v for a, v in avl if v and a.startswith('user_id_')]]
+
+        d = dict(avl)
+        investigator = mc.lookup(d['user_id'])
+        return investigator, team, d
 
 
 def _saa_query(mail, survey_id):
@@ -388,58 +376,61 @@ def _saa_query(mail, survey_id):
 def _sponsor_queries(oversight_project_id):
     '''
       >>> from pprint import pprint
-      >>> candidate, review, decision = _sponsor_queries(123)
-      >>> print str(candidate) # doctest: +NORMALIZE_WHITESPACE
-      SELECT redcap_data.project_id, redcap_data.record,
-             redcap_data.value AS userid 
+      >>> decision, candidate, cdwho = _sponsor_queries(123)
+
+      >>> print str(decision)
+      SELECT redcap_data.project_id, redcap_data.record, redcap_data.value AS decision, count(*) AS count_1 
       FROM redcap_data 
-      WHERE redcap_data.project_id = :project_id_1
-        AND redcap_data.field_name LIKE :field_name_1
-
-      >>> pprint(candidate.compile().params)
-      {u'field_name_1': 'user_id_%', u'project_id_1': 123}
-
-      >>> print str(review) # doctest: +NORMALIZE_WHITESPACE
-      SELECT redcap_data.project_id, redcap_data.record,
-             redcap_data.field_name AS institution,
-             redcap_data.value AS decision 
-      FROM redcap_data 
-      WHERE redcap_data.field_name LIKE :field_name_1
-      >>> pprint(review.compile().params)
-      {u'field_name_1': 'approve_%'}
-
-      >>> print str(decision) # doctest: +NORMALIZE_WHITESPACE
-      SELECT DISTINCT decision.candidate_record AS record,
-                      decision.candidate_userid,
-                      decision.review_institution,
-                      decision.review_decision 
-      FROM
-       (SELECT candidate.project_id AS candidate_project_id,
-               candidate.record AS candidate_record,
-               candidate.userid AS candidate_userid,
-               review.project_id AS review_project_id,
-               review.record AS review_record,
-               review.institution AS review_institution,
-               review.decision AS review_decision
-        FROM
-         (SELECT redcap_data.project_id AS project_id,
-                 redcap_data.record AS record,
-                 redcap_data.value AS userid 
-          FROM redcap_data 
-          WHERE redcap_data.project_id = :project_id_1
-            AND redcap_data.field_name LIKE :field_name_1) AS candidate
-        JOIN (SELECT redcap_data.project_id AS project_id,
-                     redcap_data.record AS record,
-                     redcap_data.field_name AS institution,
-                     redcap_data.value AS decision 
-              FROM redcap_data 
-              WHERE redcap_data.field_name LIKE :field_name_2) AS review
-         ON candidate.record = review.record
-        AND candidate.project_id = review.project_id) AS decision
+      WHERE redcap_data.field_name LIKE :field_name_1 AND redcap_data.project_id = :project_id_1 GROUP BY redcap_data.project_id, redcap_data.record, redcap_data.value 
+      HAVING count(*) = :count_2
 
       >>> pprint(decision.compile().params)
-      {u'field_name_1': 'user_id_%',
-       u'field_name_2': 'approve_%',
+      {u'count_2': 3, u'field_name_1': 'approve_%', u'project_id_1': 123}
+
+
+      >>> print str(candidate) # doctest: +NORMALIZE_WHITESPACE
+      SELECT redcap_data.project_id, redcap_data.record, redcap_data.value AS userid 
+      FROM redcap_data 
+      WHERE redcap_data.field_name LIKE :field_name_1
+
+      >>> pprint(candidate.compile().params)
+      {u'field_name_1': 'user_id_%'}
+
+      >>> print str(cdwho) # doctest: +NORMALIZE_WHITESPACE
+      SELECT cd_record AS record,
+             cd_decision AS decision,
+             who_userid AS candidate 
+      FROM
+        (SELECT cd.project_id AS cd_project_id,
+                cd.record AS cd_record,
+                cd.decision AS cd_decision,
+                cd.count_1 AS cd_count_1,
+                who.project_id AS who_project_id,
+                who.record AS who_record,
+                who.userid AS who_userid 
+         FROM
+           (SELECT redcap_data.project_id AS project_id,
+                   redcap_data.record AS record,
+                   redcap_data.value AS decision, count(*) AS count_1 
+            FROM redcap_data 
+            WHERE redcap_data.field_name LIKE :field_name_1
+              AND redcap_data.project_id = :project_id_1
+            GROUP BY redcap_data.project_id, redcap_data.record,
+                     redcap_data.value 
+            HAVING count(*) = :count_2) AS cd
+           JOIN
+             (SELECT redcap_data.project_id AS project_id,
+                     redcap_data.record AS record,
+                     redcap_data.value AS userid 
+              FROM redcap_data 
+              WHERE redcap_data.field_name LIKE :field_name_2) AS who
+           ON who.record = cd.record
+           AND who.project_id = cd.project_id) AS cdwho
+
+      >>> pprint(cdwho.compile().params)
+      {u'count_2': 3,
+       u'field_name_1': 'approve_%',
+       u'field_name_2': 'user_id_%',
        u'project_id_1': 123}
 
     '''
@@ -448,29 +439,32 @@ def _sponsor_queries(oversight_project_id):
     # and sqlalchemy will take care of the bind parameter syntax
     rd = redcapdb.redcap_data
 
+    # committee decisions
+    decision = select((rd.c.project_id, rd.c.record,
+                       rd.c.value.label('decision'),
+                       func.count())).where(
+        and_(rd.c.field_name.like('approve_%'),
+             rd.c.project_id==oversight_project_id)
+        ).group_by(rd.c.project_id,
+                   rd.c.record,
+                   rd.c.value).having(
+            func.count() == len(HeronRecords.institutions)).alias('cd')
+
     # todo: consider combining record, event, project_id into one attr
     candidate = select((rd.c.project_id, rd.c.record,
                         rd.c.value.label('userid'))).where(
-        and_(rd.c.project_id==oversight_project_id,
-             rd.c.field_name.like('user_id_%'))).alias('candidate')
+        and_(rd.c.field_name.like('user_id_%'))).alias('who')
 
-    review = select((rd.c.project_id, rd.c.record,
-                     rd.c.field_name.label('institution'),
-                     rd.c.value.label('decision'))).where(
-        rd.c.field_name.like('approve_%')).alias('review')
+    j = decision.join(candidate,
+                      and_(candidate.c.record == decision.c.record,
+                           candidate.c.project_id == decision.c.project_id)
+                      ).alias('cdwho').select()
+        
+    cdwho = j.with_only_columns((j.c.cd_record.label('record'),
+                                 j.c.cd_decision.label('decision'),
+                                 j.c.who_userid.label('candidate')))
 
-    j = candidate.join(
-        review,
-        and_(candidate.c.record == review.c.record,
-             candidate.c.project_id == review.c.project_id)
-        ).alias('decision')
-
-    decision = select((j.c.candidate_record.label('record'),
-                       j.c.candidate_userid,
-                       j.c.review_institution, j.c.review_decision),
-                      distinct=True).alias('mysql_workaround')
-
-    return candidate, review, decision
+    return decision, candidate, cdwho
 
 
 class NoPermission(Exception):
@@ -560,7 +554,7 @@ class Faculty(Affiliate):
 def team_params(lookup, uids):
     r'''
     >>> import pprint
-    >>> pprint.pprint(list(team_params(medcenter.Mock.make()._lookup,
+    >>> pprint.pprint(list(team_params(medcenter.Mock.make().lookup,
     ...                                ['john.smith', 'bill.student'])))
     [('user_id_1', 'john.smith'),
      ('name_etc_1', 'Smith, John\nChair of Department of Neurology\n'),
@@ -596,9 +590,10 @@ class TestSetUp(disclaimer.TestSetUp):
         # approve 2 users in 1 request
         e = hash('john.smith')
         for a, v in {'user_id': 'john.smith',
-                     'full_name': 'John Smith'}.iteritems():
+                     'full_name': 'John Smith',
+                     'project_title': 'Cure Warts'}.iteritems():
             insert_eav(e, a, v)
-        for n, userid in ((1, 'some.one'), (2, 'someone.else')):
+        for n, userid in ((1, 'some.one'), (2, 'carol.student')):
             insert_eav(e, 'user_id_%d' % n, userid)
         for org in HeronRecords.institutions:
             for a, v in {'approve_%s' % org: 1}.iteritems():

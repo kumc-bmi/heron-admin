@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:py="http://genshi.edgewall.org/">
+<head><title>HERON access request
+${'approved' if approved else 'rejected'}
+</title>
+</head>
+<body>
+<p>Dear ${sponsor_full_name},</p>
+
+<p>The HERON Data Request Oversight Committee has
+${'approved' if approved else 'rejected'}
+ your request for project ( ${project_title}) for the following people:</p>
+
+<ul>
+  <li py:for='n in team'>${n}</li>
+</ul>
+
+
+<py:if test='approved'>
+  <p>They may log in to ${heron_home}.</p>
+
+  <p>They will be required to sign a system access agreement if they
+  have not already done so for another project.</p>
+
+  <p>If you have any questions, feel free to email heron-admin@kumc.edu.</p>
+</py:if>
+
+<py:if test='not approved'>
+  <p>If you have any questions or want to voice concerns,
+  please email heron-admin@kumc.edu and we will
+  escalate your concerns to KUMC, UKP and KUH
+  leadership.</p>
+</py:if>
+
+<p>Sincerely,</p>
+
+<address>The HERON Team.</address>
+</body>
+</html>

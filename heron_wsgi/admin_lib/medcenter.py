@@ -92,7 +92,7 @@ class MedCenter(object):
     def __repr__(self):
         return "MedCenter(s, t)"
 
-    def _lookup(self, name):
+    def lookup(self, name):
         matches = self._svc.search('(cn=%s)' % name, Badge.attributes)
         if len(matches) != 1:
             if len(matches) == 0:
@@ -104,7 +104,7 @@ class MedCenter(object):
         return Badge.from_ldap(ldapattrs)
 
     def issue(self, req):
-        cap = self._lookup(req.remote_user)
+        cap = self.lookup(req.remote_user)
         auth = self.sealer.seal(cap)
         req.badge = cap
         req.idvault_entry = auth

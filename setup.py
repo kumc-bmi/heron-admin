@@ -38,11 +38,17 @@ requires = [
     'injector',
     'genshi',
     'pyramid',
+    'pyramid_mailer',
+    # pyramid_mailer-0.5.tar.gz#md5=115ed5a721e9f881e59529b901568aa4
+    # repoze.sendmail-2.3.tar.gz#md5=a2cc03e2dcac35bbdc44724de5f3efb2
+    # transaction-1.1.1.tar.gz#md5=30b062baa34fe1521ad979fb088c8c55
+
     'SQLAlchemy',
     'python-ldap',
     'cx_Oracle',
     'MySQL-python',
-    'py-dom-xpath'   # py-dom-xpath-0.1.tar.gz 4bbca5671245421e93ef2c1ea4e6e36810ccecbc
+    'py-dom-xpath'
+    # py-dom-xpath-0.1.tar.gz 4bbca5671245421e93ef2c1ea4e6e36810ccecbc
     #'pyinotify'
     ]
 
