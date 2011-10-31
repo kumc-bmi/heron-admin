@@ -196,6 +196,34 @@ class _TestRecord(REDCapRecord):
         self.sex = sex
 
 
+def allfields(ex, project_id, record):
+    '''Iterate over all fields in a REDCap record.
+
+    @param ex: a SQLA executable (engine, session, ...)
+    @param project_id: to match redcap_data
+    @param record: to match redcap_data
+    @return: an iterator over (k, v) pairs
+
+    For example::
+      >>> smaker = Mock.make('')
+      >>> s = smaker()
+      >>> for k, v in (('study_id', 'test_002'), ('age', 32)):
+      ...     s.execute(redcap_data.insert().values(event_id=321,
+      ...                                           project_id=123,
+      ...                                           record=1,
+      ...                                           field_name=k,
+      ...                                           value=v)) and None
+
+      >>> list(allfields(s, 123, 1))
+      [(u'age', u'32'), (u'study_id', u'test_002')]
+    '''
+    c = redcap_data.c
+    for k, v in ex.execute(select((c.field_name, c.value))
+                           .where(and_(c.project_id == project_id,
+                                       c.record == record))).fetchall():
+        yield k, v
+
+
 class SetUp(injector.Module):
     # abusing Session a bit; this really provides a subclass, not an instance, of Session
     @provides((sqlalchemy.orm.session.Session, CONFIG_SECTION))
