@@ -56,6 +56,8 @@ def eachcol(t1, t2, cols):
       u'project_id'
     '''
     # .columns is an OrderedDict, so we can correlate indexes.
+    # oops... sqlalchemy.sql.expression.FromClause.corresponding_column
+    # probably does this.
     n1 = t1.columns.keys()
     n2 = t2.columns.keys()
     return [(t1.columns[n1[n2.index(col)]], t2.columns[col])
