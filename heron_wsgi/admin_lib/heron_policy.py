@@ -1,7 +1,7 @@
 '''heron_policy.py -- HERON policy decisions, records
 
   # logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)  #@@
-  >>> mc, hp, _ = Mock.make_stuff()
+  >>> mc, hp, dr, _ = Mock.make_stuff()
   >>> mcmock = medcenter.Mock
 
 .. todo:: explain our use of injector a bit
@@ -98,9 +98,30 @@ Oversight Decisions
 
 Which users should we notify?
 
-  >>> hp.oversight_decisions()
-  [(u'-6113127513747448330', u'1', u'some.one', u'john.smith', u'John Smith')]
+  >>> ds = dr.oversight_decisions()
+  >>> ds  # doctest: +NORMALIZE_WHITESPACE
+  [(u'-8650809471427594162', u'1', u'some.one', 3),
+   (u'-8650809471427594162', u'1', u'someone.else', 3)]
 
+Get details that we might want to use in composing the notification::
+  >>> from pprint import pprint
+  >>> for record, decision, team_uid, qty in ds:
+  ...    pprint(dr.decision_detail(record))
+  {u'approve_kuh': u'1',
+   u'approve_kumc': u'1',
+   u'approve_kupi': u'1',
+   u'full_name': u'John Smith',
+   u'user_id': u'john.smith',
+   u'user_id_1': u'some.one',
+   u'user_id_2': u'someone.else'}
+  {u'approve_kuh': u'1',
+   u'approve_kumc': u'1',
+   u'approve_kupi': u'1',
+   u'full_name': u'John Smith',
+   u'user_id': u'john.smith',
+   u'user_id_1': u'some.one',
+   u'user_id_2': u'someone.else'}
+   
 '''
 
 import urllib
@@ -118,6 +139,7 @@ import medcenter
 import redcap_connect
 import sealing
 import redcapdb
+import noticelog
 import disclaimer
 from disclaimer import Disclaimer, Acknowledgement, KTimeSource
 
@@ -197,7 +219,11 @@ class HeronRecords(object):
             def get_training(self):
                 try:
                     when = mc.training(req.idvault_entry)
-                except (KeyError, IOError):
+                except (KeyError):
+                    raise NoTraining
+                except (IOError):
+                    log.warn('failed to look up training due to IOError')
+                    log.debug('training error detail', exc_info=True)
                     raise NoTraining
                 current = when >= hr._t.today().isoformat()
                 if not current:
@@ -288,7 +314,7 @@ class HeronRecords(object):
         .. todo:: check expiration date
         '''
 
-        candidate, review, exp, decision = _sponsor_queries(
+        candidate, review, decision = _sponsor_queries(
             self._oversight_project_id)
 
         q = select((decision.c.record, func.count())
@@ -302,11 +328,20 @@ class HeronRecords(object):
 
         return True
 
+
+class DecisionRecords(object):
+    @inject(rt=(config.Options, OVERSIGHT_CONFIG_SECTION),
+            engine=(sqlalchemy.engine.base.Connectable,
+                    redcapdb.CONFIG_SECTION))
+    def __init__(self, rt, engine):
+        self._oversight_project_id = rt.project_id
+        self._engine = engine
+
     def oversight_decisions(self):
         '''In order to facilitate email notification of committee
-        decisions, find all the decisions.
+        decisions, find decisions where notification has not been sent.
         '''
-        candidate, review, exp, decision = _sponsor_queries(
+        candidate, review, decision = _sponsor_queries(
             self._oversight_project_id)
 
         # committee decisions
@@ -319,21 +354,19 @@ class HeronRecords(object):
                                       decision.c.review_decision,
                                       decision.c.candidate_userid
                                       ).having(
-                               func.count() == len(self.institutions)
+                               func.count() == len(HeronRecords.institutions)
                                ).alias('cd')
-        rd = redcapdb.redcap_data
 
-        # committee decision with investigator user_id, full_name
-        uid = rd.select().where(rd.c.field_name == 'user_id').alias('uid')
-        fn = rd.select().where(rd.c.field_name == 'full_name').alias('fn')
-        j = cd.join(uid, uid.c.record == cd.c.record
-                    ).join(fn, fn.c.record == cd.c.record)
-        q = select([j.c.cd_record, j.c.cd_review_decision,
-                    j.c.cd_candidate_userid,
-                    uid.c.value.label('user_id'),
-                    fn.c.value.label('full_name')],
-                   distinct=True)  #not sure why distinct is needed...
-        return self._engine.execute(q).fetchall()
+        # decisions without notifications
+        nl = noticelog.notice_log
+        dwn = cd.outerjoin(nl).select() \
+            .with_only_columns(cd.columns).where(nl.c.record == None)
+        return self._engine.execute(dwn).fetchall()
+
+    def decision_detail(self, record):
+        return dict(list(redcapdb.allfields(self._engine,
+                                            self._oversight_project_id,
+                                            record)))
 
 
 def _saa_query(mail, survey_id):
@@ -354,7 +387,7 @@ def _saa_query(mail, survey_id):
 def _sponsor_queries(oversight_project_id):
     '''
       >>> from pprint import pprint
-      >>> candidate, review, exp, decision = _sponsor_queries(123)
+      >>> candidate, review, decision = _sponsor_queries(123)
       >>> print str(candidate) # doctest: +NORMALIZE_WHITESPACE
       SELECT redcap_data.project_id, redcap_data.record,
              redcap_data.value AS userid 
@@ -377,7 +410,6 @@ def _sponsor_queries(oversight_project_id):
       >>> print str(decision) # doctest: +NORMALIZE_WHITESPACE
       SELECT DISTINCT decision.candidate_record AS record,
                       decision.candidate_userid,
-                      decision.exp_dt_exp,
                       decision.review_institution,
                       decision.review_decision 
       FROM
@@ -387,10 +419,7 @@ def _sponsor_queries(oversight_project_id):
                review.project_id AS review_project_id,
                review.record AS review_record,
                review.institution AS review_institution,
-               review.decision AS review_decision,
-               exp.project_id AS exp_project_id,
-               exp.record AS exp_record,
-               exp.dt_exp AS exp_dt_exp 
+               review.decision AS review_decision
         FROM
          (SELECT redcap_data.project_id AS project_id,
                  redcap_data.record AS record,
@@ -398,27 +427,18 @@ def _sponsor_queries(oversight_project_id):
           FROM redcap_data 
           WHERE redcap_data.project_id = :project_id_1
             AND redcap_data.field_name LIKE :field_name_1) AS candidate
-         JOIN (SELECT redcap_data.project_id AS project_id,
-                      redcap_data.record AS record,
-                      redcap_data.field_name AS institution,
-                      redcap_data.value AS decision 
-               FROM redcap_data 
-               WHERE redcap_data.field_name LIKE :field_name_2) AS review
-          ON candidate.record = review.record
-         AND candidate.project_id = review.project_id
-         LEFT OUTER JOIN
-           (SELECT redcap_data.project_id AS project_id,
-                   redcap_data.record AS record,
-                   redcap_data.value AS dt_exp 
-            FROM redcap_data 
-            WHERE redcap_data.field_name = :field_name_3) AS exp
-          ON exp.record = review.record
-         AND exp.project_id = review.project_id) AS decision
+        JOIN (SELECT redcap_data.project_id AS project_id,
+                     redcap_data.record AS record,
+                     redcap_data.field_name AS institution,
+                     redcap_data.value AS decision 
+              FROM redcap_data 
+              WHERE redcap_data.field_name LIKE :field_name_2) AS review
+         ON candidate.record = review.record
+        AND candidate.project_id = review.project_id) AS decision
 
       >>> pprint(decision.compile().params)
       {u'field_name_1': 'user_id_%',
        u'field_name_2': 'approve_%',
-       u'field_name_3': 'date_of_expiration',
        u'project_id_1': 123}
 
     '''
@@ -438,25 +458,18 @@ def _sponsor_queries(oversight_project_id):
                      rd.c.value.label('decision'))).where(
         rd.c.field_name.like('approve_%')).alias('review')
 
-    exp = select((rd.c.project_id, rd.c.record,
-                  rd.c.value.label('dt_exp'))).where(
-        rd.c.field_name == 'date_of_expiration').alias('exp')
-
     j = candidate.join(
         review,
         and_(candidate.c.record == review.c.record,
              candidate.c.project_id == review.c.project_id)
-        ).outerjoin(exp,
-                    and_(exp.c.record == review.c.record,
-                         exp.c.project_id == review.c.project_id)
-                    ).alias('decision')
+        ).alias('decision')
 
     decision = select((j.c.candidate_record.label('record'),
-                       j.c.candidate_userid, j.c.exp_dt_exp,
+                       j.c.candidate_userid,
                        j.c.review_institution, j.c.review_decision),
                       distinct=True).alias('mysql_workaround')
 
-    return candidate, review, exp, decision
+    return candidate, review, decision
 
 
 class NoPermission(Exception):
@@ -557,15 +570,16 @@ class TestSetUp(disclaimer.TestSetUp):
                     project_id=ort.project_id,
                     record=e, event_id=1, field_name=n, value=v))
 
-        # approve some.one
-        for userid in ['some.one']:
-            for n, v in {'user_id_1': userid,
-                         'user_id': 'john.smith',
-                         'full_name': 'John Smith'}.iteritems():
-                insert_eav(hash(userid), n, v)
-            for org in HeronRecords.institutions:
-                for n, v in {'approve_' + org: 1}.iteritems():
-                    insert_eav(hash(userid), n, v)
+        # approve 2 users in 1 request
+        e = hash('john.smith')
+        for a, v in {'user_id': 'john.smith',
+                     'full_name': 'John Smith'}.iteritems():
+            insert_eav(e, a, v)
+        for n, userid in ((1, 'some.one'), (2, 'someone.else')):
+            insert_eav(e, 'user_id_%d' % n, userid)
+        for org in HeronRecords.institutions:
+            for a, v in {'approve_%s' % org: 1}.iteritems():
+                insert_eav(e, a, v)
 
         # some rejections for bill.student:
         for userid in ['bill.student']:
@@ -581,6 +595,7 @@ class TestSetUp(disclaimer.TestSetUp):
         redcapdb.redcap_surveys_participants.create(s.bind)
         s.commit()
         redcapdb.redcap_surveys_response.create(s.bind)
+        noticelog.notice_log.create(s.bind)
         for email in ['john.smith@js.example', 'big.wig@js.example']:
             s.execute(redcapdb.redcap_surveys_participants.insert().values(
                     participant_id=abs(hash(email)),
@@ -618,7 +633,8 @@ class Mock(injector.Module):
         return injector.Injector(cls.mods())
 
     @classmethod
-    def make_stuff(cls, mods=None, what=(medcenter.MedCenter, HeronRecords, None)):
+    def make_stuff(cls, mods=None, what=(medcenter.MedCenter,
+                                         HeronRecords, DecisionRecords, None)):
         if not mods:
             mods = cls.mods()
         depgraph = injector.Injector(mods)
@@ -671,6 +687,8 @@ class RunTime(injector.Module):  # pragma nocover
 if __name__ == '__main__':  # pragma nocover
     import sys
 
+    logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
+
     userid = sys.argv[1]
     depgraph = RunTime.depgraph()
     req = medcenter.Mock.login_info(userid)
@@ -678,3 +696,6 @@ if __name__ == '__main__':  # pragma nocover
     hr._mc.issue(req) # umm... peeking
     hr.issue(req)
     print req.user.repository_account()
+
+    ds = depgraph.get(DecisionRecords)
+    print "pending notifications:", ds.oversight_decisions()
