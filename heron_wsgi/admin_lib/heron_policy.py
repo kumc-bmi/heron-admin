@@ -32,9 +32,9 @@ See if they're qualified faculty::
   [Affiliate(Bill Student <bill.student@js.example>)]
   >>> stureq.faculty is None
   True
-  >>> facreq.faculty.ensure_oversight_survey(dict(title='cure everything'),
+  >>> facreq.faculty.ensure_oversight_survey(['some.one'],
   ...                                        what_for='2')
-  'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&multi=yes&title=cure+everything&user_id=john.smith&what_for=2'
+  'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&multi=yes&name_etc_1=One%2C+Some%0A%0A&user_id=john.smith&user_id_1=some.one&what_for=2'
 
 See if the students are qualified in some way::
 
@@ -124,9 +124,10 @@ Get details that we might want to use in composing the notification::
    
 '''
 
-import urllib
-import logging
 import datetime
+import itertools
+import logging
+import urllib
 
 import injector
 from injector import inject, provides, singleton
@@ -545,14 +546,36 @@ class Faculty(Affiliate):
     def sponsor(self):
         return self
 
-    def ensure_oversight_survey(self, team_params, what_for):
+    def ensure_oversight_survey(self, uids, what_for):
         if what_for not in self.oversight_request_purposes:
             raise TypeError
-        return self.record.ensure_oversight(dict(team_params,
+
+        tp = team_params(self.browser.lookup, uids)
+        return self.record.ensure_oversight(dict(tp,
                                                  user_id=self.badge.cn,
                                                  full_name=self.sort_name(),
                                                  what_for=what_for,
                                                  multi='yes'))
+
+def team_params(lookup, uids):
+    r'''
+    >>> import pprint
+    >>> pprint.pprint(list(team_params(medcenter.Mock.make()._lookup,
+    ...                                ['john.smith', 'bill.student'])))
+    [('user_id_1', 'john.smith'),
+     ('name_etc_1', 'Smith, John\nChair of Department of Neurology\n'),
+     ('user_id_2', 'bill.student'),
+     ('name_etc_2', 'Student, Bill\n\n')]
+
+    '''
+    nested = [[('user_id_%d' % (i+1), uid),
+               ('name_etc_%d' % (i+1), '%s, %s\n%s\n%s' % (
+                    a.sn, a.givenname, a.title, a.ou))]
+              for (i, uid, a) in 
+              [(i, uids[i], lookup(uids[i]))
+               for i in range(0, len(uids))]]
+    return itertools.chain.from_iterable(nested)
+
 
 
 class TestSetUp(disclaimer.TestSetUp):

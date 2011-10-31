@@ -12,7 +12,7 @@ notice_log = Table('notice_log', Base.metadata,
                    Column('record', VARCHAR(100),
                           ForeignKey('redcap_data.record')),
                    Column('timestamp', TIMESTAMP()),
-                   schema='droctools',
+                   schema='droctools',  #@@ doesn't work for testing
                    mysql_engine='InnoDB',
                    mysql_collate='utf8_unicode_ci'
                    )

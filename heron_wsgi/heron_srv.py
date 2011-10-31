@@ -29,14 +29,12 @@ import sys
 import datetime
 from urllib import URLopener, urlencode
 import urllib2
-import itertools
 from os import path
 import logging
 
 # see setup.py and http://pypi.python.org/pypi
 from paste.exceptions.errormiddleware import handle_exception
 from paste.request import parse_querystring
-from genshi.template import TemplateLoader
 import injector # http://pypi.python.org/pypi/injector/
                 # 0.3.1 7deba485e5b966300ef733c3393c98c6
 from injector import inject, provides
@@ -175,8 +173,7 @@ class REDCapLink(object):
         uids = _request_uids(req.GET)
         what_for = '2' if req.matchdict['what_for'] == '2' else '1'
 
-        there = req.faculty.ensure_oversight_survey(
-            team_params(req.faculty.browser.lookup, uids), what_for)
+        there = req.faculty.ensure_oversight_survey(uids, what_for)
 
         return HTTPFound(there)
 
@@ -285,26 +282,6 @@ class TeamBuilder(object):
                     team=team,
                     uids=' '.join(uids),
                     candidates=candidates)
-
-
-def team_params(lookup, uids):
-    r'''
-    >>> import pprint
-    >>> pprint.pprint(list(team_params(medcenter.Mock.make()._lookup,
-    ...                                ['john.smith', 'bill.student'])))
-    [('user_id_1', 'john.smith'),
-     ('name_etc_1', 'Smith, John\nChair of Department of Neurology\n'),
-     ('user_id_2', 'bill.student'),
-     ('name_etc_2', 'Student, Bill\n\n')]
-
-    '''
-    nested = [[('user_id_%d' % (i+1), uid),
-               ('name_etc_%d' % (i+1), '%s, %s\n%s\n%s' % (
-                    a.sn, a.givenname, a.title, a.ou))]
-              for (i, uid, a) in 
-              [(i, uids[i], lookup(uids[i]))
-               for i in range(0, len(uids))]]
-    return itertools.chain.from_iterable(nested)
 
 
 def edit_team(params):
@@ -569,11 +546,10 @@ class _TestUrlOpener(object):
 
 
 
-#@@ todo: test or delete this
 def app_factory(global_config,
                 webapp_ini='integration-test.ini',
                 admin_ini='admin_lib/integration-test.ini'):
-    log.debug('app_factory@@')
+    log.debug('in app_factory')
     config = RunTime.make(dict(webapp_ini=webapp_ini,
                              admin_ini=admin_ini))
 

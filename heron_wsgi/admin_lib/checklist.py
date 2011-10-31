@@ -111,7 +111,7 @@ class Mock(injector.Module):
 
     @classmethod
     def make_stuff(cls):
-        mc, hr, depgraph = heron_policy.Mock.make_stuff(cls.mods())
+        mc, hr, dr, depgraph = heron_policy.Mock.make_stuff(cls.mods())
         cl = depgraph.get(Checklist)
         return cl, hr, mc, depgraph
 
