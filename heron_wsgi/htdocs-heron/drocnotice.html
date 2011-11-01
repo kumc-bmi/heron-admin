@@ -18,17 +18,20 @@ ${'approved' if approved else 'rejected'}
 
 
 <py:if test='approved'>
-  <p>They may log in to ${heron_home}.</p>
+  <p>They may log in to <a href="${heron_home}">HERON</a>
+  (<code>${heron_home}</code>).</p>
 
   <p>They will be required to sign a system access agreement if they
   have not already done so for another project.</p>
 
-  <p>If you have any questions, feel free to email heron-admin@kumc.edu.</p>
+  <p>If you have any questions, feel free to email
+  <a href="mailto:heron-admin@kumc.edu">heron-admin@kumc.edu</a>.</p>
 </py:if>
 
 <py:if test='not approved'>
   <p>If you have any questions or want to voice concerns,
-  please email heron-admin@kumc.edu and we will
+  please email <a href="mailto:heron-admin@kumc.edu">heron-admin@kumc.edu</a>
+  and we will
   escalate your concerns to KUMC, UKP and KUH
   leadership.</p>
 </py:if>
