@@ -284,8 +284,8 @@ class RunTime(injector.Module, ModuleHelper):
              sqlalchemy.engine.url.URL(driver, rt.user, rt.password,
                                        rt.host, rt.port, rt.database))
 
-        # inverted w.r.t. object capability style, no?
-        return sqlalchemy.create_engine(u)
+        # http://www.sqlalchemy.org/docs/dialects/mysql.html#connection-timeouts
+        return sqlalchemy.create_engine(u, pool_recycle=3600)
 
 
 if __name__ == '__main__':
