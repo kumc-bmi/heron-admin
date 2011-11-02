@@ -1,10 +1,8 @@
 '''heron_policy.py -- HERON policy decisions, records
 
-  # logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)  #@@
+  # logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
   >>> mc, hp, dr, _ = Mock.make_stuff()
   >>> mcmock = medcenter.Mock
-
-.. todo:: explain our use of injector a bit
 
 Suppose an investigator and some students log in::
 
@@ -33,7 +31,7 @@ See if they're qualified faculty::
   >>> stureq.faculty is None
   True
   >>> facreq.faculty.ensure_oversight_survey(['some.one'],
-  ...                                        what_for='2')
+  ...                                        what_for=HeronRecords.DATA_USE)
   'http://bmidev1/redcap-host/surveys/?s=8074&full_name=Smith%2C+John&multi=yes&name_etc_1=One%2C+Some%0A%0A&user_id=john.smith&user_id_1=some.one&what_for=2'
 
 See if the students are qualified in some way::
@@ -96,16 +94,26 @@ We count on sqlalchemy to do this.
 Oversight Decisions
 -------------------
 
-Which users should we notify?
+What decision notifications are pending?
 
   >>> ds = dr.oversight_decisions()
-  >>> ds
-  [(34, u'-8650809471427594162', u'1', 3)]
+  >>> ds  # doctest: +NORMALIZE_WHITESPACE
+  [(34, u'-565402122873664774', u'2', 3),
+   (34, u'6373469799195807417', u'1', 3)]
 
 Get details that we might want to use in composing the notification::
   >>> from pprint import pprint
   >>> for pid, record, decision, qty in ds:
   ...    pprint(dr.decision_detail(record))
+  (John Smith <john.smith@js.example>,
+   [Bill Student <bill.student@js.example>],
+   {u'approve_kuh': u'2',
+    u'approve_kumc': u'2',
+    u'approve_kupi': u'2',
+    u'full_name': u'John Smith',
+    u'project_title': u'Cart Blanche',
+    u'user_id': u'john.smith',
+    u'user_id_1': u'bill.student'})
   (John Smith <john.smith@js.example>,
    [Some One <some.one@js.example>, Carol Student <carol.student@js.example>],
    {u'approve_kuh': u'1',
@@ -116,6 +124,10 @@ Get details that we might want to use in composing the notification::
     u'user_id': u'john.smith',
     u'user_id_1': u'some.one',
     u'user_id_2': u'carol.student'})
+
+
+.. todo:: consider factoring out low level details to make
+          the policy more clear as code.
 
 '''
 
@@ -148,8 +160,39 @@ log = logging.getLogger(__name__)
 
 
 class HeronRecords(object):
+    '''
+
+    In the oversight_project, userid of sponsored users are stored in
+    REDCap fields with names like user_id_% and approval decisions are
+    stored in fields with names like approve_%, with a distinct
+    approve_% field for each participating institution.
+
+    >>> ddict = list(_redcap_fields(open('../redcap_dd/oversight.csv')))
+    >>> dd_orgs = [n[len('approve_'):] for (n, etc) in ddict
+    ...            if n.startswith('approve_')]
+    >>> set(dd_orgs) == set(HeronRecords.institutions)
+    True
+
+    >>> len([n for (n, etc) in ddict if n.startswith('user_id_')]) > 3
+    True
+
+
+    >>> uses = _redcap_radio('what_for',
+    ...                      open('../redcap_dd/oversight.csv'))
+    >>> HeronRecords.oversight_request_purposes == tuple(
+    ...     [ix for (ix, label) in uses])
+    True
+
+    .. todo:: check expiration date
+
+    .. todo:: reduce privilege from an arbitrary urlopener to what's needed.
+    '''
     permissions = (PERM_USER, PERM_FACULTY)
     institutions = ('kuh', 'kupi', 'kumc')
+
+    SPONSORSHIP = '1'
+    DATA_USE = '2'
+    oversight_request_purposes = (SPONSORSHIP, DATA_USE)
 
     @inject(mc=medcenter.MedCenter,
             pm=i2b2pm.I2B2PM,
@@ -299,63 +342,15 @@ class HeronRecords(object):
         return OK(agent)
 
     def _sponsored(self, uid):
-        '''Test for sponsorship approval from each participating institution.
-
-        In the oversight_project, we assume userid of sponsored users
-        are stored in REDCap fields with names like user_id_% and
-        approval decisions are stored in fields with names like
-        approve_%, with a distinct approve_% field for each
-        participating institution and coded yes=1/no=2/defer=3.
-
-        .. todo:: check expiration date
-        '''
-
         decision, candidate, dc = _sponsor_queries(self._oversight_project_id)
 
-        q = dc.select(dc.c.candidate==uid)
-
+        # perhaps we should use count and scalar here?
+        q = dc.select(and_(dc.c.candidate == uid,
+                           dc.c.decision == DecisionRecords.YES))
         if not self._engine.execute(q).fetchall():
             raise NotSponsored()
 
         return True
-
-
-class DecisionRecords(object):
-    @inject(rt=(config.Options, OVERSIGHT_CONFIG_SECTION),
-            engine=(sqlalchemy.engine.base.Connectable,
-                    redcapdb.CONFIG_SECTION),
-            smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
-            mc=medcenter.MedCenter)
-    def __init__(self, rt, engine, mc, smaker):
-        self._oversight_project_id = rt.project_id
-        self._engine = engine
-        self._mc = mc
-        #smaker is just to pull in dependencies. hm.
-
-    def oversight_decisions(self):
-        '''In order to facilitate email notification of committee
-        decisions, find decisions where notification has not been sent.
-        '''
-        cd, who, cdwho = _sponsor_queries(self._oversight_project_id)
-
-        # decisions without notifications
-        nl = noticelog.notice_log
-        dwn = cd.outerjoin(nl).select() \
-            .with_only_columns(cd.columns).where(nl.c.record == None)
-        return self._engine.execute(dwn).fetchall()
-
-    def decision_detail(self, record):
-        avl = list(redcapdb.allfields(self._engine,
-                                      self._oversight_project_id,
-                                      record))
-        mc = self._mc
-        team = [mc.lookup(user_id)
-                for user_id in
-                [v for a, v in avl if v and a.startswith('user_id_')]]
-
-        d = dict(avl)
-        investigator = mc.lookup(d['user_id'])
-        return investigator, team, d
 
 
 def _saa_query(mail, survey_id):
@@ -532,8 +527,6 @@ class Executive(Affiliate):
 
     
 class Faculty(Affiliate):
-    oversight_request_purposes = ('1',  # sponsorship
-                                  '2')  # data use
     def __repr__(self):
         return 'Faculty(%s)' % (self.badge)
 
@@ -541,7 +534,7 @@ class Faculty(Affiliate):
         return self
 
     def ensure_oversight_survey(self, uids, what_for):
-        if what_for not in self.oversight_request_purposes:
+        if what_for not in HeronRecords.oversight_request_purposes:
             raise TypeError
 
         tp = team_params(self.browser.lookup, uids)
@@ -572,6 +565,80 @@ def team_params(lookup, uids):
 
 
 
+class DecisionRecords(object):
+    '''
+
+    .. note:: At test time, let's check consistency with the data
+              dictionary.
+
+    >>> choices = dict(_redcap_radio('approve_kuh',
+    ...                              open('../redcap_dd/oversight.csv')))
+    >>> choices[DecisionRecords.YES]
+    'Yes'
+    >>> choices[DecisionRecords.NO]
+    'No'
+    >>> len(choices)
+    3
+
+    '''
+
+    YES = '1'
+    NO = '2'
+
+    @inject(rt=(config.Options, OVERSIGHT_CONFIG_SECTION),
+            engine=(sqlalchemy.engine.base.Connectable,
+                    redcapdb.CONFIG_SECTION),
+            smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
+            mc=medcenter.MedCenter)
+    def __init__(self, rt, engine, mc, smaker):
+        self._oversight_project_id = rt.project_id
+        self._engine = engine
+        self._mc = mc
+        #smaker is just to pull in dependencies. hm.
+
+    def oversight_decisions(self):
+        '''In order to facilitate email notification of committee
+        decisions, find decisions where notification has not been sent.
+        '''
+        cd, who, cdwho = _sponsor_queries(self._oversight_project_id)
+
+        # decisions without notifications
+        nl = noticelog.notice_log
+        dwn = cd.outerjoin(nl).select() \
+            .with_only_columns(cd.columns).where(nl.c.record == None)
+        return self._engine.execute(dwn).fetchall()
+
+    def decision_detail(self, record):
+        avl = list(redcapdb.allfields(self._engine,
+                                      self._oversight_project_id,
+                                      record))
+        mc = self._mc
+        team = [mc.lookup(user_id)
+                for user_id in
+                [v for a, v in avl if v and a.startswith('user_id_')]]
+
+        d = dict(avl)
+        investigator = mc.lookup(d['user_id'])
+        return investigator, team, d
+
+
+def _redcap_fields(data_dictionary):
+    import csv  # csv is only used for testing
+    rows = csv.DictReader(data_dictionary)
+    for row in rows:
+        yield row["Variable / Field Name"], row
+
+def _redcap_radio(field_name, data_dictionary):
+    for n, row in _redcap_fields(data_dictionary):
+        if n == field_name:
+            choicetxt = row["Choices, Calculations, OR Slider Labels"]
+            break
+    else:
+        raise KeyError
+    return [tuple(choice.strip().split(", ", 1))
+            for choice in choicetxt.split('|')]
+
+
 class TestSetUp(disclaimer.TestSetUp):
     @singleton
     @provides((sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
@@ -587,27 +654,38 @@ class TestSetUp(disclaimer.TestSetUp):
                     project_id=ort.project_id,
                     record=e, event_id=1, field_name=n, value=v))
 
-        # approve 2 users in 1 request
-        e = hash('john.smith')
-        for a, v in {'user_id': 'john.smith',
-                     'full_name': 'John Smith',
-                     'project_title': 'Cure Warts'}.iteritems():
-            insert_eav(e, a, v)
-        for n, userid in ((1, 'some.one'), (2, 'carol.student')):
-            insert_eav(e, 'user_id_%d' % n, userid)
-        for org in HeronRecords.institutions:
-            for a, v in {'approve_%s' % org: 1}.iteritems():
-                insert_eav(e, a, v)
 
-        # some rejections for bill.student:
-        for userid in ['bill.student']:
-            for n, v in {'user_id_1': userid,
-                         'user_id': 'john.smith',
-                         'full_name': 'John Smith'}.iteritems():
-                insert_eav(hash(userid), n, v)
-            for org in HeronRecords.institutions[:2]:
-                for n, v in {'approve_' + org: 2}.iteritems():
-                    insert_eav(hash(userid), n, v)
+        def add_oversight_request(user_id, full_name, project_title,
+                                  candidates, reviews):
+            # e/a/v = entity/attribute/value
+            e = hash((user_id, project_title))
+            for a, v in (('user_id', user_id),
+                         ('full_name', full_name),
+                         ('project_title', project_title)):
+                insert_eav(e, a, v)
+            for n, userid in candidates:
+                insert_eav(e, 'user_id_%d' % n, userid)
+            for org, decision in reviews:
+                insert_eav(e, 'approve_%s' % org, decision)
+
+        # approve 2 users in 1 request
+        add_oversight_request('john.smith', 'John Smith', 'Cure Warts',
+                              ((1, 'some.one'), (2, 'carol.student')),
+                              [(org, DecisionRecords.YES)
+                               for org in HeronRecords.institutions])
+
+
+        # A request to sponsor bill.student is only reviewed by 2 of 3 orgs:
+        add_oversight_request('john.smith', 'John Smith', 'Cure Hair Loss',
+                              ((1, 'bill.student'),),
+                              [(org, DecisionRecords.YES)
+                               for org in HeronRecords.institutions[:2]])
+
+        # Another request to sponsor bill.student was rejected:
+        add_oversight_request('john.smith', 'John Smith', 'Cart Blanche',
+                              ((1, 'bill.student'),),
+                              [(org, DecisionRecords.NO)
+                               for org in HeronRecords.institutions])
 
         log.debug('add SAA records')
         redcapdb.redcap_surveys_participants.create(s.bind)
@@ -626,6 +704,8 @@ class TestSetUp(disclaimer.TestSetUp):
 
         s.commit()
         return smaker
+
+
 
 class Mock(injector.Module):
 
