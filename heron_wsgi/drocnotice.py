@@ -75,10 +75,6 @@ class DROCNotice(object):
         self._mailer = mailer
 
     def configure(self, config, route, permission=None):
-        # Configurator.include interacts badly with injector
-        aux = pyramid.config.Configurator(registry=config.registry)
-        aux.include('pyramid_mailer')
-
         config.add_view(self.send_notices, route_name=route,
                         request_method='POST',
                         permission=permission)
