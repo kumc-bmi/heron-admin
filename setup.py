@@ -14,7 +14,7 @@ import sys
 from setuptools import setup, find_packages
 
 here = os.path.abspath(os.path.dirname(__file__))
-README = '@@TODO'  #open(os.path.join(here, 'README.txt')).read()
+README = open(os.path.join(here, 'README.rst')).read()
 CHANGES = '@@TODO' #open(os.path.join(here, 'CHANGES.txt')).read()
 
 # Be careful with site-packages dependencies. You don't want:
@@ -57,7 +57,7 @@ if sys.version_info[:3] < (2,5,0):
 
 setup(name='heron_wsgi',
       version=__version__,
-      description='HERON regulatory enforcement web interface',
+      description=README.split('\n', 1)[0],
       long_description=README + '\n\n' +  CHANGES,
       classifiers=[
         "Programming Language :: Python",

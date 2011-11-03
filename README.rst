@@ -1,26 +1,19 @@
-This repository is a mixure of a java approach and a python approach
-to our i2b2 oversight tools.
+HERON regulatory enforcement web interface
+******************************************
 
-apache-conf - proxy configuration for the Java approach
+The Healthcare Enterprise Repository for Ontological Narration (HERON)
+is a method to integrate clinical and biomedical data for
+translational research. The bulk of the functionality is provided by
+i2b2__; this code is the regulatory enforcement web interface.
 
-apache-conf-raven - mod_wsgi configuration for the python approach
+__ https://www.i2b2.org/
 
-.classpath
-.pmd
-.project
-.settings - eclipse gorp
-.wtpmodules
 
 heron_wsgi - the python approach
 
 .. todo:: administrative interface: POST to re-read config files
 
 .hgignore - stuff to ignore from version control (e.g. maven's target/)
-
-pom.xml - maven package object model (build file) for the Java approach,
-          which is being phased out
-
-src - the java approach
 
 
 Object Capability Style and Dependency Injection
@@ -46,7 +39,7 @@ __ http://wiki.erights.org/wiki/Walnut/Ordinary_Programming#Security_of_emakers
 
 
 injector gotchas
-****************
+................
 
 When you see this::
 
@@ -59,3 +52,26 @@ When you see this::
     TypeError: isinstance() arg 2 must be a class, type, or tuple of classes and types
 
 Look for one of the constructor args to HeronRecords that isn't bound.
+
+
+Java Approach
+-------------
+
+This repository is a mixure of a java approach and a python approach.
+
+following Java/eclipse norms, we have:
+
+ - src
+ - .classpath
+ - .pmd
+ - .project
+ - .settings
+ - .wtpmodules
+ - pom.xml - maven package object model (build file)
+
+We also have:
+
+apache-conf - proxy configuration for the Java approach
+
+apache-conf-raven - mod_wsgi configuration for the python approach
+
