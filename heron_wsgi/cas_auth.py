@@ -80,11 +80,7 @@ from injector import inject, provides
 
 import pyramid
 from pyramid import security
-from pyramid.view import view_config
-from pyramid.httpexceptions import HTTPUnauthorized, HTTPBadRequest
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPSeeOther
-from pyramid.events import NewRequest
-from pyramid.events import subscriber
 from pyramid.authentication import AuthTktAuthenticationPolicy
 
 from admin_lib.config import Options, TestTimeOptions, RuntimeOptions
@@ -154,7 +150,6 @@ class Validator(object):
                         request_method='POST')
 
     def redirect(self, context, request):
-        import sys
         if 'ticket' in request.params:
             # already been here before
             return HTTPForbidden()
@@ -338,7 +333,6 @@ def _integration_test(ini, host='127.0.0.1', port=8123):
     guide = MockIssuer()
     guard = depgraph.get(Validator)
     guard.add_issuer(guide)
-    rt = depgraph.get((Options, CONFIG_SECTION))
     config.add_route('logout', 'logout')
     guard.configure(config, 'logout')
 
