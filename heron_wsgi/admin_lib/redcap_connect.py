@@ -11,25 +11,28 @@
   token=sekret
 
   >>> setup = survey_setup(_test_settings, _TestUrlOpener())
-  >>> setup('john.smith', {'user_id': 'john.smith', 'full_name': 'John Smith'})
-  'http://bmidev1/redcap-host/surveys/?s=8074&full_name=John+Smith&user_id=john.smith'
+  >>> setup('john.smith',
+  ...       {'user_id': 'john.smith', 'full_name': 'John Smith'}).split('?')
+  ... # doctest: +NORMALIZE_WHITESPACE
+  ['http://bmidev1/redcap-host/surveys/',
+   's=8074&full_name=John+Smith&user_id=john.smith']
+
 
 '''
 
 import json
 import logging
-import pprint
 import sys
 import urllib
-import urllib2
 
 import config
 
 log = logging.getLogger(__name__)
 
 
-def settings(ini, section, extras=[]):
-    rt = config.RuntimeOptions('token api_url survey_url domain survey_id'.split() + extras)
+def settings(ini, section, extras=None):
+    rt = config.RuntimeOptions('token api_url survey_url domain survey_id'
+                               .split() + ([] if extras is None else extras))
     rt.load(ini, section)
     return rt
 
@@ -47,14 +50,16 @@ def survey_setup(rt, urlopener):
         ans = json.loads(body)
         log.info('REDCap API answer: %s', ans)
         surveycode = ans['hash']
-        params = urllib.urlencode([('s', surveycode)] + sorted(params.iteritems()))
+        params = urllib.urlencode([('s', surveycode)]
+                                  + sorted(params.iteritems()))
         return rt.survey_url + '?' + params
 
     return setup
 
 
 class _TestUrlOpener(object):
-    def open(self, addr, body):
+    def open(self, addr, _):  # pylint: disable=R0201
+                              # class wouldn't work.
         return _TestResponse(hex(abs(hash(addr)))[-4:])
 
 class _TestResponse(object):
@@ -85,10 +90,11 @@ def _integration_test(ini='integration-test.ini',
     s2 = survey_setup(settings(ini, section2), urllib.URLopener())
     return s1, s2
 
+
 def _test_multi_use(c, uid, full_name, ua):
     '''Test that a user can use the same survey to make multiple requests.
     '''
-    params = {'email': userid + '@kumc.edu', 'full_name': full_name}
+    params = {'email': uid + '@kumc.edu', 'full_name': full_name}
     addr1 = c(uid, params, multi=True)
 
     content1 = ua.open(addr1).read()
@@ -99,7 +105,8 @@ def _test_multi_use(c, uid, full_name, ua):
 
     addr2 = c(uid, params, multi=True)
     if addr2 == addr1:
-        raise ValueError, '2nd request has same address as 1st: %s = %s' % (addr1, addr2)
+        raise ValueError, '2nd request has same address as 1st: %s = %s' % (
+            addr1, addr2)
 
     content2 = ua.open(addr2).read()
     if 'already' in content2:
@@ -107,10 +114,11 @@ def _test_multi_use(c, uid, full_name, ua):
 
     
 
-if __name__ == '__main__':  # pragma nocover
+def _test_main():
+    from pprint import pprint  # pylint: disable=W0404
+
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
-    from pprint import pprint
     userid, fullName = sys.argv[1:3]
     c1, c2 = _integration_test()
     try:
@@ -123,3 +131,6 @@ if __name__ == '__main__':  # pragma nocover
         print e
 
     _test_multi_use(c2, userid, fullName, urllib.URLopener())
+
+if __name__ == '__main__':  # pragma nocover
+    _test_main()
