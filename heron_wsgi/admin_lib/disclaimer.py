@@ -1,9 +1,12 @@
 '''disclaimer -- access disclaimers and acknowledgements from REDCap EAV DB
 
-:class:`Disclaimer` and :class:`Acknowledgement` provide read-only access via SQL queries.
+:class:`Disclaimer` and :class:`Acknowledgement` provide read-only
+access via SQL queries.
+
 :class:`AcknowledgementsProject`: supports adding records via the REDCap API.
 
-Let's get a sessionmaker and an AcknowledgementsProject, which causes the database to get set up::
+Let's get a sessionmaker and an AcknowledgementsProject, which causes
+the database to get set up::
 
   >>> smaker, acksproj = Mock.make_stuff('', stuff=(
   ...       (sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
@@ -18,7 +21,9 @@ Let's get a sessionmaker and an AcknowledgementsProject, which causes the databa
 Now note the mapping to the Disclaimer class::
 
   >>> s.query(Disclaimer).all()
-  [Disclaimer(disclaimer_id=1, url=http://example/blog/item/heron-release-xyz, current=1)]
+  ... # doctest: +NORMALIZE_WHITESPACE
+  [Disclaimer(disclaimer_id=1,
+              url=http://example/blog/item/heron-release-xyz, current=1)]
 
 '''
 
@@ -45,8 +50,8 @@ import config
 import redcapdb
 from orm_base import Base
 
-DISCLAIMERS_SECTION='disclaimers'
-ACKNOWLEGEMENTS_SECTION='disclaimer_acknowledgements'
+DISCLAIMERS_SECTION = 'disclaimers'
+ACKNOWLEGEMENTS_SECTION = 'disclaimer_acknowledgements'
 KTimeSource = injector.Key('TimeSource')
 
 log = logging.getLogger(__name__)
@@ -62,7 +67,7 @@ class Disclaimer(redcapdb.REDCapRecord):
            >>> d.content(_TestUrlOpener())
            (u'<div id="blog-main">\n<h1 class="blog-title">headline</h1>main blog copy...\n</div>', u'headline')
         '''
-        body = ua.open(self.url).read()
+        body = ua.open(self.url).read()  # pylint: disable=E1101
         kludge = StringIO.StringIO(body.replace('&larr;', ''
                                                 ).replace('&rarr;', '')
                                    )  #KLUDGE
@@ -71,7 +76,7 @@ class Disclaimer(redcapdb.REDCapRecord):
 
         return elt.toxml(), headline
 
-_test_doc='''
+_test_doc = '''
 <!DOCTYPE html>
 <html><head><title>...</title></head>
 <body>
@@ -85,7 +90,7 @@ _test_doc='''
 '''
 
 class _TestUrlOpener(object):
-    def open(self, addr):
+    def open(self, _):  # pylint: disable=R0201
         return StringIO.StringIO(_test_doc)
 
 
@@ -94,7 +99,8 @@ class Acknowledgement(redcapdb.REDCapRecord):
 
 
 class AcknowledgementsProject(object):
-    '''AcknowledgementsProject serves as a REDCap API proxy for adding Acknowledgement records.
+    '''AcknowledgementsProject serves as a REDCap API proxy for adding
+    Acknowledgement records.
     '''
     @inject(rt=(config.Options, ACKNOWLEGEMENTS_SECTION),
             ua=urllib.URLopener,
@@ -112,7 +118,8 @@ class AcknowledgementsProject(object):
         self._uuidgen = uuidgen
 
     def add_record(self, user_id, disclaimer_address):
-        # Rather than keeping track of the next record ID, we just use random IDs.
+        # Rather than keeping track of the next record ID, we just use
+        # random IDs.
         ack = self._uuidgen()
         # YYYY-MM-DD hh:mm:ss
         timestamp = self._timesrc.now().isoformat(sep=' ')[:19]
@@ -137,7 +144,12 @@ class AcknowledgementsProject(object):
 
 class ModuleHelper(object):
     @classmethod
-    def make_stuff(cls, ini, stuff=((sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION),
+    def mods(cls, ini):
+        raise NotImplementedError
+
+    @classmethod
+    def make_stuff(cls, ini, stuff=((sqlalchemy.engine.base.Connectable,
+                                     redcapdb.CONFIG_SECTION),
                                     AcknowledgementsProject)):
         depgraph = injector.Injector(cls.mods(ini))
         return [depgraph.get(what) for what in stuff]
@@ -178,7 +190,8 @@ class Mock(redcapdb.SetUp, ModuleHelper, redcapdb.ModuleHelper):
 class TestSetUp(redcapdb.SetUp):
     @singleton
     @provides((sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
-    @inject(engine=(sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION),
+    @inject(engine=(sqlalchemy.engine.base.Connectable,
+                    redcapdb.CONFIG_SECTION),
             drt=(config.Options, DISCLAIMERS_SECTION),
             art=(config.Options, ACKNOWLEGEMENTS_SECTION))
     def redcap_sessionmaker(self, engine, drt, art):
@@ -249,7 +262,7 @@ class RunTime(injector.Module, ModuleHelper):
         return redcapdb.RunTime.mods(ini) + [cls(ini)]
 
 
-if __name__ == '__main__':
+def _test_main():
     import sys
     logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
@@ -261,7 +274,7 @@ if __name__ == '__main__':
     if '--ack' in sys.argv:
         s = sm()
         user_id = sys.argv[2]
-        d = s.query(Disclaimer).filter(Disclaimer.current==1).first()
+        d = s.query(Disclaimer).filter(Disclaimer.current == 1).first()
         acks.add_record(user_id, d.url)
 
     s = sm()
@@ -274,8 +287,12 @@ if __name__ == '__main__':
         print ack
 
     print "current disclaimer and content:"
-    for d in s.query(Disclaimer).filter(Disclaimer.current==1):
+    for d in s.query(Disclaimer).filter(Disclaimer.current == 1):
         print d
         c, h = d.content(urllib2.build_opener())
         print h
         print c[:100]
+
+
+if __name__ == '__main__':
+    _test_main()
