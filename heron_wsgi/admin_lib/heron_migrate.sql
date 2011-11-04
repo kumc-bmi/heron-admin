@@ -4,7 +4,7 @@ select
 , signature as full_name -- replace from LDAP?
 , sponsor_id as user_id
 , req.research_title as project_title
-, to_char(expire_date, 'yyyy-mm-dd hh:mm:ss') as date_of_expiration
+, to_char(expire_date, 'yyyy-mm-dd') as date_of_expiration
 , case access_type
   when 'VIEW_ONLY' then '1'
   when 'DATA_ACCESS' then '2'
@@ -31,13 +31,13 @@ select
   when req.ukp_approval_status = 'A' then '1'
   when req.ukp_approval_status = 'N' then '2' -- not sure
   when req.ukp_approval_status = 'D' then '3'
-  end as approve_ukp
+  end as approve_kupi
 , 'reviewed by ' || kumc_approved_by
   || ' at ' || to_char(kumc_approval_tmst, 'yyyy-mm-dd hh:mm:ss') as notes_kumc
 , 'reviewed by ' || kuh_approved_by
   || ' at ' || to_char(kuh_approval_tmst, 'yyyy-mm-dd hh:mm:ss') as notes_kuh
 , 'reviewed by ' || ukp_approved_by
-  || ' at ' || to_char(ukp_approval_tmst, 'yyyy-mm-dd hh:mm:ss') as notes_ukp
+  || ' at ' || to_char(ukp_approval_tmst, 'yyyy-mm-dd hh:mm:ss') as notes_kupi
 from heron.sponsorship req
 group by sponsor_id, research_title, signature, expire_date, access_type
        , research_desc
@@ -54,8 +54,8 @@ create or replace view heron.sponsorship_candidates as
 , hs.sponsorship_id
 , trim(hs.user_id) as user_id
 , case hs.kumc_empl_flag
-  when 'Y' then 1
-  when 'N' then 2
+  when 'Y' then '1'
+  when 'N' then '0'
   end as kumc_employee
 , case hs.kumc_empl_flag
   when 'Y' then null
@@ -72,8 +72,5 @@ from
 order by hs.sponsorship_id
 ;
 
-create or replace view system_access as
-select user_id
-     , user_full_name as full_name
-     , signed_date
-from heron.system_access_users sau;
+select * from heron.sponsorship_candidates;
+

@@ -135,6 +135,8 @@ import datetime
 import itertools
 import logging
 import urllib
+import csv  # csv, os only used _DataDict, i.e. testing
+import os
 
 import injector
 from injector import inject, provides, singleton
@@ -167,18 +169,17 @@ class HeronRecords(object):
     stored in fields with names like approve_%, with a distinct
     approve_% field for each participating institution.
 
-    >>> ddict = list(_redcap_fields(_redcap_open('oversight')))
-    >>> dd_orgs = [n[len('approve_'):] for (n, etc) in ddict
+    >>> ddict = _DataDict('oversight')
+    >>> dd_orgs = [n[len('approve_'):] for (n, etc) in ddict.fields()
     ...            if n.startswith('approve_')]
     >>> set(dd_orgs) == set(HeronRecords.institutions)
     True
 
-    >>> len([n for (n, etc) in ddict if n.startswith('user_id_')]) > 3
+    >>> len([n for (n, etc) in ddict.fields() if n.startswith('user_id_')]) > 3
     True
 
 
-    >>> uses = _redcap_radio('what_for',
-    ...                      _redcap_open('oversight'))
+    >>> uses = ddict.radio('what_for')
     >>> HeronRecords.oversight_request_purposes == tuple(
     ...     [ix for (ix, label) in uses])
     True
@@ -571,8 +572,7 @@ class DecisionRecords(object):
     .. note:: At test time, let's check consistency with the data
               dictionary.
 
-    >>> choices = dict(_redcap_radio('approve_kuh',
-    ...                              _redcap_open('oversight')))
+    >>> choices = dict(_DataDict('oversight').radio('approve_kuh'))
     >>> choices[DecisionRecords.YES]
     'Yes'
     >>> choices[DecisionRecords.NO]
@@ -622,26 +622,28 @@ class DecisionRecords(object):
         return investigator, team, d
 
 
-def _redcap_open(basename):
-    import os
-    return open(os.path.join(os.path.dirname(__file__), '..', 'redcap_dd',
-                             basename + '.csv'))
+class _DataDict(object):
+    def __init__(self, name,
+                 base = os.path.join(os.path.dirname(__file__),
+                                     '..', 'redcap_dd')):
+        def open_it():
+            return open(os.path.join(base, name + '.csv'))
+        self._open = open_it
 
-def _redcap_fields(data_dictionary):
-    import csv  # csv is only used for testing
-    rows = csv.DictReader(data_dictionary)
-    for row in rows:
-        yield row["Variable / Field Name"], row
+    def fields(self):
+        rows = csv.DictReader(self._open())
+        for row in rows:
+            yield row["Variable / Field Name"], row
 
-def _redcap_radio(field_name, data_dictionary):
-    for n, row in _redcap_fields(data_dictionary):
-        if n == field_name:
-            choicetxt = row["Choices, Calculations, OR Slider Labels"]
-            break
-    else:
-        raise KeyError
-    return [tuple(choice.strip().split(", ", 1))
-            for choice in choicetxt.split('|')]
+    def radio(self, field_name):
+        for n, row in self.fields():
+            if n == field_name:
+                choicetxt = row["Choices, Calculations, OR Slider Labels"]
+                break
+        else:
+            raise KeyError
+        return [tuple(choice.strip().split(", ", 1))
+                for choice in choicetxt.split('|')]
 
 
 class TestSetUp(disclaimer.TestSetUp):

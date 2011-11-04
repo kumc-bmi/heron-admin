@@ -36,22 +36,26 @@ class Migration(object):
 
     At test time, check constants here against the data dictionary:
 
-    >>> from heron_policy import _redcap_open, _redcap_fields
-    >>> ddict = list(_redcap_fields(_redcap_open('system_access')))
-    >>> Migration.saa_schema[1:] == tuple([n for n, etc in ddict][1:])
+    >>> from heron_policy import _DataDict
+    >>> ddict = _DataDict('system_access')
+    >>> Migration.saa_schema[1:] == tuple([n for n, etc in ddict.fields()][1:])
     True
 
-    >>> from heron_policy import _redcap_radio
-    >>> choices = dict(_redcap_radio('agree', _redcap_open('system_access')))
+    >>> choices = dict(ddict.radio('agree'))
     >>> choices[Migration.YES] == 'Yes'
     True
 
-    >>> from heron_policy import _redcap_open, _redcap_fields
-    >>> fs = set([n for n, etc in _redcap_fields(_redcap_open('oversight'))])
+    >>> droc_ddict = _DataDict('oversight')
+    >>> fs = set([n for n, etc in droc_ddict.fields()])
     >>> set(['user_id_1', 'user_id_10']) - fs
     set([])
+
+    >>> [desc['Field Type'] for n, desc in droc_ddict.fields()
+    ...  if n == 'kumc_employee_5']
+    ['yesno']
     '''
     YES = '1'
+    NO = '0'
     saa_schema = ('participant_id', 'user_id', 'full_name', 'agree')
 
     @inject(smaker=(Session, i2b2pm.CONFIG_SECTION),
@@ -75,37 +79,47 @@ class Migration(object):
 
         sigs = s.execute(select((text('rownum'),
                                  system_access_users))).fetchall()
-        log.debug('signatures: %s', sigs[:limit])
 
-        self._saaproxy.post_csv(records=[self.saa_schema] +
-                                [(sig[0], sig[1], sig[2], self.YES)
-                                 for sig in sigs[:limit]],
-                                type='flat')
+        log.debug('signature fields: %s', pformat(sigs[0].items()))
+        records = [dict(participant_id=sig['rownum'],
+                        user_id=sig['user_id'],
+                        full_name=sig['user_full_name'],
+                        agree=self.YES)
+                   for sig in sigs[:limit]]
+
+        log.debug('signature records: %s', pformat(records))
+        self._saaproxy.post_json(content='record',
+                                 data=records,
+                type='flat')
 
     def migrate_droc(self, limit=5):
         s = self._smaker()
         oversight_request = self._table(s, 'oversight_request')
         sponsorship_candidates = self._table(s, 'sponsorship_candidates')
 
-        reqs = s.execute(oversight_request.select()).fetchmany(limit)  #@@
+        reqs = s.execute(oversight_request.select()).fetchall()
         candidates = dict(((k, list(igroup)) for k, igroup in
                            groupby(s.execute(sponsorship_candidates.select()
                                              ).fetchall(),
                                    itemgetter(0))))
 
-        records = [dict(skipnulls(req) + user_fields(
-                    candidates.get(req['request_id'], [])))
+        records = [dict(rowitems(req, 'request_id')
+                        + [('participant_id', int(req['request_id']))]
+                        + user_fields(candidates.get(req['request_id'], [])))
                    for req in reqs]
 
         log.debug('droc requests: %s', pformat(records[:limit]))
 
-        # todo: post records to API
-        raise NotImplementedError
+        log.debug('droc record ids: %s',
+                  [rec['participant_id'] for rec in records])
+
+        self._drocproxy.post_json(content='record', data=records[:limit])  #@@
 
 
-def skipnulls(row):
-    return [(k, v) for k,v in row.items()
-            if v is not None]
+def rowitems(row, k_skip):
+    return [(k, v)
+            for k,v in row.items()
+            if v is not None and k != k_skip]
 
 def user_fields(cg):
     '''

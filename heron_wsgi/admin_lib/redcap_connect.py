@@ -71,6 +71,10 @@ def endPoint(ua, addr, token):
         log.debug('REDCap API JSON answer: %s', ans)
         return ans
 
+    def post_json(content, data, **args):
+        return _request(content=content, format='json',
+                        data=json.dumps(data), **args)
+
     def post_csv(records, **args):
         buf = StringIO.StringIO()
         rowbuf = csv.writer(buf)
@@ -85,6 +89,7 @@ def endPoint(ua, addr, token):
         return ua.open(addr, urllib.urlencode(params)).read()
 
     return EDef(accept_json=accept_json,
+                post_json=post_json,
                 post_csv=post_csv)
 
 
