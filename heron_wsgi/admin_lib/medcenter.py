@@ -214,6 +214,12 @@ class Badge(AttrDict):
     def __repr__(self):
         return '%s %s <%s>' % (self.givenname, self.sn, self.mail)
 
+    def full_name(self):
+        return '%s %s' % (self.givenname, self.sn)
+
+    def sort_name(self):
+        return '%s, %s' % (self.sn, self.givenname)
+
     def userid(self):
         # TODO: use python property stuff?
         return self.cn

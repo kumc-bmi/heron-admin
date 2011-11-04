@@ -88,6 +88,7 @@ class Migration(object):
                                  system_access_users))).fetchall()
 
         log.debug('signature fields: %s', pformat(sigs[0].items()))
+        log.info('signatures: %s', pformat([sig['user_id'] for sig in sigs]))
         records = [dict(participant_id=sig['rownum'],
                         user_id=sig['user_id'].strip(),
                         full_name=self._mc.lookup(sig['user_id'].strip()
@@ -114,9 +115,19 @@ class Migration(object):
                                              ).fetchall(),
                                    itemgetter(0))))
 
-        records = [dict(rowitems(req, ('request_id', 'approval_time'))
+        log.info('Oversight Requests: %s',
+                 pformat([(req['request_id'],
+                           req['user_id'],
+                           req['project_title'])
+                          for req in reqs]))
+        lookup = self._mc.lookup
+        records = [dict(rowitems(req,
+                                 ('request_id', 'approval_time', 'full_name'))
+                        + [('full_name', lookup(req['user_id'].strip()
+                                                ).full_name())]
                         + [('participant_id', int(req['request_id']))]
-                        + user_fields(self._mc.lookup,
+                        + [('heron_oversight_request_complete', '2')]
+                        + user_fields(lookup,
                                       candidates.get(req['request_id'], [])))
                    for req in reqs]
 

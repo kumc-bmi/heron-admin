@@ -1,22 +1,22 @@
 create or replace view heron.oversight_request as
 select
   min(sponsorship_id) as request_id
-, signature as full_name -- replace from LDAP?
 , sponsor_id as user_id
 , req.research_title as project_title
-, to_char(expire_date, 'yyyy-mm-dd') as date_of_expiration
+, to_char(max(expire_date), 'yyyy-mm-dd') as date_of_expiration
 , case access_type
   when 'VIEW_ONLY' then '1'
   when 'DATA_ACCESS' then '2'
   end as what_for
-, case access_type
+, max(case access_type
   when 'VIEW_ONLY' then research_desc
   when 'DATA_ACCESS' then null
-  end as description_sponsor
-, case access_type
+  end) as description_sponsor
+, max(case access_type
   when 'VIEW_ONLY' then null
   when 'DATA_ACCESS' then research_desc
-  end as data_use_description
+  end) as data_use_description
+-- , '1' as "heron_oversight_request_complete"
 , case
   when req.kumc_approval_status = 'A' then '1'
   when req.kumc_approval_status = 'N' then '2' -- not sure
@@ -33,21 +33,29 @@ select
   when req.ukp_approval_status = 'D' then '3'
   end as approve_kupi
 , 'reviewed by ' || kumc_approved_by
-  || ' at ' || to_char(kumc_approval_tmst, 'yyyy-mm-dd hh:mm:ss') as notes_kumc
+  || ' at ' || to_char(max(kumc_approval_tmst), 'yyyy-mm-dd hh:mm:ss') as notes_kumc
 , 'reviewed by ' || kuh_approved_by
-  || ' at ' || to_char(kuh_approval_tmst, 'yyyy-mm-dd hh:mm:ss') as notes_kuh
+  || ' at ' || to_char(max(kuh_approval_tmst), 'yyyy-mm-dd hh:mm:ss') as notes_kuh
 , 'reviewed by ' || ukp_approved_by
-  || ' at ' || to_char(ukp_approval_tmst, 'yyyy-mm-dd hh:mm:ss') as notes_kupi
+  || ' at ' || to_char(max(ukp_approval_tmst), 'yyyy-mm-dd hh:mm:ss') as notes_kupi
+, case when max(kumc_approval_tmst) is not null then '2' -- complete
+       else null end as kumc_review_complete
+, case when max(kuh_approval_tmst) is not null then '2'
+       else null end as kuh_review_complete
+, case when max(ukp_approval_tmst) is not null then '2'
+       else null end as kupi_review_complete
+, greatest(max(kumc_approval_tmst),
+           max(kuh_approval_tmst),
+           max(ukp_approval_tmst)) as approval_time
 from heron.sponsorship req
-group by sponsor_id, research_title, signature, expire_date, access_type
-       , research_desc
+group by sponsor_id, research_title, access_type
        , kumc_approval_status, kuh_approval_status, ukp_approval_status
        , kumc_approved_by, kuh_approved_by, ukp_approved_by
-       , kumc_approval_tmst, kuh_approval_tmst, ukp_approval_tmst
 order by min(sponsorship_id)
 ;
 
--- select * from heron_oversight_request;
+-- select * from heron.sponsorship order by sponsorship_id;
+-- select * from heron.oversight_request;
 
 create or replace view heron.sponsorship_candidates as
 (select req.request_id, req.sponsor_id
