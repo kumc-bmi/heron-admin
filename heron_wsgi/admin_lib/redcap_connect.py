@@ -44,11 +44,13 @@ def survey_setup(rt, urlopener):
     proxy = endPoint(urlopener, rt.api_url, rt.token)
     domain = rt.domain
 
-    def setup(userid, params, multi=False):
+    def setup(userid, params, multi=False, ans_kludge=None):
         ans = proxy.accept_json(content='survey',
                                 multi='yes' if multi else 'no',
                                 email='%s@%s' % (userid, domain))
         surveycode = ans['hash']
+        if ans_kludge:
+            ans_kludge(ans)
         params = urllib.urlencode([('s', surveycode)]
                                   + sorted(params.iteritems()))
         return rt.survey_url + '?' + params
