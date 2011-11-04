@@ -1,109 +1,79 @@
+create or replace view heron.oversight_request as
 select
-  min(sponsorship_id) as record
-, 'project_title' as field_name
-, req.research_title as value
-from heron.sponsorship req
-group by sponsor_id, research_title
-
-union all
-
-select
-  min(sponsorship_id) as record
-, 'user_id' as field_name
-, req.sponsor_id as value
-from heron.sponsorship req
-group by sponsor_id, research_title
-
-union all
-
-select
-  min(sponsorship_id) as record
-, 'what_for' as field_name
-, case req.access_type
+  min(sponsorship_id) as request_id
+, signature as full_name -- replace from LDAP?
+, sponsor_id as user_id
+, req.research_title as project_title
+, to_char(expire_date, 'yyyy-mm-dd hh:mm:ss') as date_of_expiration
+, case access_type
   when 'VIEW_ONLY' then '1'
   when 'DATA_ACCESS' then '2'
-  end as value
-from heron.sponsorship req
-group by sponsor_id, research_title, access_type
-
-union all
-
-select
-  min(sponsorship_id) as record
-, 'approve_kumc' as field_name
+  end as what_for
+, case access_type
+  when 'VIEW_ONLY' then research_desc
+  when 'DATA_ACCESS' then null
+  end as description_sponsor
+, case access_type
+  when 'VIEW_ONLY' then null
+  when 'DATA_ACCESS' then research_desc
+  end as data_use_description
 , case
   when req.kumc_approval_status = 'A' then '1'
   when req.kumc_approval_status = 'N' then '2' -- not sure
   when req.kumc_approval_status = 'D' then '3'
-  end as value
-from heron.sponsorship req
-where req.kumc_approval_status is not null
-group by sponsor_id, research_title, kumc_approval_status
-
-union all
-
-select
-  min(sponsorship_id) as record
-, 'approve_ukp' as field_name
-, case
-  when req.ukp_approval_status = 'A' then '1'
-  when req.ukp_approval_status = 'N' then '2' -- not sure
-  when req.ukp_approval_status = 'D' then '3'
-  end as value
-from heron.sponsorship req
-where req.ukp_approval_status is not null
-group by sponsor_id, research_title, ukp_approval_status
-
-union all
-
-select
-  min(sponsorship_id) as record
-, 'approve_kuh' as field_name
+  end as approve_kumc
 , case
   when req.kuh_approval_status = 'A' then '1'
   when req.kuh_approval_status = 'N' then '2' -- not sure
   when req.kuh_approval_status = 'D' then '3'
-  end as value
+  end as approve_kuh
+, case
+  when req.ukp_approval_status = 'A' then '1'
+  when req.ukp_approval_status = 'N' then '2' -- not sure
+  when req.ukp_approval_status = 'D' then '3'
+  end as approve_ukp
+, 'reviewed by ' || kumc_approved_by
+  || ' at ' || to_char(kumc_approval_tmst, 'yyyy-mm-dd hh:mm:ss') as notes_kumc
+, 'reviewed by ' || kuh_approved_by
+  || ' at ' || to_char(kuh_approval_tmst, 'yyyy-mm-dd hh:mm:ss') as notes_kuh
+, 'reviewed by ' || ukp_approved_by
+  || ' at ' || to_char(ukp_approval_tmst, 'yyyy-mm-dd hh:mm:ss') as notes_ukp
 from heron.sponsorship req
-where req.kuh_approval_status is not null
-group by sponsor_id, research_title, kuh_approval_status
+group by sponsor_id, research_title, signature, expire_date, access_type
+       , research_desc
+       , kumc_approval_status, kuh_approval_status, ukp_approval_status
+       , kumc_approved_by, kuh_approved_by, ukp_approved_by
+       , kumc_approval_tmst, kuh_approval_tmst, ukp_approval_tmst
+order by min(sponsorship_id)
+;
 
--- repeat for kuh, ukp
+-- select * from heron_oversight_request;
 
-union all
-
-(select req.record
-, 'user_id_' || hs.sponsorship_id as field_name
-, trim(hs.user_id) as value
+create or replace view heron.sponsorship_candidates as
+(select req.request_id, req.sponsor_id
+, hs.sponsorship_id
+, trim(hs.user_id) as user_id
+, case hs.kumc_empl_flag
+  when 'Y' then 1
+  when 'N' then 2
+  end as kumc_employee
+, case hs.kumc_empl_flag
+  when 'Y' then null
+  when 'N' then hs.user_desc
+  end as affiliation
 from
 (select
-  min(sponsorship_id) as record, sponsor_id, research_title
+  min(sponsorship_id) as request_id, signed_date, sponsor_id, research_title
   from heron.sponsorship
-  group by sponsor_id, research_title) req
+  group by sponsor_id, research_title, signed_date) req
  join heron.sponsorship hs
   on req.sponsor_id=hs.sponsor_id and req.research_title=hs.research_title
 )
-
-order by 1, 2
+order by hs.sponsorship_id
 ;
 
-select sponsorship_id, user_id, req.sponsor_id, req.research_title
-from (
-select distinct sponsor_id, research_title
-from heron.sponsorship) req
-join heron.sponsorship hs
- on hs.sponsor_id = req.sponsor_id
- and hs.research_title = req.research_title
-;
-
-select distinct kumc_approval_status, ukp_approval_status, kuh_approval_status, req.sponsor_id, req.research_title
-from (
-select distinct sponsor_id, research_title
-from heron.sponsorship) req
-join heron.sponsorship hs
- on hs.sponsor_id = req.sponsor_id
- and hs.research_title = req.research_title
-;
-
-select *
-from heron.sponsorship;
+create or replace view system_access as
+select user_id
+     , user_full_name as full_name
+     , signed_date
+from heron.system_access_users sau;
