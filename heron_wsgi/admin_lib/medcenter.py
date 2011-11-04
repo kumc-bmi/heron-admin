@@ -17,8 +17,8 @@ Then we'll issue a badge capability to the request and authorization to use it:
   >>> login_caps = m.issue(req)
   >>> login_caps
   [<MedCenter sealed box>]
-  >>> m.audit(login_caps[0], m.permissions[0])
-  INFO:medcenter:MedCenter.audit(<MedCenter sealed box>, medcenter.idvault)
+  >>> m.audit(login_caps[0], m.permissions[0])  #doctest: +ELLIPSIS
+  INFO:...:MedCenter.audit(<MedCenter sealed box>, ...medcenter.idvault)
 
   >>> b1 = req.badge
   >>> b1

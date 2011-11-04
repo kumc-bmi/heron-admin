@@ -20,12 +20,15 @@
 
 '''
 
+import StringIO
+import csv
 import json
 import logging
 import sys
 import urllib
 
 import config
+from sealing import EDef
 
 log = logging.getLogger(__name__)
 
@@ -38,23 +41,51 @@ def settings(ini, section, extras=None):
 
 
 def survey_setup(rt, urlopener):
+    proxy = endPoint(urlopener, rt.api_url, rt.token)
+    domain = rt.domain
+
     def setup(userid, params, multi=False):
-        email = '%s@%s' % (userid, rt.domain)
-        args = {'token': rt.token,
-                'content': 'survey',
-                'format': 'json',
-                'multi': 'yes' if multi else 'no',
-                'email': email}
-        log.debug('POSTing %s to redcap at %s', args, rt.api_url)
-        body = urlopener.open(rt.api_url, urllib.urlencode(args)).read()
-        ans = json.loads(body)
-        log.info('REDCap API answer: %s', ans)
+        ans = proxy.accept_json(content='survey',
+                                multi='yes' if multi else 'no',
+                                email='%s@%s' % (userid, domain))
         surveycode = ans['hash']
         params = urllib.urlencode([('s', surveycode)]
                                   + sorted(params.iteritems()))
         return rt.survey_url + '?' + params
 
     return setup
+
+
+def endPoint(ua, addr, token):
+    '''Make REDCap API endpoint with accept_json, post_csv methods.
+
+    >>> rt = _test_settings
+    >>> e = endPoint(_TestUrlOpener(), rt.api_url, rt.token)
+    >>> e.accept_json(content='survey', email='john.smith@jsmith.example')
+    ... # doctest: +NORMALIZE_WHITESPACE
+    {u'add': 0, u'PROJECT_ID': 123, u'hash': u'8074',
+     u'email': u'BOGUS@example.edu', u'survey_id': 11}
+    '''
+    def accept_json(content, **args):
+        ans = json.loads(_request(content, format='json', **args))
+        log.debug('REDCap API JSON answer: %s', ans)
+        return ans
+
+    def post_csv(records, **args):
+        buf = StringIO.StringIO()
+        rowbuf = csv.writer(buf)
+        rowbuf.writerows(records)
+
+        return _request(content='record', format='csv',
+                        data=buf.getvalue(), **args)
+
+    def _request(content, format, **args):
+        params = dict(args, token=token, content=content, format=format)
+        log.debug('POSTing %s to redcap at %s', params, addr)
+        return ua.open(addr, urllib.urlencode(params)).read()
+
+    return EDef(accept_json=accept_json,
+                post_csv=post_csv)
 
 
 class _TestUrlOpener(object):
@@ -131,6 +162,7 @@ def _test_main():
         print e
 
     _test_multi_use(c2, userid, fullName, urllib.URLopener())
+
 
 if __name__ == '__main__':  # pragma nocover
     _test_main()

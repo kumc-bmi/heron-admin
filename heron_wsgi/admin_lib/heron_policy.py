@@ -167,7 +167,7 @@ class HeronRecords(object):
     stored in fields with names like approve_%, with a distinct
     approve_% field for each participating institution.
 
-    >>> ddict = list(_redcap_fields(open('../redcap_dd/oversight.csv')))
+    >>> ddict = list(_redcap_fields(_redcap_open('oversight')))
     >>> dd_orgs = [n[len('approve_'):] for (n, etc) in ddict
     ...            if n.startswith('approve_')]
     >>> set(dd_orgs) == set(HeronRecords.institutions)
@@ -178,7 +178,7 @@ class HeronRecords(object):
 
 
     >>> uses = _redcap_radio('what_for',
-    ...                      open('../redcap_dd/oversight.csv'))
+    ...                      _redcap_open('oversight'))
     >>> HeronRecords.oversight_request_purposes == tuple(
     ...     [ix for (ix, label) in uses])
     True
@@ -572,7 +572,7 @@ class DecisionRecords(object):
               dictionary.
 
     >>> choices = dict(_redcap_radio('approve_kuh',
-    ...                              open('../redcap_dd/oversight.csv')))
+    ...                              _redcap_open('oversight')))
     >>> choices[DecisionRecords.YES]
     'Yes'
     >>> choices[DecisionRecords.NO]
@@ -622,6 +622,11 @@ class DecisionRecords(object):
         return investigator, team, d
 
 
+def _redcap_open(basename):
+    import os
+    return open(os.path.join(os.path.dirname(__file__), '..', 'redcap_dd',
+                             basename + '.csv'))
+
 def _redcap_fields(data_dictionary):
     import csv  # csv is only used for testing
     rows = csv.DictReader(data_dictionary)
@@ -649,24 +654,21 @@ class TestSetUp(disclaimer.TestSetUp):
     def redcap_sessionmaker(self, engine, timesrc, srt, ort):
         smaker = super(TestSetUp, self).redcap_sessionmaker(engine=engine)
         s = smaker()
-        def insert_eav(e, n, v):
-            s.execute(redcapdb.redcap_data.insert().values(
-                    project_id=ort.project_id,
-                    record=e, event_id=1, field_name=n, value=v))
-
 
         def add_oversight_request(user_id, full_name, project_title,
                                   candidates, reviews):
             # e/a/v = entity/attribute/value
             e = hash((user_id, project_title))
-            for a, v in (('user_id', user_id),
-                         ('full_name', full_name),
-                         ('project_title', project_title)):
-                insert_eav(e, a, v)
-            for n, userid in candidates:
-                insert_eav(e, 'user_id_%d' % n, userid)
-            for org, decision in reviews:
-                insert_eav(e, 'approve_%s' % org, decision)
+            add_test_eav(s, ort.project_id, 1, e,
+                         (('user_id', user_id),
+                          ('full_name', full_name),
+                          ('project_title', project_title)))
+            add_test_eav(s, ort.project_id, 1, e,
+                         [('user_id_%d' % n, userid)
+                          for n, userid in candidates])
+            add_test_eav(s, ort.project_id, 1, e,
+                         [('approve_%s' % org, decision)
+                          for org, decision in reviews])
 
         # approve 2 users in 1 request
         add_oversight_request('john.smith', 'John Smith', 'Cure Warts',
@@ -706,6 +708,15 @@ class TestSetUp(disclaimer.TestSetUp):
         return smaker
 
 
+def add_test_eav(s, project_id, event_id, e, avs):
+    log.debug('add_test_eav: %s', (project_id, event_id, e, avs))
+    for a, v in avs:
+        s.execute(redcapdb.redcap_data.insert().values(
+                project_id=project_id, event_id=event_id,
+                record=e, field_name=a, value=v))
+
+
+
 
 class Mock(injector.Module):
 
@@ -724,8 +735,8 @@ class Mock(injector.Module):
     @classmethod
     def mods(cls):
         log.debug('heron_policy.Mock.mods')
-        return medcenter.Mock.mods() + i2b2pm.Mock.mods() + disclaimer.Mock.mods() + [
-            TestSetUp(), Mock()]
+        return (medcenter.Mock.mods() + i2b2pm.Mock.mods()
+                + disclaimer.Mock.mods() + [TestSetUp(), Mock()])
 
     @classmethod
     def depgraph(cls):
@@ -761,8 +772,7 @@ class RunTime(injector.Module):  # pragma nocover
                     injector.InstanceProvider(datetime.datetime))
 
         def bind_options(names, section):
-            rt = config.RuntimeOptions(names)
-            rt.load(self._ini, section)
+            rt = redcap_connect.settings(self._ini, section, names)
             binder.bind((config.Options, section), rt)
 
         bind_options(['survey_id'], SAA_CONFIG_SECTION)

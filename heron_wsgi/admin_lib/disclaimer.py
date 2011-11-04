@@ -49,6 +49,7 @@ import xpath
 import config
 import redcapdb
 from orm_base import Base
+import redcap_connect
 
 DISCLAIMERS_SECTION = 'disclaimers'
 ACKNOWLEGEMENTS_SECTION = 'disclaimer_acknowledgements'
@@ -108,12 +109,9 @@ class AcknowledgementsProject(object):
             uuidgen=(types.FunctionType, uuid.UUID))
     def __init__(self, rt, ua, timesrc, uuidgen):
         '''
-        Note sources of non-determinism (timesrc, uuidgen) are passed in as constructor args.
-        .. todo:: collect notes on object-capability style and testability.
+        .. todo:: take proxy as arg rather than ua, rt
         '''
-        self._token = rt.token
-        self._api_url = rt.api_url
-        self._ua = ua
+        self._proxy = redcap_connect.endPoint(ua, rt.api_url, rt.token)
         self._timesrc = timesrc
         self._uuidgen = uuidgen
 
@@ -124,21 +122,10 @@ class AcknowledgementsProject(object):
         # YYYY-MM-DD hh:mm:ss
         timestamp = self._timesrc.now().isoformat(sep=' ')[:19]
 
-        buf = StringIO.StringIO()
-        rowbuf = csv.writer(buf)
-        rowbuf.writerow(Acknowledgement.fields)
         record = (ack, timestamp, user_id, disclaimer_address)
-        rowbuf.writerow(record)
         log.debug('adding record: %s' , record)
-
-        args = {'token': self._token,
-                'content': 'record',
-                'type': 'flat',
-                'format': 'csv',
-                'data': buf.getvalue()}
-        log.debug('posting %s to: %s', args, self._api_url)
-        body = urllib.urlencode(args)
-        self._ua.open(self._api_url, body)
+        self._proxy.post_csv((Acknowledgement.fields, record),
+                             type='flat')
         return record
 
 
