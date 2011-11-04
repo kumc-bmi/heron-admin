@@ -29,7 +29,6 @@ Now note the mapping to the Disclaimer class::
 
 # python stdlib http://docs.python.org/library/
 import StringIO
-import csv
 import datetime
 import logging
 import urllib
