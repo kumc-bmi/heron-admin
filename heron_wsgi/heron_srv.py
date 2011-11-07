@@ -12,22 +12,18 @@ __ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
 '''
 
 import sys
-import datetime
-from urllib import URLopener, urlencode
+from urllib import URLopener
 import urllib2
-from os import path
 import logging
+import urlparse
 
 # see setup.py and http://pypi.python.org/pypi
-from paste.exceptions.errormiddleware import handle_exception
-from paste.request import parse_querystring
 import injector # http://pypi.python.org/pypi/injector/
                 # 0.3.1 7deba485e5b966300ef733c3393c98c6
 from injector import inject, provides
 import sqlalchemy  # leaky; factor out test foo?
 import pyramid
 from pyramid.config import Configurator
-from pyramid.view import view_config
 from pyramid.httpexceptions import HTTPFound, HTTPSeeOther, HTTPForbidden
 
 # modules in this package
@@ -35,12 +31,10 @@ import cas_auth
 import genshi_render
 import drocnotice
 from admin_lib import medcenter
-from admin_lib.medcenter import MedCenter
 from admin_lib import heron_policy
 from admin_lib.checklist import Checklist
 from admin_lib import redcap_connect
 from admin_lib.config import Options, TestTimeOptions, RuntimeOptions
-from admin_lib import i2b2pm
 from admin_lib import disclaimer, redcapdb
 
 KAppSettings = injector.Key('AppSettings')
@@ -308,7 +302,7 @@ def _request_uids(params):
 
 
 def make_internal_error(req):
-    x = 1/0
+    return 1/0
 
 
 def server_error_view(context, req):
@@ -508,15 +502,12 @@ class _TestUrlOpener(object):
     '''An URL opener to help with CAS testing
     '''
     def __init__(self, lines, smaker, art):
-        from cas_auth import LinesUrlOpener
-
         self._ua1 = cas_auth.LinesUrlOpener(lines)
         self._ua2 = redcap_connect._TestUrlOpener()
         self._smaker = smaker
         self._art = art
 
     def open(self, addr, body=None):
-        import urlparse  # lazy
         if not body:
             return self._ua1.open(addr)
 
@@ -565,8 +556,7 @@ def app_factory(global_config, **settings):
 if __name__ == '__main__':  # pragma nocover
     # test usage
     from paste import httpserver
-    from paste import fileapp
-    import sys
+    #@@from paste import fileapp
     host, port = sys.argv[1:3]
 
     logging.basicConfig(level=logging.DEBUG)
@@ -575,8 +565,8 @@ if __name__ == '__main__':  # pragma nocover
     # served with apache, but for test purposes, we'll use
     # paste DirectoryApp
     # TODO: use paster
-    app = prefix_router('/av/',
-                        fileapp.DirectoryApp(HeronAccessPartsApp.htdocs),
-                        app_factory({}))
+    #app = prefix_router('/av/',
+    #                    fileapp.DirectoryApp(HeronAccessPartsApp.htdocs),
+    #                    )
 
-    httpserver.serve(app, host=host, port=port)
+    httpserver.serve(app_factory({}), host=host, port=port)
