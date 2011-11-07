@@ -40,6 +40,7 @@ import redcap_connect
 import redcapdb
 from heron_policy import RunTime, SAA_CONFIG_SECTION, OVERSIGHT_CONFIG_SECTION
 from orm_base import Base
+from disclaimer import AcknowledgementsProject
 
 
 log = logging.getLogger(__name__)
@@ -48,9 +49,14 @@ log = logging.getLogger(__name__)
 def main():
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
     depgraph = RunTime.depgraph()
-    mi = depgraph.get(Migration)
-    print "System access agreements: ", mi.migrate_saa()
-    print "DROC requests:", mi.migrate_droc()
+
+    if '--disclaimers' in sys.argv:
+        md = depgraph.get(MigrateDisclaimers)
+        md.migrate_acks()
+    else:
+        mi = depgraph.get(Migration)
+        print "System access agreements: ", mi.migrate_saa()
+        print "DROC requests:", mi.migrate_droc()
 
 
 class Migration(object):
@@ -98,13 +104,9 @@ class Migration(object):
         self._mc = mc
         self._hp = hp
 
-    def _table(self, session, name):
-        return Table(name, Base.metadata, schema='heron',
-                     autoload=True, autoload_with=session.bind)
-
     def migrate_saa(self):
         s = self._smaker()
-        system_access_users = self._table(s, 'system_access_users')
+        system_access_users = _table(s, 'system_access_users')
 
         sigs = s.execute(select((text('rownum'),
                                  system_access_users))).fetchall()
@@ -142,8 +144,8 @@ class Migration(object):
 
     def migrate_droc(self):
         s = self._smaker()
-        oversight_request = self._table(s, 'oversight_request')
-        sponsorship_candidates = self._table(s, 'sponsorship_candidates')
+        oversight_request = _table(s, 'oversight_request')
+        sponsorship_candidates = _table(s, 'sponsorship_candidates')
 
         reqs = s.execute(oversight_request.select()).fetchall()
         candidates = dict(((k, list(igroup)) for k, igroup in
@@ -173,6 +175,11 @@ class Migration(object):
         log_notices(self._newdb(), reqs)
 
         return len(reqs), n 
+
+
+def _table(session, name, schema='heron'):
+    return Table(name, Base.metadata, schema=schema,
+                 autoload=True, autoload_with=session.bind)
 
 
 def log_notices(s, reqs):
@@ -230,6 +237,31 @@ def _test_lookup(uid):
                            mail='%s@example' % uid,
                            ou='Mail Department',
                            title='Sanitation Engineer')
+
+
+class MigrateDisclaimers(object):
+    @inject(olddb=(Session, i2b2pm.CONFIG_SECTION),
+            acksproj=AcknowledgementsProject)
+    def __init__(self, olddb, acksproj):
+        self._i2b2db = olddb
+        self._ap = acksproj
+
+    def migrate_acks(self):
+        si = self._i2b2db()
+        old_disc = _table(si, 'disclaimers')
+        old_acks = _table(si, 'acknowledged_disclaimers')
+
+        ans = si.execute(old_disc.select().where(old_disc.c.is_recent == 1))
+        recent_disc = ans.fetchone()
+        log.info('current disclaimer: %s',
+                 recent_disc['disclaimer_url'])
+        
+        acks = si.execute(old_acks.select().where(old_acks.c.disclaimer_id ==
+                                                  recent_disc['disclaimer_id']))
+
+        whowhen = [(ack['user_id'], ack['acknowledge_tmst']) for ack in acks]
+        log.info('acked users: %s', whowhen)
+        self._ap.add_records(recent_disc['disclaimer_url'], whowhen)
 
 
 if __name__ == '__main__':

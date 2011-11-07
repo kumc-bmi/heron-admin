@@ -19,16 +19,15 @@
 
 
 '''
-
-import StringIO
-import csv
+import config
 import json
 import logging
+import pprint
 import sys
 import urllib
 
-import config
 from sealing import EDef
+
 
 log = logging.getLogger(__name__)
 
@@ -74,25 +73,16 @@ def endPoint(ua, addr, token):
         return ans
 
     def post_json(content, data, **args):
+        log.debug('POSTing %s to redcap at %s', pprint.pformat(data), addr)
         return _request(content=content, format='json',
                         data=json.dumps(data), **args)
 
-    def post_csv(records, **args):
-        buf = StringIO.StringIO()
-        rowbuf = csv.writer(buf)
-        rowbuf.writerows(records)
-
-        return _request(content='record', format='csv',
-                        data=buf.getvalue(), **args)
-
     def _request(content, format, **args):
         params = dict(args, token=token, content=content, format=format)
-        log.debug('POSTing %s to redcap at %s', params, addr)
         return ua.open(addr, urllib.urlencode(params)).read()
 
     return EDef(accept_json=accept_json,
-                post_json=post_json,
-                post_csv=post_csv)
+                post_json=post_json)
 
 
 class _TestUrlOpener(object):

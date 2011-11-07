@@ -33,7 +33,6 @@ import datetime
 import logging
 import urllib
 import urllib2
-import uuid
 import types
 from xml.dom.minidom import parse
 
@@ -104,29 +103,46 @@ class AcknowledgementsProject(object):
     '''
     @inject(rt=(config.Options, ACKNOWLEGEMENTS_SECTION),
             ua=urllib.URLopener,
-            timesrc=KTimeSource,
-            uuidgen=(types.FunctionType, uuid.UUID))
-    def __init__(self, rt, ua, timesrc, uuidgen):
+            timesrc=KTimeSource)
+    def __init__(self, rt, ua, timesrc):
         '''
         .. todo:: take proxy as arg rather than ua, rt
         '''
         self._proxy = redcap_connect.endPoint(ua, rt.api_url, rt.token)
         self._timesrc = timesrc
-        self._uuidgen = uuidgen
 
-    def add_record(self, user_id, disclaimer_address):
+    def add_records(self, disclaimer_address, whowhen):
         # Rather than keeping track of the next record ID, we just use
         # random IDs.
-        ack = self._uuidgen()
-        # YYYY-MM-DD hh:mm:ss
-        timestamp = self._timesrc.now().isoformat(sep=' ')[:19]
+        records = [dict(zip(Acknowledgement.fields,
+                            # Pretty safe to assume last segments of
+                            # disclaimer_addresses are distinct for
+                            # all users acknowledging on a given day,
+                            # especially since we choose addresses.
+                            ('%s %s %s' % (timestamp.isoformat()[:10],
+                                           uid, last_seg(disclaimer_address)),
+                             # YYYY-MM-DD hh:mm:ss
+                             timestamp.isoformat(sep=' ')[:19],
+                             uid, disclaimer_address))
+                        + [('acknowledgement_complete', '2')])
+                   for uid, timestamp in whowhen]
 
-        record = (ack, timestamp, user_id, disclaimer_address)
-        log.debug('adding record: %s' , record)
-        self._proxy.post_csv((Acknowledgement.fields, record),
-                             type='flat')
-        return record
+        self._proxy.post_json(content='record', data=records)
+        return records
 
+    def add_record(self, user_id, disclaimer_address):
+        timestamp = self._timesrc.now()
+
+        return self.add_records(disclaimer_address,
+                                [(user_id, timestamp)])[0]
+
+
+def last_seg(addr):
+    '''
+    >>> last_seg('abc/def')
+    '/def'
+    '''
+    return addr[addr.rfind('/'):]
 
 class ModuleHelper(object):
     @classmethod
@@ -161,12 +177,6 @@ class Mock(redcapdb.SetUp, ModuleHelper, redcapdb.ModuleHelper):
     @provides(urllib.URLopener)
     def web_ua(self):
         return _TestURLopener()
-
-    @provides((types.FunctionType, uuid.UUID))
-    def uuidgen_func(self):
-        def _mock_uuidgen():
-            return uuid.UUID('8bd21cf4-3e5f-4f09-9936-10301aa37b0a')
-        return _mock_uuidgen
 
     @provides(KTimeSource)
     def time_source(self):
@@ -236,9 +246,6 @@ class RunTime(injector.Module, ModuleHelper):
                            ACKNOWLEGEMENTS_SECTION)
         Acknowledgement.eav_map(art.project_id)
 
-        # function returning uuid.UUID
-        binder.bind((types.FunctionType, uuid.UUID),
-                    injector.InstanceProvider(uuid.uuid4))
         binder.bind(KTimeSource, injector.InstanceProvider(datetime.datetime))
         binder.bind(urllib.URLopener, urllib2.build_opener)
 
