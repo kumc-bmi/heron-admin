@@ -76,10 +76,12 @@ def test_grant_access_with_valid_cas_ticket(t=None, r2=None):
 
 
 class CheckListView(object):
-    @inject(checklist=Checklist)
-    def __init__(self, checklist):
+    @inject(checklist=Checklist,
+            rt=(Options, heron_policy.SAA_CONFIG_SECTION))
+    def __init__(self, checklist, rt):
         self._checklist = checklist
         self._next_route = None
+        self._rt = rt
 
     def issue(self, uidbox, req):
         uid = self._unsealer.unseal(uidbox)
@@ -98,6 +100,7 @@ class CheckListView(object):
                      # req.route_url('i2b2_login')
                      logout_path=req.route_url('logout'),
                      saa_path=req.route_url('saa'),
+                     saa_public=self._rt.survey_url,
                      i2b2_login_path=req.route_url('i2b2_login'))
         if req.faculty:
             sp = req.route_url(self._next_route,

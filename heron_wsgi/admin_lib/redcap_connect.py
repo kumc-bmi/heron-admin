@@ -7,7 +7,7 @@
   executives=big.wig
   project_id=34
   survey_id=11
-  survey_url=http://bmidev1/redcap-host/surveys/
+  survey_url=http://bmidev1/redcap-host/surveys/?s=43
   token=sekret
 
   >>> setup = survey_setup(_test_settings, _TestUrlOpener())
@@ -25,6 +25,7 @@ import logging
 import pprint
 import sys
 import urllib
+from urlparse import urljoin
 
 from sealing import EDef
 
@@ -52,7 +53,7 @@ def survey_setup(rt, urlopener):
             ans_kludge(ans)
         params = urllib.urlencode([('s', surveycode)]
                                   + sorted(params.iteritems()))
-        return rt.survey_url + '?' + params
+        return urljoin(rt.survey_url, '?' + params)
 
     return setup
 
@@ -104,7 +105,7 @@ class _TestResponse(object):
 _test_settings = config.TestTimeOptions(dict(
     token='sekret',
     api_url='http://redcap-host/redcap/api/',
-    survey_url='http://bmidev1/redcap-host/surveys/',
+    survey_url='http://bmidev1/redcap-host/surveys/?s=43',
     domain='example.edu',
     executives='big.wig',
     survey_id=11,

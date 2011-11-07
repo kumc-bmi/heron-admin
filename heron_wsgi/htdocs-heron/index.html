@@ -151,7 +151,8 @@
       <li>
 	<label>
 	  <input type="checkbox" disabled="disabled" py:attrs="signatureOnFile" />
-	  Signed <a href="${saa_path}">system access agreement</a>?
+	  Signed <a href="${saa_path if not signatureOnFile else saa_public}"
+	  >system access agreement</a>?
 	</label>
       </li>
     </ol>
