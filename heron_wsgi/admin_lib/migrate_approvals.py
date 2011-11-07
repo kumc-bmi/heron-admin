@@ -24,15 +24,13 @@ on p.participant_email = d.email
 import sys
 import logging
 import urllib
-from itertools import groupby, izip
+from itertools import groupby
 from operator import itemgetter
 from pprint import pformat
 
 from injector import inject
 from sqlalchemy.orm.session import Session
-from sqlalchemy import Table, Column, select, text
-from sqlalchemy.types import Integer, String
-from sqlalchemy.sql import func
+from sqlalchemy import Table, select, text
 
 import i2b2pm
 import config
