@@ -20,27 +20,27 @@ on p.participant_email = d.email
 ;
 
 '''
-
-import sys
 import logging
+import sys
 import urllib
 from itertools import groupby
 from operator import itemgetter
 from pprint import pformat
 
 from injector import inject
-from sqlalchemy.orm.session import Session
 from sqlalchemy import Table, select, text
+from sqlalchemy.orm.session import Session
 
-import i2b2pm
 import config
-from heron_policy import RunTime, SAA_CONFIG_SECTION, OVERSIGHT_CONFIG_SECTION
-import redcap_connect
-import redcapdb
-from orm_base import Base
+import heron_policy
+import i2b2pm
 import medcenter
 import noticelog
-import heron_policy
+import redcap_connect
+import redcapdb
+from heron_policy import RunTime, SAA_CONFIG_SECTION, OVERSIGHT_CONFIG_SECTION
+from orm_base import Base
+
 
 log = logging.getLogger(__name__)
 
