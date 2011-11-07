@@ -335,6 +335,9 @@ class HeronRecords(object):
     def _sponsored(self, uid):
         decision, candidate, dc = _sponsor_queries(self._oversight_project_id)
 
+        # mysql work-around for
+        # 1248, 'Every derived table must have its own alias'
+        dc = dc.alias('mw')
         # perhaps we should use count and scalar here?
         q = dc.select(and_(dc.c.candidate == uid,
                            dc.c.decision == DecisionRecords.YES))
