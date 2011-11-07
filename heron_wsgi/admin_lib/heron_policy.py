@@ -99,6 +99,7 @@ What decision notifications are pending?
   >>> ds = dr.oversight_decisions()
   >>> ds  # doctest: +NORMALIZE_WHITESPACE
   [(34, u'-565402122873664774', u'2', 3),
+   (34, u'23180811818680005', u'1', 3),
    (34, u'6373469799195807417', u'1', 3)]
 
 Get details that we might want to use in composing the notification::
@@ -110,8 +111,19 @@ Get details that we might want to use in composing the notification::
    {u'approve_kuh': u'2',
     u'approve_kumc': u'2',
     u'approve_kupi': u'2',
+    u'date_of_expiration': u'',
     u'full_name': u'John Smith',
     u'project_title': u'Cart Blanche',
+    u'user_id': u'john.smith',
+    u'user_id_1': u'bill.student'})
+  (John Smith <john.smith@js.example>,
+   [Bill Student <bill.student@js.example>],
+   {u'approve_kuh': u'1',
+    u'approve_kumc': u'1',
+    u'approve_kupi': u'1',
+    u'date_of_expiration': u'1950-02-27',
+    u'full_name': u'John Smith',
+    u'project_title': u'Cure Polio',
     u'user_id': u'john.smith',
     u'user_id_1': u'bill.student'})
   (John Smith <john.smith@js.example>,
@@ -119,12 +131,12 @@ Get details that we might want to use in composing the notification::
    {u'approve_kuh': u'1',
     u'approve_kumc': u'1',
     u'approve_kupi': u'1',
+    u'date_of_expiration': u'',
     u'full_name': u'John Smith',
     u'project_title': u'Cure Warts',
     u'user_id': u'john.smith',
     u'user_id_1': u'some.one',
     u'user_id_2': u'carol.student'})
-
 
 .. todo:: consider factoring out low level details to make
           the policy more clear as code.
@@ -141,7 +153,7 @@ import os
 import injector
 from injector import inject, provides, singleton
 import sqlalchemy
-from sqlalchemy.sql import select, and_, func
+from sqlalchemy.sql import select, and_, or_, func
 
 import config
 import i2b2pm
@@ -341,10 +353,13 @@ class HeronRecords(object):
         # perhaps we should use count and scalar here?
         q = dc.select(and_(dc.c.candidate == uid,
                            dc.c.decision == DecisionRecords.YES))
-        if not self._engine.execute(q).fetchall():
-            raise NotSponsored()
 
-        return True
+        for ans in self._engine.execute(q).fetchall():
+            if ans.dt_exp <= '' or self._t.today().isoformat() <= ans.dt_exp:
+                return True
+
+        raise NotSponsored()
+
 
 
 def _saa_query(mail, survey_id):
@@ -368,19 +383,23 @@ def _sponsor_queries(oversight_project_id):
       >>> decision, candidate, cdwho = _sponsor_queries(123)
 
       >>> print str(decision)
-      SELECT redcap_data.project_id, redcap_data.record, redcap_data.value AS decision, count(*) AS count_1 
-      FROM redcap_data 
-      WHERE redcap_data.field_name LIKE :field_name_1 AND redcap_data.project_id = :project_id_1 GROUP BY redcap_data.project_id, redcap_data.record, redcap_data.value 
+      ...  # doctest: +NORMALIZE_WHITESPACE
+      SELECT redcap_data.project_id, redcap_data.record,
+      redcap_data.value AS decision, count(*) AS count_1 FROM
+      redcap_data WHERE redcap_data.field_name LIKE :field_name_1 AND
+      redcap_data.project_id = :project_id_1 GROUP BY
+      redcap_data.project_id, redcap_data.record, redcap_data.value
       HAVING count(*) = :count_2
 
       >>> pprint(decision.compile().params)
       {u'count_2': 3, u'field_name_1': 'approve_%', u'project_id_1': 123}
 
 
-      >>> print str(candidate) # doctest: +NORMALIZE_WHITESPACE
-      SELECT redcap_data.project_id, redcap_data.record, redcap_data.value AS userid 
-      FROM redcap_data 
-      WHERE redcap_data.field_name LIKE :field_name_1
+      >>> print str(candidate)
+      ...  # doctest: +NORMALIZE_WHITESPACE
+      SELECT redcap_data.project_id, redcap_data.record,
+      redcap_data.value AS userid FROM redcap_data WHERE
+      redcap_data.field_name LIKE :field_name_1
 
       >>> pprint(candidate.compile().params)
       {u'field_name_1': 'user_id_%'}
@@ -388,7 +407,8 @@ def _sponsor_queries(oversight_project_id):
       >>> print str(cdwho) # doctest: +NORMALIZE_WHITESPACE
       SELECT cd_record AS record,
              cd_decision AS decision,
-             who_userid AS candidate 
+             who_userid AS candidate,
+             expire_dt_exp AS dt_exp 
       FROM
         (SELECT cd.project_id AS cd_project_id,
                 cd.record AS cd_record,
@@ -396,7 +416,10 @@ def _sponsor_queries(oversight_project_id):
                 cd.count_1 AS cd_count_1,
                 who.project_id AS who_project_id,
                 who.record AS who_record,
-                who.userid AS who_userid 
+                who.userid AS who_userid,
+                expire.project_id AS expire_project_id,
+                expire.record AS expire_record,
+                expire.dt_exp AS expire_dt_exp
          FROM
            (SELECT redcap_data.project_id AS project_id,
                    redcap_data.record AS record,
@@ -414,12 +437,21 @@ def _sponsor_queries(oversight_project_id):
               FROM redcap_data 
               WHERE redcap_data.field_name LIKE :field_name_2) AS who
            ON who.record = cd.record
-           AND who.project_id = cd.project_id) AS cdwho
+           AND who.project_id = cd.project_id
+           LEFT OUTER JOIN (SELECT redcap_data.project_id AS project_id,
+                                   redcap_data.record AS record,
+                                   redcap_data.value AS dt_exp 
+                            FROM redcap_data 
+                            WHERE redcap_data.field_name = :field_name_3)
+                             AS expire
+           ON expire.record = cd.record AND expire.project_id = cd.project_id)
+              AS cdwho
 
       >>> pprint(cdwho.compile().params)
       {u'count_2': 3,
        u'field_name_1': 'approve_%',
        u'field_name_2': 'user_id_%',
+       u'field_name_3': 'date_of_expiration',
        u'project_id_1': 123}
 
     '''
@@ -442,16 +474,24 @@ def _sponsor_queries(oversight_project_id):
     # todo: consider combining record, event, project_id into one attr
     candidate = select((rd.c.project_id, rd.c.record,
                         rd.c.value.label('userid'))).where(
-        and_(rd.c.field_name.like('user_id_%'))).alias('who')
+        rd.c.field_name.like('user_id_%')).alias('who')
+
+    dt_exp = select((rd.c.project_id, rd.c.record,
+                    rd.c.value.label('dt_exp'))).where(
+        rd.c.field_name == 'date_of_expiration').alias('expire')
 
     j = decision.join(candidate,
                       and_(candidate.c.record == decision.c.record,
                            candidate.c.project_id == decision.c.project_id)
-                      ).alias('cdwho').select()
+                      ).outerjoin(dt_exp, and_(
+            dt_exp.c.record == decision.c.record,
+            dt_exp.c.project_id == decision.c.project_id)
+                                  ).alias('cdwho').select()
         
     cdwho = j.with_only_columns((j.c.cd_record.label('record'),
                                  j.c.cd_decision.label('decision'),
-                                 j.c.who_userid.label('candidate')))
+                                 j.c.who_userid.label('candidate'),
+                                 j.c.expire_dt_exp.label('dt_exp')))
 
     return decision, candidate, cdwho
 
@@ -651,13 +691,15 @@ class TestSetUp(disclaimer.TestSetUp):
         s = smaker()
 
         def add_oversight_request(user_id, full_name, project_title,
-                                  candidates, reviews):
+                                  candidates, reviews,
+                                  date_of_expiration=''):
             # e/a/v = entity/attribute/value
             e = hash((user_id, project_title))
             add_test_eav(s, ort.project_id, 1, e,
                          (('user_id', user_id),
                           ('full_name', full_name),
-                          ('project_title', project_title)))
+                          ('project_title', project_title),
+                          ('date_of_expiration', date_of_expiration)))
             add_test_eav(s, ort.project_id, 1, e,
                          [('user_id_%d' % n, userid)
                           for n, userid in candidates])
@@ -683,6 +725,14 @@ class TestSetUp(disclaimer.TestSetUp):
                               ((1, 'bill.student'),),
                               [(org, DecisionRecords.NO)
                                for org in HeronRecords.institutions])
+
+        # Another request has expired:
+        add_oversight_request('john.smith', 'John Smith', 'Cure Polio',
+                              ((1, 'bill.student'),),
+                              [(org, DecisionRecords.YES)
+                               for org in HeronRecords.institutions],
+                              '1950-02-27')
+
 
         log.debug('add SAA records')
         redcapdb.redcap_surveys_participants.create(s.bind)
