@@ -147,7 +147,6 @@ import config
 import i2b2pm
 import medcenter
 import redcap_connect
-import sealing
 import redcapdb
 import noticelog
 import disclaimer
@@ -332,15 +331,6 @@ class HeronRecords(object):
         '''
         if not self._engine.execute(_saa_query(mail, self._saa_survey_id)).fetchall():
             raise NoAgreement()
-
-    def q_executive(self, agent):
-        raise NotExecutive()
-        # TODO: port this to mysql/redcap
-        if not self._agent_test('''select 1
-                         from heron.exec_group where user_id=:u
-		         and status ='A' ''', 'u', agent):
-            raise NotExecutive()
-        return OK(agent)
 
     def _sponsored(self, uid):
         decision, candidate, dc = _sponsor_queries(self._oversight_project_id)
@@ -757,7 +747,8 @@ class Mock(injector.Module):
     def login_sim(cls, mc, hr):
         def mkrole(uid):
             req = medcenter.Mock.login_info(uid)
-            caps = mc.issue(req) + hr.issue(req)
+            mc.issue(req)
+            hr.issue(req)
             return req.user, req.faculty, req.executive
         return mkrole
 
