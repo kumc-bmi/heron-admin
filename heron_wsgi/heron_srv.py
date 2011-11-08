@@ -34,7 +34,7 @@ from admin_lib import medcenter
 from admin_lib import heron_policy
 from admin_lib.checklist import Checklist
 from admin_lib import redcap_connect
-from admin_lib.config import Options, TestTimeOptions, RuntimeOptions
+from admin_lib.rtconfig import Options, TestTimeOptions, RuntimeOptions
 from admin_lib import disclaimer, redcapdb
 
 KAppSettings = injector.Key('AppSettings')
@@ -526,13 +526,14 @@ class _TestUrlOpener(object):
             raise IOError, "no content param: " + str(params)
 
     def post_record(self, params):
-        import StringIO
-        import csv
+        import json, StringIO
 
-        rows = csv.reader(StringIO.StringIO(params['data'][0]))
-        schema = rows.next()
-        if schema == ['ack','timestamp','user_id','disclaimer_address']:
-            values = dict(zip(schema, rows.next()))
+        rows = json.loads(params['data'][0])
+        schema = rows[0].keys()
+        if sorted(schema) == sorted([u'ack', u'timestamp',
+                                     u'disclaimer_address',
+                                     u'user_id', u'acknowledgement_complete']):
+            values = rows[0]
             record = hash(values['user_id'])
             s = self._smaker()
             heron_policy.add_test_eav(s, self._art.project_id, 1,
