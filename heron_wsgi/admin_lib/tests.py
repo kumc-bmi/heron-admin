@@ -9,8 +9,8 @@ def main():
     import hcard_mock
     doctest.testmod(hcard_mock)
 
-    import config
-    doctest.testmod(config)
+    import rtconfig
+    doctest.testmod(rtconfig)
 
     import i2b2pm
     doctest.testmod(i2b2pm)
@@ -34,7 +34,7 @@ def main():
     doctest.testmod(redcapdb)
 
     import disclaimer
-    doctest.testmod(redcap_connect)
+    doctest.testmod(disclaimer)
 
 
 if __name__ == '__main__':

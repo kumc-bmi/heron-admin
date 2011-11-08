@@ -1,9 +1,8 @@
-'''i2b2pm.py -- I2B2 Project Management cell client/proxy
-
+'''i2b2pm -- I2B2 Project Management cell client/proxy
 
 Ensure account sets up the DB as the I2B2 project manager expects::
 
-  >>> pm, depgraph = Mock.make_stuff()
+  >>> pm, depgraph = Mock.make([I2B2PM, None])
   >>> pm.ensure_account('john.smith')
 
   >>> import pprint
@@ -21,17 +20,16 @@ Ensure account sets up the DB as the I2B2 project manager expects::
 
 import injector
 from injector import inject, provides, singleton
-from sqlalchemy import Column, ForeignKey, Unicode
+from sqlalchemy import Column, ForeignKey
 from sqlalchemy import func
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy.types import String, Integer, Date, Enum
+from sqlalchemy.types import String, Date, Enum
 import sqlalchemy
 
-import medcenter
-import config
+import rtconfig
 from orm_base import Base
 
 CONFIG_SECTION='i2b2pm'
@@ -88,9 +86,7 @@ class Audited(object):
 
 
 class User(Base, Audited):
-#class User(Base):
-    __tablename__ = 'pm_user_data'  #'PM_USER_DATA'
-    #__table_args__ = {'schema':'i2b2pm'}
+    __tablename__ = 'pm_user_data'
 
     user_id = Column(String, primary_key=True)
     full_name = Column(String)
@@ -131,39 +127,23 @@ class UserRole(Base, Audited):
                                            self.user_role_cd)
 
 
-class RunTime(injector.Module):
-    def __init__(self, ini):
-        injector.Module.__init__(self)
-        self._ini = ini
-
-    def configure(self, binder):
-        def bind_options(names, section):
-            rt = config.RuntimeOptions(names)
-            rt.load(self._ini, section)
-            binder.bind((config.Options, section), rt)
-            return rt
-
-        rt = bind_options(['url'], CONFIG_SECTION)
-
+class RunTime(rtconfig.IniModule):
+    @provides((rtconfig.Options, CONFIG_SECTION))
+    def settings(self):
+        rt = rtconfig.RuntimeOptions(['url'])
+        rt.load(self._ini, CONFIG_SECTION)
+        return rt
 
     # abusing Session a bit; this really provides a subclass, not an instance, of Session
     @singleton
     @provides((sqlalchemy.orm.session.Session, CONFIG_SECTION))
-    @inject(rt=(config.Options, CONFIG_SECTION))
+    @inject(rt=(rtconfig.Options, CONFIG_SECTION))
     def pm_sessionmaker(self, rt):
         engine = sqlalchemy.engine_from_config(rt.settings(), 'sqlalchemy.')
         return sessionmaker(engine)
 
-    @classmethod
-    def mods(cls, ini):
-        return [cls(ini)]
 
-    @classmethod
-    def depgraph(cls, ini='integration-test.ini'):
-        return injector.Injector(cls.mods(ini))
-
-
-class Mock(injector.Module):
+class Mock(injector.Module, rtconfig.MockMixin):
     '''Mock up I2B2PM dependencies: SQLite datasource
     '''
     @singleton
@@ -173,23 +153,11 @@ class Mock(injector.Module):
         Base.metadata.create_all(engine)
         return sessionmaker(engine)
 
-    @classmethod
-    def mods(cls):
-        return [cls()]
-
-    @classmethod
-    def make_stuff(cls, mods=None):
-        if mods is None:
-            mods = cls.mods()
-        depgraph = injector.Injector(mods)
-        return depgraph.get(I2B2PM), depgraph
-
 
 if __name__ == '__main__':
     import sys
     user_id = sys.argv[1]
 
-    depgraph = RunTime.depgraph()
-    pm = depgraph.get(I2B2PM)
+    (pm, ) = RunTime.make(None, [I2B2PM])
 
     pm.ensure_account(user_id)

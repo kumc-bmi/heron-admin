@@ -31,7 +31,7 @@ from injector import inject
 from sqlalchemy import Table, select, text
 from sqlalchemy.orm.session import Session
 
-import config
+import rtconfig
 import heron_policy
 import i2b2pm
 import medcenter
@@ -89,8 +89,8 @@ class Migration(object):
 
     @inject(olddb=(Session, i2b2pm.CONFIG_SECTION),
             newdb=(Session, redcapdb.CONFIG_SECTION),
-            rt_saa=(config.Options, SAA_CONFIG_SECTION),
-            rt_droc=(config.Options, OVERSIGHT_CONFIG_SECTION),
+            rt_saa=(rtconfig.Options, SAA_CONFIG_SECTION),
+            rt_droc=(rtconfig.Options, OVERSIGHT_CONFIG_SECTION),
             mc=medcenter.MedCenter,
             hp=heron_policy.HeronRecords,
             ua=urllib.URLopener)
