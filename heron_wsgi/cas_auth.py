@@ -83,7 +83,7 @@ from pyramid import security
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPSeeOther
 from pyramid.authentication import AuthTktAuthenticationPolicy
 
-from admin_lib.config import Options, TestTimeOptions, RuntimeOptions
+from admin_lib.rtconfig import Options, TestTimeOptions, RuntimeOptions
 from admin_lib import sealing
 
 log = logging.getLogger(__name__)

@@ -10,6 +10,9 @@
   survey_url=http://bmidev1/redcap-host/surveys/?s=43
   token=sekret
 
+  >>> set(OPTIONS) < set(_test_settings.settings().keys())
+  True
+
   >>> setup = survey_setup(_test_settings, _TestUrlOpener())
   >>> setup('john.smith',
   ...       {'user_id': 'john.smith', 'full_name': 'John Smith'}).split('?')
@@ -19,7 +22,6 @@
 
 
 '''
-import config
 import json
 import logging
 import pprint
@@ -27,18 +29,14 @@ import sys
 import urllib
 from urlparse import urljoin
 
+import rtconfig
 from sealing import EDef
 
 
 log = logging.getLogger(__name__)
 
 
-def settings(ini, section, extras=None):
-    rt = config.RuntimeOptions('token api_url survey_url domain survey_id'
-                               .split() + ([] if extras is None else extras))
-    rt.load(ini, section)
-    return rt
-
+OPTIONS=('token', 'api_url', 'survey_url', 'domain', 'survey_id')
 
 def survey_setup(rt, urlopener):
     proxy = endPoint(urlopener, rt.api_url, rt.token)
@@ -102,7 +100,7 @@ class _TestResponse(object):
                            'hash': self._h,
                            'email': u'BOGUS@%s' % _test_settings.domain})
 
-_test_settings = config.TestTimeOptions(dict(
+_test_settings = rtconfig.TestTimeOptions(dict(
     token='sekret',
     api_url='http://redcap-host/redcap/api/',
     survey_url='http://bmidev1/redcap-host/surveys/?s=43',

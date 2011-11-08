@@ -6,13 +6,11 @@ import injector
 from injector import inject, provides, singleton
 import sqlalchemy
 from sqlalchemy import Table, Column, text
-from sqlalchemy.types import INTEGER, VARCHAR, TEXT, Integer, String, DATETIME
-from sqlalchemy.schema import ForeignKeyConstraint
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import mapper, column_property
-from sqlalchemy.sql import join, and_, select
+from sqlalchemy.types import INTEGER, VARCHAR, TEXT, DATETIME
+from sqlalchemy.orm import mapper
+from sqlalchemy.sql import and_, select
 
-import config
+import rtconfig
 from orm_base import Base
 
 CONFIG_SECTION='redcapdb'
@@ -163,7 +161,8 @@ class REDCapRecord(object):
           >>> str(where)
           'j_study_id.field_name = :field_name_1 AND j_study_id.project_id = j_age.project_id AND j_study_id.record = j_age.record AND j_age.field_name = :field_name_2 AND j_study_id.project_id = j_sex.project_id AND j_study_id.record = j_sex.record AND j_sex.field_name = :field_name_3'
 
-          >>> smaker = Mock.make('')
+          >>> (smaker, ) = Mock.make([(sqlalchemy.orm.session.Session,
+          ...                          CONFIG_SECTION)])
           >>> s = smaker()
           >>> for project_id, record, field_name, value in (
           ...     (123, 1, 'study_id', 'test_002'),
@@ -207,7 +206,8 @@ def allfields(ex, project_id, record):
     @return: an iterator over (k, v) pairs
 
     For example::
-      >>> smaker = Mock.make('')
+      >>> (smaker, ) = Mock.make([(sqlalchemy.orm.session.Session,
+      ...                          CONFIG_SECTION)])
       >>> s = smaker()
       >>> for k, v in (('study_id', 'test_002'), ('age', 32)):
       ...     s.execute(redcap_data.insert().values(event_id=321,
@@ -234,20 +234,7 @@ class SetUp(injector.Module):
         return sqlalchemy.orm.sessionmaker(engine)
 
 
-class ModuleHelper(object):
-    @classmethod
-    def mods(cls, ini):
-        return [cls(ini), SetUp()]
-
-    @classmethod
-    def make(cls, ini, what=(sqlalchemy.orm.session.Session, CONFIG_SECTION)):
-        return injector.Injector(cls.mods(ini)).get(what)
-    
-
-class Mock(injector.Module, ModuleHelper):
-    def __init__(self, ini):
-        injector.Module.__init__(self)
-
+class Mock(injector.Module, rtconfig.MockMixin):
     @singleton
     @provides((sqlalchemy.engine.base.Connectable, CONFIG_SECTION))
     def redcap_datasource(self):
@@ -260,24 +247,21 @@ class Mock(injector.Module, ModuleHelper):
         redcap_data.create(e)
         return e
 
+    @classmethod
+    def mods(cls):
+        return [cls(), SetUp()]
 
-class RunTime(injector.Module, ModuleHelper):
-    def __init__(self, ini):
-        injector.Module.__init__(self)
-        self._ini = ini
 
+class RunTime(rtconfig.IniModule):
     def configure(self, binder):
-        def bind_options(names, section):
-            rt = config.RuntimeOptions(names)
-            rt.load(self._ini, section)
-            binder.bind((config.Options, section), rt)
-
         #@@todo: rename sid to database (check sqlalchemy docs 1st)
-        bind_options('user password host port database engine'.split(), CONFIG_SECTION)
+        self.bind_options(binder, 
+                          'user password host port database engine'.split(),
+                          CONFIG_SECTION)
 
     @singleton
     @provides((sqlalchemy.engine.base.Connectable, CONFIG_SECTION))
-    @inject(rt=(config.Options, CONFIG_SECTION))
+    @inject(rt=(rtconfig.Options, CONFIG_SECTION))
     def redcap_datasource(self, rt, driver='mysql+mysqldb'):
         # support sqlite3 driver?
         u = (rt.engine if rt.engine else
@@ -287,18 +271,30 @@ class RunTime(injector.Module, ModuleHelper):
         # http://www.sqlalchemy.org/docs/dialects/mysql.html#connection-timeouts
         return sqlalchemy.create_engine(u, pool_recycle=3600)
 
+    @classmethod
+    def mods(cls, ini):
+        return [cls(ini), SetUp()]
 
-if __name__ == '__main__':
-    import sys, pprint
 
-    ini = 'integration-test.ini'
-    sm = RunTime.make(ini)
-    print sm().query(redcap_data).slice(1, 10)
-    print sm().query(redcap_data).slice(1, 10).all()
+def _test_main():
+    '''Print distinct field_name from a given project_id.
+    '''
+    import sys
+    from pprint import pprint
 
-    rt = config.RuntimeOptions('project_id')
-    rt.load(ini, 'oversight_survey')  # peeking
+    project_id = int(sys.argv[-1])
+
+    (sm, ) = RunTime.make(None, [(sqlalchemy.orm.session.Session,
+                                 CONFIG_SECTION)])
+
+    pprint(sm().query(redcap_data).slice(1, 10))
+    pprint(sm().query(redcap_data).slice(1, 10).all())
+
     ans = sm().execute(select([redcap_data.c.field_name], distinct=True
                               ).where(redcap_data.c.project_id ==
-                                      rt.project_id))
-    pprint.pprint(ans.fetchall())
+                                      project_id))
+    pprint(ans.fetchall())
+
+
+if __name__ == '__main__':
+    _test_main()

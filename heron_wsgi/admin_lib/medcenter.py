@@ -7,7 +7,7 @@ Badge Capabilities from Directory Lookup
 Suppose we have a login capability (see cas_auth.Issuer)::
   >>> import sys
   >>> logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-  >>> m = Mock.make()
+  >>> (m, ) = Mock.make([MedCenter])
 
   >>> req = Mock.login_info('john.smith')
   >>> req
@@ -51,7 +51,6 @@ You can only check your own training, so you need the badge authorization::
 '''
 
 import logging
-import os
 import sys
 import urllib
 import urllib2
@@ -59,7 +58,7 @@ import urllib2
 import injector
 from injector import inject, provides, singleton
 
-import config
+import rtconfig
 import ldaplib
 import sealing
 
@@ -225,13 +224,13 @@ class Badge(AttrDict):
         return self.cn
 
 
-_sample_chalk_settings = config.TestTimeOptions(dict(
+_sample_chalk_settings = rtconfig.TestTimeOptions(dict(
         url='http://localhost:8080/chalk-checker',
         param='userid'))
 
 
 def chalkdb_queryfn(ini, section=CHALK_CONFIG_SECTION):  # pragma nocover. not worth mocking an urlopener
-    rt = config.RuntimeOptions('url param'.split())
+    rt = rtconfig.RuntimeOptions('url param'.split())
     rt.load(ini, section)
 
     def training_expiration(userid):
@@ -245,17 +244,7 @@ def chalkdb_queryfn(ini, section=CHALK_CONFIG_SECTION):  # pragma nocover. not w
     return training_expiration
 
 
-class ModuleHelper(object):
-    @classmethod
-    def depgraph(cls):
-        return injector.Injector(cls.mods())
-
-    @classmethod
-    def make(cls):
-        return cls.depgraph().get(MedCenter)
-
-
-class Mock(injector.Module, ModuleHelper):
+class Mock(injector.Module, rtconfig.MockMixin):
     def configure(self, binder):
         import hcard_mock
         d = hcard_mock.MockDirectory(hcard_mock.TEST_FILE)
@@ -273,20 +262,12 @@ class Mock(injector.Module, ModuleHelper):
         req.remote_user = cn
         return req
 
-    @classmethod
-    def mods(cls):
-        return [Mock()]
-
 
 class MockRequest(AttrDict):
     pass
 
 
-class RunTime(injector.Module, ModuleHelper):
-    def __init__(self, ini='integration-test.ini'):
-        injector.Module.__init__(self)
-        self._ini = ini
-
+class RunTime(rtconfig.IniModule):
     @provides(KAppSecret)
     def trivial_secret(self):
         '''Note: other modules need to override KAppSecret
@@ -298,14 +279,12 @@ class RunTime(injector.Module, ModuleHelper):
         return chalkdb_queryfn(self._ini, CHALK_CONFIG_SECTION)
 
     @classmethod
-    def mods(cls, ini='integration-test.ini'):
+    def mods(cls, ini):
         return [cls(ini), ldaplib.RunTime(ini)]
 
 
 if __name__ == '__main__': # pragma: no cover
-    import pprint
-
-    m = RunTime.make()
+    (m, ) = RunTime.make(None, [MedCenter])
 
     if '--search' in sys.argv:
         cn, sn, givenname = sys.argv[2:5]

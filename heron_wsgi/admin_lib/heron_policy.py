@@ -1,7 +1,8 @@
 '''heron_policy.py -- HERON policy decisions, records
 
   # logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
-  >>> mc, hp, dr, _ = Mock.make_stuff()
+  >>> mc, hp, dr = Mock.make((medcenter.MedCenter, HeronRecords,
+  ...                         DecisionRecords))
   >>> mcmock = medcenter.Mock
 
 Suppose an investigator and some students log in::
@@ -149,13 +150,14 @@ import logging
 import urllib
 import csv  # csv, os only used _DataDict, i.e. testing
 import os
+import urllib2
 
 import injector
 from injector import inject, provides, singleton
 import sqlalchemy
-from sqlalchemy.sql import select, and_, or_, func
+from sqlalchemy.sql import select, and_, func
 
-import config
+import rtconfig
 import i2b2pm
 import medcenter
 import redcap_connect
@@ -208,8 +210,8 @@ class HeronRecords(object):
 
     @inject(mc=medcenter.MedCenter,
             pm=i2b2pm.I2B2PM,
-            saa_opts=(config.Options, SAA_CONFIG_SECTION),
-            oversight_opts=(config.Options, OVERSIGHT_CONFIG_SECTION),
+            saa_opts=(rtconfig.Options, SAA_CONFIG_SECTION),
+            oversight_opts=(rtconfig.Options, OVERSIGHT_CONFIG_SECTION),
             engine=(sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION),
             smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
             timesrc=KTimeSource,
@@ -581,7 +583,8 @@ class Faculty(Affiliate):
 def team_params(lookup, uids):
     r'''
     >>> import pprint
-    >>> pprint.pprint(list(team_params(medcenter.Mock.make().lookup,
+    >>> (mc, ) = medcenter.Mock.make([medcenter.MedCenter])
+    >>> pprint.pprint(list(team_params(mc.lookup,
     ...                                ['john.smith', 'bill.student'])))
     [('user_id_1', 'john.smith'),
      ('name_etc_1', 'Smith, John\nChair of Department of Neurology\n'),
@@ -618,7 +621,7 @@ class DecisionRecords(object):
     YES = '1'
     NO = '2'
 
-    @inject(rt=(config.Options, OVERSIGHT_CONFIG_SECTION),
+    @inject(rt=(rtconfig.Options, OVERSIGHT_CONFIG_SECTION),
             engine=(sqlalchemy.engine.base.Connectable,
                     redcapdb.CONFIG_SECTION),
             smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
@@ -684,8 +687,8 @@ class TestSetUp(disclaimer.TestSetUp):
     @provides((sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
     @inject(engine=(sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION),
             timesrc=KTimeSource,
-            srt=(config.Options, SAA_CONFIG_SECTION),
-            ort=(config.Options, OVERSIGHT_CONFIG_SECTION))
+            srt=(rtconfig.Options, SAA_CONFIG_SECTION),
+            ort=(rtconfig.Options, OVERSIGHT_CONFIG_SECTION))
     def redcap_sessionmaker(self, engine, timesrc, srt, ort):
         smaker = super(TestSetUp, self).redcap_sessionmaker(engine=engine)
         s = smaker()
@@ -763,13 +766,13 @@ def add_test_eav(s, project_id, event_id, e, avs):
 
 
 
-class Mock(injector.Module):
+class Mock(injector.Module, rtconfig.MockMixin):
 
-    @provides((config.Options, SAA_CONFIG_SECTION))
+    @provides((rtconfig.Options, SAA_CONFIG_SECTION))
     def saa_settions(self):
         return redcap_connect._test_settings
 
-    @provides((config.Options, OVERSIGHT_CONFIG_SECTION))
+    @provides((rtconfig.Options, OVERSIGHT_CONFIG_SECTION))
     def oversight_settings(self):
         return redcap_connect._test_settings
 
@@ -784,19 +787,6 @@ class Mock(injector.Module):
                 + disclaimer.Mock.mods() + [TestSetUp(), Mock()])
 
     @classmethod
-    def depgraph(cls):
-        return injector.Injector(cls.mods())
-
-    @classmethod
-    def make_stuff(cls, mods=None, what=(medcenter.MedCenter,
-                                         HeronRecords, DecisionRecords, None)):
-        if not mods:
-            mods = cls.mods()
-        depgraph = injector.Injector(mods)
-        return [depgraph.get(kls) if kls else depgraph
-                for kls in what]
-
-    @classmethod
     def login_sim(cls, mc, hr):
         def mkrole(uid):
             req = medcenter.Mock.login_info(uid)
@@ -806,37 +796,25 @@ class Mock(injector.Module):
         return mkrole
 
 
-class RunTime(injector.Module):  # pragma nocover
-    def __init__(self, ini):
-        injector.Module.__init__(self)
-        self._ini = ini
-
+class RunTime(rtconfig.IniModule):  # pragma nocover
     def configure(self, binder):
-        import datetime
-        import urllib2
         binder.bind(KTimeSource,
                     injector.InstanceProvider(datetime.datetime))
 
-        def bind_options(names, section):
-            rt = redcap_connect.settings(self._ini, section, names)
-            binder.bind((config.Options, section), rt)
-
-        bind_options(['survey_id'], SAA_CONFIG_SECTION)
-        bind_options(['project_id', 'executives'], OVERSIGHT_CONFIG_SECTION)
+        self.bind_options(binder, redcap_connect.OPTIONS,
+                          SAA_CONFIG_SECTION)
+        self.bind_options(binder, redcap_connect.OPTIONS + ('executives',
+                                                            'project_id'),
+                          OVERSIGHT_CONFIG_SECTION)
 
         binder.bind(urllib.URLopener, urllib2.build_opener)
 
     @classmethod
-    def mods(cls, ini='integration-test.ini'):
+    def mods(cls, ini):
         return (medcenter.RunTime.mods(ini) +
                 i2b2pm.RunTime.mods(ini) +
-                redcapdb.RunTime.mods(ini) +
                 disclaimer.RunTime.mods(ini) +
                 [cls(ini)])
-
-    @classmethod
-    def depgraph(cls):
-        return injector.Injector(cls.mods())
 
 
 if __name__ == '__main__':  # pragma nocover
@@ -845,12 +823,10 @@ if __name__ == '__main__':  # pragma nocover
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
     userid = sys.argv[1]
-    depgraph = RunTime.depgraph()
     req = medcenter.Mock.login_info(userid)
-    hr = depgraph.get(HeronRecords)
+    hr, ds = RunTime.make(None, [HeronRecords, DecisionRecords])
     hr._mc.issue(req) # umm... peeking
     hr.issue(req)
     print req.user.repository_account()
 
-    ds = depgraph.get(DecisionRecords)
     print "pending notifications:", ds.oversight_decisions()

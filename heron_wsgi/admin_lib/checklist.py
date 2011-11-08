@@ -1,7 +1,8 @@
 '''
 
 
-  >>> cl, hr, mc, depgraph = Mock.make_stuff()
+  >>> cl, hr, mc = Mock.make(
+  ...    [Checklist, heron_policy.HeronRecords, medcenter.MedCenter])
   >>> roles = heron_policy.Mock.login_sim(mc, hr)
 
   >>> import pprint
@@ -34,14 +35,13 @@
 
 
 '''
-
 import logging
 
 import injector
-from injector import inject
 
 import heron_policy
 import medcenter
+import rtconfig
 
 
 log = logging.getLogger(__name__)
@@ -101,36 +101,17 @@ class Checklist(object):
                 }
 
 
-class Mock(injector.Module):
-    def configure(self, binder):
-        pass
-
+class Mock(injector.Module, rtconfig.MockMixin):
     @classmethod
     def mods(cls):
         return [cls()] + heron_policy.Mock.mods()
 
+
+class RunTime(rtconfig.IniModule):
     @classmethod
-    def make_stuff(cls):
-        mc, hr, dr, depgraph = heron_policy.Mock.make_stuff(cls.mods())
-        cl = depgraph.get(Checklist)
-        return cl, hr, mc, depgraph
+    def mods(cls, ini):
+        return [cls(ini)] + heron_policy.RunTime.mods(ini)
 
-
-class RunTime(injector.Module):
-    def configure(self, binder):
-        pass
-
-    @classmethod
-    def mods(cls):
-        return [cls()] + heron_policy.RunTime.mods()
-
-    @classmethod
-    def make_stuff(cls):
-        depgraph = injector.Injector(cls.mods())
-        cl = depgraph.get(Checklist)
-        hr = depgraph.get(heron_policy.HeronRecords)
-        mc = depgraph.get(medcenter.MedCenter)
-        return mc, hr, cl
 
 if __name__ == '__main__':  # pragma nocover
     import sys
@@ -138,7 +119,9 @@ if __name__ == '__main__':  # pragma nocover
 
     logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
-    mc, hr, check = RunTime.make_stuff()
+    mc, hr, check = RunTime.make(None, [medcenter.MedCenter,
+                                        heron_policy.HeronRecords,
+                                        Checklist])
 
     req = medcenter.Mock.login_info(uid)
     mc.issue(req)

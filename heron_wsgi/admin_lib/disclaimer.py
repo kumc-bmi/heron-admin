@@ -8,7 +8,7 @@ access via SQL queries.
 Let's get a sessionmaker and an AcknowledgementsProject, which causes
 the database to get set up::
 
-  >>> smaker, acksproj = Mock.make_stuff('', stuff=(
+  >>> smaker, acksproj = Mock.make((
   ...       (sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
   ...        AcknowledgementsProject))
   >>> s = smaker()
@@ -33,7 +33,6 @@ import datetime
 import logging
 import urllib
 import urllib2
-import types
 from xml.dom.minidom import parse
 
 # from pypi
@@ -44,7 +43,7 @@ from sqlalchemy.orm import sessionmaker
 import xpath
 
 # from this package
-import config
+import rtconfig
 import redcapdb
 from orm_base import Base
 import redcap_connect
@@ -101,7 +100,7 @@ class AcknowledgementsProject(object):
     '''AcknowledgementsProject serves as a REDCap API proxy for adding
     Acknowledgement records.
     '''
-    @inject(rt=(config.Options, ACKNOWLEGEMENTS_SECTION),
+    @inject(rt=(rtconfig.Options, ACKNOWLEGEMENTS_SECTION),
             ua=urllib.URLopener,
             timesrc=KTimeSource)
     def __init__(self, rt, ua, timesrc):
@@ -144,34 +143,22 @@ def last_seg(addr):
     '''
     return addr[addr.rfind('/'):]
 
-class ModuleHelper(object):
-    @classmethod
-    def mods(cls, ini):
-        raise NotImplementedError
 
-    @classmethod
-    def make_stuff(cls, ini, stuff=((sqlalchemy.engine.base.Connectable,
-                                     redcapdb.CONFIG_SECTION),
-                                    AcknowledgementsProject)):
-        depgraph = injector.Injector(cls.mods(ini))
-        return [depgraph.get(what) for what in stuff]
-
-
-class Mock(redcapdb.SetUp, ModuleHelper, redcapdb.ModuleHelper):
+class Mock(redcapdb.SetUp, rtconfig.MockMixin):
     def __init__(self):
         sqlalchemy.orm.clear_mappers()
 
     @classmethod
-    def mods(cls, ini=''):
-        return redcapdb.Mock.mods(ini) + [cls(), TestSetUp()]
+    def mods(cls):
+        return redcapdb.Mock.mods() + [cls(), TestSetUp()]
 
-    @provides((config.Options, DISCLAIMERS_SECTION))
+    @provides((rtconfig.Options, DISCLAIMERS_SECTION))
     def disclaimer_options(self):
-        return config.TestTimeOptions(dict(project_id='123'))
+        return rtconfig.TestTimeOptions(dict(project_id='123'))
 
-    @provides((config.Options, ACKNOWLEGEMENTS_SECTION))
+    @provides((rtconfig.Options, ACKNOWLEGEMENTS_SECTION))
     def acknowledgements_options(self):
-        return config.TestTimeOptions(dict(project_id='1234',
+        return rtconfig.TestTimeOptions(dict(project_id='1234',
                                            api_url='http://example/recap/API',
                                            token='12345token'))
     @provides(urllib.URLopener)
@@ -188,8 +175,8 @@ class TestSetUp(redcapdb.SetUp):
     @provides((sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
     @inject(engine=(sqlalchemy.engine.base.Connectable,
                     redcapdb.CONFIG_SECTION),
-            drt=(config.Options, DISCLAIMERS_SECTION),
-            art=(config.Options, ACKNOWLEGEMENTS_SECTION))
+            drt=(rtconfig.Options, DISCLAIMERS_SECTION),
+            art=(rtconfig.Options, ACKNOWLEGEMENTS_SECTION))
     def redcap_sessionmaker(self, engine, drt, art):
         smaker = super(TestSetUp, self).redcap_sessionmaker(engine=engine)
         Disclaimer.eav_map(drt.project_id)
@@ -227,28 +214,18 @@ class _TestURLopener(object):
             raise IOError, '404 not found'
 
 
-class RunTime(injector.Module, ModuleHelper):
-    def __init__(self, ini):
-        self._ini = ini
-
+class RunTime(rtconfig.IniModule):
     def configure(self, binder):
-        def bind_options(names, section):
-            rt = config.RuntimeOptions(names)
-            rt.load(self._ini, section)
-            binder.bind((config.Options, section), rt)
-            return rt
-
-        drt = bind_options('project_id'.split(),
-                           DISCLAIMERS_SECTION)
+        drt = self.bind_options(binder, ['project_id'], DISCLAIMERS_SECTION)
         Disclaimer.eav_map(drt.project_id)
 
-        art = bind_options('project_id api_url token'.split(),
-                           ACKNOWLEGEMENTS_SECTION)
+        art = self.bind_options(binder,
+                                'project_id api_url token'.split(),
+                                ACKNOWLEGEMENTS_SECTION)
         Acknowledgement.eav_map(art.project_id)
 
         binder.bind(KTimeSource, injector.InstanceProvider(datetime.datetime))
         binder.bind(urllib.URLopener, urllib2.build_opener)
-
 
     @classmethod
     def mods(cls, ini):
@@ -259,8 +236,9 @@ def _test_main():
     import sys
     logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
-    engine, acks = RunTime.make_stuff('integration-test.ini')
-
+    engine, acks = RunTime.make(None,[(sqlalchemy.engine.base.Connectable,
+                                       redcapdb.CONFIG_SECTION),
+                                      AcknowledgementsProject])
     Base.metadata.bind = engine
     sm = sessionmaker(engine)
 
