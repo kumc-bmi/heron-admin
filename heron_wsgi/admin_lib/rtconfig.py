@@ -1,7 +1,10 @@
-'''config.py -- access to runtime options
+'''rtconfig -- access to runtime options
 '''
 
+import os
 import ConfigParser
+
+import injector
 
 class Options(object):
     def __init__(self, attrs):
@@ -52,3 +55,44 @@ class TestTimeOptions(RuntimeOptions):
     def __init__(self, settings):
         Options.__init__(self, settings.keys())
         self._d = settings
+
+
+class MockMixin(object):
+    @classmethod
+    def mods(cls):
+        return [cls()]
+
+    @classmethod
+    def make(cls, what):
+        depgraph = injector.Injector(cls.mods())
+        return [depgraph.get(it) if it else depgraph
+                for it in what]
+
+
+class IniModule(injector.Module):
+    def __init__(self, ini):
+        injector.Module.__init__(self)
+        if ini is None:
+            ini = os.environ.get('HACONFIG', None)
+            if ini is None:
+                ini = 'integration-test.ini'
+        self._ini = ini
+
+    def bind_options(self, binder, names, section):
+        rt = RuntimeOptions(names)
+        rt.load(self._ini, section)
+        binder.bind((Options, section), rt)
+        return rt
+
+    @classmethod
+    def mods(cls, ini):
+        return [cls(ini)]
+
+    @classmethod
+    def make(cls, ini, what):
+        depgraph = injector.Injector(cls.mods(ini))
+        return [depgraph.get(it) if it else depgraph
+                for it in what]
+
+
+
