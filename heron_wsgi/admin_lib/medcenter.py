@@ -7,7 +7,7 @@ Badge Capabilities from Directory Lookup
 Suppose we have a login capability (see cas_auth.Issuer)::
   >>> import sys
   >>> logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-  >>> m = Mock.make()
+  >>> (m, ) = Mock.make([MedCenter])
 
   >>> req = Mock.login_info('john.smith')
   >>> req

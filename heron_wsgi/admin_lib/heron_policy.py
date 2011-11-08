@@ -1,7 +1,8 @@
 '''heron_policy.py -- HERON policy decisions, records
 
   # logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
-  >>> mc, hp, dr, _ = Mock.make_stuff()
+  >>> mc, hp, dr = Mock.make((medcenter.MedCenter, HeronRecords,
+  ...                         DecisionRecords))
   >>> mcmock = medcenter.Mock
 
 Suppose an investigator and some students log in::
@@ -582,7 +583,8 @@ class Faculty(Affiliate):
 def team_params(lookup, uids):
     r'''
     >>> import pprint
-    >>> pprint.pprint(list(team_params(medcenter.Mock.make().lookup,
+    >>> (mc, ) = medcenter.Mock.make([medcenter.MedCenter])
+    >>> pprint.pprint(list(team_params(mc.lookup,
     ...                                ['john.smith', 'bill.student'])))
     [('user_id_1', 'john.smith'),
      ('name_etc_1', 'Smith, John\nChair of Department of Neurology\n'),
@@ -764,7 +766,7 @@ def add_test_eav(s, project_id, event_id, e, avs):
 
 
 
-class Mock(injector.Module):
+class Mock(injector.Module, rtconfig.MockMixin):
 
     @provides((rtconfig.Options, SAA_CONFIG_SECTION))
     def saa_settions(self):
@@ -783,19 +785,6 @@ class Mock(injector.Module):
         log.debug('heron_policy.Mock.mods')
         return (medcenter.Mock.mods() + i2b2pm.Mock.mods()
                 + disclaimer.Mock.mods() + [TestSetUp(), Mock()])
-
-    @classmethod
-    def depgraph(cls):
-        return injector.Injector(cls.mods())
-
-    @classmethod
-    def make_stuff(cls, mods=None, what=(medcenter.MedCenter,
-                                         HeronRecords, DecisionRecords, None)):
-        if not mods:
-            mods = cls.mods()
-        depgraph = injector.Injector(mods)
-        return [depgraph.get(kls) if kls else depgraph
-                for kls in what]
 
     @classmethod
     def login_sim(cls, mc, hr):
