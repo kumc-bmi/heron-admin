@@ -5,11 +5,9 @@ import logging
 
 # modules from PyPi http://pypi.python.org/pypi
 import injector
-import pyramid
 #from sqlalchemy import engine_from_config
 
 # modules in this package
-import cas_auth
 import heron_srv
 
 KAppSettings = injector.Key('AppSettings')
