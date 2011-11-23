@@ -5,7 +5,7 @@ __author__ = 'Dan Connolly <dconnolly@kumc.edu>'
 __copyright__ = '(c) 2011 University of Kansas Medical Center'
 __contact__ = 'http://informatics.kumc.edu/work/wiki/RequestTracking'
 __license__ = 'Apache 2'
-__version__ = '0.1'
+__version__ = '0.2'
 
 
 import os
@@ -84,5 +84,18 @@ setup(name='heron_wsgi',
             ['main = heron_wsgi:main']
         },
       paster_plugins=['pyramid'],
+      data_files=[('apache_mod_wsgi',
+                   ['apache/heron_admin.conf',
+                    'apache/heron_wsgi.py',
+                    'apache/test.wsgi']),
+                  ('av',
+                   ['heron_wsgi/htdocs-raven/av/220px-Heron_tricol_01.JPG']),
+                  ('heron_wsgi/htdocs-heron',
+                   ['heron_wsgi/htdocs-heron/build_team.html',
+                    'heron_wsgi/htdocs-heron/disclaimer.html',
+                    'heron_wsgi/htdocs-heron/drocnotice.html',
+                    'heron_wsgi/htdocs-heron/index.html',
+                    'heron_wsgi/htdocs-heron/kumc_layout.xml',
+                    'heron_wsgi/htdocs-heron/oops.html'])]
       )
 
