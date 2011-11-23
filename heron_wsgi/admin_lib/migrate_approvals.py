@@ -48,13 +48,14 @@ log = logging.getLogger(__name__)
 
 def main():
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
-    depgraph = RunTime.depgraph()
+    mi, md = RunTime.make(None, [Migration, MigrateDisclaimers])
 
     if '--disclaimers' in sys.argv:
-        md = depgraph.get(MigrateDisclaimers)
         md.migrate_acks()
+    elif '--since' in sys.argv:
+        when = sys.argv[-1]
+        mi.migrate_droc(since=when)
     else:
-        mi = depgraph.get(Migration)
         print "System access agreements: ", mi.migrate_saa()
         print "DROC requests:", mi.migrate_droc()
 
@@ -142,10 +143,14 @@ class Migration(object):
         return len(sigs), n 
 
 
-    def migrate_droc(self):
+    def migrate_droc(self, since=None):
         s = self._smaker()
         oversight_request = _table(s, 'oversight_request')
         sponsorship_candidates = _table(s, 'sponsorship_candidates')
+
+        if since:
+            oversight_request = oversight_request.select().where(
+                oversight_request.c.request_id > since).alias('since')
 
         reqs = s.execute(oversight_request.select()).fetchall()
         candidates = dict(((k, list(igroup)) for k, igroup in
