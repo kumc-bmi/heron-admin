@@ -16,3 +16,6 @@ heron_wsgi/.coverage
 heron_wsgi.egg-info
 build/
 dist/
+.ropeproject/objectdb
+.ropeproject/history
+.ropeproject/globalnames
