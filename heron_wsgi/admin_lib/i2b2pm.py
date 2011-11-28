@@ -153,10 +153,46 @@ class Mock(injector.Module, rtconfig.MockMixin):
         return sessionmaker(engine)
 
 
-if __name__ == '__main__':
+def _test_main():
     import sys
+    import logging
+
+    logging.basicConfig(level=logging.DEBUG)
+    salog = logging.getLogger('sqlalchemy.engine.base.Engine')
+    salog.setLevel(logging.INFO)
+
+    if '--list' in sys.argv:
+        _list_users()
+        return
+
     user_id = sys.argv[1]
 
     (pm, ) = RunTime.make(None, [I2B2PM])
 
     pm.ensure_account(user_id)
+
+
+def _list_users():
+    import csv, sys
+    (sm, ) = RunTime.make(None,
+                          [(sqlalchemy.orm.session.Session, CONFIG_SECTION)])
+    s = sm()
+    # get column names
+    #ans = s.execute("select * from pm_user_session "
+    #                "  where rownum < 2")
+    #print ans.fetchone().items()
+
+    ans = s.execute("select max(entry_date), count(*), user_id "
+                    "  from pm_user_session "
+                    "  where user_id not in ('OBFSC_SERVICE_ACCOUNT')"
+                    "  group by user_id"
+                    "  order by user_id")
+
+    out = csv.writer(sys.stdout)
+    out.writerow(('last_login', 'login_count', 'user_id'))
+    out.writerows([(when.isoformat(), qty, uid)
+                   for when, qty, uid in ans.fetchall()])
+
+
+if __name__ == '__main__':
+    _test_main()
