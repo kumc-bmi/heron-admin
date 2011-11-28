@@ -73,8 +73,7 @@ class I2B2PM(object):
                          entry_date=t, change_date=t, status_cd='A')
                 for c in roles]
 
-        # Is explicit flushing really the way the ORM is designed?
-        ds.flush()
+        ds.commit()
 
 
 
