@@ -34,6 +34,7 @@ from admin_lib import medcenter
 from admin_lib import heron_policy
 from admin_lib.checklist import Checklist
 from admin_lib import redcap_connect
+from admin_lib import rtconfig
 from admin_lib.rtconfig import Options, TestTimeOptions, RuntimeOptions
 from admin_lib import disclaimer, redcapdb
 
@@ -52,7 +53,7 @@ def test_home_page_redirects_to_cas():
       'https://example/cas/login?service=http%3A%2F%2Flocalhost%2F'
     '''
     from paste.fixture import TestApp
-    t = TestApp(Mock.make().make_wsgi_app())
+    t = TestApp(Mock.make()[0].make_wsgi_app())
     r1 = t.get('/', status=303)
     return t, r1
 
@@ -95,6 +96,39 @@ class CheckListView(object):
         self._next_route = next_route
 
     def get(self, req):
+        '''
+        >>> from pyramid import testing
+        >>> from pyramid.testing import DummyRequest
+        >>> config = testing.setUp()
+        >>> for route in ('logout', 'saa', 'home', 'oversight', 'i2b2_login'):
+        ...     config.add_route(route, route)
+        >>> mc, hp, clv = Mock.make((medcenter.MedCenter,
+        ...                          heron_policy.HeronRecords,
+        ...                          CheckListView))
+        >>> clv.configure(config, 'home', 'oversight')
+        >>> facreq = DummyRequest()
+        >>> facreq.remote_user = 'john.smith'
+        >>> mc.issue(facreq) and None
+        >>> hp.issue(facreq) and None
+        >>> from pprint import pprint
+        >>> pprint(clv.get(facreq))
+        {'accessDisabled': {'name': 'login'},
+         'acknowledgement': None,
+         'affiliate': John Smith <john.smith@js.example>,
+         'data_use_path': 'http://example.com/oversight',
+         'executive': {},
+         'faculty': {'checked': 'checked'},
+         'i2b2_login_path': 'http://example.com/i2b2_login',
+         'logout_path': 'http://example.com/logout',
+         'saa_path': 'http://example.com/saa',
+         'saa_public': 'http://bmidev1/redcap-host/surveys/?s=43',
+         'signatureOnFile': {'checked': 'checked'},
+         'sponsored': {'checked': 'checked'},
+         'sponsorship_path': 'http://example.com/oversight',
+         'trainingCurrent': {'checked': 'checked'},
+         'trainingExpiration': '2012-01-01'}
+
+        '''
         value = dict(self._checklist.screen(req.user, req.faculty,
                                             req.executive),
                      # req.route_url('i2b2_login')
@@ -324,7 +358,7 @@ def server_error_view(context, req):
 class HeronAdminConfig(Configurator):
     '''
     >>> from paste.fixture import TestApp
-    >>> t = TestApp(Mock.make().make_wsgi_app())
+    >>> t = TestApp(Mock.make()[0].make_wsgi_app())
     >>> r1 = t.post('/decision_notifier', status=200)
     >>> r1
     <Response 200 OK 'notice sent for reco'>
@@ -430,18 +464,16 @@ class RunTime(injector.Module):
         return cls.depgraph(settings).get(HeronAdminConfig)
 
 
-class Mock(injector.Module):
+class Mock(injector.Module, rtconfig.MockMixin):
     '''An injector module to build a mock version of this WSGI application.
 
     # logging.basicConfig(level=logging.DEBUG)
 
     Use this module and a couple others to mock up a HeronAdminConfig::
-      >>> [x.__class__ for x in Mock.mods() if type(x) is type(Mock())]
-      [<class 'heron_srv.Mock'>]
-      >>> depgraph = Mock.depgraph()
-      >>> type(depgraph)
-      <class 'injector.Injector'>
-      >>> c = Mock.make()
+      >>> (c, srt, ort) = Mock.make(
+      ...        [HeronAdminConfig,
+      ...        (Options, heron_policy.SAA_CONFIG_SECTION),
+      ...        (Options, heron_policy.OVERSIGHT_CONFIG_SECTION)])
       >>> type(c)
       <class 'heron_srv.HeronAdminConfig'>
 
@@ -451,32 +483,21 @@ class Mock(injector.Module):
     Make sure we override the saa opts so that they have what
     redcap_connect needs, and not just what heron_polic needs::
 
-      >>> rt = depgraph.get((Options, heron_policy.SAA_CONFIG_SECTION))
-      >>> rt.domain
+      >>> srt.domain
       'example.edu'
 
-      >>> rt = depgraph.get((Options,
-      ...                    heron_policy.OVERSIGHT_CONFIG_SECTION))
-      >>> rt.project_id
+      >>> ort.project_id
       34
 
     '''
 
-    @classmethod
-    def make(cls):
-        return cls.depgraph().get(HeronAdminConfig)
+    stuff = [HeronAdminConfig]
 
     @classmethod
     def mods(cls):
         return (cas_auth.Mock.mods() + heron_policy.Mock.mods()
                 + drocnotice.Mock.mods()
                 + [Mock()])
-
-    @classmethod
-    def depgraph(cls):
-        ms = cls.mods()
-        log.debug('RunTime mods: %s', ms)
-        return injector.Injector(ms)
 
     def configure(self, binder):
         log.debug('configure binder: %s', binder)
@@ -573,4 +594,7 @@ if __name__ == '__main__':  # pragma nocover
     #                    fileapp.DirectoryApp(HeronAccessPartsApp.htdocs),
     #                    )
 
-    httpserver.serve(app_factory({}), host=host, port=port)
+    httpserver.serve(app_factory({},
+                                 webapp_ini='integration-test.ini',
+                                 admin_ini='admin_lib/integration-test.ini'),
+                     host=host, port=port)

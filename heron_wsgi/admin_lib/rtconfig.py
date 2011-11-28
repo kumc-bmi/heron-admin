@@ -63,7 +63,9 @@ class MockMixin(object):
         return [cls()]
 
     @classmethod
-    def make(cls, what):
+    def make(cls, what=None):
+        if what is None:
+            what = cls.stuff
         depgraph = injector.Injector(cls.mods())
         return [depgraph.get(it) if it else depgraph
                 for it in what]
