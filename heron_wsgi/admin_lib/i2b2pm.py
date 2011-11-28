@@ -62,16 +62,17 @@ class I2B2PM(object):
                 me.status_cd, me.change_date = 'A', t
         except NoResultFound:
             me = User(user_id=uid,
-                      entry_date=t, change_date=t, status_cd='A')
+                      entry_date=t, change_date=t, status_cd='A',
+                      roles=ds.query(UserRole).filter_by(user_id=uid).all())
             ds.add(me)
 
         my_role_codes = [mr.user_role_cd for mr in me.roles]
-        if [r for r in roles if not r in my_role_codes]:
-            me.roles = [
-                UserRole(user_id=uid, project_id=project_id,
-                         user_role_cd=c,
-                         entry_date=t, change_date=t, status_cd='A')
-                for c in roles]
+        for r in roles:
+            if r not in my_role_codes:
+                me.roles.append(
+                    UserRole(user_id=uid, project_id=project_id,
+                             user_role_cd=r,
+                             entry_date=t, change_date=t, status_cd='A'))
 
         ds.commit()
 
