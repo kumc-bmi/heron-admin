@@ -126,7 +126,7 @@ class AcknowledgementsProject(object):
                         + [('acknowledgement_complete', '2')])
                    for uid, timestamp in whowhen]
 
-        self._proxy.post_json(content='record', data=records)
+        self._proxy.record_import(data=records)
         return records
 
     def add_record(self, user_id, disclaimer_address):

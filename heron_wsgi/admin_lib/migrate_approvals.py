@@ -136,9 +136,8 @@ class Migration(object):
                    for sig in sigs]
 
         log.debug('signature records: %s', pformat(records))
-        n = self._saaproxy.post_json(content='record',
-                                     data=records,
-                                     overwriteBehavior='overwrite')
+        n = self._saaproxy.record_import(data=records,
+                                         overwriteBehavior='overwrite')
 
         return len(sigs), n 
 
@@ -176,7 +175,7 @@ class Migration(object):
 
         log.debug('droc requests: %s', pformat(records[:5]))
 
-        n = self._drocproxy.post_json(content='record', data=records)
+        n = self._drocproxy.record_import(data=records)
         log_notices(self._newdb(), reqs)
 
         return len(reqs), n 

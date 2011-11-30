@@ -43,7 +43,7 @@ def survey_setup(rt, urlopener):
     domain = rt.domain
 
     def setup(userid, params, multi=False, ans_kludge=None):
-        ans = proxy.accept_json(content='survey',
+        ans = proxy.accept_json(content='survey', action='setup',
                                 multi='yes' if multi else 'no',
                                 email='%s@%s' % (userid, domain))
         surveycode = ans['hash']
@@ -61,11 +61,16 @@ def endPoint(ua, addr, token):
 
     >>> rt = _test_settings
     >>> e = endPoint(_TestUrlOpener(), rt.api_url, rt.token)
-    >>> e.accept_json(content='survey', email='john.smith@jsmith.example')
+    >>> e.accept_json(content='survey', action='setup',
+    ...               email='john.smith@jsmith.example')
     ... # doctest: +NORMALIZE_WHITESPACE
     {u'add': 0, u'PROJECT_ID': 123, u'hash': u'8074',
      u'email': u'BOGUS@example.edu', u'survey_id': 11}
     '''
+
+    def record_import(data, **args):
+        accept_json(content='record', action='import', data=data, **args)
+
     def accept_json(content, **args):
         ans = json.loads(_request(content, format='json', **args))
         log.debug('REDCap API JSON answer: %s', ans)
@@ -85,9 +90,13 @@ def endPoint(ua, addr, token):
 
 
 class _TestUrlOpener(object):
-    def open(self, addr, _):  # pylint: disable=R0201
-                              # class wouldn't work.
+    def open(self, addr, body):
+        import urlparse  # lazy
+        params = urlparse.parse_qs(body)
+        if 'action' not in params:
+            raise IOError('action param missing: ' + str(params))
         return _TestResponse(hex(abs(hash(addr)))[-4:])
+
 
 class _TestResponse(object):
     def __init__(self, h):
