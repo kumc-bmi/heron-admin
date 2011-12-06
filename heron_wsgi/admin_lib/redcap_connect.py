@@ -66,10 +66,13 @@ def endPoint(ua, addr, token):
     ... # doctest: +NORMALIZE_WHITESPACE
     {u'add': 0, u'PROJECT_ID': 123, u'hash': u'8074',
      u'email': u'BOGUS@example.edu', u'survey_id': 11}
+
+    >>> e.record_import([{'field': 'value'}])
+    {}
     '''
 
     def record_import(data, **args):
-        accept_json(content='record', action='import', data=data, **args)
+        return accept_json(content='record', action='import', data=data, **args)
 
     def accept_json(content, **args):
         ans = json.loads(_request(content, format='json', **args))
@@ -86,7 +89,8 @@ def endPoint(ua, addr, token):
         return ua.open(addr, urllib.urlencode(params)).read()
 
     return EDef(accept_json=accept_json,
-                post_json=post_json)
+                post_json=post_json,
+                record_import=record_import)
 
 
 class _TestUrlOpener(object):
@@ -95,19 +99,27 @@ class _TestUrlOpener(object):
         params = urlparse.parse_qs(body)
         if 'action' not in params:
             raise IOError('action param missing: ' + str(params))
-        return _TestResponse(hex(abs(hash(addr)))[-4:])
+        if 'setup' in params['action']:
+            h = hex(abs(hash(addr)))[-4:]
+            out = {'PROJECT_ID': 123,
+                   'add': 0,
+                   'survey_id': _test_settings.survey_id,
+                   'hash': h,
+                   'email': u'BOGUS@%s' % _test_settings.domain}
+            return _TestResponse(out)
+        elif 'import' in params['action']:
+            out = {}
+            return _TestResponse(out)
+        else:
+            raise ValueError, params['action']
 
 
 class _TestResponse(object):
-    def __init__(self, h):
-        self._h = h
+    def __init__(self, d):
+        self._d = d
 
     def read(self):
-        return json.dumps({'PROJECT_ID': 123,
-                           'add': 0,
-                           'survey_id': _test_settings.survey_id,
-                           'hash': self._h,
-                           'email': u'BOGUS@%s' % _test_settings.domain})
+        return json.dumps(self._d)
 
 _test_settings = rtconfig.TestTimeOptions(dict(
     token='sekret',
@@ -119,12 +131,19 @@ _test_settings = rtconfig.TestTimeOptions(dict(
     project_id=34))
 
 
-def _integration_test(ini='integration-test.ini',
-                      section1='saa_survey',
-                      section2='oversight_survey'):  # pragma nocover
-    s1 = survey_setup(settings(ini, section1), urllib.URLopener())
-    s2 = survey_setup(settings(ini, section2), urllib.URLopener())
-    return s1, s2
+class RunTime(rtconfig.IniModule):
+    def configure(self, binder):
+        self.bind_options(binder, OPTIONS, 'saa_survey')
+        self.bind_options(binder, OPTIONS, 'oversight_survey')
+
+    @classmethod
+    def integration_test(cls):
+        (sopts, oopts) = cls.make(None, [(rtconfig.Options, 'saa_survey'),
+                                         (rtconfig.Options, 'saa_survey')])
+        ua = urllib.URLopener()
+        s1 = survey_setup(sopts, ua)
+        s2 = survey_setup(oopts, ua)
+        return s1, s2
 
 
 def _test_multi_use(c, uid, full_name, ua):
@@ -151,17 +170,15 @@ def _test_multi_use(c, uid, full_name, ua):
     
 
 def _test_main():
-    from pprint import pprint  # pylint: disable=W0404
-
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
     userid, fullName = sys.argv[1:3]
-    c1, c2 = _integration_test()
+    c1, c2 = RunTime.integration_test()
     try:
-        pprint(c1(userid, {'email': userid + '@kumc.edu',
-                           'full_name': fullName}))
-        pprint(c2(userid, {'email': userid + '@kumc.edu',
-                           'full_name': fullName}))
+        pprint.pprint(c1(userid, {'email': userid + '@kumc.edu',
+                                  'full_name': fullName}))
+        pprint.pprint(c2(userid, {'email': userid + '@kumc.edu',
+                                  'full_name': fullName}))
     except IOError, e:
         print e.message
         print e
