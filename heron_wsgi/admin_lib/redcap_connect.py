@@ -68,11 +68,12 @@ def endPoint(ua, addr, token):
      u'email': u'BOGUS@example.edu', u'survey_id': 11}
 
     >>> e.record_import([{'field': 'value'}])
-    {}
+    '{}'
     '''
 
     def record_import(data, **args):
-        return accept_json(content='record', action='import', data=data, **args)
+        log.debug('import: %s', data)
+        return post_json(content='record', action='import', data=data, **args)
 
     def accept_json(content, **args):
         ans = json.loads(_request(content, format='json', **args))
