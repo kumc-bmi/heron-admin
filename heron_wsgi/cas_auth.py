@@ -2,39 +2,72 @@ r'''cas_auth - JA-SIG Central Authentication Service (CAS_) support
 
 .. _CAS: http://www.jasig.org/cas
 
-Suppose we have a pyramid view that we want protected by CAS::
+Suppose we have a `pyramid view`__ that we want protected by CAS.
+
+__ http://docs.pylonsproject.org/projects/pyramid/en/1.2-branch/narr/views.html
+
+Setup: Pyramid Configuration, Paste TestApp
+===========================================
+
+  >>> from pyramid.config import Configurator
+  >>> config = Configurator()
+
+A Simple Protected View
+=======================
+
   >>> from pyramid.response import Response
   >>> def protected_view(context, req):
   ...     log.debug('protected view: %s', ['I am: ', req.remote_user])
   ...     return Response(app_iter=['I am: ', req.remote_user])
 
-Let's set up authorization and authentication::
-  >>> from pyramid.config import Configurator
-  >>> config = Configurator()
 
-  >>> depgraph = Mock.depgraph()
+Building a pyramid authorization policy using the cas_auth.Validator
+====================================================================
 
-  >>> rt = depgraph.get((Options, CONFIG_SECTION))
+Let's set up authorization and authentication, starting
+with a Validator and a mock Issuer and config::
+
+  >>> guard, guide, rt = Mock.make([Validator,
+  ...                               Issuer, (Options, CONFIG_SECTION)])
+
+Note the CAS base URI from the configuration options::
+
   >>> rt.base
   'http://example/cas/'
 
-  >>> guide = depgraph.get(Issuer)
-  >>> guard = depgraph.get(Validator)
-  >>> guard.add_issuer(guide)
+The guard supplies a logout view::
 
   >>> config.add_route('logout', 'logout')
   >>> guard.configure(config, 'logout')
+
+We must introduce the guide (Issuer) to the guard (Validator)
+so that the guard will accept capabilities from the guide::
+
+  >>> guard.add_issuer(guide)
+
+Now we can set the authorization policy to use capabilities
+from the guide::
+
   >>> config.set_authorization_policy(CapabilityStyle([guide]))
+
+And finally, we can add our view, using the guide's permission::
 
   >>> config.add_route('root', '')
   >>> config.add_view(protected_view, route_name='root',
   ...                 permission=guide.permissions[0])
 
-An initial visit redirects to the CAS service with the `service` param
-set to our login address::
+
+Now we can make a WSGI application from our configuration::
 
   >>> from paste.fixture import TestApp
   >>> t = TestApp(config.make_wsgi_app())
+
+CAS Login Protocol Walkthrough
+==============================
+
+An initial visit redirects to the CAS service with the `service` param
+set to our login address::
+
   >>> r1 = t.get('/', status=303)
   >>> def _loc(headers):
   ...    return [v for (n, v) in headers if n.lower() == 'location'][0]
@@ -96,6 +129,7 @@ from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPSeeOther
 from pyramid.authentication import AuthTktAuthenticationPolicy
 
 from admin_lib.rtconfig import Options, TestTimeOptions, RuntimeOptions
+from admin_lib.rtconfig import MockMixin
 from admin_lib import sealing
 
 log = logging.getLogger(__name__)
@@ -294,7 +328,7 @@ class LinesResponse(object):
         return '\n'.join(self._lines)
 
 
-class Mock(injector.Module):
+class Mock(injector.Module, MockMixin):
     def configure(self, binder):
         binder.bind((Options, CONFIG_SECTION),
                     to=TestTimeOptions({'base': 'http://example/cas/',
@@ -308,10 +342,6 @@ class Mock(injector.Module):
     @classmethod
     def mods(cls):
         return [SetUp(), Mock()]
-
-    @classmethod
-    def depgraph(cls):
-        return injector.Injector(cls.mods())
 
 
 class MockIssuer(object):
