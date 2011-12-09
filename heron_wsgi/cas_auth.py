@@ -50,21 +50,33 @@ The the CAS service redirects back with a ticket::
 
 Now, our protected app runs inside an `auth_tkt` session::
 
-  >>> r3.follow(status=200)
+  >>> r4 = r3.follow(status=200)
+  >>> r4
   <Response 200 OK 'I am: john.smith'>
   >>> [v.split('=', 1)[0] for (n, v) in r3.headers
   ...  if n.lower() == 'set-cookie']
-  ['auth_tkt', 'auth_tkt', 'auth_tkt']
+  ['auth_tkt', 'auth_tkt']
 
+Then, more than 10 minutes later, the session has timed out,
+so we should get a challenge on the next request::
 
-Finally, log out; then we should get a challenge on the next request::
+  >>> from pyramid.authentication import AuthTktCookieHelper
+  >>> import time
+  >>> AuthTktCookieHelper.now = time.time() + 40 * 60
 
-  >>> r8 = t.post('/logout', status=303)
-  >>> _loc(r8.headers)
+  >>> _loc(t.get(r4.request.url, status=303).headers)
+  'http://example/cas/login?service=http%3A%2F%2Flocalhost%2F'
+
+Finally, log in again and log out, and then get a challenge::
+
+  >>> rlogin2 = t.get('/?ticket=ST-381409-fsFVbSPrkoD9nANruV4B-example',
+  ...                 status=302)
+  >>> rlogout = t.post('/logout', status=303)
+  >>> _loc(rlogout.headers)
   'http://example/cas/logout'
 
   >>> r0 = t.get('/', status=303)
-  >>> _loc(r1.headers)
+  >>> _loc(r0.headers)
   'http://example/cas/login?service=http%3A%2F%2Flocalhost%2F'
 '''
 
@@ -135,8 +147,11 @@ class Validator(object):
 
     def policy(self):
         return AuthTktAuthenticationPolicy(
-            self._secret, callback=self.caps)
-        
+            self._secret, callback=self.caps,
+            timeout=10 * 60,
+            reissue_time=1 * 60,
+            wild_domain=False)
+
     def configure(self, config, logout_route):
         pwho = self.policy()
         config.set_authentication_policy(pwho)
