@@ -236,33 +236,44 @@ def _test_main():
     import sys
     logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
+    user_id = sys.argv[1]
+
     engine, acks = RunTime.make(None,[(sqlalchemy.engine.base.Connectable,
                                        redcapdb.CONFIG_SECTION),
                                       AcknowledgementsProject])
     Base.metadata.bind = engine
     sm = sessionmaker(engine)
 
+    s = sm()
+    d = s.query(Disclaimer).filter(Disclaimer.current==1).first()
+    log.info('current disclaimer: %s', d)
+    a = s.query(Acknowledgement \
+                    ).filter(Acknowledgement.disclaimer_address==d.url
+                             ).filter(Acknowledgement.user_id==user_id).first()
+    log.info('ack for %s: %s', user_id, a)
+
     if '--ack' in sys.argv:
-        s = sm()
-        user_id = sys.argv[2]
         d = s.query(Disclaimer).filter(Disclaimer.current == 1).first()
         acks.add_record(user_id, d.url)
+        s.commit()
 
-    s = sm()
-    print "all disclaimers:"
-    for d in s.query(Disclaimer):
-        print d
+    if '--disclaimers' in sys.argv:
+        print "all disclaimers:"
+        for d in s.query(Disclaimer):
+            print d
 
-    print 'all acknowledgements:'
-    for ack in s.query(Acknowledgement):
-        print ack
+    if '--acks' in sys.argv:
+        print 'all acknowledgements:'
+        for ack in s.query(Acknowledgement):
+            print ack
 
-    print "current disclaimer and content:"
-    for d in s.query(Disclaimer).filter(Disclaimer.current == 1):
-        print d
-        c, h = d.content(urllib2.build_opener())
-        print h
-        print c[:100]
+    if '--current' in sys.argv:
+        print "current disclaimer and content:"
+        for d in s.query(Disclaimer).filter(Disclaimer.current == 1):
+            print d
+            c, h = d.content(urllib2.build_opener())
+            print h
+            print c[:100]
 
 
 if __name__ == '__main__':
