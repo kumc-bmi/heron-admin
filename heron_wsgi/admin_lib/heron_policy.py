@@ -244,7 +244,7 @@ class HeronRecords(object):
                 self.agent = agent
 
             def login(self):
-                hr._pm.ensure_account(badge.cn)
+                hr._pm.ensure_account(badge.cn, badge.full_name())
 
             def __repr__(self):
                 return 'Access(%s)' % self.agent

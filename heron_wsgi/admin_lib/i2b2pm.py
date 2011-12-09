@@ -3,7 +3,7 @@
 Ensure account sets up the DB as the I2B2 project manager expects::
 
   >>> pm, depgraph = Mock.make([I2B2PM, None])
-  >>> pm.ensure_account('john.smith')
+  >>> pm.ensure_account('john.smith', 'John Smith')
 
   >>> import pprint
   >>> dbsrc = depgraph.get((Session, CONFIG_SECTION))
@@ -17,6 +17,8 @@ Ensure account sets up the DB as the I2B2 project manager expects::
    (u'BlueHeron', u'john.smith', u'DATA_AGG', u'A')]
 
 '''
+
+import logging
 
 import injector
 from injector import inject, provides, singleton
@@ -34,6 +36,8 @@ from orm_base import Base
 
 CONFIG_SECTION='i2b2pm'
 
+log = logging.getLogger(__name__)
+
 
 class I2B2PM(object):
     @inject(datasrc=(Session, CONFIG_SECTION))
@@ -43,11 +47,12 @@ class I2B2PM(object):
         '''
         self._datasrc = datasrc
 
-    def ensure_account(self, uid,
+    def ensure_account(self, uid, full_name,
                        project_id='BlueHeron',
                        roles = ('USER', 'DATA_LDS', 'DATA_OBFSC', 'DATA_AGG')):
         '''Ensure that an i2b2 account is ready for an authorized user.
         '''
+        log.debug('ensure account for: %s', (uid, full_name))
         ds = self._datasrc()
         t = func.now()
 
@@ -61,7 +66,7 @@ class I2B2PM(object):
             if me.status_cd != 'A':
                 me.status_cd, me.change_date = 'A', t
         except NoResultFound:
-            me = User(user_id=uid,
+            me = User(user_id=uid, full_name=full_name,
                       entry_date=t, change_date=t, status_cd='A',
                       roles=ds.query(UserRole).filter_by(user_id=uid).all())
             ds.add(me)
@@ -156,7 +161,6 @@ class Mock(injector.Module, rtconfig.MockMixin):
 
 def _test_main():
     import sys
-    import logging
 
     logging.basicConfig(level=logging.DEBUG)
     salog = logging.getLogger('sqlalchemy.engine.base.Engine')
@@ -166,11 +170,11 @@ def _test_main():
         _list_users()
         return
 
-    user_id = sys.argv[1]
+    user_id, full_name = sys.argv[1:3]
 
     (pm, ) = RunTime.make(None, [I2B2PM])
 
-    pm.ensure_account(user_id)
+    pm.ensure_account(user_id, full_name)
 
 
 def _list_users():
