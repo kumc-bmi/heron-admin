@@ -554,6 +554,7 @@ class Affiliate(object):
         self.record = record
         self.browser = browser
         self.acknowledgement = ack
+        self._sponsor = None
 
     def __repr__(self):
         return 'Affiliate(%s)' % (self.badge)
@@ -573,7 +574,12 @@ class Affiliate(object):
         return self.record.get_training()
 
     def sponsor(self):
-        return self.record.get_sponsor()
+        '''Since Affiliate objects are only used for the lifetime of a
+        request, we figure it's OK to cache the sponsor.
+        '''
+        if not self._sponsor:
+            self._sponsor = self.record.get_sponsor()
+        return self._sponsor
 
     def repository_account(self):
         return self.record.repository_account(self,
