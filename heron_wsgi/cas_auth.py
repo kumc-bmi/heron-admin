@@ -35,7 +35,7 @@ Note the CAS base URI from the configuration options::
   >>> rt.base
   'http://example/cas/'
 
-The guard supplies a logout view::
+The guard supplies a logout view, attached to the route we specify::
 
   >>> config.add_route('logout', 'logout')
   >>> guard.configure(config, 'logout')
@@ -134,7 +134,8 @@ from admin_lib import sealing
 
 log = logging.getLogger(__name__)
 
-CONFIG_SECTION='cas'
+CONFIG_SECTION = 'cas'
+
 
 class Issuer(object):
     '''Issuer of capabilities based on CAS login credentials.
@@ -159,7 +160,8 @@ class Issuer(object):
 
         @param cap: any object, which should be tested to see if it is
                     an authorization we issued.
-        @permission: one of this issuer's permissions
+        @param permission: one of this issuer's permissions
+        @raises: TypeError if cap is not one we issued for permission.
         '''
         raise NotImplemented
 
@@ -179,49 +181,61 @@ class Validator(object):
     def __str__(self):
         return 'Validator(cas_addr=%s)' % self._a
 
-    def policy(self):
-        return AuthTktAuthenticationPolicy(
-            self._secret, callback=self.caps,
-            timeout=10 * 60,
-            reissue_time=1 * 60,
-            wild_domain=False)
-
     def configure(self, config, logout_route):
-        pwho = self.policy()
-        config.set_authentication_policy(pwho)
+        '''Apply configuration hooks:
 
-        config.add_subscriber(self.check, pyramid.events.NewRequest)
+        1. an authentication policy that consults each issuer
+        2. checkTicket NewRequest event handler
+        3. redirect-to-CAS-service view
+        4. logout view
+        '''
+        config.set_authentication_policy(AuthTktAuthenticationPolicy(
+                self._secret, callback=self.issue_caps,
+                timeout=10 * 60,
+                reissue_time=1 * 60,
+                wild_domain=False))
+
+        config.add_subscriber(self.checkTicket, pyramid.events.NewRequest)
 
         config.add_view(self.redirect,
                         context=pyramid.exceptions.HTTPForbidden,
                         permission=pyramid.security.NO_PERMISSION_REQUIRED)
+
         config.add_view(self.logout, route_name=logout_route,
                         request_method='POST')
 
-    def redirect(self, context, request):
-        if 'ticket' in request.params:
-            # already been here before
-            return HTTPForbidden()
+    def add_issuer(self, issuer):
+        self._issuers.append(issuer)
 
-        log.debug("redirector from: %s", request.url)
-        there = (urllib.basejoin(self._a, 'login') + '?' +
-                 urllib.urlencode(dict(service=request.url)))
-        log.debug("redirector to: %s, %s, %s", there, self._a, request.url)
-        return HTTPSeeOther(there)
+    def checkTicket(self, event):
+        '''Check ticket of new request.
 
-    def check(self, event):
+        This is used as a NewRequest event handler. See module
+        documentation for the normal protocol sequence.
+
+        @raises: HTTPFound() with a redirection to clean up the query
+                 part of the URL, if CAS validation succeeds (r3 in
+                 protocol walkthrough above).
+
+        @returns: None if there is no ticket parameter in the event
+                  request URL query, which indicates either
+                  (1) a new session (r1 above), in which case pyramid should
+                  call our redirect view, or
+                  (2) an existing, authenticated session
+                  (3) a failed CAS verification. (untested?!)
+        '''
         req = event.request
 
-        log.debug('check %s', req.url)
+        log.debug('checkTicket at %s', req.url)
 
         t = req.GET.get('ticket')
         if not t:
-            log.debug('no ticket arg; redirect to CAS service')
-            return None  # or: raise HTTPBadRequest()
+            log.info('checkTicket at %s: no ticket to check.', req.url)
+            return None
 
         a = self._a + 'validate?' + urllib.urlencode(dict(service=req.path_url,
                                                           ticket=t))
-        log.debug('cas validation request: %s', a)
+        log.info('cas validation request: %s', a)
         lines = self._ua.open(a).read().split('\n')
 
         log.info('cas validation result: %s', lines)
@@ -232,22 +246,37 @@ class Validator(object):
         uid = lines[1].strip()
 
         hdrs = security.remember(req, uid)
-        log.debug("new headers: %s", hdrs)
+        #log.debug("new headers: %s", hdrs)
 
         response = HTTPFound(req.path_url)
         response.headers.extend(hdrs)
         raise response
 
-    def add_issuer(self, issuer):
-        self._issuers.append(issuer)
+    def redirect(self, context, request):
+        '''Redirect to CAS service with service=... return pointer.
 
-    def caps(self, uid, req):
+        A la r1 in protocol walkthrough above.
+        '''
+        if 'ticket' in request.params:
+            # already been here before
+            return HTTPForbidden()
+
+        there = (urllib.basejoin(self._a, 'login') + '?' +
+                 urllib.urlencode(dict(service=request.url)))
+        log.info('Validator.redirect to %s (service=%s)',
+                 there, request.url)
+        return HTTPSeeOther(there)
+
+    def issue_caps(self, uid, req):
+        '''AuthTktAuthenticationPolicy callback that allows each issuer
+        to add capabilities to the request.
+        '''
         log.debug('issuing CAS login capabilities for: %s', uid)
         # 1st capability is the user id itself
         req.remote_user = uid
         return _flatten([issuer.issue(req)
                          for issuer in self._issuers])
-        
+
     def logout(self, context, req):
         response = HTTPSeeOther(urllib.basejoin(self._a, 'logout'))
         response.headers.extend(security.forget(req))
@@ -257,25 +286,37 @@ class Validator(object):
 def _flatten(listoflists):
     return list(itertools.chain(*listoflists))
 
+
 class CapabilityStyle(object):
+    '''An object-capability style  pyramid authorization policy.
+
+    Given a list of auditors, when asked if a set of principals
+    are permitted some permission, we ask each of the auditors
+    to audit each principal for the given permission.
+    '''
     def __init__(self, auditors):
         self._auditors = auditors
 
     def permits(self, context, principals, permission):
-        log.debug('CapabilityStyle.permits? %s %s %s',
-                  context, principals, permission)
+        '''Ask each auditor to audit the principals for the permission.
 
+        @return: True iff an audit raised no exception.
+        '''
         for auditor in self._auditors:
             if permission in auditor.permissions:
                 for cap in principals:
                     try:
                         # maybe pass all principals to audit in one go?
                         auditor.audit(cap, permission)
+                        log.info('CapabilityStyle.permits: %s %s',
+                                 cap, permission)
+
                         return True
                     except TypeError:
                         pass
 
-        log.debug('permits: False')
+        log.info('CapabilityStyle.permits: %s do not have %s permission.',
+                 principals, permission)
         return False
 
     def principals_allowed_by_permission(self, context, permission):
@@ -288,7 +329,7 @@ class SetUp(injector.Module):
             ua=urllib.URLopener)
     def validator(self, rt, ua):
         return Validator(rt.base, rt.app_secret, ua)
-        
+
 
 class RunTime(injector.Module):
     def __init__(self, ini):
@@ -296,8 +337,8 @@ class RunTime(injector.Module):
 
     def configure(self, binder):
         binder.bind((Options, CONFIG_SECTION),
-                    RuntimeOptions(['base', 'app_secret']
-                                   ).load(self._ini, 'cas'))
+                    RuntimeOptions(['base',
+                                    'app_secret']).load(self._ini, 'cas'))
 
         binder.bind(urllib.URLopener,
                     to=injector.InstanceProvider(urllib2.build_opener()))
@@ -319,6 +360,7 @@ class LinesUrlOpener(object):
 
     def open(self, addr, body=None):
         return LinesResponse(self._lines)
+
 
 class LinesResponse(object):
     def __init__(self, lines):
@@ -348,11 +390,12 @@ class MockIssuer(object):
     permissions = ('treasure',)
 
     def __init__(self):
-        self.sealer, self._unsealer = sealing.makeBrandPair('treasure')
+        self.sealer, self._unsealer = sealing.makeBrandPair('treasure map')
 
     def issue(self, req):
         cap = 'Canary Islands'
         req.treasure_location = cap
+        log.debug('issuing caps for: %s', self.permissions)
         return [self.sealer.seal(cap)]
 
     def audit(self, cap, permission):
@@ -367,10 +410,14 @@ def _integration_test(ini, host='127.0.0.1', port=8123):
     from pyramid.response import Response
     from paste import httpserver
 
-    logging.basicConfig(level=logging.DEBUG)
+    #logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
 
     def protected_view(req):
-        return Response(app_iter=['I am: ', req.remote_user])
+        log.info('protected_view for: %s', req.remote_user)
+        return Response(app_iter=['I am: ', req.remote_user,
+                                  ' and the location of the treasure is: ',
+                                  req.treasure_location])
 
     config = Configurator(settings={'pyramid.debug_routematch': True})
 
