@@ -35,8 +35,8 @@ from sealing import EDef
 
 log = logging.getLogger(__name__)
 
+OPTIONS = ('token', 'api_url', 'survey_url', 'domain', 'survey_id')
 
-OPTIONS=('token', 'api_url', 'survey_url', 'domain', 'survey_id')
 
 def survey_setup(rt, urlopener):
     proxy = endPoint(urlopener, rt.api_url, rt.token)
@@ -112,7 +112,7 @@ class _TestUrlOpener(object):
             out = {}
             return _TestResponse(out)
         else:
-            raise ValueError, params['action']
+            raise ValueError(params['action'])
 
 
 class _TestResponse(object):
@@ -155,20 +155,19 @@ def _test_multi_use(c, uid, full_name, ua):
 
     content1 = ua.open(addr1).read()
     if 'already' in content1:
-        raise ValueError, 'form for 1st request says ...already...'
+        raise ValueError('form for 1st request says ...already...')
 
     # @@ need to fill it out.
 
     addr2 = c(uid, params, multi=True)
     if addr2 == addr1:
-        raise ValueError, '2nd request has same address as 1st: %s = %s' % (
-            addr1, addr2)
+        raise ValueError('2nd request has same address as 1st: %s = %s' % (
+            addr1, addr2))
 
     content2 = ua.open(addr2).read()
     if 'already' in content2:
-        raise ValueError, 'form for 2nd request says ...already...'
+        raise ValueError('form for 2nd request says ...already...')
 
-    
 
 def _test_main():
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
