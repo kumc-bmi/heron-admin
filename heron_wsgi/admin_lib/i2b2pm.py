@@ -34,7 +34,7 @@ import sqlalchemy
 import rtconfig
 from orm_base import Base
 
-CONFIG_SECTION='i2b2pm'
+CONFIG_SECTION = 'i2b2pm'
 
 log = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class I2B2PM(object):
 
     def ensure_account(self, uid, full_name,
                        project_id='BlueHeron',
-                       roles = ('USER', 'DATA_LDS', 'DATA_OBFSC', 'DATA_AGG')):
+                       roles=('USER', 'DATA_LDS', 'DATA_OBFSC', 'DATA_AGG')):
         '''Ensure that an i2b2 account is ready for an authorized user.
         '''
         log.debug('ensure account for: %s', (uid, full_name))
@@ -62,7 +62,7 @@ class I2B2PM(object):
         # TODO: consider factoring out the "update the change_date
         # whenever you set a field" aspect of Audited.
         try:
-            me = ds.query(User).filter(User.user_id==uid).one()
+            me = ds.query(User).filter(User.user_id == uid).one()
             if me.status_cd != 'A':
                 me.status_cd, me.change_date = 'A', t
         except NoResultFound:
@@ -80,7 +80,6 @@ class I2B2PM(object):
                              entry_date=t, change_date=t, status_cd='A'))
 
         ds.commit()
-
 
 
 class Audited(object):
@@ -118,7 +117,7 @@ class UserRole(Base, Audited):
     __tablename__ = 'pm_project_user_roles'
 
     project_id = Column(String, primary_key=True)  # ForeignKey?
-    user_id = Column(String, 
+    user_id = Column(String,
                      ForeignKey('pm_user_data.user_id'),
                      primary_key=True)
     user_role_cd = Column(Enum('ADMIN', 'MANAGER', 'USER',
@@ -139,7 +138,8 @@ class RunTime(rtconfig.IniModule):
         rt.load(self._ini, CONFIG_SECTION)
         return rt
 
-    # abusing Session a bit; this really provides a subclass, not an instance, of Session
+    # abusing Session a bit; this really provides a subclass, not an
+    # instance, of Session
     @singleton
     @provides((sqlalchemy.orm.session.Session, CONFIG_SECTION))
     @inject(rt=(rtconfig.Options, CONFIG_SECTION))
