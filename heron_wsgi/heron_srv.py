@@ -266,6 +266,7 @@ class RepositoryLogin(object):
         try:
             if req.method == 'POST':
                 req.user.repository_account().login()
+            log.info('i2b2_login: redirect to i2b2')
             return HTTPSeeOther(self._i2b2_tool_addr)
         except heron_policy.NoPermission, np:
             log.error('i2b2_login: NoPermission')

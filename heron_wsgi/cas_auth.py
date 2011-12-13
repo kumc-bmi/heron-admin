@@ -226,8 +226,6 @@ class Validator(object):
         '''
         req = event.request
 
-        log.debug('checkTicket at %s', req.url)
-
         t = req.GET.get('ticket')
         if not t:
             log.info('checkTicket at %s: no ticket to check.', req.url)
@@ -235,7 +233,9 @@ class Validator(object):
 
         a = self._a + 'validate?' + urllib.urlencode(dict(service=req.path_url,
                                                           ticket=t))
-        log.info('cas validation request: %s', a)
+
+        log.info('checkTicket for <%s>: cas validation request: %s',
+                 req.url, a)
         lines = self._ua.open(a).read().split('\n')
 
         if not(lines and lines[0] == 'yes'):
