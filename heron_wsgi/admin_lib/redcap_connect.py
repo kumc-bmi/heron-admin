@@ -21,7 +21,16 @@
    's=8074&full_name=John+Smith&user_id=john.smith']
 
 
+  >>> setup('john.smith',
+  ...       {'multi': 'yes', 'user_id': 'john.smith',
+  ...        'what_for': '2', 'full_name': 'Smith, John'},
+  ...       multi=True).split('&')
+  ... # doctest: +NORMALIZE_WHITESPACE
+  ['http://bmidev1/redcap-host/surveys/?s=8074',
+   'full_name=Smith%2C+John',
+   'multi=yes', 'user_id=john.smith', 'what_for=2']
 '''
+
 import json
 import logging
 import pprint

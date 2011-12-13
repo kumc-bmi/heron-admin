@@ -65,19 +65,22 @@ class I2B2PM(object):
             me = ds.query(User).filter(User.user_id == uid).one()
             if me.status_cd != 'A':
                 me.status_cd, me.change_date = 'A', t
+            log.info('found: %s', me)
         except NoResultFound:
             me = User(user_id=uid, full_name=full_name,
                       entry_date=t, change_date=t, status_cd='A',
                       roles=ds.query(UserRole).filter_by(user_id=uid).all())
+            log.info('adding: %s', me)
             ds.add(me)
 
         my_role_codes = [mr.user_role_cd for mr in me.roles]
         for r in roles:
             if r not in my_role_codes:
-                me.roles.append(
-                    UserRole(user_id=uid, project_id=project_id,
-                             user_role_cd=r,
-                             entry_date=t, change_date=t, status_cd='A'))
+                myrole = UserRole(user_id=uid, project_id=project_id,
+                                  user_role_cd=r,
+                                  entry_date=t, change_date=t, status_cd='A')
+                log.info('I2B2PM: adding: %s', myrole)
+                me.roles.append(myrole)
 
         ds.commit()
 
@@ -96,6 +99,7 @@ class User(Base, Audited):
     full_name = Column(String)
     password = Column(String)  # encrypted?
     email = Column(String)
+    status_cd = Column(Enum('A', 'D'))
     roles = relationship('UserRole', backref='pm_user_data')
 
     def ini(self, user_id,
@@ -110,7 +114,7 @@ class User(Base, Audited):
                     changeby_char, status_cd='A')
 
     def __repr__(self):
-        return "<User(%s)>" % self.user_id
+        return "<User(%s, %s)>" % (self.user_id, self.full_name)
 
 
 class UserRole(Base, Audited):

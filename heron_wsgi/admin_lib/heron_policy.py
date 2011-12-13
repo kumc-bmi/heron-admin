@@ -327,8 +327,7 @@ class HeronRecords(object):
         req.faculty = fac
         req.user = user
 
-        log.info('HeronRecords.issue executive: %s faculty: %s user: %s',
-                 ex, fac, user)
+        log.info('issue executive: %s faculty: %s user: %s', ex, fac, user)
 
         return [user]
 
@@ -605,7 +604,7 @@ class Faculty(Affiliate):
 
     def ensure_oversight_survey(self, uids, what_for):
         if what_for not in HeronRecords.oversight_request_purposes:
-            raise TypeError
+            raise TypeError(what_for)
 
         tp = team_params(self.browser.lookup, uids)
         return self.record.ensure_oversight(dict(tp,

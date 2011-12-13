@@ -106,6 +106,7 @@ class MedCenter(object):
         cap = self.lookup(req.remote_user)
         auth = self.sealer.seal(cap)
         req.badge = cap
+        log.info('issuing badge (LDAP): %s', cap)
         req.idvault_entry = auth
         return [auth]
 

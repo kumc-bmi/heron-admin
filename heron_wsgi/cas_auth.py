@@ -238,9 +238,8 @@ class Validator(object):
         log.info('cas validation request: %s', a)
         lines = self._ua.open(a).read().split('\n')
 
-        log.info('cas validation result: %s', lines)
-
         if not(lines and lines[0] == 'yes'):
+            log.info('cas validation failed: %s', lines)
             return None  # or: raise HTTPForbidden()
 
         uid = lines[1].strip()
@@ -250,6 +249,9 @@ class Validator(object):
 
         response = HTTPFound(req.path_url)
         response.headers.extend(hdrs)
+        log.info('cas validation succeeded for: %s '
+                 'redirecting to %s with session cookie',
+                 uid, req.path_url)
         raise response
 
     def redirect(self, context, request):
@@ -278,8 +280,10 @@ class Validator(object):
                          for issuer in self._issuers])
 
     def logout(self, context, req):
-        response = HTTPSeeOther(urllib.basejoin(self._a, 'logout'))
+        there = urllib.basejoin(self._a, 'logout')
+        response = HTTPSeeOther(there)
         response.headers.extend(security.forget(req))
+        log.info('dropping session cooking and redirecting to %s', there)
         raise response
 
 
