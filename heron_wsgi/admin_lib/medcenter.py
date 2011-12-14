@@ -15,6 +15,7 @@ Suppose we have a login capability (see cas_auth.Issuer)::
 
 Then we'll issue a badge capability to the request and authorization to use it:
   >>> login_caps = m.issue(req)
+  INFO:medcenter:issuing badge (LDAP): John Smith <john.smith@js.example>
   >>> login_caps
   [<MedCenter sealed box>]
   >>> m.audit(login_caps[0], m.permissions[0])  #doctest: +ELLIPSIS
