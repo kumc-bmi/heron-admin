@@ -67,8 +67,9 @@ log = logging.getLogger(__name__)
 KTrainingFunction = injector.Key('TrainingFunction')
 KAppSecret = injector.Key('AppSecret')
 
-CHALK_CONFIG_SECTION='chalk'
-PERM_ID=__name__ + '.idvault'
+CHALK_CONFIG_SECTION = 'chalk'
+PERM_ID = __name__ + '.idvault'
+
 
 @singleton
 class MedCenter(object):
@@ -76,7 +77,7 @@ class MedCenter(object):
     though we're avoiding an actual dependency in that direction just now.
     '''
     excluded_jobcode = "24600"
-    permissions=(PERM_ID,)
+    permissions = (PERM_ID,)
 
     @inject(searchsvc=ldaplib.LDAPService,
             trainingfn=KTrainingFunction,
@@ -95,9 +96,9 @@ class MedCenter(object):
         matches = self._svc.search('(cn=%s)' % name, Badge.attributes)
         if len(matches) != 1:
             if len(matches) == 0:
-                raise KeyError, name
-            else: # pragma nocover
-                raise ValueError, name  # ambiguous
+                raise KeyError(name)
+            else:  # pragma nocover
+                raise ValueError(name)  # ambiguous
 
         dn, ldapattrs = matches[0]
         return Badge.from_ldap(ldapattrs)
@@ -195,7 +196,7 @@ class Badge(AttrDict):
     @classmethod
     def from_ldap(cls, ldapattrs):
         r'''Get the 1st of each LDAP style list of values for each attribute.
-        
+
           >>> Badge.from_ldap(
           ...    {'kumcPersonJobcode': ['1234'],
           ...     'kumcPersonFaculty': ['Y'],
@@ -230,7 +231,8 @@ _sample_chalk_settings = rtconfig.TestTimeOptions(dict(
         param='userid'))
 
 
-def chalkdb_queryfn(ini, section=CHALK_CONFIG_SECTION):  # pragma nocover. not worth mocking an urlopener
+def chalkdb_queryfn(ini, section=CHALK_CONFIG_SECTION):  # pragma nocover.
+    # not worth mocking an urlopener
     rt = rtconfig.RuntimeOptions('url param'.split())
     rt.load(ini, section)
 
@@ -254,7 +256,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
                     injector.InstanceProvider(d))
         binder.bind(KTrainingFunction,
                     injector.InstanceProvider(d.trainedThru))
-        binder.bind(KAppSecret, 
+        binder.bind(KAppSecret,
                     injector.InstanceProvider('sekrit'))
 
     @classmethod
@@ -284,7 +286,7 @@ class RunTime(rtconfig.IniModule):
         return [cls(ini), ldaplib.RunTime(ini)]
 
 
-if __name__ == '__main__': # pragma: no cover
+if __name__ == '__main__':  # pragma: no cover
     (m, ) = RunTime.make(None, [MedCenter])
 
     if '--search' in sys.argv:
