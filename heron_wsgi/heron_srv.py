@@ -386,7 +386,7 @@ def server_error_view(context, req):
     https://pylonsproject.org/projects/pyramid_exclog/dev/
     '''
     log.error('Exception raised: %s', str(context))
-    log.debug('Exception trace:', exc_info=context)
+    log.warn('Exception trace:', exc_info=context)
     req.response.status = 500
     return dict(error_info=str(context))
 

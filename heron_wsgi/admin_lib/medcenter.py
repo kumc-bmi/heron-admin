@@ -208,9 +208,15 @@ class Badge(AttrDict):
           ...      'givenname': ['John']})
           John Smith <john.smith@js.example>
         '''
-        return cls(
-            **dict([(n, ldapattrs.get(n, [None])[0])
-                    for n in cls.attributes]))
+        d = dict([(n, ldapattrs.get(n, [None])[0])
+                  for n in cls.attributes])
+
+        for n in cls.attributes:
+            if d[n] is None:
+                log.warn('missing LDAP attribute %s for %s',
+                         n, d.get('cn', '<no cn either!>'))
+
+        return cls(d)
 
     def __repr__(self):
         return '%s %s <%s>' % (self.givenname, self.sn, self.mail)

@@ -113,11 +113,15 @@ class DROCNotice(object):
                 continue
 
             investigator, team, detail = dr.decision_detail(record)
+            log.debug('build_notices team: %s', team)
             s = self._rf(render_value(investigator, team, decision, detail,
                               req.route_url('heron_home')),
                          dict(renderer_name='drocnotice.html'))
 
-            cc = ([b.mail for b in team]
+            cc = ([b.mail for b in team
+                   # In case an idvault entry is missing a mail
+                   # attribute, skip it.
+                   if b.mail]
                   if decision == DecisionRecords.YES
                   else [])
             m = Message(subject='HERON access request ' + (
