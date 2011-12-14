@@ -4,7 +4,7 @@ r'''drocnotice -- notify investigators, team members of DROC decisions
   >>> from pyramid.testing import DummyRequest
   >>> config = testing.setUp()
 
-  >>> dn = Mock.make(DROCNotice)
+  >>> (dn, ) = Mock.make([DROCNotice])
 
   >>> config.add_route('heron_home', '')
   >>> dn.configure(config, 'heron_home')
@@ -20,6 +20,11 @@ r'''drocnotice -- notify investigators, team members of DROC decisions
   ('Content-Transfer-Encoding', '7bit')]
   [('MIME-Version', '1.0'), ('From', 'sender@example'), ('Subject',
   'HERON access request approved'), ('To', 'john.smith@js.example;
+  bill.student@js.example'), ('Content-Type',
+  'text/html; charset="us-ascii"'), ('Content-Transfer-Encoding',
+  '7bit')]
+  [('MIME-Version', '1.0'), ('From', 'sender@example'), ('Subject',
+  'HERON access request approved'), ('To', 'john.smith@js.example;
   some.one@js.example; carol.student@js.example'), ('Content-Type',
   'text/html; charset="us-ascii"'), ('Content-Transfer-Encoding',
   '7bit')]
@@ -29,8 +34,10 @@ r'''drocnotice -- notify investigators, team members of DROC decisions
   >>> ans._app_iter # doctest: +NORMALIZE_WHITESPACE
   ['notice sent for record -565402122873664774:
     HERON access request rejected\n',
+   'notice sent for record 23180811818680005:
+    HERON access request approved\n',
    'notice sent for record 6373469799195807417:
-    HERON access request approved\n']
+   HERON access request approved\n']
 
   Now there should be no pending notices:
   >>> list(dn.build_notices(DummyRequest()))
@@ -42,10 +49,8 @@ import logging
 
 import injector
 from injector import inject, provides, singleton
-import pyramid
 from pyramid.response import Response
 import pyramid_mailer
-from pyramid_mailer import get_mailer
 from pyramid_mailer.message import Message
 import sqlalchemy
 from sqlalchemy.sql import func
@@ -53,9 +58,9 @@ from sqlalchemy.sql import func
 import genshi_render
 from admin_lib import heron_policy
 from admin_lib.heron_policy import DecisionRecords
-from admin_lib import medcenter
 from admin_lib import noticelog
 from admin_lib import redcapdb
+from admin_lib import rtconfig
 
 KMailSettings = injector.Key('MailSettings')
 log = logging.getLogger(__name__)
@@ -101,7 +106,6 @@ class DROCNotice(object):
             log.info(notice)
         return Response(app_iter=out)
 
-
     def build_notices(self, req):
         dr = self._dr
         for pid, record, decision, _ in dr.oversight_decisions():
@@ -121,7 +125,8 @@ class DROCNotice(object):
                     else 'rejected'),
                         # Due to bug in pyramid_mailer, we don't use cc.
                         # https://github.com/Pylons/pyramid_mailer/issues/3
-                        # https://github.com/dckc/pyramid_mailer/commit/8a426bc8b24f491880c2b3a0204f0ee7bae42193
+                        # https://github.com/dckc/pyramid_mailer/commit
+                        #    /8a426bc8b24f491880c2b3a0204f0ee7bae42193
                         #cc=cc,
                         recipients=[investigator.mail] + cc,
                         html=s)
@@ -131,7 +136,8 @@ class DROCNotice(object):
 
 def render_value(investigator, team, decision, detail, heron_home):
     r'''
-      >>> mc = medcenter.Mock.make()
+      >>> from admin_lib import medcenter
+      >>> (mc, ) = medcenter.Mock.make([medcenter.MedCenter])
       >>> v = render_value(mc.lookup('john.smith'),
       ...                  [mc.lookup('some.one')], '1',
       ...                  dict(full_name='John Smith',
@@ -156,7 +162,7 @@ def render_value(investigator, team, decision, detail, heron_home):
     '''
     return dict(detail,
                 heron_home=heron_home,
-                approved=decision==DecisionRecords.YES,
+                approved=decision == DecisionRecords.YES,
                 sponsor_full_name=detail['full_name'],
                 team=['%s %s' % (b.givenname, b.sn) for b in team])
 
@@ -169,7 +175,9 @@ class Setup(injector.Module):
         return pyramid_mailer.mailer.Mailer.from_settings(settings)
 
 
-class Mock(injector.Module):
+class Mock(injector.Module, rtconfig.MockMixin):
+    stuff = [DROCNotice]
+
     @provides(KMailSettings)
     def settings(self):
         return {}
@@ -181,8 +189,3 @@ class Mock(injector.Module):
     @classmethod
     def mods(cls):
         return [Setup(), cls()] + heron_policy.Mock.mods()
-
-    @classmethod
-    def make(cls, target=DROCNotice):
-        depgraph = injector.Injector(cls.mods())
-        return depgraph.get(target)
