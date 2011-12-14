@@ -72,7 +72,7 @@ class Checklist(object):
                 return {}
             except medcenter.NotFaculty:
                 return {}
-            except: #@@narrow exceptions to IO/DB error
+            except:  # @@narrow exceptions to IO/DB error
                 log.warn('Exception in checklist. DB down?')
                 log.debug('Checklist error detail', exc_info=True)
                 # @@TODO: show user an indication of the error
@@ -82,7 +82,7 @@ class Checklist(object):
             access = agent.repository_account()
         except heron_policy.NoPermission:
             access = None
-        except: #@@narrow exceptions to IO/DB error
+        except:  # @@narrow exceptions to IO/DB error
             log.warn('Exception checking repository access. DB down?')
             log.debug('Repository access error detail', exc_info=True)
             # @@TODO: show user an indication of the error
@@ -95,10 +95,8 @@ class Checklist(object):
                 "faculty": {'checked': 'checked'} if faculty else {},
                 "signatureOnFile": checkmark(lambda: agent.signature()),
                 "sponsored": checkmark(lambda: agent.sponsor()),
-                "acknowledgement": agent.acknowledgement,
                 "accessDisabled": (access and {'name': 'login'}
-                                   or {'disabled': 'disabled'})
-                }
+                                   or {'disabled': 'disabled'})}
 
 
 class Mock(injector.Module, rtconfig.MockMixin):

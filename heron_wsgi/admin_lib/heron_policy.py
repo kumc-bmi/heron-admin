@@ -305,23 +305,25 @@ class HeronRecords(object):
                 #@@ todo: check user, sponsor, sig, training?
                 return I2B2Account(user)
 
+            def disclaimer_ack(self):
+                return hr._disclaimer_acknowledgement(badge.cn)
+
         ex = fac = user = None
-        req.disclaimer, ack = self._disclaimer_acknowledgement(badge.cn)
 
         if badge.cn in self._executives:
             ex = Executive(badge,
                            req.idvault_entry,
-                           Record(), Browser(), ack)
+                           Record(), Browser())
             user = ex
         else:
             try:
                 fac = Faculty(mc.faculty_badge(req.idvault_entry),
                                req.idvault_entry,
-                               Record(), Browser(), ack)
+                               Record(), Browser())
                 user = fac
             except medcenter.NotFaculty:
                 user = Affiliate(badge, req.idvault_entry,
-                                 Record(), Browser(), ack)
+                                 Record(), Browser())
 
         req.executive = ex
         req.faculty = fac
@@ -547,12 +549,11 @@ class NoAgreement(NoPermission):
 
 
 class Affiliate(object):
-    def __init__(self, badge, idcap, record, browser, ack):
+    def __init__(self, badge, idcap, record, browser):
         self.badge = badge
         self.idcap = idcap
         self.record = record
         self.browser = browser
-        self.acknowledgement = ack
         self._sponsor = None
 
     def __repr__(self):
@@ -585,6 +586,9 @@ class Affiliate(object):
                                               self.sponsor(),
                                               self.signature(),
                                               self.training())
+
+    def disclaimer_ack(self):
+        return self.record.disclaimer_ack()
 
 
 class Executive(Affiliate):

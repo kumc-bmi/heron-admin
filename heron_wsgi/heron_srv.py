@@ -266,7 +266,7 @@ class RepositoryLogin(object):
                 log.error('i2b2_login: NoPermission')
                 return HTTPForbidden(detail=np.message)
 
-        if not req.user.acknowledgement:
+        if not req.user.disclaimer_ack()[1]:
             log.info('i2b2_login: redirect to disclaimer')
             return HTTPSeeOther(req.route_url(self._disclaimer_route))
 
@@ -274,16 +274,17 @@ class RepositoryLogin(object):
         return HTTPSeeOther(self._i2b2_tool_addr)
 
     def disclaimer(self, req):
+        disclaimer, ack = req.user.disclaimer_ack()
         if req.method == 'GET':
-            content, headline = req.disclaimer.content(self._ua)
-            log.info('GET disclaimer: %s', req.disclaimer.url)
-            return {'url': req.disclaimer.url,
+            content, headline = disclaimer.content(self._ua)
+            log.info('GET disclaimer: %s', disclaimer.url)
+            return {'url': disclaimer.url,
                     'headline': headline,
                     'content': content}
         else:
-            self._acks.add_record(req.user.badge.cn, req.disclaimer.url)
+            self._acks.add_record(req.user.badge.cn, disclaimer.url)
             log.info('POST disclaimer: added %s %s; redirecting to login',
-                     req.user.badge.cn, req.disclaimer.url)
+                     req.user.badge.cn, disclaimer.url)
             return HTTPSeeOther(req.route_url(self._login_route))
 
 
