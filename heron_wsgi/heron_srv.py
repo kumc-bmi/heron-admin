@@ -259,18 +259,19 @@ class RepositoryLogin(object):
         '''Log in to i2b2, provided credentials and current disclaimer.
         '''
 
+        if req.method == 'POST':
+            try:
+                req.user.repository_account().login()
+            except heron_policy.NoPermission, np:
+                log.error('i2b2_login: NoPermission')
+                return HTTPForbidden(detail=np.message)
+
         if not req.user.acknowledgement:
             log.info('i2b2_login: redirect to disclaimer')
             return HTTPSeeOther(req.route_url(self._disclaimer_route))
 
-        try:
-            if req.method == 'POST':
-                req.user.repository_account().login()
-            log.info('i2b2_login: redirect to i2b2')
-            return HTTPSeeOther(self._i2b2_tool_addr)
-        except heron_policy.NoPermission, np:
-            log.error('i2b2_login: NoPermission')
-            return HTTPForbidden(detail=np.message)
+        log.info('i2b2_login: redirect to i2b2')
+        return HTTPSeeOther(self._i2b2_tool_addr)
 
     def disclaimer(self, req):
         if req.method == 'GET':
