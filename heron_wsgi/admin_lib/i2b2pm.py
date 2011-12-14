@@ -1,12 +1,24 @@
 '''i2b2pm -- I2B2 Project Management cell client/proxy
 
-Ensure account sets up the DB as the I2B2 project manager expects::
+Generate authorization to use an i2b2 project::
 
   >>> pm, depgraph = Mock.make([I2B2PM, None])
-  >>> pm.ensure_account('john.smith', 'John Smith')
+  >>> pw, js = pm.authz('john.smith', 'John Smith')
+  >>> pw
+  'dfd03595-ab3e-4448-9c8e-a65a290cc3c5'
+  >>> js.password
+  u'da67296336429545fe63f61644e420'
 
+The result is a `pm_user_data` record::
   >>> import pprint
   >>> dbsrc = depgraph.get((Session, CONFIG_SECTION))
+  >>> ans = dbsrc().execute('select user_id, password, status_cd'
+  ...                       ' from pm_user_data')
+  >>> pprint.pprint(ans.fetchall())
+  [(u'john.smith', u'da67296336429545fe63f61644e420', u'A')]
+
+... and appropriate `pm_project_user_roles` records::
+
   >>> ans = dbsrc().execute('select project_id, user_id, '
   ...                       ' user_role_cd, status_cd'
   ...                       ' from pm_project_user_roles')
@@ -16,9 +28,23 @@ Ensure account sets up the DB as the I2B2 project manager expects::
    (u'BlueHeron', u'john.smith', u'DATA_OBFSC', u'A'),
    (u'BlueHeron', u'john.smith', u'DATA_AGG', u'A')]
 
+Generate another authorization::
+
+  >>> auth, js2 = pm.authz('john.smith', 'John Smith')
+  >>> auth
+  '89cd1d9a-ace1-4673-8a12-50ebac2625f9'
+
+This updates the `password` column of the `pm_user_data` record::
+
+  >>> ans = dbsrc().execute('select user_id, password, status_cd'
+  ...                       ' from pm_user_data')
+  >>> pprint.pprint(ans.fetchall())
+  [(u'john.smith', u'e5ab367ceece604b7f7583d024ac4e2b', u'A')]
 '''
 
 import logging
+import uuid
+import hashlib
 
 import injector
 from injector import inject, provides, singleton
@@ -35,40 +61,42 @@ import rtconfig
 from orm_base import Base
 
 CONFIG_SECTION = 'i2b2pm'
+KUUIDGen = injector.Key('UUIDGen')
 
 log = logging.getLogger(__name__)
 
 
 class I2B2PM(object):
-    @inject(datasrc=(Session, CONFIG_SECTION))
-    def __init__(self, datasrc):
+    @inject(datasrc=(Session, CONFIG_SECTION),
+            uuidgen=KUUIDGen)
+    def __init__(self, datasrc, uuidgen):
         '''
         @param datasrc: a function that returns a sqlalchemy session
         '''
         self._datasrc = datasrc
+        self._uuidgen = uuidgen
 
-    def ensure_account(self, uid, full_name,
-                       project_id='BlueHeron',
-                       roles=('USER', 'DATA_LDS', 'DATA_OBFSC', 'DATA_AGG')):
-        '''Ensure that an i2b2 account is ready for an authorized user.
+    def authz(self, uid, full_name,
+              project_id='BlueHeron',
+              roles=('USER', 'DATA_LDS', 'DATA_OBFSC', 'DATA_AGG')):
+        '''Generate authorization to use an i2b2 project.
         '''
-        log.debug('ensure account for: %s', (uid, full_name))
+        log.debug('generate authorization for: %s', (uid, full_name))
         ds = self._datasrc()
         t = func.now()
-
-        #import pdb
-        #pdb.set_trace()
+        auth = str(self._uuidgen.uuid4())
+        pw = hexdigest(auth)
 
         # TODO: consider factoring out the "update the change_date
         # whenever you set a field" aspect of Audited.
         try:
             me = ds.query(User).filter(User.user_id == uid).one()
-            if me.status_cd != 'A':
-                me.status_cd, me.change_date = 'A', t
+            me.password, me.status_cd, me.change_date = pw, 'A', t
             log.info('found: %s', me)
         except NoResultFound:
             me = User(user_id=uid, full_name=full_name,
                       entry_date=t, change_date=t, status_cd='A',
+                      password=pw,
                       roles=ds.query(UserRole).filter_by(user_id=uid).all())
             log.info('adding: %s', me)
             ds.add(me)
@@ -83,6 +111,18 @@ class I2B2PM(object):
                 me.roles.append(myrole)
 
         ds.commit()
+        return auth, me
+
+
+def hexdigest(txt):
+    '''mimic i2b2's own hex digest algorithm
+
+    It seems to omit leading 0's.
+
+    >>> hexdigest('test')
+    '98f6bcd4621d373cade4e832627b4f6'
+    '''
+    return ''.join([hex(ord(b))[2:] for b in hashlib.md5(txt).digest()])
 
 
 class Audited(object):
@@ -97,7 +137,7 @@ class User(Base, Audited):
 
     user_id = Column(String, primary_key=True)
     full_name = Column(String)
-    password = Column(String)  # encrypted?
+    password = Column(String)  # hex(md5sum(password))
     email = Column(String)
     status_cd = Column(Enum('A', 'D'))
     roles = relationship('UserRole', backref='pm_user_data')
@@ -151,6 +191,10 @@ class RunTime(rtconfig.IniModule):
         engine = sqlalchemy.engine_from_config(rt.settings(), 'sqlalchemy.')
         return sessionmaker(engine)
 
+    @provides(KUUIDGen)
+    def uuid_maker(self):
+        return uuid
+
 
 class Mock(injector.Module, rtconfig.MockMixin):
     '''Mock up I2B2PM dependencies: SQLite datasource
@@ -161,6 +205,22 @@ class Mock(injector.Module, rtconfig.MockMixin):
         engine = sqlalchemy.create_engine('sqlite://')
         Base.metadata.create_all(engine)
         return sessionmaker(engine)
+
+    @provides(KUUIDGen)
+    def uuid_maker(self):
+        class G(object):
+            def __init__(self):
+                from uuid import UUID
+                self._d = iter([UUID('dfd03595-ab3e-4448-9c8e-a65a290cc3c5'),
+                                UUID('89cd1d9a-ace1-4673-8a12-50ebac2625f9'),
+                                UUID('dc584070-9e36-493e-80ce-ac277c1ce611'),
+                                UUID('0100f48b-c313-4086-92a9-6bfc621cc0df'),
+                                UUID('537d9d95-b017-4d9d-b096-2d1af316eb86')])
+
+            def uuid4(self):
+                return self._d.next()
+
+        return G()
 
 
 def _test_main():
@@ -178,7 +238,7 @@ def _test_main():
 
     (pm, ) = RunTime.make(None, [I2B2PM])
 
-    pm.ensure_account(user_id, full_name)
+    print pm.authz(user_id, full_name)
 
 
 def _list_users():
