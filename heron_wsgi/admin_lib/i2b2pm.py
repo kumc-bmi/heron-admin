@@ -139,7 +139,6 @@ class User(Base, Audited):
     full_name = Column(String)
     password = Column(String)  # hex(md5sum(password))
     email = Column(String)
-    status_cd = Column(Enum('A', 'D'))
     roles = relationship('UserRole', backref='pm_user_data')
 
     def ini(self, user_id,
