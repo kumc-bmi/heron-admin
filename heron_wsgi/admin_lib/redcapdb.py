@@ -13,7 +13,7 @@ from sqlalchemy.sql import and_, select
 import rtconfig
 from orm_base import Base
 
-CONFIG_SECTION='redcapdb'
+CONFIG_SECTION = 'redcapdb'
 
 redcap_data = Table('redcap_data', Base.metadata,
                     Column(u'project_id', INTEGER(),
@@ -27,7 +27,7 @@ redcap_data = Table('redcap_data', Base.metadata,
                     )
 
 # this is mostly for testing
-redcap_surveys_response =  Table('redcap_surveys_response', Base.metadata,
+redcap_surveys_response = Table('redcap_surveys_response', Base.metadata,
     Column(u'response_id', INTEGER(), primary_key=True, nullable=False),
             Column(u'participant_id', INTEGER()),
             Column(u'record', VARCHAR(length=100)),
@@ -35,7 +35,9 @@ redcap_surveys_response =  Table('redcap_surveys_response', Base.metadata,
             Column(u'completion_time', DATETIME()),
             Column(u'return_code', VARCHAR(length=8)),
     )
-redcap_surveys_participants =  Table('redcap_surveys_participants', Base.metadata,
+
+redcap_surveys_participants = Table('redcap_surveys_participants',
+                                    Base.metadata,
     Column(u'participant_id', INTEGER(), primary_key=True, nullable=False),
             Column(u'survey_id', INTEGER()),
             Column(u'arm_id', INTEGER()),
@@ -82,9 +84,9 @@ def eav_join(t, keycols, attrs, acol, vcol):
       >>> cols1
       [Column(u'value', TEXT(), table=<j_url>)]
 
-      >>> print select(cols1).where(w1)
-      SELECT j_url.value 
-      FROM redcap_data AS j_url 
+      >>> print select(cols1).where(w1)  # doctest: +NORMALIZE_WHITESPACE
+      SELECT j_url.value
+      FROM redcap_data AS j_url
       WHERE j_url.field_name = :field_name_1
 
       >>> c2, j2, w2 = eav_join(redcap_data,
@@ -92,9 +94,11 @@ def eav_join(t, keycols, attrs, acol, vcol):
       ...                       ['url', 'name'],
       ...                       'field_name', 'value')
       >>> print select(c2).where(w2)
-      SELECT j_url.value, j_name.value 
-      FROM redcap_data AS j_url, redcap_data AS j_name 
-      WHERE j_url.field_name = :field_name_1 AND j_url.project_id = j_name.project_id AND j_url.record = j_name.record AND j_name.field_name = :field_name_2
+      ... # doctest: +NORMALIZE_WHITESPACE
+      SELECT j_url.value, j_name.value FROM redcap_data AS j_url,
+      redcap_data AS j_name WHERE j_url.field_name = :field_name_1 AND
+      j_url.project_id = j_name.project_id AND j_url.record =
+      j_name.record AND j_name.field_name = :field_name_2
 
 
       >>> c3, j3, w3 = eav_join(redcap_data,
@@ -102,9 +106,16 @@ def eav_join(t, keycols, attrs, acol, vcol):
       ...                       ['disclaimer_id', 'url', 'current'],
       ...                       'field_name', 'value')
       >>> print select(c3).where(w3).apply_labels()
-      SELECT j_disclaimer_id.value AS j_disclaimer_id_value, j_url.value AS j_url_value, j_current.value AS j_current_value 
-      FROM redcap_data AS j_disclaimer_id, redcap_data AS j_url, redcap_data AS j_current 
-      WHERE j_disclaimer_id.field_name = :field_name_1 AND j_disclaimer_id.project_id = j_url.project_id AND j_disclaimer_id.record = j_url.record AND j_url.field_name = :field_name_2 AND j_disclaimer_id.project_id = j_current.project_id AND j_disclaimer_id.record = j_current.record AND j_current.field_name = :field_name_3
+      ... # doctest: +NORMALIZE_WHITESPACE
+      SELECT j_disclaimer_id.value AS j_disclaimer_id_value,
+      j_url.value AS j_url_value, j_current.value AS j_current_value
+      FROM redcap_data AS j_disclaimer_id, redcap_data AS j_url,
+      redcap_data AS j_current WHERE j_disclaimer_id.field_name =
+      :field_name_1 AND j_disclaimer_id.project_id = j_url.project_id
+      AND j_disclaimer_id.record = j_url.record AND j_url.field_name =
+      :field_name_2 AND j_disclaimer_id.project_id =
+      j_current.project_id AND j_disclaimer_id.record =
+      j_current.record AND j_current.field_name = :field_name_3
       '''
 
     #aliases = dict([(n, t.alias('t_' + n)) for n in attrs])
@@ -129,7 +140,8 @@ def eav_join(t, keycols, attrs, acol, vcol):
 class REDCapRecord(object):
     '''Abstract class that provides mapping of fields to redcap EAV structure.
 
-    For testing, we'll use the example from import_records.php from REDCap API examples::
+    For testing, we'll use the example from import_records.php
+    from REDCap API examples::
       >>> _TestRecord.fields
       ('study_id', 'age', 'sex')
 
@@ -144,7 +156,8 @@ class REDCapRecord(object):
           _TestRecord(study_id=test_001, age=31, sex=0)
         '''
         return self.__class__.__name__ + '(' + (
-            ', '.join(['%s=%s' % (f, getattr(self, f)) for f in self.fields])) + ')'
+            ', '.join(['%s=%s' % (f, getattr(self, f))
+                       for f in self.fields])) + ')'
 
     @classmethod
     def eav_map(cls, project_id, alias='eav'):
@@ -159,7 +172,13 @@ class REDCapRecord(object):
           >>> [c.table.name for c in cols]
           ['j_study_id', 'j_age', 'j_sex']
           >>> str(where)
-          'j_study_id.field_name = :field_name_1 AND j_study_id.project_id = j_age.project_id AND j_study_id.record = j_age.record AND j_age.field_name = :field_name_2 AND j_study_id.project_id = j_sex.project_id AND j_study_id.record = j_sex.record AND j_sex.field_name = :field_name_3'
+          ... # doctest: +NORMALIZE_WHITESPACE
+          'j_study_id.field_name = :field_name_1 AND
+          j_study_id.project_id = j_age.project_id AND
+          j_study_id.record = j_age.record AND j_age.field_name =
+          :field_name_2 AND j_study_id.project_id = j_sex.project_id
+          AND j_study_id.record = j_sex.record AND j_sex.field_name =
+          :field_name_3'
 
           >>> (smaker, ) = Mock.make([(sqlalchemy.orm.session.Session,
           ...                          CONFIG_SECTION)])
@@ -168,15 +187,17 @@ class REDCapRecord(object):
           ...     (123, 1, 'study_id', 'test_002'),
           ...     (123, 1, 'age', 32),
           ...     (123, 1, 'sex', 1)):
-          ...     s.execute(redcap_data.insert().values(event_id=321,
-          ...                                           project_id=project_id, record=record,
-          ...                                           field_name=field_name, value=value)) and None
+          ...     s.execute(redcap_data.insert().values(
+          ...                 event_id=321,
+          ...                 project_id=project_id, record=record,
+          ...                 field_name=field_name, value=value)) and None
           >>> s.commit()
-          >>> s.query(_TestRecord).all()      
+          >>> s.query(_TestRecord).all()
           [_TestRecord(study_id=test_002, age=32, sex=1)]
 
         '''
-        data = redcap_data.select().where(redcap_data.c.project_id==project_id)
+        data = redcap_data.select().where(
+            redcap_data.c.project_id == project_id)
         cols, j, w = eav_join(data.alias(alias),
                               keycols=('project_id', 'record'),
                               attrs=cls.fields,
@@ -191,6 +212,7 @@ class REDCapRecord(object):
 
 class _TestRecord(REDCapRecord):
     fields = ('study_id', 'age', 'sex')
+
     def __init__(self, study_id, age, sex):
         self.study_id = study_id
         self.age = age
@@ -227,7 +249,8 @@ def allfields(ex, project_id, record):
 
 
 class SetUp(injector.Module):
-    # abusing Session a bit; this really provides a subclass, not an instance, of Session
+    # abusing Session a bit; this really provides a subclass,
+    # not an instance, of Session
     @provides((sqlalchemy.orm.session.Session, CONFIG_SECTION))
     @inject(engine=(sqlalchemy.engine.base.Connectable, CONFIG_SECTION))
     def redcap_sessionmaker(self, engine):
@@ -238,7 +261,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
     @singleton
     @provides((sqlalchemy.engine.base.Connectable, CONFIG_SECTION))
     def redcap_datasource(self):
-        import logging  #@@ lazy
+        import logging  # @@ lazy
         log = logging.getLogger(__name__)
         #salog = logging.getLogger('sqlalchemy.engine.base.Engine')
         #salog.setLevel(logging.INFO)
@@ -255,7 +278,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
 class RunTime(rtconfig.IniModule):
     def configure(self, binder):
         #@@todo: rename sid to database (check sqlalchemy docs 1st)
-        self.bind_options(binder, 
+        self.bind_options(binder,
                           'user password host port database engine'.split(),
                           CONFIG_SECTION)
 
@@ -268,7 +291,8 @@ class RunTime(rtconfig.IniModule):
              sqlalchemy.engine.url.URL(driver, rt.user, rt.password,
                                        rt.host, rt.port, rt.database))
 
-        # http://www.sqlalchemy.org/docs/dialects/mysql.html#connection-timeouts
+        # http://www.sqlalchemy.org/docs/dialects/mysql.html
+        #      #connection-timeouts
         return sqlalchemy.create_engine(u, pool_recycle=3600)
 
     @classmethod
@@ -290,9 +314,8 @@ def _test_main():
     pprint(sm().query(redcap_data).slice(1, 10))
     pprint(sm().query(redcap_data).slice(1, 10).all())
 
-    ans = sm().execute(select([redcap_data.c.field_name], distinct=True
-                              ).where(redcap_data.c.project_id ==
-                                      project_id))
+    ans = sm().execute(select([redcap_data.c.field_name], distinct=True).\
+                           where(redcap_data.c.project_id == project_id))
     pprint(ans.fetchall())
 
 

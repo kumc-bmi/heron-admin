@@ -63,12 +63,12 @@ class Disclaimer(redcapdb.REDCapRecord):
            >>> d = Disclaimer()
            >>> d.url = 'http://example/'
            >>> d.content(_TestUrlOpener())
-           (u'<div id="blog-main">\n<h1 class="blog-title">headline</h1>main blog copy...\n</div>', u'headline')
+           ... # doctest: +ELLIPSIS
+           (u'<div id="blog-main">\n<h1 class="blog-title">...', u'headline')
         '''
         body = ua.open(self.url).read()  # pylint: disable=E1101
-        kludge = StringIO.StringIO(body.replace('&larr;', ''
-                                                ).replace('&rarr;', '')
-                                   )  #KLUDGE
+        kludge = StringIO.StringIO(body.replace('&larr;', '').\
+                                       replace('&rarr;', ''))  # KLUDGE
         elt = xpath.findnode('//*[@id="blog-main"]', parse(kludge))
         headline = xpath.findvalue('.//*[@class="blog-title"]/text()', elt)
 
@@ -86,6 +86,7 @@ _test_doc = '''
 </body>
 </html>
 '''
+
 
 class _TestUrlOpener(object):
     def open(self, _):  # pylint: disable=R0201
@@ -161,6 +162,7 @@ class Mock(redcapdb.SetUp, rtconfig.MockMixin):
         return rtconfig.TestTimeOptions(dict(project_id='1234',
                                            api_url='http://example/recap/API',
                                            token='12345token'))
+
     @provides(urllib.URLopener)
     def web_ua(self):
         return _TestURLopener()
@@ -211,7 +213,7 @@ class _TestURLopener(object):
             # todo: verify contents?
             return StringIO.StringIO('')
         else:
-            raise IOError, '404 not found'
+            raise IOError('404 not found')
 
 
 class RunTime(rtconfig.IniModule):
@@ -238,18 +240,18 @@ def _test_main():
 
     user_id = sys.argv[1]
 
-    engine, acks = RunTime.make(None,[(sqlalchemy.engine.base.Connectable,
-                                       redcapdb.CONFIG_SECTION),
-                                      AcknowledgementsProject])
+    engine, acks = RunTime.make(None, [(sqlalchemy.engine.base.Connectable,
+                                        redcapdb.CONFIG_SECTION),
+                                       AcknowledgementsProject])
     Base.metadata.bind = engine
     sm = sessionmaker(engine)
 
     s = sm()
-    d = s.query(Disclaimer).filter(Disclaimer.current==1).first()
+    d = s.query(Disclaimer).filter(Disclaimer.current == 1).first()
     log.info('current disclaimer: %s', d)
-    a = s.query(Acknowledgement \
-                    ).filter(Acknowledgement.disclaimer_address==d.url
-                             ).filter(Acknowledgement.user_id==user_id).first()
+    a = s.query(Acknowledgement).\
+        filter(Acknowledgement.disclaimer_address == d.url).\
+        filter(Acknowledgement.user_id == user_id).first()
     log.info('ack for %s: %s', user_id, a)
 
     if '--ack' in sys.argv:
