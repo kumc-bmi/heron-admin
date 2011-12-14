@@ -9,10 +9,11 @@ from sqlalchemy import Table, Column, text
 from sqlalchemy.types import INTEGER, VARCHAR, TEXT, DATETIME
 from sqlalchemy.orm import mapper
 from sqlalchemy.sql import and_, select
+from sqlalchemy.ext.declarative import declarative_base
 
 import rtconfig
-from orm_base import Base
 
+Base = declarative_base()
 CONFIG_SECTION = 'redcapdb'
 
 redcap_data = Table('redcap_data', Base.metadata,

@@ -41,7 +41,7 @@ import noticelog
 import redcap_connect
 import redcapdb
 from heron_policy import RunTime, SAA_CONFIG_SECTION, OVERSIGHT_CONFIG_SECTION
-from orm_base import Base
+from i2b2pm import Base
 from disclaimer import AcknowledgementsProject
 
 

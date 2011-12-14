@@ -5,7 +5,7 @@ from sqlalchemy import Table, Column, create_engine
 from sqlalchemy.types import Integer, VARCHAR, TIMESTAMP
 from sqlalchemy.schema import ForeignKey
 
-from orm_base import Base
+from redcapdb import Base
 
 notice_log = Table('notice_log', Base.metadata,
                    Column('id', Integer, primary_key=True),

@@ -11,7 +11,7 @@ Generate authorization to use an i2b2 project::
 
 The result is a `pm_user_data` record::
   >>> import pprint
-  >>> dbsrc = depgraph.get((Session, CONFIG_SECTION))
+  >>> dbsrc = depgraph.get((orm.session.Session, CONFIG_SECTION))
   >>> ans = dbsrc().execute('select user_id, password, status_cd'
   ...                       ' from pm_user_data')
   >>> pprint.pprint(ans.fetchall())
@@ -49,25 +49,22 @@ import hashlib
 import injector
 from injector import inject, provides, singleton
 from sqlalchemy import Column, ForeignKey
-from sqlalchemy import func
-from sqlalchemy.orm import relationship
-from sqlalchemy.orm.session import Session
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy import func, orm
 from sqlalchemy.types import String, Date, Enum
+from sqlalchemy.ext.declarative import declarative_base
 import sqlalchemy
 
 import rtconfig
-from orm_base import Base
 
 CONFIG_SECTION = 'i2b2pm'
 KUUIDGen = injector.Key('UUIDGen')
 
+Base = declarative_base()
 log = logging.getLogger(__name__)
 
 
 class I2B2PM(object):
-    @inject(datasrc=(Session, CONFIG_SECTION),
+    @inject(datasrc=(orm.session.Session, CONFIG_SECTION),
             uuidgen=KUUIDGen)
     def __init__(self, datasrc, uuidgen):
         '''
@@ -93,7 +90,7 @@ class I2B2PM(object):
             me = ds.query(User).filter(User.user_id == uid).one()
             me.password, me.status_cd, me.change_date = pw, 'A', t
             log.info('found: %s', me)
-        except NoResultFound:
+        except orm.exc.NoResultFound:
             me = User(user_id=uid, full_name=full_name,
                       entry_date=t, change_date=t, status_cd='A',
                       password=pw,
@@ -139,18 +136,7 @@ class User(Base, Audited):
     full_name = Column(String)
     password = Column(String)  # hex(md5sum(password))
     email = Column(String)
-    roles = relationship('UserRole', backref='pm_user_data')
-
-    def ini(self, user_id,
-                 full_name=None, password=None, email=None,
-                 change_date=None, entry_date=None, changeby_char=None,
-                 status_cd='A'):
-        self.user_id = user_id
-        self.full_name = full_name
-        self.password = password
-        self.email = email
-        self._audit(change_date, entry_date,
-                    changeby_char, status_cd='A')
+    roles = orm.relationship('UserRole', backref='pm_user_data')
 
     def __repr__(self):
         return "<User(%s, %s)>" % (self.user_id, self.full_name)
@@ -184,11 +170,11 @@ class RunTime(rtconfig.IniModule):
     # abusing Session a bit; this really provides a subclass, not an
     # instance, of Session
     @singleton
-    @provides((sqlalchemy.orm.session.Session, CONFIG_SECTION))
+    @provides((orm.session.Session, CONFIG_SECTION))
     @inject(rt=(rtconfig.Options, CONFIG_SECTION))
     def pm_sessionmaker(self, rt):
         engine = sqlalchemy.engine_from_config(rt.settings(), 'sqlalchemy.')
-        return sessionmaker(engine)
+        return orm.session.sessionmaker(engine)
 
     @provides(KUUIDGen)
     def uuid_maker(self):
@@ -199,11 +185,11 @@ class Mock(injector.Module, rtconfig.MockMixin):
     '''Mock up I2B2PM dependencies: SQLite datasource
     '''
     @singleton
-    @provides((sqlalchemy.orm.session.Session, CONFIG_SECTION))
+    @provides((orm.session.Session, CONFIG_SECTION))
     def pm_sessionmaker(self):
         engine = sqlalchemy.create_engine('sqlite://')
         Base.metadata.create_all(engine)
-        return sessionmaker(engine)
+        return orm.session.sessionmaker(engine)
 
     @provides(KUUIDGen)
     def uuid_maker(self):

@@ -8,7 +8,6 @@
   >>> import pprint
   >>> pprint.pprint(cl.screen(*roles('john.smith')))
   {'accessDisabled': {'name': 'login'},
-   'acknowledgement': None,
    'affiliate': John Smith <john.smith@js.example>,
    'executive': {},
    'faculty': {'checked': 'checked'},
@@ -19,7 +18,6 @@
 
   >>> pprint.pprint(cl.screen(*roles('bill.student')))
   {'accessDisabled': {'disabled': 'disabled'},
-   'acknowledgement': None,
    'affiliate': Bill Student <bill.student@js.example>,
    'executive': {},
    'faculty': {},
@@ -72,17 +70,17 @@ class Checklist(object):
                 return {}
             except medcenter.NotFaculty:
                 return {}
-            except:  # @@narrow exceptions to IO/DB error
+            except IOError:
                 log.warn('Exception in checklist. DB down?')
                 log.debug('Checklist error detail', exc_info=True)
                 # @@TODO: show user an indication of the error
                 return {}
 
         try:
-            access = agent.repository_account()
+            access = agent.repository_authz()
         except heron_policy.NoPermission:
             access = None
-        except:  # @@narrow exceptions to IO/DB error
+        except IOError:
             log.warn('Exception checking repository access. DB down?')
             log.debug('Repository access error detail', exc_info=True)
             # @@TODO: show user an indication of the error

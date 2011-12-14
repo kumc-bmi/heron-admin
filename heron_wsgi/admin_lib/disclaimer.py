@@ -45,7 +45,6 @@ import xpath
 # from this package
 import rtconfig
 import redcapdb
-from orm_base import Base
 import redcap_connect
 
 DISCLAIMERS_SECTION = 'disclaimers'
@@ -243,7 +242,7 @@ def _test_main():
     engine, acks = RunTime.make(None, [(sqlalchemy.engine.base.Connectable,
                                         redcapdb.CONFIG_SECTION),
                                        AcknowledgementsProject])
-    Base.metadata.bind = engine
+    redcapdb.Base.metadata.bind = engine
     sm = sessionmaker(engine)
 
     s = sm()
