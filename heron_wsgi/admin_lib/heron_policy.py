@@ -250,12 +250,16 @@ class HeronRecords(object):
 
         # limit capabilities of self to one user
         class I2B2Account(object):
-            def __init__(self, agent, authz):
+            def __init__(self, agent):
+                assert(agent.badge is badge)
                 self.agent = agent
-                self.key = authz
 
             def __repr__(self):
                 return 'Access(%s)' % self.agent
+
+            def creds(self):
+                key, u = hr._pm.authz(badge.cn, badge.full_name())
+                return (badge.cn, key)
 
         class Browser(object):
             ''''Users get to do LDAP searches,
@@ -273,7 +277,7 @@ class HeronRecords(object):
                 return hr._saa_rc(badge.cn, params)
 
             def get_sig(self):
-                return hr._check_saa_signed(badge.mail)  # @@seal date
+                return hr._check_saa_signed(badge.mail)
 
             def ensure_oversight(self, params):
                 return hr._oversight_rc(badge.cn, params, multi=True)
@@ -297,13 +301,15 @@ class HeronRecords(object):
                 return when
 
             def get_sponsor(self):
-                return hr._sponsored(badge.cn)  # @@ seal sponsor uid
+                return hr._sponsored(badge.cn)
 
-            def repository_authz(self, user, sponsor, sig, training):
-                #@@ todo: check user, sponsor, sig, training?
-                #authz, _ = hr._pm.authz(badge.cn, badge.full_name())
-                authz='@@@@@@@@@'
-                return I2B2Account(user, authz)
+            def repository_authz(self, user):
+                # TODO: move sponsor checking from Affiliate to Record
+                # to follow ocap discipline.
+                user.sponsor()
+                self.get_sig()
+                self.get_training()
+                return I2B2Account(user)
 
             def disclaimer_ack(self):
                 return hr._disclaimer_acknowledgement(badge.cn)
@@ -582,10 +588,7 @@ class Affiliate(object):
         return self._sponsor
 
     def repository_authz(self):
-        return self.record.repository_authz(self,
-                                            self.sponsor(),
-                                            self.signature(),
-                                            self.training())
+        return self.record.repository_authz(self)
 
     def disclaimer_ack(self):
         return self.record.disclaimer_ack()
@@ -852,8 +855,12 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
                 [cls(ini)])
 
 
-if __name__ == '__main__':  # pragma nocover
+def _test_main():  # pragma nocover
     import sys
+
+    if '--doctest' in sys.argv:
+        import doctest
+        doctest.testmod()
 
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
@@ -865,3 +872,6 @@ if __name__ == '__main__':  # pragma nocover
     print req.user.repository_authz()
 
     print "pending notifications:", ds.oversight_decisions()
+
+if __name__ == '__main__':  # pragma nocover
+    _test_main()

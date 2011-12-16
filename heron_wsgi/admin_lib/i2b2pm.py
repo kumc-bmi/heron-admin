@@ -98,7 +98,9 @@ class I2B2PM(object):
             log.info('adding: %s', me)
             ds.add(me)
 
-        my_role_codes = [mr.user_role_cd for mr in me.roles]
+        my_role_codes = [mr.user_role_cd for mr in me.roles
+                         if mr.project_id == project_id]
+        log.debug('my role codes: %s', my_role_codes)
         for r in roles:
             if r not in my_role_codes:
                 myrole = UserRole(user_id=uid, project_id=project_id,

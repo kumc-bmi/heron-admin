@@ -12,7 +12,7 @@ __ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
 '''
 
 import sys
-from urllib import URLopener
+from urllib import URLopener, urlencode
 import urllib2
 import logging
 import urlparse
@@ -111,7 +111,6 @@ class CheckListView(object):
         >>> from pprint import pprint
         >>> pprint(clv.get(facreq))
         {'accessDisabled': {'name': 'login'},
-         'acknowledgement': None,
          'affiliate': John Smith <john.smith@js.example>,
          'data_use_path': 'http://example.com/oversight',
          'executive': {},
@@ -259,19 +258,22 @@ class RepositoryLogin(object):
         '''Log in to i2b2, provided credentials and current disclaimer.
         '''
 
-        if req.method == 'POST':
-            try:
-                req.user.repository_account().login()
-            except heron_policy.NoPermission, np:
-                log.error('i2b2_login: NoPermission')
-                return HTTPForbidden(detail=np.message)
-
         if not req.user.disclaimer_ack()[1]:
             log.info('i2b2_login: redirect to disclaimer')
             return HTTPSeeOther(req.route_url(self._disclaimer_route))
 
+        try:
+            authz = req.user.repository_authz()
+        except heron_policy.NoPermission, np:
+            log.error('i2b2_login: NoPermission')
+            return HTTPForbidden(detail=np.message)
+
         log.info('i2b2_login: redirect to i2b2')
-        return HTTPSeeOther(self._i2b2_tool_addr)
+        user_id, password = authz.creds()
+        there = '%s?%s' % (self._i2b2_tool_addr,
+                           urlencode(dict(user_id=user_id,
+                                          password=password)))
+        return HTTPSeeOther(there)
 
     def disclaimer(self, req):
         disclaimer, ack = req.user.disclaimer_ack()
