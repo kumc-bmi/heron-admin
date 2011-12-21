@@ -124,6 +124,21 @@ def hexdigest(txt):
     return ''.join([hex(ord(b))[2:] for b in hashlib.md5(txt).digest()])
 
 
+def revoke_expired_auths(ds):
+    '''Revoke one-time passwords for all users whose sessions are expired.
+    '''
+    ds.execute('''
+    update i2b2pm.pm_user_data ipud
+    set ipud.password = null
+    where
+        ipud.user_id not like '%SERVICE_ACCOUNT'
+        and ipud.password is not null and (
+        select max(ipus.expired_date)
+        from i2b2pm.pm_user_session ipus
+        where ipus.user_id = ipud.user_id) < sysdate
+    ''')
+
+
 class Audited(object):
     change_date = Column(Date)
     entry_date = Column(Date)
@@ -176,7 +191,14 @@ class RunTime(rtconfig.IniModule):
     @inject(rt=(rtconfig.Options, CONFIG_SECTION))
     def pm_sessionmaker(self, rt):
         engine = sqlalchemy.engine_from_config(rt.settings(), 'sqlalchemy.')
-        return orm.session.sessionmaker(engine)
+        sm = orm.session.sessionmaker(engine)
+
+        def make_session_and_revoke():
+            ds = sm()
+            revoke_expired_auths(ds)
+            return ds
+
+        return make_session_and_revoke
 
     @provides(KUUIDGen)
     def uuid_maker(self):
