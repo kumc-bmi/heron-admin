@@ -11,8 +11,13 @@
   <div id="menu">
   <div class="header png"><h3>i2b2 Query and Analysis Tool</h3>
   <ul>
-    <li>
-      <a href="${i2b2_login_path}">Start Query Tool</a>
+    <li py:if="not accessDisabled">
+      <a href="${i2b2_login_path}"
+	 >Start Query Tool</a>
+    </li>
+    <li py:if="accessDisabled">
+      <button disabled="disabled"
+	 >Start Query Tool</button>
     </li>
   </ul>
   </div>
