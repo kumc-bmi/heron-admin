@@ -11,10 +11,12 @@ from redcap.redcap_surveys_participants AS p
 join (
 select distinct r1.record, concat(r2.value, '@kumc.edu') as email
 from redcap.redcap_data r1
-join redcap.redcap_data r2 on r1.project_id=r2.project_id and r1.record=r2.record
+join redcap.redcap_data r2 on r1.project_id=r2.project_id
+  and r1.record=r2.record
 where r1.project_id=237
 and r2.field_name='user_id'
-and r2.record not in ('jdenton', 'achoudhary', 'mmishra-aff', 'jburns2', 'rwaitman')
+and r2.record not in ('jdenton', 'achoudhary', 'mmishra-aff',
+  'jburns2', 'rwaitman')
 ) d
 on p.participant_email = d.email
 ;
@@ -39,7 +41,7 @@ import noticelog
 import redcap_connect
 import redcapdb
 from heron_policy import RunTime, SAA_CONFIG_SECTION, OVERSIGHT_CONFIG_SECTION
-from orm_base import Base
+from i2b2pm import Base
 from disclaimer import AcknowledgementsProject
 
 
@@ -121,6 +123,7 @@ class Migration(object):
         for sig in sigs:
             badge = lookup(sig['user_id'].strip())
             closure_kludge = [None]
+
             def save(ans):
                 closure_kludge[0] = ans
             hp._saa_rc(badge.cn,
@@ -139,8 +142,7 @@ class Migration(object):
         n = self._saaproxy.record_import(data=records,
                                          overwriteBehavior='overwrite')
 
-        return len(sigs), n 
-
+        return len(sigs), n
 
     def migrate_droc(self, since=None):
         s = self._smaker()
@@ -153,8 +155,8 @@ class Migration(object):
 
         reqs = s.execute(oversight_request.select()).fetchall()
         candidates = dict(((k, list(igroup)) for k, igroup in
-                           groupby(s.execute(sponsorship_candidates.select()
-                                             ).fetchall(),
+                           groupby(s.execute(sponsorship_candidates.select()).\
+                                       fetchall(),
                                    itemgetter(0))))
 
         log.info('Oversight Requests: %s',
@@ -165,8 +167,8 @@ class Migration(object):
         lookup = self._mc.lookup
         records = [dict(rowitems(req,
                                  ('request_id', 'approval_time', 'full_name'))
-                        + [('full_name', lookup(req['user_id'].strip()
-                                                ).full_name())]
+                        + [('full_name', lookup(req['user_id'].strip()).\
+                                full_name())]
                         + [('participant_id', int(req['request_id']))]
                         + [('heron_oversight_request_complete', self.COMPLETE)]
                         + user_fields(lookup,
@@ -178,7 +180,7 @@ class Migration(object):
         n = self._drocproxy.record_import(data=records)
         log_notices(self._newdb(), reqs)
 
-        return len(reqs), n 
+        return len(reqs), n
 
 
 def _table(session, name, schema='heron'):
@@ -196,7 +198,7 @@ def log_notices(s, reqs):
 
 def rowitems(row, k_skips):
     return [(k, v)
-            for k,v in row.items()
+            for k, v in row.items()
             if v is not None and k not in k_skips]
 
 
@@ -259,9 +261,9 @@ class MigrateDisclaimers(object):
         recent_disc = ans.fetchone()
         log.info('current disclaimer: %s',
                  recent_disc['disclaimer_url'])
-        
-        acks = si.execute(old_acks.select().where(old_acks.c.disclaimer_id ==
-                                                  recent_disc['disclaimer_id']))
+
+        acks = si.execute(old_acks.select().where(
+                old_acks.c.disclaimer_id == recent_disc['disclaimer_id']))
 
         whowhen = [(ack['user_id'], ack['acknowledge_tmst']) for ack in acks]
         log.info('acked users: %s', whowhen)
@@ -270,4 +272,3 @@ class MigrateDisclaimers(object):
 
 if __name__ == '__main__':
     main()
-
