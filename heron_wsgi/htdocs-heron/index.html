@@ -11,13 +11,23 @@
   <div id="menu">
   <div class="header png"><h3>i2b2 Query and Analysis Tool</h3>
   <ul>
-    <li>
-  <form method="post" action="${i2b2_login_path}">
-    <p class="doit">
-      <input type="submit" py:attrs="accessDisabled" value="Start Query Tool" />
-    </p>
-  </form>
-  </li>
+    <li py:if="'disabled' not in accessDisabled">
+      <a href="${i2b2_login_path}"
+	 >Start Query Tool</a>
+    </li>
+    <li py:if="'disabled' in accessDisabled">
+      <button disabled="disabled"
+	 >Start Query Tool</button>
+    </li>
+  </ul>
+  </div>
+
+  <div class="header png"><h3>Training Materials</h3>
+  <ul>
+    <li><a href=
+	"http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials"
+	>HERON Access</a>
+    </li>
   </ul>
   </div>
 
@@ -34,7 +44,7 @@
 
   <div class="header png"><h3>Oversight</h3>
   <ul>
-    <li><a href="https://redcap.kumc.edu/redcap_v4.1.0/setup.php?pid=238">DROC Oversight Tools</a></li>
+    <li><a href="https://redcap.kumc.edu/redcap_v4.7.0/index.php?pid=238">DROC Oversight Tools</a></li>
   </ul>
   </div>
   </div>
@@ -68,17 +78,17 @@
   <em>view-only</em> access to do patient count queries, executing
   a system access agreement is the only requirement.</p>
 
-  <p><a href=
+  <p>The <a href=
 	"http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials"
-	>Getting Access to HERON</a> explains the process in detail.
+	>HERON Access guide</a> explains the process in detail.
   </p>
 
   <p>A Data Request Oversight Committee (DROC) oversees requests to:</p>
   <ul>
-    <li><a href="https://redcap.kumc.edu/surveys/?s=rRYkiH">sponsor
+    <li><a href="http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials/SponsoringUsers">sponsor
     collaborators and research team members</a></li>
 
-    <li><a href="https://redcap.kumc.edu/surveys/?s=rRYkiH">extract
+    <li><a href="http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials/DataAccess">extract
     data sets</a></li>
   </ul>
 
@@ -96,9 +106,9 @@
   >KUMC Calendar</a> for the date of the next clinic.</em>
 </p>
 
-  <p>To set up consultation regarding your project, complete a
+  <p>To set up consultation regarding your project, complete an
   <a href="http://biostat-pts.kumc.edu/eres/jsp/kumcpr.jsp"
-     >Biostatistics Department Project Request Form</a>.
+     >Informatics Project Request</a>.
   </p>
   </div>
   

@@ -46,7 +46,7 @@ See if they're qualified faculty::
 
 See if the students are qualified in some way::
 
-  >>> stureq.user.repository_account()
+  >>> stureq.user.repository_authz()
   Traceback (most recent call last):
     ...
   NotSponsored
@@ -65,7 +65,7 @@ See if the students are qualified in some way::
 
   >>> stu2req.user.training()
   '2012-01-01'
-  >>> stu2req.user.repository_account()
+  >>> stu2req.user.repository_authz()
   Traceback (most recent call last):
   ...
   NoAgreement
@@ -74,7 +74,7 @@ See if the students are qualified in some way::
 Get an actual access qualification; i.e. check for
 system access agreement and human subjects training::
 
-  >>> facreq.user.repository_account()
+  >>> facreq.user.repository_authz()
   Access(Faculty(John Smith <john.smith@js.example>))
 
 Executives don't need sponsorship::
@@ -83,7 +83,7 @@ Executives don't need sponsorship::
   [<MedCenter sealed box>]
   >>> hp.issue(exreq)
   [Executive(Big Wig <big.wig@js.example>)]
-  >>> exreq.user.repository_account()
+  >>> exreq.user.repository_authz()
   Access(Executive(Big Wig <big.wig@js.example>))
 
 
@@ -251,13 +251,15 @@ class HeronRecords(object):
         # limit capabilities of self to one user
         class I2B2Account(object):
             def __init__(self, agent):
+                assert(agent.badge is badge)
                 self.agent = agent
-
-            def login(self):
-                hr._pm.ensure_account(badge.cn, badge.full_name())
 
             def __repr__(self):
                 return 'Access(%s)' % self.agent
+
+            def creds(self):
+                key, u = hr._pm.authz(badge.cn, badge.full_name())
+                return (badge.cn, key)
 
         class Browser(object):
             ''''Users get to do LDAP searches,
@@ -275,7 +277,7 @@ class HeronRecords(object):
                 return hr._saa_rc(badge.cn, params)
 
             def get_sig(self):
-                return hr._check_saa_signed(badge.mail)  # @@seal date
+                return hr._check_saa_signed(badge.mail)
 
             def ensure_oversight(self, params):
                 return hr._oversight_rc(badge.cn, params, multi=True)
@@ -299,10 +301,14 @@ class HeronRecords(object):
                 return when
 
             def get_sponsor(self):
-                return hr._sponsored(badge.cn)  # @@ seal sponsor uid
+                return hr._sponsored(badge.cn)
 
-            def repository_account(self, user, sponsor, sig, training):
-                #@@ todo: check user, sponsor, sig, training?
+            def repository_authz(self, user):
+                # TODO: move sponsor checking from Affiliate to Record
+                # to follow ocap discipline.
+                user.sponsor()
+                self.get_sig()
+                self.get_training()
                 return I2B2Account(user)
 
             def disclaimer_ack(self):
@@ -581,11 +587,8 @@ class Affiliate(object):
             self._sponsor = self.record.get_sponsor()
         return self._sponsor
 
-    def repository_account(self):
-        return self.record.repository_account(self,
-                                              self.sponsor(),
-                                              self.signature(),
-                                              self.training())
+    def repository_authz(self):
+        return self.record.repository_authz(self)
 
     def disclaimer_ack(self):
         return self.record.disclaimer_ack()
@@ -852,8 +855,12 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
                 [cls(ini)])
 
 
-if __name__ == '__main__':  # pragma nocover
+def _test_main():  # pragma nocover
     import sys
+
+    if '--doctest' in sys.argv:
+        import doctest
+        doctest.testmod()
 
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
@@ -862,6 +869,9 @@ if __name__ == '__main__':  # pragma nocover
     hr, ds = RunTime.make(None, [HeronRecords, DecisionRecords])
     hr._mc.issue(req)  # umm... peeking
     hr.issue(req)
-    print req.user.repository_account()
+    print req.user.repository_authz()
 
     print "pending notifications:", ds.oversight_decisions()
+
+if __name__ == '__main__':  # pragma nocover
+    _test_main()
