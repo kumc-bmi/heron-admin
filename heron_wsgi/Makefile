@@ -8,12 +8,19 @@ SFOOD_GRAPH=sfood-graph
 COVERAGE=coverage
 
 MODULES=admin_lib/checklist.py genshi_render.py \
-        admin_lib/rtconfig.py admin_lib/ldaplib.py heron_srv.py \
-        admin_lib/medcenter.py \
-        admin_lib/disclaimer.py admin_lib/redcap_connect.py \
-        admin_lib/hcard_mock.py admin_lib/sealing.py \
+	admin_lib/rtconfig.py admin_lib/ldaplib.py heron_srv.py \
+	admin_lib/medcenter.py \
+	admin_lib/disclaimer.py admin_lib/redcap_connect.py \
+	admin_lib/hcard_mock.py admin_lib/sealing.py \
         admin_lib/heron_policy.py admin_lib/tests.py \
-        admin_lib/i2b2pm.py cas_auth.py
+	admin_lib/noticelog.py \
+	admin_lib/migrate_approvals.py \
+	admin_lib/redcapdb.py \
+	admin_lib/sealing.py \
+	heron_srv.py drocnotice.py \
+	genshi_render.py cas_auth.py \
+	admin_lib/i2b2pm.py cas_auth.py
+
 
 
 view: ,deps.svg

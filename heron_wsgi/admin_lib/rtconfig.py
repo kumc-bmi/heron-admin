@@ -6,6 +6,7 @@ import ConfigParser
 
 import injector
 
+
 class Options(object):
     def __init__(self, attrs):
         self._attrs = attrs
