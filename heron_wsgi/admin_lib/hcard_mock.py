@@ -27,7 +27,6 @@ log = logging.getLogger(__name__)
 
 TEST_FILE = os.path.join(os.path.dirname(__file__), 'mockDirectory.html')
 
-
 class MockDirectory(object):
     # map from ldap attributes to hcard(ish) class nams
     ldap2hcard = {"cn": None,
@@ -78,14 +77,6 @@ def _l2x(q):
         log.debug('_l2x xpath: %s', xp)
         return xp
     raise ValueError
-
-
-def square(x):
-    '''
-    >>> square(2)
-    4
-    '''
-    return x * 2
 
 
 def _id_xpath(v):

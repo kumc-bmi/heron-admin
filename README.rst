@@ -9,29 +9,6 @@ i2b2__; this code is the regulatory enforcement web interface.
 __ https://www.i2b2.org/
 
 
-how to run... failure modes...
-
-genshi template language:
-http://genshi.edgewall.org/wiki/Documentation/xml-templates.html
-http://genshi.edgewall.org/wiki/GenshiTutorial
-
-pyramid, paste, wsgi@@@
-python setup.py develop@@@
-$ python heron_srv.py localhost 8123
-
-medcenter.py
-ConfigParser.NoSectionError: No section: 'enterprise_directory'
-need config file; see .example
-
-urllib2.URLError: <urlopen error [Errno 111] Connection refused>
-need chalk checker Java app running; use an ssh tunnel; see .example
-
-disclaimer.py
-sqlalchemy.exc.OperationalError: (OperationalError) (2003, "Can't connect to MySQL server on '127.0.0.1' (111)") None None
-
-see section [redcapdb]@@...
-
-
 heron_wsgi - the python approach
 
 .. todo:: administrative interface: POST to re-read config files

@@ -26,8 +26,7 @@ class Report(object):
                         request_method='GET', renderer='report1.html',
                         permission=heron_policy.PERM_USER)
 
-    def show_usage_report(self, res, req, max_search_hits=15):
-        # we might want this... params = req.GET
+    def show_usage_report(self, res, req):
         connection = self._datasrc()
         result = connection.execute('''
             select count(*) as total_number_of_queries
