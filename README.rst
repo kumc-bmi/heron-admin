@@ -12,6 +12,7 @@ __ https://www.i2b2.org/
 how to run... failure modes...
 
 genshi template language:
+http://genshi.edgewall.org/wiki/Documentation/xml-templates.html
 http://genshi.edgewall.org/wiki/GenshiTutorial
 
 pyramid, paste, wsgi@@@

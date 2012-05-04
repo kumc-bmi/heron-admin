@@ -1,16 +1,34 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html xmlns="http://www.w3.org/1999/xhtml"
+ xmlns:py="http://genshi.edgewall.org/">
 <head>
-<title>HERON Usage is Amazing!
+<title>HERON Usage
 </title></head>
 <body>
+
+<div><a href="./">HERON</a></div>
 
 <h1>HERON Usage</h1>
 
 <p>Total queries: ${total_number_of_queries}</p>
 
+<table>
+<thead>
+ <tr>
+  <th>User</th>
+  <th>Queries</th>
+ </tr>
+</thead>
+<tbody>
+  <!-- re py:for, see http://genshi.edgewall.org/wiki/Documentation/xml-templates.html#id3 -->
+  <tr py:for="row in query_volume">
+    <td>${row.users}</td>
+    <td>${row.number_of_queries}</td>
+  </tr>
+</tbody>
+</table>
 <address>
-KUMC BMI
+<a href="http://informatics.kumc.edu/">KUMC Biomedical Informatics</a>
 </address>
 </body>
 </html>
