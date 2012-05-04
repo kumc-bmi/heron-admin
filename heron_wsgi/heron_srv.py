@@ -421,7 +421,7 @@ class HeronAdminConfig(Configurator):
 
         cap_style = cas_auth.CapabilityStyle([mc, hr])
         self.set_authorization_policy(cap_style)
-        self.add_static_view('av', 'heron_wsgi:htdocs-heron/av/',
+        self.add_static_view('av', 'heron_wsgi:templates/av/',
                              cache_max_age=3600)
 
         self.add_renderer(name='.html', factory=genshi_render.Factory)

@@ -5,13 +5,14 @@ import logging
 import os
 
 # from PyPI - the Python Package Index http://pypi.python.org/pypi
-from genshi.template import MarkupTemplate, TemplateLoader, TemplateNotFound
+from genshi.template import TemplateLoader
 
 log = logging.getLogger(__name__)
 
+
 class Factory(object):
-    # TODO: move htdocs-heron to more conventional: 'templates'
-    docroot = os.path.join(os.path.dirname(__file__), 'htdocs-heron/')
+    docroot = os.path.join(os.path.dirname(__file__), 'templates/')
+
     def __init__(self, info):
         #docroot = info.settings['templates']
         self._loader = TemplateLoader([self.docroot], auto_reload=True)
