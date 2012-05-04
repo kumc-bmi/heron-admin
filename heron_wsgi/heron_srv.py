@@ -30,6 +30,7 @@ from pyramid.httpexceptions import HTTPFound, HTTPSeeOther, HTTPForbidden
 import cas_auth
 import genshi_render
 import drocnotice
+import stats
 from admin_lib import medcenter
 from admin_lib import heron_policy
 from admin_lib.checklist import Checklist
@@ -411,8 +412,10 @@ class HeronAdminConfig(Configurator):
             tb=TeamBuilder,
             mc=medcenter.MedCenter,
             hr=heron_policy.HeronRecords,
-            dn=drocnotice.DROCNotice)
-    def __init__(self, guard, conf, cas_rt, clv, rcv, repo, tb, mc, hr, dn):
+            dn=drocnotice.DROCNotice,
+            report=stats.Report)
+    def __init__(self, guard, conf, cas_rt, clv, rcv,
+                 repo, tb, mc, hr, dn, report):
         log.debug('HeronAdminConfig settings: %s', conf)
         Configurator.__init__(self, settings=conf)
 
@@ -451,6 +454,10 @@ class HeronAdminConfig(Configurator):
         self.add_route('notifier', 'decision_notifier')
         dn.configure(self, 'notifier',
                      permission=pyramid.security.NO_PERMISSION_REQUIRED)
+
+        # Usage reports
+        self.add_route('report1', 'report1_url')
+        report.configure(self, 'report1')
 
         # for testing
         self.add_route('err', 'err')
