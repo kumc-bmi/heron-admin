@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml"
- xmlns:py="http://genshi.edgewall.org/">
+  xmlns:py="http://genshi.edgewall.org/"
+  xmlns:xi="http://www.w3.org/2001/XInclude">
+<xi:include href="kumc_layout.xml" />
 <head>
 <title>HERON Usage
 </title></head>
 <body>
 
-<div><a href="./">HERON</a></div>
-
 <h1>HERON Usage</h1>
 
+<div id="main">
 <p>Total queries: ${total_number_of_queries}</p>
 
 <table>
@@ -27,6 +28,8 @@
   </tr>
 </tbody>
 </table>
+</div>
+
 <address>
 <a href="http://informatics.kumc.edu/">KUMC Biomedical Informatics</a>
 </address>
