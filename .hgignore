@@ -16,6 +16,13 @@ heron_wsgi/.coverage
 heron_wsgi.egg-info
 build/
 dist/
+lib/
+include/
+bin/
+local
 .ropeproject/objectdb
 .ropeproject/history
 .ropeproject/globalnames
+.pydevproject
+man/
+.project/
