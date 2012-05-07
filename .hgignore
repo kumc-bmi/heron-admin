@@ -26,3 +26,6 @@ local
 .pydevproject
 man/
 .project/
+
+# sphinx build stuff
+devdoc/_build
