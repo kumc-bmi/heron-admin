@@ -1,18 +1,16 @@
 heron_wsgi Package
 ==================
 
-:mod:`heron_wsgi` Package
--------------------------
-
-.. automodule:: heron_wsgi.__init__
+.. automodule:: heron_wsgi.cas_auth
     :members:
     :undoc-members:
     :show-inheritance:
 
-:mod:`cas_auth` Module
-----------------------
 
-.. automodule:: heron_wsgi.cas_auth
+:mod:`heron_wsgi` Package
+-------------------------
+
+.. automodule:: heron_wsgi.__init__
     :members:
     :undoc-members:
     :show-inheritance:
@@ -56,11 +54,3 @@ heron_wsgi Package
     :members:
     :undoc-members:
     :show-inheritance:
-
-Subpackages
------------
-
-.. toctree::
-
-    heron_wsgi.admin_lib
-

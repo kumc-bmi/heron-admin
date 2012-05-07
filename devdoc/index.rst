@@ -3,16 +3,15 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to heron_wsgi's documentation!
-======================================
+heron_wsgi: Policy Enforcement Web Interface for HERON
+======================================================
 
 Contents:
 
 .. toctree::
    :maxdepth: 4
 
-   heron_wsgi
-
+   heron_wsgi.admin_lib
 
 Indices and tables
 ==================
@@ -21,3 +20,7 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
+To Do List
+==========
+
+.. todolist::

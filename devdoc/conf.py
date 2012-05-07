@@ -285,3 +285,15 @@ epub_copyright = u'2012, Author'
 
 # Allow duplicate toc entries.
 #epub_tocdup = True
+
+
+# How to use Sphinx's autodoc to document a class's __init__(self) method?
+# http://stackoverflow.com/questions/5599254/
+def skip(app, what, name, obj, skip, options):
+    if name == "__init__":
+        return False
+    return skip
+
+
+def setup(app):
+    app.connect("autodoc-skip-member", skip)

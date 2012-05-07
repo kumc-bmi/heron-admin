@@ -1,4 +1,12 @@
-'''rtconfig -- access to runtime options
+'''rtconfig -- runtime configuration and dependency injection utilities
+-----------------------------------------------------------------------
+
+To instantiate classes based on runtime configuration using
+injector__, use :meth:`IniModule.make`. :class:`MockMixin` provides
+an analagous :meth:`MockMixin.make` method.
+
+__ http://pypi.python.org/pypi/injector/
+
 '''
 
 import os
@@ -6,14 +14,20 @@ import ConfigParser
 
 import injector
 
+
 class Options(object):
     def __init__(self, attrs):
+        '''Create a container of options.
+
+        :param attrs: option names. See :class:`TestTimeOptions` for example.
+        '''
+
         self._attrs = attrs
         self._d = {}
 
     def __getattr__(self, n):
         if n not in self._attrs:
-            raise AttributeError, n
+            raise AttributeError(n)
         return self._d.get(n, None)
 
     def inifmt(self, section):
@@ -39,7 +53,8 @@ class RuntimeOptions(Options):  # pragma nocover
 
 
 class TestTimeOptions(RuntimeOptions):
-    '''
+    '''Simulate :class:`RuntimeOptions` using a dictionary of values.
+
       >>> tto = TestTimeOptions({'size': '10', 'color': 'blue'})
       >>> print tto.inifmt('widget')
       [widget]
@@ -60,10 +75,20 @@ class TestTimeOptions(RuntimeOptions):
 class MockMixin(object):
     @classmethod
     def mods(cls):
+        '''Instantiate this module class and each module class it depends on.
+
+        Note: This class has no dependencies; subclasses should
+        override this method as appropriate.
+        '''
         return [cls()]
 
     @classmethod
     def make(cls, what=None):
+        '''Instantiate classes using dependency injection.
+
+        This is analagous to :meth:`IniModule.make`, but with no
+        constructor arguments.
+        '''
         if what is None:
             what = cls.stuff
         depgraph = injector.Injector(cls.mods())
@@ -72,7 +97,15 @@ class MockMixin(object):
 
 
 class IniModule(injector.Module):
+    '''Provide runtime configuration in dependency injection graph.
+    '''
     def __init__(self, ini):
+        '''Create an injector Module that can bind :class:`Options`
+        based on a section of an ini file.
+
+        :param ini: if None, defaults to `HACONFIG` environment variable;
+                    if that is not set, defaults to `integration-test.ini`.
+        '''
         injector.Module.__init__(self)
         if ini is None:
             ini = os.environ.get('HACONFIG', None)
@@ -88,13 +121,28 @@ class IniModule(injector.Module):
 
     @classmethod
     def mods(cls, ini):
+        '''Instantiate this module class and each module class it depends on.
+
+        :param ini: passed to constructor of each module.
+
+        Note: This class has no dependencies; subclasses should
+        override this method as appropriate.
+
+        '''
         return [cls(ini)]
 
     @classmethod
     def make(cls, ini, what):
+        '''Read configuration; instantiate classes using dependency injection.
+
+        :param ini: passed to constructor of each module.
+        :param what: list of either a class to instantiate
+                     or None to get the dependency graph itself.
+
+        Using :meth:`mods` to get a list of modules that provide bindings
+        from classes (or other keys) to objects, create an `injector.Injector`
+        and use it to instantiate each of the classes in `what`.
+        '''
         depgraph = injector.Injector(cls.mods(ini))
         return [depgraph.get(it) if it else depgraph
                 for it in what]
-
-
-
