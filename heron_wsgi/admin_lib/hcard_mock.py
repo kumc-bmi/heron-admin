@@ -102,6 +102,7 @@ def _to_csv(out):
     columns = ('sn cn givenname mail title ou '
                'kumcPersonJobcode kumcPersonFaculty').split()
     assert(set(MockDirectory.ldap2hcard.keys()) == set(columns))
+
     d = MockDirectory()
     records = [dict([(k, v[0]) for k, v in data.iteritems()])
         for _q, data in
@@ -109,9 +110,14 @@ def _to_csv(out):
          for i in d.items()
          for hit in d.search('(cn=%s)' % i, columns)]]
     log.debug('records: %s', pprint.pformat(records))
+
+    columns.append('trainedThru')
+
     out = csv.DictWriter(out, columns)
     out.writerow(dict(zip(columns, columns)))
-    out.writerows(records)
+    for r in records:
+        r['trainedThru'] = d.trainedThru(r['cn'])
+        out.writerow(r)
 
 
 if __name__ == '__main__':
