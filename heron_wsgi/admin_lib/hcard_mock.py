@@ -27,6 +27,7 @@ log = logging.getLogger(__name__)
 
 TEST_FILE = os.path.join(os.path.dirname(__file__), 'mockDirectory.html')
 
+
 class MockDirectory(object):
     # map from ldap attributes to hcard(ish) class nams
     ldap2hcard = {"cn": None,
@@ -62,6 +63,10 @@ class MockDirectory(object):
 
         return _byClass(hcards[0], 'dtend')
 
+    def items(self):
+        for e in self._doc.xpath('//*[@id]'):
+            yield e.attrib['id']
+
 
 def _l2x(q):
     '''
@@ -89,3 +94,27 @@ def _byClass(e, c):
     else:
         hits = e.xpath('@id')
     return hits[0] if hits else ""  # hmm... "" or None?
+
+
+def _to_csv(out):
+    import pprint
+    import csv
+    columns = ('sn cn givenname mail title ou '
+               'kumcPersonJobcode kumcPersonFaculty').split()
+    assert(set(MockDirectory.ldap2hcard.keys()) == set(columns))
+    d = MockDirectory()
+    records = [dict([(k, v[0]) for k, v in data.iteritems()])
+        for _q, data in
+        [hit
+         for i in d.items()
+         for hit in d.search('(cn=%s)' % i, columns)]]
+    log.debug('records: %s', pprint.pformat(records))
+    out = csv.DictWriter(out, columns)
+    out.writerow(dict(zip(columns, columns)))
+    out.writerows(records)
+
+
+if __name__ == '__main__':
+    import sys
+    logging.basicConfig(level=logging.DEBUG)
+    _to_csv(sys.stdout)
