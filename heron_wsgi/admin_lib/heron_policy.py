@@ -1,38 +1,126 @@
 '''heron_policy.py -- HERON policy decisions, records
+-----------------------------------------------------
 
-  # logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
-  >>> mc, hp, dr = Mock.make((medcenter.MedCenter, HeronRecords,
+:class:`HeronRecords` implements the `HERON governance`__ policies.
+
+__ http://informatics.kumc.edu/work/wiki/HERON#governance
+
+.. For debugging, change .. to >>>.
+.. logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
+
+View-only access for Qualified Faculty
+======================================
+
+Excerpting from `HERON training materials`__:
+
+  For qualified faculty who want view-only access to do patient count
+  queries, executing a system access agreement is the only
+  requirement.
+
+__ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
+
+  >>> hp, mc, dr = Mock.make((HeronRecords, medcenter.MedCenter,
   ...                         DecisionRecords))
-  >>> mcmock = medcenter.Mock
 
-Suppose an investigator and some students log in::
+Recalling the login protocol from :mod:`heron_wsgi.admin_lib.medcenter`::
 
-  >>> facreq = mcmock.login_info('john.smith')
-  >>> mc.issue(facreq)
-  [<MedCenter sealed box>]
-  >>> stureq = mcmock.login_info('bill.student')
-  >>> mc.issue(stureq)
-  [<MedCenter sealed box>]
-  >>> stu2req = mcmock.login_info('some.one')
-  >>> mc.issue(stu2req)
-  [<MedCenter sealed box>]
+  >>> def _login(uid):
+  ...     req = medcenter.MockRequest()
+  ...     req.remote_user = uid
+  ...     mc.issue(req)
+  ...     return req
 
-See if they're qualified faculty::
+When a qualified faculty member from our mock directory logs in
+:meth:`HeronRecords.issue` adds a :class:`Faculty` capability to the
+request::
 
+  >>> facreq = _login('john.smith')
   >>> hp.issue(facreq)
   [Faculty(John Smith <john.smith@js.example>)]
   >>> facreq.faculty
   Faculty(John Smith <john.smith@js.example>)
+
+John has signed the system access agreement and is current on his
+human subjects training, so he can access the repository::
+
+  >>> facreq.user.repository_authz()
+  Access(Faculty(John Smith <john.smith@js.example>))
+
+
+Unforgeable System Access Agreement
+***********************************
+
+:meth:`HeronRecords.issue` also issues an :class:`Affiliate` user
+capability, which provides a link to an authenticated system access
+survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
 
   >>> facreq.user.ensure_saa_survey().split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
   ['http://bmidev1/redcap-host/surveys/',
    's=8074&full_name=Smith%2C+John&user_id=john.smith']
 
+Sponsored Users
+===============
+
+Bill cannot access the HERON repository because he is neither
+faculty not sponsored::
+
+  >>> stureq = _login('bill.student')
   >>> hp.issue(stureq)
   [Affiliate(Bill Student <bill.student@js.example>)]
   >>> stureq.faculty is None
   True
+  >>> stureq.user.repository_authz()
+  Traceback (most recent call last):
+    ...
+  NotSponsored
+
+.. note:: We count on sqlalchemy to recover from errors in the connection
+   to the database of sponsorship records.
+
+Nor has he completed human subjects training::
+
+  >>> stureq.user.training()
+  Traceback (most recent call last):
+  ...
+  NoTraining
+
+Another student has been sponsored and is current on training, but has
+not yet executed the system access agreement::
+
+  >>> stu2req = _login('some.one')
+  >>> hp.issue(stu2req)
+  [Affiliate(Some One <some.one@js.example>)]
+  >>> stu2req.user.sponsor()
+  True
+  >>> stu2req.user.training()
+  '2012-01-01'
+  >>> stu2req.user.repository_authz()
+  Traceback (most recent call last):
+  ...
+  NoAgreement
+
+.. todo:: secure represention of sponsor rather than True/False?
+
+
+Exception for executives from participating instituions
+=======================================================
+
+Executives don't need sponsorship::
+
+  >>> exreq = _login('big.wig')
+  >>> hp.issue(exreq)
+  [Executive(Big Wig <big.wig@js.example>)]
+  >>> exreq.user.repository_authz()
+  Access(Executive(Big Wig <big.wig@js.example>))
+
+
+Sponsorship and data usage requests to the oversight committee
+==============================================================
+
+Faculty can make sponsorship and data usage requests to the oversight
+committee::
+
   >>> facreq.faculty.ensure_oversight_survey(
   ...        ['some.one'], what_for=HeronRecords.DATA_USE).split('&')
   ... # doctest: +NORMALIZE_WHITESPACE
@@ -44,65 +132,19 @@ See if they're qualified faculty::
    'user_id_1=some.one',
    'what_for=2']
 
-See if the students are qualified in some way::
+Directory Search for Team Members
+*********************************
 
-  >>> stureq.user.repository_authz()
-  Traceback (most recent call last):
-    ...
-  NotSponsored
-
-  >>> stureq.user.training()
-  Traceback (most recent call last):
-  ...
-  NoTraining
-
-  >>> hp.issue(stu2req)
-  [Affiliate(Some One <some.one@js.example>)]
-
-.. todo:: secure represention of sponsor rather than True/False?
-  >>> stu2req.user.sponsor()
-  True
-
-  >>> stu2req.user.training()
-  '2012-01-01'
-  >>> stu2req.user.repository_authz()
-  Traceback (most recent call last):
-  ...
-  NoAgreement
-
-
-Get an actual access qualification; i.e. check for
-system access agreement and human subjects training::
-
-  >>> facreq.user.repository_authz()
-  Access(Faculty(John Smith <john.smith@js.example>))
-
-Executives don't need sponsorship::
-  >>> exreq = mcmock.login_info('big.wig')
-  >>> mc.issue(exreq)
-  [<MedCenter sealed box>]
-  >>> hp.issue(exreq)
-  [Executive(Big Wig <big.wig@js.example>)]
-  >>> exreq.user.repository_authz()
-  Access(Executive(Big Wig <big.wig@js.example>))
-
-
-Directory Search
-----------------
+Part of making oversight requests is nominating team members::
 
   >>> facreq.user.browser.lookup('some.one')
   Some One <some.one@js.example>
   >>> facreq.user.browser.search(5, 'john.smith', '', '')
   [John Smith <john.smith@js.example>]
 
-Recovery from Database Errors
------------------------------
 
-We count on sqlalchemy to do this.
-
-
-Oversight Decisions
--------------------
+Notification of Oversight Decisions
+***********************************
 
 What decision notifications are pending?
 
@@ -113,6 +155,7 @@ What decision notifications are pending?
    (34, u'6373469799195807417', u'1', 3)]
 
 Get details that we might want to use in composing the notification::
+
   >>> from pprint import pprint
   >>> for pid, record, decision, qty in ds:
   ...    pprint(dr.decision_detail(record))

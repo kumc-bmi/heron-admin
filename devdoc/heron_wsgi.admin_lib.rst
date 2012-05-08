@@ -12,17 +12,6 @@
     :undoc-members:
     :show-inheritance:
 
-:mod:`ldaplib` Module
----------------------
-
-.. automodule:: heron_wsgi.admin_lib.ldaplib
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`heron_policy` Module
---------------------------
-
 .. automodule:: heron_wsgi.admin_lib.heron_policy
     :members:
     :undoc-members:
@@ -84,11 +73,19 @@ Utilities
     :undoc-members:
     :show-inheritance:
 
+.. automodule:: heron_wsgi.admin_lib.ldaplib
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 .. automodule:: heron_wsgi.admin_lib.sealing
     :members:
     :undoc-members:
     :show-inheritance:
 
+
+Scripts
+-------
 
 :mod:`migrate_approvals` Module
 *******************************
