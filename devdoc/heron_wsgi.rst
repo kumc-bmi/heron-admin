@@ -1,19 +1,17 @@
 heron_wsgi Package
 ==================
 
+.. automodule:: heron_wsgi
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
 .. automodule:: heron_wsgi.cas_auth
     :members:
     :undoc-members:
     :show-inheritance:
 
-
-:mod:`heron_wsgi` Package
--------------------------
-
-.. automodule:: heron_wsgi.__init__
-    :members:
-    :undoc-members:
-    :show-inheritance:
 
 :mod:`drocnotice` Module
 ------------------------

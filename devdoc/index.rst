@@ -6,11 +6,15 @@
 heron_wsgi: Policy Enforcement Web Interface for HERON
 ======================================================
 
+.. note:: In progress. The :mod:`heron_wsgi.admin_lib` layer is
+   relatively coherent, but not the :mod:`heron_wsgi` layer.
+
 Contents:
 
 .. toctree::
    :maxdepth: 4
 
+   heron_wsgi
    heron_wsgi.admin_lib
 
 Indices and tables
