@@ -17,6 +17,17 @@ It implements the LDAP search API in a few cases::
   >>> d.search('(cn=john.smith)', ['sn', 'givenname'])
   [('(cn=john.smith)', {'givenname': ['John'], 'sn': ['Smith']})]
 
+  >>> d.search('(cn=john.smith)', [])
+  ... #doctest: +NORMALIZE_WHITESPACE
+  [('(cn=john.smith)',
+   {'kumcPersonJobcode': ['1234'], 'kumcPersonFaculty': ['Y'],
+    'cn': ['john.smith'], 'title': ['Chair of Department of Neurology'],
+    'trainedThru': ['2012-01-01'], 'sn': ['Smith'],
+    'mail': ['john.smith@js.example'], 'ou': [''],
+    'givenname': ['John']})]
+
+.. todo:: Make the two tests above independent of order of dictionary keys.
+
 It also supplies HSC training info::
 
   >>> d.trainedThru('john.smith')
@@ -35,9 +46,10 @@ class MockDirectory(object):
 
     def search(self, q, attrs):
         i = self._qid(q)
+        record = self._d[i]
         return [('(cn=%s)' % i,
-                 dict([(a, [self._d[i][a]])
-                       for a in attrs]))]
+                 dict([(a, [record[a]])
+                       for a in (attrs or record.keys())]))]
 
     def trainedThru(self, cn):
         return self._d[cn]['trainedThru']
