@@ -35,7 +35,9 @@ we can audit when the `idvault` permission is exercised
 
   >>> login_caps
   [<MedCenter sealed box>]
-  >>> m.audit(login_caps[0], m.permissions[0])  #doctest: +ELLIPSIS
+  >>> login_caps[0] is req.idvault_entry
+  True
+  >>> m.audit(req.idvault_entry, PERM_ID)  #doctest: +ELLIPSIS
   INFO:...:MedCenter.audit(<MedCenter sealed box>, ...medcenter.idvault)
 
 .. note:: :meth:`MedCenter.issue` and :meth:`MedCenter.audit`
