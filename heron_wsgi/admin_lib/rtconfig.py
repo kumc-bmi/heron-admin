@@ -7,6 +7,10 @@ an analagous :meth:`MockMixin.make` method.
 
 __ http://pypi.python.org/pypi/injector/
 
+See also AuthorityInjection__.
+
+__ http://informatics.kumc.edu/work/wiki/AuthorityInjection
+
 '''
 
 import os
