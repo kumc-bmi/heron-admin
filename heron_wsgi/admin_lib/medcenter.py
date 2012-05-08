@@ -296,7 +296,6 @@ class Mock(injector.Module, rtconfig.MockMixin):
       - :data:`KTrainingFunction`
       - :data:`KAppSecret` (for faculty testing hook)
 
-    .. todo:: separate LDAPService interface from implementation.
     '''
 
     def configure(self, binder):
@@ -329,7 +328,6 @@ class RunTime(rtconfig.IniModule):
       - :data:`KTrainingFunction`
       - :data:`KAppSecret` (for faculty testing hook)
 
-    .. todo:: separate LDAPService interface from implementation.
     '''
 
     @provides(KAppSecret)

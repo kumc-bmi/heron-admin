@@ -1,4 +1,5 @@
 '''disclaimer -- access disclaimers and acknowledgements from REDCap EAV DB
+---------------------------------------------------------------------------
 
 :class:`Disclaimer` and :class:`Acknowledgement` provide read-only
 access via SQL queries.

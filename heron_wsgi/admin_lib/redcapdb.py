@@ -1,4 +1,5 @@
 '''redcapdb -- a little ORM support for REDCap's EAV structure
+--------------------------------------------------------------
 
 '''
 
@@ -164,10 +165,12 @@ class REDCapRecord(object):
     def eav_map(cls, project_id, alias='eav'):
         '''Set up the ORM mapping based on project_id.
 
-        @param cls: class to map
-        @param pid: redcap project id to select
-        @param fields: 1st is primary key
-        @return: (value_columns, join_where_clause)
+        :param cls: class to map
+        :param pid: redcap project id to select
+        :param fields: 1st is primary key
+        :returns: (value_columns, join_where_clause)
+
+        For example::
 
           >>> cols, where = _TestRecord.eav_map(project_id=123)
           >>> [c.table.name for c in cols]
@@ -223,12 +226,13 @@ class _TestRecord(REDCapRecord):
 def allfields(ex, project_id, record):
     '''Iterate over all fields in a REDCap record.
 
-    @param ex: a SQLA executable (engine, session, ...)
-    @param project_id: to match redcap_data
-    @param record: to match redcap_data
-    @return: an iterator over (k, v) pairs
+    :param ex: a SQLA executable (engine, session, ...)
+    :param project_id: to match redcap_data
+    :param record: to match redcap_data
+    :return: an iterator over (k, v) pairs
 
     For example::
+
       >>> (smaker, ) = Mock.make([(sqlalchemy.orm.session.Session,
       ...                          CONFIG_SECTION)])
       >>> s = smaker()

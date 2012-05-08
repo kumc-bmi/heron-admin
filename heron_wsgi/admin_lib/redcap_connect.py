@@ -1,4 +1,7 @@
-'''redcap_connect.py -- Connect HERON users to REDCap surveys.
+'''redcap_connect.py -- Connect HERON users to REDCap surveys securely.
+-----------------------------------------------------------------------
+
+Configuration gives us access to the REDCap API::
 
   >>> print _test_settings.inifmt('survey_xyz')
   [survey_xyz]
@@ -14,12 +17,16 @@
   True
 
   >>> setup = survey_setup(_test_settings, _TestUrlOpener())
+
+Set up a link to survey associated with John Smith's email address::
+
   >>> setup('john.smith',
   ...       {'user_id': 'john.smith', 'full_name': 'John Smith'}).split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
   ['http://bmidev1/redcap-host/surveys/',
    's=8074&full_name=John+Smith&user_id=john.smith']
 
+Fill in some of the fields in the survey, such as `full_name` and `what_for`::
 
   >>> setup('john.smith',
   ...       {'multi': 'yes', 'user_id': 'john.smith',

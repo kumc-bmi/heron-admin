@@ -17,50 +17,22 @@
     :undoc-members:
     :show-inheritance:
 
-:mod:`disclaimer` Module
-------------------------
+.. automodule:: heron_wsgi.admin_lib.noticelog
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 .. automodule:: heron_wsgi.admin_lib.disclaimer
     :members:
     :undoc-members:
     :show-inheritance:
 
-:mod:`checklist` Module
------------------------
-
 .. automodule:: heron_wsgi.admin_lib.checklist
     :members:
     :undoc-members:
     :show-inheritance:
 
-:mod:`i2b2pm` Module
---------------------
-
 .. automodule:: heron_wsgi.admin_lib.i2b2pm
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`noticelog` Module
------------------------
-
-.. automodule:: heron_wsgi.admin_lib.noticelog
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`redcap_connect` Module
-----------------------------
-
-.. automodule:: heron_wsgi.admin_lib.redcap_connect
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`redcapdb` Module
-----------------------
-
-.. automodule:: heron_wsgi.admin_lib.redcapdb
     :members:
     :undoc-members:
     :show-inheritance:
@@ -78,17 +50,27 @@ Utilities
     :undoc-members:
     :show-inheritance:
 
+.. automodule:: heron_wsgi.admin_lib.redcap_connect
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. automodule:: heron_wsgi.admin_lib.redcapdb
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 .. automodule:: heron_wsgi.admin_lib.sealing
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-Scripts
--------
+Migration Scripts
+-----------------
 
-:mod:`migrate_approvals` Module
-*******************************
+:mod:`migrate_approvals` (largely historical)
+*********************************************
 
 .. automodule:: heron_wsgi.admin_lib.migrate_approvals
     :members:
@@ -102,9 +84,6 @@ Testing Support
     :members:
     :undoc-members:
     :show-inheritance:
-
-:mod:`tests` Module
-*******************
 
 .. automodule:: heron_wsgi.admin_lib.tests
     :members:

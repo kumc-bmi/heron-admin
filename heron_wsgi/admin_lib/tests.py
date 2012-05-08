@@ -1,9 +1,13 @@
-'''tests.py -- run all the doctests for code coverage analysis.
+'''tests.py -- Run all the doctests for code coverage analysis.
+---------------------------------------------------------------
 
-.. todo:: use nose with doctest instead
+.. todo:: use nose__ with doctest instead
+
+__ http://readthedocs.org/docs/nose/en/latest/
 
 '''
 import doctest
+
 
 def main():
     import hcard_mock
