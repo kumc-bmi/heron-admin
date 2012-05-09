@@ -31,6 +31,7 @@ import cas_auth
 import genshi_render
 import drocnotice
 import stats
+import powerbox
 from admin_lib import medcenter
 from admin_lib import heron_policy
 from admin_lib.checklist import Checklist
@@ -456,8 +457,9 @@ class HeronAdminConfig(Configurator):
                      permission=pyramid.security.NO_PERMISSION_REQUIRED)
 
         # Usage reports
-        self.add_route('report1', 'report1_url')
-        report.configure(self, 'report1')
+        self.add_route('usage', 'usage_report')
+        self.add_route('performance', 'performance_report')
+        report.configure(self, 'usage', 'performance')
 
         # for testing
         self.add_route('err', 'err')
@@ -481,6 +483,8 @@ class RunTime(injector.Module):
 
         binder.bind(URLopener,
                     injector.InstanceProvider(urllib2.build_opener()))
+        binder.bind(stats.Machine, powerbox.LinuxMachine)
+
 
     @provides(medcenter.KAppSecret)
     @inject(rt=(Options, cas_auth.CONFIG_SECTION))

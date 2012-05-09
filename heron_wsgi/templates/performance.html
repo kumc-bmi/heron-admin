@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:py="http://genshi.edgewall.org/"
+  xmlns:xi="http://www.w3.org/2001/XInclude">
+<xi:include href="kumc_layout.xml" />
+<head>
+  <title>HERON Performance</title>
+  <link rel="ack" href="http://mbostock.github.com/d3/tutorial/bar-1.html" />
+</head>
+<body>
+
+<h1>HERON Performance</h1>
+
+<div id="main">
+
+<div id="machine_load">
+<h2>Machine load</h2>
+
+</div>
+
+  <style type="text/css">
+.chart div {
+   font: 10px sans-serif;
+   background-color: steelblue;
+   text-align: right;
+   padding: 3px;
+   margin: 1px;
+   color: white;
+}
+  </style>
+  <script src="av/d3.v2.js" type="text/javascript"></script>
+<script type="text/javascript">
+var w = 400;
+var durations = [1, 5, 15]; // minutes, per man uptime
+var data = [${
+   ', '.join(['{dur: %d, load: %f}' % (dur, load) for dur, load in machine_load])
+   }];
+var max_load = ${max([load for dur, load in machine_load])};
+var scale = d3.scale.linear().domain([0, max_load * 1.5]).rangeRound([0, w]);
+
+var chart = d3.select("#machine_load").append("div")
+     .attr("class", "chart");
+
+ chart.selectAll("div")
+     .data(data)
+   .enter().append("div")
+     .style("width", function(d) { return scale(d.load) + "px"; })
+     .text(function(d) { return d.dur + ' min: ' + d.load; });
+</script>
+
+</div>
+
+</body>
+</html>
