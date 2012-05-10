@@ -88,23 +88,28 @@ class Report(object):
 
     def query_data(self, res, req):
         connection = self._datasrc()
-        #@@  -- qm.request_xml,
-        #@@ just the last 7 days
+        #@@ just the last week
         qt = connection.execute('''SELECT qm.query_master_id,
+          qm.request_xml,
           qi.start_date,
           qm.user_id,
           qm.name AS query_name ,
           qt.description status,
           qi.end_date,
-          log(2, (qi.end_date - qi.start_date) * 24 * 60 * 60) "value"
+          case when qi.end_date is null then null
+               when qi.end_date = qi.start_date then null
+               else log(2, (qi.end_date - qi.start_date) * 24 * 60 * 60)
+          end "value"
         FROM BlueHeronData.qt_query_master qm
         JOIN BLUEHERONDATA.QT_QUERY_INSTANCE qi
         ON qi.query_master_id = qm.query_master_id
         JOIN BlueHeronData.qt_query_status_type qt
         ON qt.status_type_id = qi.status_type_id
-        where qi.start_date >= sysdate - 7
+        where qi.start_date between sysdate - 7 and sysdate
         order by qi.start_date
         ''')
+        #@@where qi.start_date between date '2011-09-01' and date '2011-09-08'
+
         return dict(queries=to_json(qt))
 
     def performance_data(self, res, req):
