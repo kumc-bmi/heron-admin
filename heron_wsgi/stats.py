@@ -40,17 +40,22 @@ class Report(object):
         .. todo:: consider allowing anonymous access to performance report.
         '''
         config.add_route('usage', mount_point + 'usage')
-        config.add_route('performance', mount_point + 'performance')
-        config.add_route('performance_data', mount_point + 'performance_data')
         config.add_view(self.show_usage_report, route_name='usage',
                         request_method='GET', renderer='report1.html',
                         permission=heron_policy.PERM_USER)
 
+        config.add_route('performance', mount_point + 'performance')
         config.add_view(self.show_performance, route_name='performance',
                         request_method='GET', renderer='performance.html',
                         permission=heron_policy.PERM_USER)
 
+        config.add_route('performance_data', mount_point + 'performance_data')
         config.add_view(self.performance_data, route_name='performance_data',
+                        request_method='GET', renderer='json',
+                        permission=heron_policy.PERM_USER)
+
+        config.add_route('query_data', mount_point + 'query_data')
+        config.add_view(self.query_data, route_name='query_data',
                         request_method='GET', renderer='json',
                         permission=heron_policy.PERM_USER)
 
@@ -81,11 +86,32 @@ class Report(object):
     def show_performance(self, res, req):
         return {}
 
+    def query_data(self, res, req):
+        connection = self._datasrc()
+        #@@  -- qm.request_xml,
+        #@@ just the last 7 days
+        qt = connection.execute('''SELECT qm.query_master_id,
+          qi.start_date,
+          qm.user_id,
+          qm.name AS query_name ,
+          qt.description status,
+          qi.end_date,
+          log(2, (qi.end_date - qi.start_date) * 24 * 60 * 60) "value"
+        FROM BlueHeronData.qt_query_master qm
+        JOIN BLUEHERONDATA.QT_QUERY_INSTANCE qi
+        ON qi.query_master_id = qm.query_master_id
+        JOIN BlueHeronData.qt_query_status_type qt
+        ON qt.status_type_id = qi.status_type_id
+        where qi.start_date >= sysdate - 7
+        order by qi.start_date
+        ''')
+        return dict(queries=to_json(qt))
+
     def performance_data(self, res, req):
         connection = self._datasrc()
         this_month = connection.execute('''
 select * from (
-select to_char(qi.start_date, 'yyyy-mm-dd') start_day
+select trunc(qi.start_date) start_day
      , qt.status_type_id, qi.batch_mode, qt.description
      , count(*) n
      , round(avg(qi.end_date - qi.start_date) * 24 * 60 * 60, 2) avg_seconds
@@ -97,7 +123,7 @@ join BlueHeronData.qt_query_status_type qt
  on qt.status_type_id = qi.status_type_id
  /* current month/release */
 where qi.start_date >= sysdate - 30
-group by to_char(qi.start_date, 'yyyy-mm-dd'), qt.status_type_id, qi.batch_mode, qt.description
+group by trunc(qi.start_date), qt.status_type_id, qi.batch_mode, qt.description
 ) order by start_day desc, status_type_id desc
         ''')
 
@@ -127,16 +153,27 @@ group by to_char(qi.start_date, 'yyyy-mm'), qt.status_type_id, qi.batch_mode, qt
 
 
 def _json_val(x):
+    '''
+    >>> _json_val(datetime.datetime(2012, 5, 10, 12, 5, 6, 804699))
+    [2012, 5, 10, 12, 5, 6, 804699]
+    >>> _json_val(datetime.timedelta(0, 64, 130006))
+    64130
+    '''
     if x is None:
         return x
 
     t = type(x)
     if t in (type(''), type(u''), type(1), type(True)):
         return x
+    elif t is datetime.date:
+        return [getattr(x, f) for f in ('year', 'month', 'day')]
     elif t is datetime.datetime:
-        return x.isoformat()
-    elif t in (decimal.Decimal, datetime.timedelta):
-        return str(x)
+        return [getattr(x, f) for f in ('year', 'month', 'day',
+                                        'hour', 'minute', 'second', 'microsecond')]
+    elif t is datetime.timedelta:
+        return x.microseconds / 1000 + (1000 * x.seconds)
+    elif t is decimal.Decimal:
+        return float(x)  # close enough for today's exercise
     else:
         raise NotImplementedError('_json_val? %s / %s' % (x, t))
 
