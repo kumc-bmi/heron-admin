@@ -457,9 +457,7 @@ class HeronAdminConfig(Configurator):
                      permission=pyramid.security.NO_PERMISSION_REQUIRED)
 
         # Usage reports
-        self.add_route('usage', 'usage_report')
-        self.add_route('performance', 'performance_report')
-        report.configure(self, 'usage', 'performance')
+        report.configure(self, 'reports/')
 
         # for testing
         self.add_route('err', 'err')
