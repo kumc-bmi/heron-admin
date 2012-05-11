@@ -414,7 +414,7 @@ class HeronAdminConfig(Configurator):
             mc=medcenter.MedCenter,
             hr=heron_policy.HeronRecords,
             dn=drocnotice.DROCNotice,
-            report=stats.Report)
+            report=stats.Reports)
     def __init__(self, guard, conf, cas_rt, clv, rcv,
                  repo, tb, mc, hr, dn, report):
         log.debug('HeronAdminConfig settings: %s', conf)
