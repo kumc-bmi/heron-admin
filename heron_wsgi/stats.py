@@ -1,35 +1,22 @@
 '''stats -- HERON usage statistics
+
 '''
 
 from injector import inject
-from sqlalchemy import orm
+from sqlalchemy import orm, func, between, case
+from sqlalchemy import select, Table, Column, ForeignKey
+from sqlalchemy.types import Integer, String, DATETIME
 import datetime
 import decimal
 
 from admin_lib import heron_policy
-
-CONFIG_SECTION = 'i2b2pm'
-
-
-class Machine(object):
-    '''Machine Interface
-
-    See :class:`heron_wsgi.powerbox.LinuxMachine` for implementation.
-    '''
-    def load(self):
-        '''Report load average(s) on the machine
-
-        :returntype: list of (minutes, load) tuples.
-        '''
-        return [(1, 0.00), (5, 0.00), (15, 0.00)]
+from admin_lib import i2b2pm
 
 
-class Report(object):
-    @inject(datasrc=(orm.session.Session, CONFIG_SECTION),
-            machine=Machine)
-    def __init__(self, datasrc, machine):
+class UsageReports(object):
+    @inject(datasrc=(orm.session.Session, i2b2pm.CONFIG_SECTION))
+    def __init__(self, datasrc):
         self._datasrc = datasrc
-        self._machine = machine
 
     def configure(self, config, mount_point):
         '''Connect this view to the rest of the application
@@ -37,26 +24,10 @@ class Report(object):
         :param config: a pyramid config thingy@@@
 
         .. todo:: consider requiring DROC permissions on show_report
-        .. todo:: consider allowing anonymous access to performance report.
         '''
         config.add_route('usage', mount_point + 'usage')
         config.add_view(self.show_usage_report, route_name='usage',
                         request_method='GET', renderer='report1.html',
-                        permission=heron_policy.PERM_USER)
-
-        config.add_route('performance', mount_point + 'performance')
-        config.add_view(self.show_performance, route_name='performance',
-                        request_method='GET', renderer='performance.html',
-                        permission=heron_policy.PERM_USER)
-
-        config.add_route('performance_data', mount_point + 'performance_data')
-        config.add_view(self.performance_data, route_name='performance_data',
-                        request_method='GET', renderer='json',
-                        permission=heron_policy.PERM_USER)
-
-        config.add_route('query_data', mount_point + 'query_data')
-        config.add_view(self.query_data, route_name='query_data',
-                        request_method='GET', renderer='json',
                         permission=heron_policy.PERM_USER)
 
     def show_usage_report(self, res, req):
@@ -83,32 +54,147 @@ class Report(object):
         return dict(total_number_of_queries=count,
                     query_volume=query_volume)
 
+
+class Machine(object):
+    '''Machine Interface
+
+    .. todo:: clean up Machine dead code.
+
+    See :class:`heron_wsgi.powerbox.LinuxMachine` for implementation.
+    '''
+    def load(self):
+        '''Report load average(s) on the machine
+
+        :returntype: list of (minutes, load) tuples.
+        '''
+        return [(1, 0.00), (5, 0.00), (15, 0.00)]
+
+
+meta = i2b2pm.Base.metadata
+qm = Table('qt_query_master', meta,
+           Column('query_master_id', Integer, primary_key=True),
+           Column('user_id', String),
+           Column('name', String),
+           Column('request_xml', String),
+           schema='blueherondata')
+
+rt = Table('qt_query_result_type', meta,
+           Column('result_type_id', Integer, primary_key=True),
+           Column('name', String),  # result_type
+           Column('description', String),
+           schema='blueherondata')
+
+qt = Table('qt_query_status_type', meta,
+           Column('status_type_id', Integer, primary_key=True),
+           Column('description', String),
+           schema='blueherondata')
+
+qi = Table('qt_query_instance', meta,
+           Column('query_instance_id', Integer, primary_key=True),
+           Column('query_master_id', Integer,
+                  ForeignKey(qm.c.query_master_id)),
+           Column('status_type_id', Integer,
+                  ForeignKey(qt.c.status_type_id)),
+           Column('start_date', DATETIME),
+           Column('end_date', DATETIME),
+           Column('message', String),
+           schema='blueherondata')
+
+qri = Table('qt_query_result_instance', meta,
+            Column('query_instance_id', Integer,
+                   ForeignKey(qi.c.query_instance_id)),
+            Column('result_type_id', Integer,
+                   ForeignKey(rt.c.result_type_id)),
+            Column('set_size', Integer),
+            schema='blueherondata')
+
+s = Table('pm_user_session', meta,
+          Column('session_id', String),
+          Column('user_id', String),
+          Column('entry_date', DATETIME),
+          Column('expired_date', DATETIME),
+          schema='i2b2pm')
+
+
+class PerformanceReports(UsageReports):
+    @inject(datasrc=(orm.session.Session, i2b2pm.CONFIG_SECTION))
+    def __init__(self, datasrc, cal=datetime.date.today):
+        UsageReports.__init__(self, datasrc=datasrc)
+        self._datasrc = datasrc
+        self._cal = cal
+
+    def configure(self, config, mount_point):
+        '''Connect this view to the rest of the application
+
+        :param config: a pyramid config thingy@@@
+
+        .. todo:: consider allowing anonymous access to performance report.
+        '''
+        UsageReports.configure(self, config, mount_point)
+
+        config.add_route('performance', mount_point + 'performance')
+        config.add_view(self.show_performance, route_name='performance',
+                        request_method='GET', renderer='performance.html',
+                        permission=heron_policy.PERM_USER)
+
+        config.add_route('performance_data', mount_point + 'performance_data')
+        config.add_view(self.performance_data, route_name='performance_data',
+                        request_method='GET', renderer='json',
+                        permission=heron_policy.PERM_USER)
+
+        config.add_route('query_data', mount_point + 'query_data')
+        config.add_view(self.query_data, route_name='query_data',
+                        request_method='GET', renderer='json',
+                        permission=heron_policy.PERM_USER)
+
     def show_performance(self, res, req):
         return {}
 
+    @classmethod
+    def query_data_select(cls):
+        log_or_null = case([(qi.c.end_date == None, None)],
+                           else_=func.log(2, (qi.c.end_date - qi.c.start_date) * 24 * 60 * 60))
+
+        return select([qm.c.query_master_id, qm.c.user_id, qm.c.name.label('query_name'),
+                       rt.c.name.label('result_type'),
+                       rt.c.description.label('result_type_description'),
+                       qri.c.set_size,
+                       qi.c.start_date,
+                       qt.c.description.label('status'),
+                       qi.c.message,
+                       qi.c.end_date,
+                       log_or_null.label('value'),
+                       qm.c.request_xml],
+                      from_obj=[qm.join(qi).join(qri).join(rt).join(qt)])
+
     def query_data(self, res, req):
+        '''
+        .. todo:: vary by date, ...
+        '''
         connection = self._datasrc()
-        #@@ just the last week
-        qt = connection.execute('''SELECT qm.query_master_id,
-          qm.request_xml,
-          qi.start_date,
-          qm.user_id,
-          qm.name AS query_name ,
-          qt.description status,
-          qi.end_date,
-          case when qi.end_date is null then null
-               when qi.end_date = qi.start_date then null
-               else log(2, (qi.end_date - qi.start_date) * 24 * 60 * 60)
-          end "value"
-        FROM BlueHeronData.qt_query_master qm
-        JOIN BLUEHERONDATA.QT_QUERY_INSTANCE qi
-        ON qi.query_master_id = qm.query_master_id
-        JOIN BlueHeronData.qt_query_status_type qt
-        ON qt.status_type_id = qi.status_type_id
-        where qi.start_date between sysdate - 7 and sysdate
-        order by qi.start_date
-        ''')
-        #@@where qi.start_date between date '2011-09-01' and date '2011-09-08'
+
+        weeks = 1
+        thru = self._cal()
+        date = thru + datetime.timedelta(-7 * weeks)
+#        result_types = None  # all. or: ('PATIENT_COUNT_XML', 'PATIENTSET')
+#        statuses = ('COMPLETE',)  # INCOMPLETE, ERROR
+
+        qt = connection.execute(self.query_data_select().\
+                                where(between(qi.c.start_date, date, thru)).\
+                                order_by(qi.c.start_date))
+###
+#        where qi.start_date between :thru - :days and :thru
+#        %(status_constraint)s
+#        and qt.description in (%(status_enum)s)
+#        and rt.name in (:result_type_enum)
+#        order by qi.start_date;
+#        ''' % dict(
+#            # perhaps I should let SQLAlchemy do this...
+#            status_constraint='and qt.description in (' + ', '.join(statuses) + ') '
+#            if statuses else '',
+#            result_type_constraint='and rt.name in (' + ', '.join(result_types) + ') '
+#            if result_types else ''
+#        ),
 
         return dict(queries=to_json(qt))
 
@@ -152,10 +238,6 @@ group by to_char(qi.start_date, 'yyyy-mm'), qt.status_type_id, qi.batch_mode, qt
         return dict(this_month=to_json(this_month),
                     all_months=to_json(all_months))
 
-    def _machine_load(self):
-        ''' @@dead code '''
-        return dict(machine_load=self._machine.load())
-
 
 def _json_val(x):
     '''
@@ -180,9 +262,21 @@ def _json_val(x):
     elif t is decimal.Decimal:
         return float(x)  # close enough for today's exercise
     else:
-        raise NotImplementedError('_json_val? %s / %s' % (x, t))
+        return str(x)
+        raise NotImplementedError('_json_val? %s' % (t))
 
 
 def to_json(results):
     cols = results.keys()
-    return [dict([(k, _json_val(r[k])) for k in cols]) for r in results.fetchall()]
+    # ugh... .fetchall() and CLOBs don't seem to get along...
+    out = []
+    while 1:
+        r = results.fetchone()
+        if not r:
+            break
+        out.append(dict([(k, _json_val(r[k])) for k in cols]))
+    return out
+
+
+class Reports(PerformanceReports):
+    pass
