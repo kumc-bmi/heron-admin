@@ -2,6 +2,8 @@
 
 '''
 
+import logging
+
 from injector import inject
 from sqlalchemy import orm, func, between, case
 from sqlalchemy import select, Table, Column, ForeignKey
@@ -11,6 +13,8 @@ import decimal
 
 from admin_lib import heron_policy
 from admin_lib import i2b2pm
+
+log = logging.getLogger(__name__)
 
 
 class UsageReports(object):
@@ -151,11 +155,11 @@ class PerformanceReports(UsageReports):
         return {}
 
     @classmethod
-    def query_data_select(cls):
+    def query_data_select(cls, statuses):
         log_or_null = case([(qi.c.end_date == None, None)],
                            else_=func.log(2, (qi.c.end_date - qi.c.start_date) * 24 * 60 * 60))
 
-        return select([qm.c.query_master_id, qm.c.user_id, qm.c.name.label('query_name'),
+        stmt = select([qm.c.query_master_id, qm.c.user_id, qm.c.name.label('query_name'),
                        rt.c.name.label('result_type'),
                        rt.c.description.label('result_type_description'),
                        qri.c.set_size,
@@ -166,20 +170,24 @@ class PerformanceReports(UsageReports):
                        log_or_null.label('value'),
                        qm.c.request_xml],
                       from_obj=[qm.join(qi).join(qri).join(rt).join(qt)])
+        if statuses:
+            stmt = stmt.where(qt.c.description.in_(statuses))
+        return stmt
 
     def query_data(self, res, req):
         '''
         .. todo:: vary by date, ...
         '''
-        connection = self._datasrc()
+        log.debug('query_data about to get a session')
+        session = self._datasrc()
+        log.debug('query_data got a session: %s', session)
 
         weeks = 1
         thru = self._cal()
         date = thru + datetime.timedelta(-7 * weeks)
 #        result_types = None  # all. or: ('PATIENT_COUNT_XML', 'PATIENTSET')
-#        statuses = ('COMPLETE',)  # INCOMPLETE, ERROR
 
-        qt = connection.execute(self.query_data_select().\
+        qt = session.execute(self.query_data_select(req.GET.getall('status')).\
                                 where(between(qi.c.start_date, date, thru)).\
                                 order_by(qi.c.start_date))
 ###
@@ -196,11 +204,13 @@ class PerformanceReports(UsageReports):
 #            if result_types else ''
 #        ),
 
-        return dict(queries=to_json(qt))
+        model = dict(queries=to_json(qt))
+
+        return model
 
     def performance_data(self, res, req):
-        connection = self._datasrc()
-        this_month = connection.execute('''
+        session = self._datasrc()
+        this_month = session.execute('''
 select * from (
 select trunc(qi.start_date) start_day
      , qt.status_type_id, qi.batch_mode, qt.description
@@ -218,7 +228,7 @@ group by trunc(qi.start_date), qt.status_type_id, qi.batch_mode, qt.description
 ) order by start_day desc, status_type_id desc
         ''')
 
-        all_months = connection.execute('''
+        all_months = session.execute('''
 select * from (
 select to_char(qi.start_date, 'yyyy-mm') start_month
      , qt.status_type_id, qi.batch_mode, qt.description
@@ -268,6 +278,7 @@ def _json_val(x):
 
 def to_json(results):
     cols = results.keys()
+    log.debug('to_json... keys: %s', cols)
     # ugh... .fetchall() and CLOBs don't seem to get along...
     out = []
     while 1:
