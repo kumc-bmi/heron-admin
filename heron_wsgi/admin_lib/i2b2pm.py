@@ -71,6 +71,8 @@ from sqlalchemy.ext.declarative import declarative_base
 import sqlalchemy
 
 import rtconfig
+import jndi_util
+import ocap_file
 
 CONFIG_SECTION = 'i2b2pm'
 KUUIDGen = injector.Key('UUIDGen')
@@ -195,19 +197,30 @@ class UserRole(Base, Audited):
 
 
 class RunTime(rtconfig.IniModule):
+
     @provides((rtconfig.Options, CONFIG_SECTION))
     def settings(self):
-        rt = rtconfig.RuntimeOptions(['url'])
+        rt = rtconfig.RuntimeOptions(['jboss_deploy'])
         rt.load(self._ini, CONFIG_SECTION)
         return rt
+
+    @singleton
+    @provides(jndi_util.JBossContext)
+    @inject(rt=(rtconfig.Options, CONFIG_SECTION))
+    def jndi_context(self, rt):
+        import os  # hmm... where to import?
+        jd = ocap_file.Readable(rt.jboss_deploy, os.path, os.listdir, open)
+        return jndi_util.JBossContext(jd, sqlalchemy.create_engine)
+
+    jndi_name = 'PMBootStrapDS'
 
     # abusing Session a bit; this really provides a subclass, not an
     # instance, of Session
     @singleton
     @provides((orm.session.Session, CONFIG_SECTION))
-    @inject(rt=(rtconfig.Options, CONFIG_SECTION))
-    def pm_sessionmaker(self, rt):
-        engine = sqlalchemy.engine_from_config(rt.settings(), 'sqlalchemy.')
+    @inject(ctx=jndi_util.JBossContext)
+    def pm_sessionmaker(self, ctx):
+        engine = ctx.lookup(self.jndi_name)
         sm = orm.session.sessionmaker(engine)
 
         def make_session_and_revoke():

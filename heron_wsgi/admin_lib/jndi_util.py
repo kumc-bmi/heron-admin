@@ -5,6 +5,18 @@
 
 from lxml import etree
 
+from ocap_file import Readable
+
+
+class JBossContext(object):
+    def __init__(self, jboss_deploy, create_engine):
+        self.__d = jboss_deploy
+        self.__create_engine = create_engine
+
+    def lookup(self, n):
+        url = 'oracle://%s:%s@%s:%s/%s' % ds_access(self.__d, n)
+        return self.__create_engine(url)
+
 
 def ds_access(jboss_deploy, jndi_name):
     '''Parse connection details of a jboss datasource by jndi-name.
@@ -50,59 +62,4 @@ def ds_access(jboss_deploy, jndi_name):
     raise KeyError(jndi_name)
 
 
-def edef(*methods):
-    '''imitate E method suite definition
-    '''
-    lookup = dict([(f.__name__, f) for f in methods])
-
-    class EObj(object):
-        def __getattr__(self, n):
-            if n in lookup:
-                return lookup[n]
-            raise AttributeError(n)
-
-    return EObj()
-
-
-def Readable(path, os_path, os_listdir, openf):
-    '''
-    >>> import os
-    >>> Readable('.', os.path, os.listdir, open).isDir()
-    True
-    '''
-    def isDir():
-        return os_path.isdir(path)
-
-    def exists():
-        return os_path.exists(path)
-
-    def subRdFiles():
-        return (Readable(os_path.join(path, n), os_path, os_listdir, openf)
-                for n in os_listdir(path))
-
-    def subRdFile(n):
-        return Readable(os_path.join(path, n), os_path, os_listdir, openf)
-
-    def inChannel():
-        return openf(path)
-
-    def getBytes():
-        return openf(path).read()
-
-    def fullpath():
-        return os_path.abspath(path)
-
-    return edef(isDir, exists, subRdFiles, subRdFile, inChannel,
-                getBytes, fullpath)
-
-
-class Editable(object):
-    #ro : readable;
-    #subEdFiles : unit -> editable list;
-    #subEdFile : string -> editable;
-    #outChannel : unit -> out_channel;
-    #setBytes : string -> unit;
-    #mkDir : unit -> unit;
-    #createNewFile : unit -> unit;
-    #delete : unit -> unit;
-    pass
+_token_usage = Readable
