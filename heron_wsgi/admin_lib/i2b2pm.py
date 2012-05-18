@@ -137,6 +137,7 @@ def revoke_expired_auths(ds):
         from i2b2pm.pm_user_session ipus
         where ipus.user_id = ipud.user_id) < sysdate
     ''')
+    ds.commit()
 
 
 class Audited(object):
