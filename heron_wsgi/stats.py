@@ -22,41 +22,125 @@ class UsageReports(object):
     def __init__(self, datasrc):
         self._datasrc = datasrc
 
+    def q(self, sql):
+        return self._datasrc().execute(sql).fetchall()
+
+    def total_number_of_queries(self):
+        data = self.q('''
+            select count(*) as total_number_of_queries
+            from BLUEHERONDATA.qt_query_master
+        ''')
+        if len(data) != 1:
+            raise ValueError('expected 1 row; got: %s' % len(data))
+
+        return data[0].total_number_of_queries
+
+    def query_volume(self, recent=False):
+        '''overall query volume by user
+        '''
+        w = 'where qqm.create_date > sysdate - 15' if recent else ''
+        return self.q('''
+            select user_id as users, count(*) as number_of_queries
+            from BLUEHERONDATA.qt_query_master qqm
+            %(WHERE)s
+            group by user_id
+            order by number_of_queries desc''' %
+                      dict(WHERE=w))
+
+    def usage_monthly(self):
+        '''frequency of usuage on a monthly basis
+        '''
+        return self.q('''
+        select user_id, to_char(qqm.create_date, 'YYYY-MM') as yearmonth
+             , count(*) as number_of_queries
+        from BLUEHERONDATA.qt_query_master qqm
+        group by to_char(qqm.create_date, 'YYYY-MM'), user_id
+        order by user_id, yearmonth
+        ''')
+
+    def patient_set_users(self, recent=False, small=False):
+        '''All users who built queries that returned set sizes less than 10
+        '''
+        r = ('and qqm.create_date > sysdate - 15'
+             if recent else '')
+        s = ('and qqri.real_set_size < 11 and qqri.set_size > 0'
+             if small else '')
+
+        return self.q('''
+        select qqm.user_id, qqm.name, qqm.create_date, qqri.set_size
+        from BLUEHERONDATA.qt_query_master qqm
+        join BLUEHERONDATA.qt_query_instance qqi
+          on qqm.query_master_id=qqi.query_master_id
+        join BLUEHERONDATA.qt_query_result_instance qqri
+          on qqi.query_instance_id=qqri.query_instance_id
+        join BLUEHERONDATA.qt_query_result_type qqrt
+          on qqri.result_type_id=qqrt.result_type_id
+        where qqri.result_type_id=1
+        %(RECENT)s %(SMALL)s
+        order by create_date desc
+        ''' % dict(RECENT=r, SMALL=s))
+
+    def small_set_concepts(self):
+        '''concepts used by users who ran query patient set which is less
+        than 10.'''
+        return self.q('''
+        select user_id
+             , create_date
+             , name as query_name
+             , substr(extract(column_value, '/item/item_name/text()'), 1)
+               as item_name
+             , substr(extract(column_value, '/item/tooltip/text()'), 1)
+               as tooltip
+             , substr(extract(column_value, '/item/item_key/text()'), 1)
+               as item_key
+        from BLUEHERONDATA.QT_QUERY_MASTER qm
+           , table(xmlsequence(extract(sys.XMLType(qm.request_xml),
+                      '/qd:query_definition/panel[position()=last()
+                      or position()=1]/item',
+        'xmlns:qd="http://www.i2b2.org/xsd/cell/crc/psm/querydefinition/1.1/"')
+                        ))
+        where qm.query_master_id in  ( select qqm.query_master_id
+                      from BLUEHERONDATA.qt_query_master qqm
+                      join BLUEHERONDATA.qt_query_instance qqi
+                        on qqm.query_master_id=qqi.query_master_id
+                      join BLUEHERONDATA.qt_query_result_instance qqri
+                        on qqi.query_instance_id=qqri.query_instance_id
+                      join BLUEHERONDATA.qt_query_result_type qqrt
+                        on qqri.result_type_id=qqrt.result_type_id
+                      where qqri.real_set_size < 11 and qqri.set_size > 0
+                        and qqri.result_type_id=1
+                        and qqm.create_date > sysdate - 15)
+        order by create_date desc
+        ''')
+
     def configure(self, config, mount_point):
         '''Connect this view to the rest of the application
 
         :param config: a pyramid config thingy@@@
 
-        .. todo:: consider requiring DROC permissions on show_report
+        .. todo:: consider requiring DROC permissions on show_usage_report
         '''
         config.add_route('usage', mount_point + 'usage')
         config.add_view(self.show_usage_report, route_name='usage',
                         request_method='GET', renderer='report1.html',
                         permission=heron_policy.PERM_USER)
+        config.add_route('usage_risky', mount_point + 'usage_risky')
+        config.add_view(self.show_small_set_report, route_name='usage_risky',
+                        request_method='GET', renderer='report2.html',
+                        permission=heron_policy.PERM_USER)
 
     def show_usage_report(self, res, req):
-        connection = self._datasrc()
-        result = connection.execute('''
-            select count(*) as total_number_of_queries
-            from BLUEHERONDATA.qt_query_master
-        ''')
-        data = result.fetchall()
+        return dict(total_number_of_queries=self.total_number_of_queries(),
+                    query_volume=self.query_volume(),
+                    query_volume_recent=self.query_volume(recent=True),
+                    usage_monthly=self.usage_monthly())
 
-        if len(data) == 1:
-            count = data[0].total_number_of_queries
-        else:
-            raise ValueError('expected 1 row; got: %s' % len(data))
-
-        # overall query volume by user
-        result = connection.execute('''
-            select user_id as users, count(*) as number_of_queries
-            from BLUEHERONDATA.qt_query_master qqm
-            group by user_id
-            order by number_of_queries desc''')
-        query_volume = result.fetchall()
-
-        return dict(total_number_of_queries=count,
-                    query_volume=query_volume)
+    def show_small_set_report(self, res, req):
+        return dict(
+            recent_small=self.patient_set_users(recent=True, small=True),
+            small=self.patient_set_users(recent=False, small=True),
+            all=self.patient_set_users(recent=False, small=False),
+            small_set_concepts=self.small_set_concepts())
 
 
 class Machine(object):

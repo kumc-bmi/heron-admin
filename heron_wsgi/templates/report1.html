@@ -13,7 +13,40 @@
 <div id="main">
 <p>Total queries: ${total_number_of_queries}</p>
 
-<table>
+<table><caption>Queries in the last two weeks</caption>
+<thead>
+ <tr>
+  <th>User</th>
+  <th>Queries</th>
+ </tr>
+</thead>
+<tbody>
+  <!-- re py:for, see http://genshi.edgewall.org/wiki/Documentation/xml-templates.html#id3 -->
+  <tr py:for="row in query_volume_recent">
+    <td>${row.users}</td>
+    <td>${row.number_of_queries}</td>
+  </tr>
+</tbody>
+</table>
+
+<table><caption>Monthly Usage</caption>
+<thead>
+ <tr>
+  <th>User</th>
+  <th>Queries</th>
+ </tr>
+</thead>
+<tbody>
+  <!-- re py:for, see http://genshi.edgewall.org/wiki/Documentation/xml-templates.html#id3 -->
+  <tr py:for="row in usage_monthly">
+    <td>${row.user_id}</td>
+    <td>${row.yearmonth}</td>
+    <td>${row.number_of_queries}</td>
+  </tr>
+</tbody>
+</table>
+
+<table><caption>Count of queries by user</caption>
 <thead>
  <tr>
   <th>User</th>
@@ -28,6 +61,7 @@
   </tr>
 </tbody>
 </table>
+
 </div>
 
 </body>
