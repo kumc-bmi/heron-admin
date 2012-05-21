@@ -12,83 +12,40 @@
 
 <div id="main">
 
-<table><caption>Recent Queries with Small Result Sets</caption>
+<table><caption>Summary</caption>
 <thead>
  <tr>
   <th>User</th>
-  <th>Query Name</th>
   <th>Date</th>
+  <th>Query Name</th>
   <th>Size</th>
  </tr>
 </thead>
 <tbody>
-  <tr py:for="row in recent_small">
-    <td>${row.user_id}</td>
-    <td>${row.name}</td>
+  <tr py:for="row in summary">
+    <td>${row.full_name}</td>
     <td>${row.create_date}</td>
+    <td><a href="#qm_${row.query_master_id}">${row.name}</a></td>
     <td>${row.set_size}</td>
   </tr>
 </tbody>
 </table>
 
+<div class="detail">
+<h2>Detail</h2>
+<div py:for="qid, gen in detail">
+  <div py:with="rows = list(gen)" py:strip="True">
+    <h3 id="qm_${qid}">${rows[0].query_name}</h3>
 
-<table><caption>Concepts Used in Recent Queries with Small Result Sets</caption>
-<thead>
- <tr>
-  <th>User</th>
-  <th>Date</th>
-  <th>Query Name</th>
-  <th>Item<br /><em>hover for tooltip</em></th>
- </tr>
-</thead>
-<tbody>
-  <tr py:for="row in small_set_concepts">
-    <td>${row.user_id}</td>
-    <td>${row.create_date}</td>
-    <td>${row.query_name}</td>
-    <td><abbr title="${row.tooltip}">${row.item_name}</abbr></td>
-  </tr>
-</tbody>
-</table>
+    <ul>
+      <li py:for="c in rows">
+        <abbr title="${c.tooltip}">${c.item_name}</abbr>
+      </li>
+    </ul>
+  </div>
+</div>
 
-
-<table><caption>All Queries with Small Result Sets</caption>
-<thead>
- <tr>
-  <th>User</th>
-  <th>Query Name</th>
-  <th>Date</th>
-  <th>Size</th>
- </tr>
-</thead>
-<tbody>
-  <tr py:for="row in small">
-    <td>${row.user_id}</td>
-    <td>${row.name}</td>
-    <td>${row.create_date}</td>
-    <td>${row.set_size}</td>
-  </tr>
-</tbody>
-</table>
-
-<table><caption>All Queries with Result Sets</caption>
-<thead>
- <tr>
-  <th>User</th>
-  <th>Query Name</th>
-  <th>Date</th>
-  <th>Size</th>
- </tr>
-</thead>
-<tbody>
-  <tr py:for="row in all">
-    <td>${row.user_id}</td>
-    <td>${row.name}</td>
-    <td>${row.create_date}</td>
-    <td>${row.set_size}</td>
-  </tr>
-</tbody>
-</table>
+</div>
 
 </div>
 
