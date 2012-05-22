@@ -220,11 +220,11 @@ class RunTime(rtconfig.IniModule):
     @provides((orm.session.Session, CONFIG_SECTION))
     @inject(ctx=jndi_util.JBossContext)
     def pm_sessionmaker(self, ctx):
-        engine = ctx.lookup(self.jndi_name)
-        sm = orm.session.sessionmaker(engine)
+        sm = orm.session.sessionmaker()
 
         def make_session_and_revoke():
-            ds = sm()
+            engine = ctx.lookup(self.jndi_name)
+            ds = sm(bind=engine)
             revoke_expired_auths(ds)
             return ds
 
