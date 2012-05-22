@@ -117,6 +117,11 @@ class IniModule(injector.Module):
                 ini = 'integration-test.ini'
         self._ini = ini
 
+    def get_options(self, names, section):
+        rt = RuntimeOptions(names)
+        rt.load(self._ini, section)
+        return rt
+
     def bind_options(self, binder, names, section):
         rt = RuntimeOptions(names)
         rt.load(self._ini, section)

@@ -67,7 +67,6 @@ API
 import logging
 import sys
 import urllib
-import urllib2
 
 import injector
 from injector import inject, provides, singleton
@@ -79,7 +78,7 @@ import sealing
 log = logging.getLogger(__name__)
 
 KTrainingFunction = injector.Key('TrainingFunction')
-KAppSecret = injector.Key('AppSecret')
+KTestingFaculty = injector.Key('TestingFaculty')
 
 CHALK_CONFIG_SECTION = 'chalk'
 PERM_ID = __name__ + '.idvault'
@@ -111,15 +110,15 @@ class MedCenter(object):
 
     @inject(searchsvc=ldaplib.LDAPService,
             trainingfn=KTrainingFunction,
-            app_secret=KAppSecret)
-    def __init__(self, searchsvc, trainingfn, app_secret):
+            testing_faculty=KTestingFaculty)
+    def __init__(self, searchsvc, trainingfn, testing_faculty):
         '''
         :param app_secret: testing hook for faculty badge.
         '''
         log.debug('MedCenter.__init__ again?')
         self._svc = searchsvc
         self._training = trainingfn
-        self._app_secret = app_secret
+        self._testing_faculty = testing_faculty
         self.sealer, self._unsealer = sealing.makeBrandPair('MedCenter')
 
     def __repr__(self):
@@ -169,9 +168,8 @@ class MedCenter(object):
         '''
         badge = self._unsealer.unseal(badgebox)
 
-        #@@ horrible kludge for testing
         log.debug('testing faculty badge kludge for %s', badge.cn)
-        if ('faculty:' + badge.cn) in self._app_secret:
+        if ('faculty:' + badge.cn) in self._testing_faculty:
             log.debug('faculty badge granted to %s by configuration', badge.cn)
             return badge
 
@@ -274,27 +272,11 @@ _sample_chalk_settings = rtconfig.TestTimeOptions(dict(
         param='userid'))
 
 
-def chalkdb_queryfn(ini, section=CHALK_CONFIG_SECTION):  # pragma nocover.
-    # not worth mocking an urlopener
-    rt = rtconfig.RuntimeOptions('url param'.split())
-    rt.load(ini, section)
-
-    def training_expiration(userid):
-        addr = rt.url + '?' + urllib.urlencode({rt.param: userid})
-        body = urllib2.urlopen(addr).read()
-
-        if not body:  # no expiration on file
-            raise KeyError
-
-        return body.strip()  # get rid of newline
-    return training_expiration
-
-
 class Mock(injector.Module, rtconfig.MockMixin):
     '''Mock up dependencies of :class:`MedCenter`:
       - :class:`ldap.LDAPService`
       - :data:`KTrainingFunction`
-      - :data:`KAppSecret` (for faculty testing hook)
+      - :data:`KTestingFaculty` (for faculty testing hook)
 
     '''
 
@@ -306,13 +288,13 @@ class Mock(injector.Module, rtconfig.MockMixin):
                     injector.InstanceProvider(d))
         binder.bind(KTrainingFunction,
                     injector.InstanceProvider(d.trainedThru))
-        binder.bind(KAppSecret,
-                    injector.InstanceProvider('sekrit'))
+        binder.bind(KTestingFaculty,
+                    injector.InstanceProvider(''))
 
     @classmethod
     def login_info(self, cn):
         import warnings
-        warnings.warn("deprecated", DeprecationWarning)
+        warnings.warn("log_info is deprecated", DeprecationWarning)
         req = MockRequest()
         req.remote_user = cn
         return req
@@ -326,19 +308,32 @@ class RunTime(rtconfig.IniModule):
     '''Configure dependencies of :class:`MedCenter`:
       - :class:`ldap.LDAPService`
       - :data:`KTrainingFunction`
-      - :data:`KAppSecret` (for faculty testing hook)
+      - :data:`KTestingFaculty` (for faculty testing hook)
 
     '''
+    import urllib2
+    _ua = urllib2.build_opener()
 
-    @provides(KAppSecret)
-    def trivial_secret(self):
-        '''Note: other modules need to override KAppSecret
-        '''
-        return 'sekrit'
+    @provides(KTestingFaculty)
+    def no_testing_faculty(self):
+        return ''
 
     @provides(KTrainingFunction)
-    def training(self):
-        return chalkdb_queryfn(self._ini, CHALK_CONFIG_SECTION)
+    def training(self, section=CHALK_CONFIG_SECTION, ua=_ua):
+
+        rt = rtconfig.RuntimeOptions('url param'.split())
+        rt.load(self._ini, section)
+
+        def training_expiration(userid):
+            addr = rt.url + '?' + urllib.urlencode({rt.param: userid})
+            body = ua.open(addr).read()
+
+            if not body:  # no expiration on file
+                raise KeyError
+
+            return body.strip()  # get rid of newline
+
+        return training_expiration
 
     @classmethod
     def mods(cls, ini):
@@ -355,7 +350,8 @@ def integration_test():  # pragma: no cover
         print m.affiliateSearch(10, cn, sn, givenname)
     else:
         uid = sys.argv[1]
-        req = Mock.login_info(uid)
+        req = MockRequest()
+        req.remote_user = uid
         m.issue(req)
         who = m.read_badge(req.idvault_entry)
         print who
