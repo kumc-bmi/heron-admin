@@ -16,7 +16,7 @@ Configuration gives us access to the REDCap API::
   >>> set(OPTIONS) < set(_test_settings.settings().keys())
   True
 
-  >>> setup = survey_setup(_test_settings, _TestUrlOpener())
+  >>> setup = SurveySetup(_test_settings, _MockREDCapAPI())
 
 Set up a link to survey associated with John Smith's email address::
 
@@ -41,42 +41,43 @@ Fill in some of the fields in the survey, such as `full_name` and `what_for`::
 import json
 import logging
 import pprint
-import sys
 import urllib
-from urlparse import urljoin
+from urlparse import urljoin, parse_qs
 
 import rtconfig
-from sealing import EDef
-
 
 log = logging.getLogger(__name__)
 
 OPTIONS = ('token', 'api_url', 'survey_url', 'domain', 'survey_id')
 
 
-def survey_setup(rt, urlopener):
-    proxy = endPoint(urlopener, rt.api_url, rt.token)
-    domain = rt.domain
+class SurveySetup(object):
+    def __init__(self, rt, urlopener, project_id=None, survey_id=None,
+                 executives=None):
+        self.__proxy = EndPoint(urlopener, rt.api_url, rt.token)
+        self.__domain = rt.domain
+        self.__base = rt.survey_url
+        self.survey_id = survey_id
+        self.project_id = project_id
+        self.executives = executives
 
-    def setup(userid, params, multi=False, ans_kludge=None):
-        ans = proxy.accept_json(content='survey', action='setup',
-                                multi='yes' if multi else 'no',
-                                email='%s@%s' % (userid, domain))
+    def __call__(self, userid, params, multi=False, ans_kludge=None):
+        ans = self.__proxy.accept_json(content='survey', action='setup',
+                                       multi='yes' if multi else 'no',
+                                       email='%s@%s' % (userid, self.__domain))
         surveycode = ans['hash']
         if ans_kludge:
             ans_kludge(ans)
         params = urllib.urlencode([('s', surveycode)]
                                   + sorted(params.iteritems()))
-        return urljoin(rt.survey_url, '?' + params)
-
-    return setup
+        return urljoin(self.__base, '?' + params)
 
 
-def endPoint(ua, addr, token):
+class EndPoint(object):
     '''Make REDCap API endpoint with accept_json, post_csv methods.
 
     >>> rt = _test_settings
-    >>> e = endPoint(_TestUrlOpener(), rt.api_url, rt.token)
+    >>> e = EndPoint(_MockREDCapAPI(), rt.api_url, rt.token)
     >>> e.accept_json(content='survey', action='setup',
     ...               email='john.smith@jsmith.example')
     ... # doctest: +NORMALIZE_WHITESPACE
@@ -86,34 +87,35 @@ def endPoint(ua, addr, token):
     >>> e.record_import([{'field': 'value'}])
     '{}'
     '''
+    def __init__(self, ua, addr, token):
+        self.__ua = ua
+        self.__addr = addr
+        self.__token = token
 
-    def record_import(data, **args):
+    def record_import(self, data, **args):
         log.debug('import: %s', data)
-        return post_json(content='record', action='import', data=data, **args)
+        return self.post_json(content='record', action='import',
+                              data=data, **args)
 
-    def accept_json(content, **args):
-        ans = json.loads(_request(content, format='json', **args))
+    def accept_json(self, content, **args):
+        ans = json.loads(self._request(content, format='json', **args))
         log.debug('REDCap API JSON answer: %s', ans)
         return ans
 
-    def post_json(content, data, **args):
-        log.debug('POSTing %s to redcap at %s', pprint.pformat(data), addr)
-        return _request(content=content, format='json',
-                        data=json.dumps(data), **args)
+    def post_json(self, content, data, **args):
+        log.debug('POSTing %s to redcap at %s', pprint.pformat(data),
+                  self.__addr)
+        return self._request(content=content, format='json',
+                             data=json.dumps(data), **args)
 
-    def _request(content, format, **args):
-        params = dict(args, token=token, content=content, format=format)
-        return ua.open(addr, urllib.urlencode(params)).read()
-
-    return EDef(accept_json=accept_json,
-                post_json=post_json,
-                record_import=record_import)
+    def _request(self, content, format, **args):
+        params = dict(args, token=self.__token, content=content, format=format)
+        return self.__ua.open(self.__addr, urllib.urlencode(params)).read()
 
 
-class _TestUrlOpener(object):
+class _MockREDCapAPI(object):
     def open(self, addr, body):
-        import urlparse  # lazy
-        params = urlparse.parse_qs(body)
+        params = parse_qs(body)
         if 'action' not in params:
             raise IOError('action param missing: ' + str(params))
         if 'setup' in params['action']:
@@ -123,15 +125,15 @@ class _TestUrlOpener(object):
                    'survey_id': _test_settings.survey_id,
                    'hash': h,
                    'email': u'BOGUS@%s' % _test_settings.domain}
-            return _TestResponse(out)
+            return _JSONResponse(out)
         elif 'import' in params['action']:
             out = {}
-            return _TestResponse(out)
+            return _JSONResponse(out)
         else:
-            raise ValueError(params['action'])
+            raise IOError(params['action'])
 
 
-class _TestResponse(object):
+class _JSONResponse(object):
     def __init__(self, d):
         self._d = d
 
@@ -149,14 +151,11 @@ _test_settings = rtconfig.TestTimeOptions(dict(
 
 
 class RunTime(rtconfig.IniModule):
-    def configure(self, binder):
-        self.bind_options(binder, OPTIONS, 'saa_survey')
-        self.bind_options(binder, OPTIONS, 'oversight_survey')
-
     @classmethod
     def integration_test(cls):
-        (sopts, oopts) = cls.make(None, [(rtconfig.Options, 'saa_survey'),
-                                         (rtconfig.Options, 'saa_survey')])
+        mod = cls(None)
+        sopts = mod.get_options(OPTIONS, 'saa_survey')
+        oopts = mod.get_options(OPTIONS, 'oversight_survey')
         ua = urllib.URLopener()
         s1 = survey_setup(sopts, ua)
         s2 = survey_setup(oopts, ua)
@@ -186,6 +185,7 @@ def _test_multi_use(c, uid, full_name, ua):
 
 
 def _test_main():
+    import sys
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
     userid, fullName = sys.argv[1:3]
