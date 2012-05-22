@@ -30,10 +30,7 @@ Now note the mapping to the Disclaimer class::
 
 # python stdlib http://docs.python.org/library/
 import StringIO
-import datetime
 import logging
-import urllib
-import urllib2
 from xml.dom.minidom import parse
 
 # from pypi
@@ -62,7 +59,7 @@ class Disclaimer(redcapdb.REDCapRecord):
         r'''
            >>> d = Disclaimer()
            >>> d.url = 'http://example/'
-           >>> d.content(_TestUrlOpener())
+           >>> d.content(_MockTracBlog())
            ... # doctest: +ELLIPSIS
            (u'<div id="blog-main">\n<h1 class="blog-title">...', u'headline')
         '''
@@ -88,7 +85,7 @@ _test_doc = '''
 '''
 
 
-class _TestUrlOpener(object):
+class _MockTracBlog(object):
     def open(self, _):  # pylint: disable=R0201
         return StringIO.StringIO(_test_doc)
 
@@ -101,14 +98,10 @@ class AcknowledgementsProject(object):
     '''AcknowledgementsProject serves as a REDCap API proxy for adding
     Acknowledgement records.
     '''
-    @inject(rt=(rtconfig.Options, ACKNOWLEGEMENTS_SECTION),
-            ua=urllib.URLopener,
+    @inject(proxy=(redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION),
             timesrc=KTimeSource)
-    def __init__(self, rt, ua, timesrc):
-        '''
-        .. todo:: take proxy as arg rather than ua, rt
-        '''
-        self._proxy = redcap_connect.endPoint(ua, rt.api_url, rt.token)
+    def __init__(self, proxy, timesrc):
+        self._proxy = proxy
         self._timesrc = timesrc
 
     def add_records(self, disclaimer_address, whowhen):
@@ -153,19 +146,12 @@ class Mock(redcapdb.SetUp, rtconfig.MockMixin):
     def mods(cls):
         return redcapdb.Mock.mods() + [cls(), TestSetUp()]
 
-    @provides((rtconfig.Options, DISCLAIMERS_SECTION))
-    def disclaimer_options(self):
-        return rtconfig.TestTimeOptions(dict(project_id='123'))
-
-    @provides((rtconfig.Options, ACKNOWLEGEMENTS_SECTION))
-    def acknowledgements_options(self):
-        return rtconfig.TestTimeOptions(dict(project_id='1234',
-                                           api_url='http://example/recap/API',
-                                           token='12345token'))
-
-    @provides(urllib.URLopener)
-    def web_ua(self):
-        return _TestURLopener()
+    def configure(self, binder):
+        api_url = 'http://example/recap/API'
+        token = '12345token'
+        ua = redcap_connect._MockREDCapAPI()
+        binder.bind((redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION),
+                    redcap_connect.EndPoint(ua, api_url, token))
 
     @provides(KTimeSource)
     def time_source(self):
@@ -173,16 +159,17 @@ class Mock(redcapdb.SetUp, rtconfig.MockMixin):
 
 
 class TestSetUp(redcapdb.SetUp):
+    disclaimer_pid = '123'
+    ack_pid = '1234'
+
     @singleton
     @provides((sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
     @inject(engine=(sqlalchemy.engine.base.Connectable,
-                    redcapdb.CONFIG_SECTION),
-            drt=(rtconfig.Options, DISCLAIMERS_SECTION),
-            art=(rtconfig.Options, ACKNOWLEGEMENTS_SECTION))
-    def redcap_sessionmaker(self, engine, drt, art):
+                    redcapdb.CONFIG_SECTION))
+    def redcap_sessionmaker(self, engine):
         smaker = super(TestSetUp, self).redcap_sessionmaker(engine=engine)
-        Disclaimer.eav_map(drt.project_id)
-        Acknowledgement.eav_map(art.project_id)
+        Disclaimer.eav_map(self.disclaimer_pid)
+        Acknowledgement.eav_map(self.ack_pid)
         s = smaker()
         insert_data = redcapdb.redcap_data.insert()
         for field_name, value in (
@@ -190,7 +177,8 @@ class TestSetUp(redcapdb.SetUp):
              ('url', 'http://example/blog/item/heron-release-xyz'),
              ('current', 1)):
             s.execute(insert_data.values(event_id=1,
-                                         project_id=drt.project_id, record=1,
+                                         project_id=self.disclaimer_pid,
+                                         record=1,
                                          field_name=field_name, value=value))
 
             log.debug('inserted: %s, %s', field_name, value)
@@ -201,9 +189,11 @@ class TestSetUp(redcapdb.SetUp):
 
 class _TestTimeSource(object):
     def now(self):
+        import datetime
         return datetime.datetime(2011, 9, 2)
 
     def today(self):
+        import datetime
         return datetime.date(2011, 9, 2)
 
 
@@ -218,16 +208,21 @@ class _TestURLopener(object):
 
 class RunTime(rtconfig.IniModule):
     def configure(self, binder):
-        drt = self.bind_options(binder, ['project_id'], DISCLAIMERS_SECTION)
+        import datetime
+        import urllib2
+
+        drt = self.get_options(['project_id'], DISCLAIMERS_SECTION)
         Disclaimer.eav_map(drt.project_id)
 
-        art = self.bind_options(binder,
-                                'project_id api_url token'.split(),
+        art = self.get_options('project_id api_url token'.split(),
                                 ACKNOWLEGEMENTS_SECTION)
         Acknowledgement.eav_map(art.project_id)
 
+        ua = urllib2.build_opener()  # hmm... inject this?
+        binder.bind((redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION),
+                    redcap_connect.EndPoint(ua, art.api_url, art.token))
+
         binder.bind(KTimeSource, injector.InstanceProvider(datetime.datetime))
-        binder.bind(urllib.URLopener, urllib2.build_opener)
 
     @classmethod
     def mods(cls, ini):
@@ -236,6 +231,8 @@ class RunTime(rtconfig.IniModule):
 
 def _test_main():
     import sys
+    import urllib2
+
     logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
     user_id = sys.argv[1]
@@ -268,6 +265,21 @@ def _test_main():
         print 'all acknowledgements:'
         for ack in s.query(Acknowledgement):
             print ack
+
+    if '--release-info' in sys.argv:
+        from operator import attrgetter
+        from itertools import groupby
+        acks = s.query(Acknowledgement).all()
+        per_release = dict([(addr, list(acks)) for addr, acks in
+                             groupby(acks, attrgetter('disclaimer_address'))])
+        users_per_release = dict([(addr, len(list(acks))) for addr, acks in
+                                  per_release.iteritems()])
+        start_release = dict([(addr, min([a.timestamp for a in acks]))
+                              for addr, acks in
+                              per_release.iteritems()])
+        for release in per_release.keys():
+            print "%s,%s,%s" % (start_release[release],
+                                users_per_release[release], release)
 
     if '--current' in sys.argv:
         print "current disclaimer and content:"
