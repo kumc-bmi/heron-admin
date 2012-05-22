@@ -171,13 +171,15 @@ order by nvl(two_weeks.qty, -1) desc, nvl(all_time.qty, -1) desc
 
     def show_usage_report(self, res, req):
         return dict(total_number_of_queries=self.total_number_of_queries(),
-                    query_volume=self.query_volume())
+                    query_volume=self.query_volume(),
+                    cycle=itertools.cycle)
 
     def show_small_set_report(self, res, req):
         return dict(
             summary=self.patient_set_queries(recent=True, small=True),
             detail=itertools.groupby(self.small_set_concepts(),
-                                     operator.itemgetter('query_master_id')))
+                                     operator.itemgetter('query_master_id')),
+            cycle=itertools.cycle)
 
 
 class Machine(object):

@@ -5,7 +5,44 @@
 <xi:include href="kumc_layout.xml" />
 <head>
 <title>HERON Usage
-</title></head>
+</title>
+<style type="text/css">
+table { width: 85% }
+.stats td { text-align: right }
+
+/*
+ * cribbed from Project 03 in
+ * Eric Meyer on Css: Mastering the Language of Web Design
+ * New Riders 2002
+ * http://more.ericmeyeroncss.com/projects/03/
+ */
+
+.stats th, td { padding: 0 0.5em;
+  border-bottom: 1px solid #DDD;}
+
+.amt, .ref {font: small Verdana, "Andale Mono", Courier, "Courier New", 
+  monospace;}
+
+.stats thead th {vertical-align: bottom; border: 1px solid gray;
+  border-width: 0 1px 1px 0;
+  white-space: normal;}
+.stats tfoot th {vertical-align: bottom; border: 1px solid gray;
+  border-width: 1px 0px 1px 0px;
+  white-space: normal;}
+.stats tfoot td { border-width: 1px 1px 0px 0px; border: 1px solid gray;
+       font-weight: bold}
+.stats th {border-right: 1px solid gray; border-bottom-style: dotted;
+  white-space: nowrap;}
+
+td {letter-spacing: -1px;}
+
+
+/*  media="screen" */
+table tr.odd * {background: #EEE;}
+tr.odd *, tr.even * {border-bottom: 1px solid #EEE;}
+td {border-right: 1px solid #CCC;}
+</style>
+</head>
 <body>
 
 <h1>HERON Usage</h1>
@@ -13,21 +50,22 @@
 <div id="main">
 <p>Total queries: ${total_number_of_queries}</p>
 
-<table><caption>Queries by user</caption>
+<table class="stats" py:with="cls=cycle(('odd', 'even'))">
+<caption>Queries by user</caption>
 <thead>
  <tr>
   <th>User</th>
   <th>Two Weeks</th>
   <th>Last Month</th>
-  <th>Last Querter</th>
+  <th>Last Quarter</th>
   <th>Last Year</th>
   <th>All Time</th>
  </tr>
 </thead>
 <tbody>
   <!-- re py:for, see http://genshi.edgewall.org/wiki/Documentation/xml-templates.html#id3 -->
-  <tr py:for="row in query_volume">
-    <td>${row.full_name}</td>
+  <tr py:for="row in query_volume" class="${cls.next()}">
+    <th>${row.full_name}</th>
     <td>${row.two_weeks}</td>
     <td>${row.last_month}</td>
     <td>${row.last_quarter}</td>
