@@ -17,7 +17,7 @@
  <tr>
   <th>User</th>
   <th>Date</th>
-  <th>Query Name</th>
+  <th>Query</th>
   <th>Size</th>
  </tr>
 </thead>
@@ -25,7 +25,9 @@
   <tr py:for="row in summary">
     <td>${row.full_name}</td>
     <td>${row.create_date}</td>
-    <td><a href="#qm_${row.query_master_id}">${row.name}</a></td>
+    <td>
+      <a href="#qm_${row.query_master_id}">#${row.query_master_id}
+      ${row.name}</a></td>
     <td>${row.set_size}</td>
   </tr>
 </tbody>
@@ -35,7 +37,8 @@
 <h2>Detail</h2>
 <div py:for="qid, gen in detail">
   <div py:with="rows = list(gen)" py:strip="True">
-    <h3 id="qm_${qid}">${rows[0].query_name}</h3>
+    <h3 id="qm_${qid}">
+     #${qid} ${rows[0].query_name}</h3>
 
     <ul>
       <li py:for="c in rows">

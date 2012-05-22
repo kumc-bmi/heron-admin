@@ -110,7 +110,7 @@ order by nvl(two_weeks.qty, -1) desc, nvl(all_time.qty, -1) desc
         '''
         r = ('and qqm.create_date > sysdate - 45'
              if recent else '')
-        s = ('and qqri.real_set_size < 11 and qqri.set_size > 0'
+        s = ('and qqri.real_set_size <= 15 and qqri.set_size > 0'
              if small else '')
 
         return self.q('''
@@ -159,7 +159,7 @@ order by nvl(two_weeks.qty, -1) desc, nvl(all_time.qty, -1) desc
                         on qqi.query_instance_id=qqri.query_instance_id
                       join BLUEHERONDATA.qt_query_result_type qqrt
                         on qqri.result_type_id=qqrt.result_type_id
-                      where qqri.real_set_size < 11 and qqri.set_size > 0
+                      where qqri.real_set_size <= 15 and qqri.set_size > 0
                         and qqri.result_type_id=1
                         and qqm.create_date > sysdate - 45)
         order by create_date desc
