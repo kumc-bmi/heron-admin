@@ -10,8 +10,8 @@ import doctest
 
 
 def main():
-    import hcard_mock
-    doctest.testmod(hcard_mock)
+    import mock_directory
+    doctest.testmod(mock_directory)
 
     import rtconfig
     doctest.testmod(rtconfig)
