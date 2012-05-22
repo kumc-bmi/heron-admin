@@ -9,6 +9,7 @@
 <style type="text/css">
 table { width: 85% }
 .stats td { text-align: right }
+.stats thead th { text-align: center }
 
 /*
  * cribbed from Project 03 in
@@ -48,10 +49,14 @@ td {border-right: 1px solid #CCC;}
 <h1>HERON Usage</h1>
 
 <div id="main">
-<p>Total queries: ${total_number_of_queries}</p>
+<ul>
+<li>Total queries: ${total_number_of_queries}</li>
+<li><a href="#by_user">Queries by User</a></li>
+<li><a href="#by_month">Queries by Month</a></li>
+</ul>
 
+<h2 id="by_user">Queries by User</h2>
 <table class="stats" py:with="cls=cycle(('odd', 'even'))">
-<caption>Queries by user</caption>
 <thead>
  <tr>
   <th>User</th>
@@ -71,6 +76,24 @@ td {border-right: 1px solid #CCC;}
     <td>${row.last_quarter}</td>
     <td>${row.last_year}</td>
     <td>${row.all_time}</td>
+  </tr>
+</tbody>
+</table>
+
+<h2 id="by_month">Queries by Month</h2>
+<table class="stats" py:with="cls=cycle(('odd', 'even'))">
+<thead>
+ <tr>
+  <th>Year-Month</th>
+  <th>Queries</th>
+  <th>Users</th>
+ </tr>
+</thead>
+<tbody>
+  <tr py:for="row in queries_by_month" class="${cls.next()}">
+    <th>${'%04d-%02d' % (row.y, row.m)}</th>
+    <td>${row.qty}</td>
+    <td>${row.users}</td>
   </tr>
 </tbody>
 </table>

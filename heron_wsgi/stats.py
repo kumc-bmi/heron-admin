@@ -37,6 +37,18 @@ class UsageReports(object):
 
         return data[0].total_number_of_queries
 
+    def queries_by_month(self):
+        return self.q('''
+            select y, m, count(*) qty, count(distinct user_id) users
+            from (
+                select extract(year from qqm.create_date) y
+                     , extract(month from qqm.create_date) m
+                     , qqm.user_id
+                from BLUEHERONDATA.qt_query_master qqm
+            ) group by y, m
+            order by y desc, m desc
+                      ''')
+
     def query_volume(self, recent=False):
         '''overall query volume by user
         '''
@@ -172,6 +184,7 @@ order by nvl(two_weeks.qty, -1) desc, nvl(all_time.qty, -1) desc
     def show_usage_report(self, res, req):
         return dict(total_number_of_queries=self.total_number_of_queries(),
                     query_volume=self.query_volume(),
+                    queries_by_month=self.queries_by_month(),
                     cycle=itertools.cycle)
 
     def show_small_set_report(self, res, req):
