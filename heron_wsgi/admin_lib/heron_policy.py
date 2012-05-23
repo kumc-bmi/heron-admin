@@ -262,28 +262,25 @@ class HeronRecords(object):
 
     @inject(mc=medcenter.MedCenter,
             pm=i2b2pm.I2B2PM,
-            saa_opts=(rtconfig.Options, SAA_CONFIG_SECTION),
-            oversight_opts=(rtconfig.Options, OVERSIGHT_CONFIG_SECTION),
-            engine=(sqlalchemy.engine.base.Connectable,
+            saa_rc=(redcap_connect.SurveySetup,
+                    SAA_CONFIG_SECTION),
+            oversight_rc=(redcap_connect.SurveySetup,
+                          OVERSIGHT_CONFIG_SECTION),
+            smaker=(sqlalchemy.orm.session.Session,
                     redcapdb.CONFIG_SECTION),
-            smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
-            timesrc=KTimeSource,
-            urlopener=urllib.URLopener)
-    def __init__(self, mc, pm, saa_opts, oversight_opts,
-                 engine, smaker, timesrc, urlopener):
+            timesrc=KTimeSource)
+    def __init__(self, mc, pm, saa_rc, oversight_rc,
+                 smaker, timesrc):
         log.debug('HeronRecords.__init__ again?')
-        self._engine = engine
         self._smaker = smaker
         self._mc = mc
         self._pm = pm
         self._t = timesrc
-        self._saa_survey_id = saa_opts.survey_id
-        ## refactor so these two are passed in rather than opts/urlopener?
-        self._saa_rc = redcap_connect.survey_setup(saa_opts, urlopener)
-        self._oversight_rc = redcap_connect.survey_setup(oversight_opts,
-                                                         urlopener)
-        self._oversight_project_id = oversight_opts.project_id
-        self._executives = oversight_opts.executives.split()
+        self._saa_survey_id = saa_rc.survey_id
+        self._saa_rc = saa_rc
+        self._oversight_rc = oversight_rc
+        self._oversight_project_id = oversight_rc.project_id
+        self._executives = oversight_rc.executives
 
     def issue(self, req):
         mc = self._mc
@@ -413,7 +410,7 @@ class HeronRecords(object):
     def _check_saa_signed(self, mail):
         '''Test for an authenticated SAA survey response.
         '''
-        if not self._engine.execute(_saa_query(mail, self._saa_survey_id)).\
+        if not self._smaker().execute(_saa_query(mail, self._saa_survey_id)).\
                 fetchall():
             log.info('no SAA: %s', mail)
             raise NoAgreement()
@@ -427,7 +424,7 @@ class HeronRecords(object):
         q = dc.select(and_(dc.c.candidate == uid,
                            dc.c.decision == DecisionRecords.YES))
 
-        for ans in self._engine.execute(q).fetchall():
+        for ans in self._smaker().execute(q).fetchall():
             if ans.dt_exp <= '' or self._t.today().isoformat() <= ans.dt_exp:
                 log.info('sponsorship OK: %s', ans)
                 return True
@@ -704,16 +701,13 @@ class DecisionRecords(object):
     YES = '1'
     NO = '2'
 
-    @inject(rt=(rtconfig.Options, OVERSIGHT_CONFIG_SECTION),
-            engine=(sqlalchemy.engine.base.Connectable,
-                    redcapdb.CONFIG_SECTION),
+    @inject(orc=(redcap_connect.SurveySetup, OVERSIGHT_CONFIG_SECTION),
             smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
             mc=medcenter.MedCenter)
-    def __init__(self, rt, engine, mc, smaker):
-        self._oversight_project_id = rt.project_id
-        self._engine = engine
+    def __init__(self, orc, smaker, mc):
+        self._oversight_project_id = orc.project_id
         self._mc = mc
-        #smaker is just to pull in dependencies. hm.
+        self._smaker = smaker
 
     def oversight_decisions(self):
         '''In order to facilitate email notification of committee
@@ -725,10 +719,10 @@ class DecisionRecords(object):
         nl = noticelog.notice_log
         dwn = cd.outerjoin(nl).select() \
             .with_only_columns(cd.columns).where(nl.c.record == None)
-        return self._engine.execute(dwn).fetchall()
+        return self._smaker().execute(dwn).fetchall()
 
     def decision_detail(self, record):
-        avl = list(redcapdb.allfields(self._engine,
+        avl = list(redcapdb.allfields(self._smaker(),
                                       self._oversight_project_id,
                                       record))
         mc = self._mc
@@ -766,14 +760,15 @@ class _DataDict(object):
 
 
 class TestSetUp(disclaimer.TestSetUp):
+    oversight_pid = redcap_connect._test_settings.project_id
+    saa_sid = redcap_connect._test_settings.survey_id
+
     @singleton
     @provides((sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
     @inject(engine=(sqlalchemy.engine.base.Connectable,
                     redcapdb.CONFIG_SECTION),
-            timesrc=KTimeSource,
-            srt=(rtconfig.Options, SAA_CONFIG_SECTION),
-            ort=(rtconfig.Options, OVERSIGHT_CONFIG_SECTION))
-    def redcap_sessionmaker(self, engine, timesrc, srt, ort):
+            timesrc=KTimeSource)
+    def redcap_sessionmaker(self, engine, timesrc):
         smaker = super(TestSetUp, self).redcap_sessionmaker(engine=engine)
         s = smaker()
 
@@ -782,15 +777,15 @@ class TestSetUp(disclaimer.TestSetUp):
                                   date_of_expiration=''):
             # e/a/v = entity/attribute/value
             e = hash((user_id, project_title))
-            add_test_eav(s, ort.project_id, 1, e,
+            add_test_eav(s, self.oversight_pid, 1, e,
                          (('user_id', user_id),
                           ('full_name', full_name),
                           ('project_title', project_title),
                           ('date_of_expiration', date_of_expiration)))
-            add_test_eav(s, ort.project_id, 1, e,
+            add_test_eav(s, self.oversight_pid, 1, e,
                          [('user_id_%d' % n, userid)
                           for n, userid in candidates])
-            add_test_eav(s, ort.project_id, 1, e,
+            add_test_eav(s, self.oversight_pid, 1, e,
                          [('approve_%s' % org, decision)
                           for org, decision in reviews])
 
@@ -828,7 +823,7 @@ class TestSetUp(disclaimer.TestSetUp):
         for email in ['john.smith@js.example', 'big.wig@js.example']:
             s.execute(redcapdb.redcap_surveys_participants.insert().values(
                     participant_id=abs(hash(email)),
-                    survey_id=srt.survey_id, participant_email=email))
+                    survey_id=self.saa_sid, participant_email=email))
             s.execute(redcapdb.redcap_surveys_response.insert().values(
                     response_id=abs(hash(email)), record=abs(hash(email)),
                     completion_time=timesrc.today() + \
@@ -849,23 +844,32 @@ def add_test_eav(s, project_id, event_id, e, avs):
 
 class Mock(injector.Module, rtconfig.MockMixin):
 
-    @provides((rtconfig.Options, SAA_CONFIG_SECTION))
-    def saa_settions(self):
-        return redcap_connect._test_settings
-
-    @provides((rtconfig.Options, OVERSIGHT_CONFIG_SECTION))
-    def oversight_settings(self):
-        return redcap_connect._test_settings
-
+    @singleton
     @provides(urllib.URLopener)
     def redcap_connect_web_ua(self):
-        return redcap_connect._TestUrlOpener()
+        return redcap_connect._MockREDCapAPI()
+
+    @singleton
+    @provides((redcap_connect.SurveySetup, SAA_CONFIG_SECTION))
+    @inject(ua=urllib.URLopener)
+    def _rc_saa(self, ua):
+        opts = redcap_connect._test_settings
+        return redcap_connect.SurveySetup(opts, ua, survey_id=opts.survey_id)
+
+    @singleton
+    @provides((redcap_connect.SurveySetup, OVERSIGHT_CONFIG_SECTION))
+    @inject(ua=urllib.URLopener)
+    def _rc_oversight(self, ua):
+        opts = redcap_connect._test_settings
+        return redcap_connect.SurveySetup(opts, ua,
+                                          project_id=opts.project_id,
+                                          executives=['big.wig'])
 
     @classmethod
     def mods(cls):
         log.debug('heron_policy.Mock.mods')
         return (medcenter.Mock.mods() + i2b2pm.Mock.mods()
-                + disclaimer.Mock.mods() + [TestSetUp(), Mock()])
+                + disclaimer.Mock.mods() + [TestSetUp(), cls()])
 
     @classmethod
     def login_sim(cls, mc, hr):
@@ -878,17 +882,34 @@ class Mock(injector.Module, rtconfig.MockMixin):
 
 
 class RunTime(rtconfig.IniModule):  # pragma nocover
-    def configure(self, binder):
-        binder.bind(KTimeSource,
-                    injector.InstanceProvider(datetime.datetime))
+    @singleton
+    @provides(KTimeSource)
+    def _timesrc(self):
+        # This should be a constructor arg to this module.
+        return datetime.datetime
 
-        self.bind_options(binder, redcap_connect.OPTIONS,
-                          SAA_CONFIG_SECTION)
-        self.bind_options(binder, redcap_connect.OPTIONS + ('executives',
-                                                            'project_id'),
-                          OVERSIGHT_CONFIG_SECTION)
+    @singleton
+    @provides(urllib.URLopener)
+    def _web_ua(self):
+        # This should be a constructor arg to this module.
+        return urllib2.build_opener()
 
-        binder.bind(urllib.URLopener, urllib2.build_opener)
+    @singleton
+    @provides((redcap_connect.SurveySetup, SAA_CONFIG_SECTION))
+    @inject(ua=urllib.URLopener)
+    def _rc_saa(self, ua):
+        opts = self.get_options(redcap_connect.OPTIONS, SAA_CONFIG_SECTION)
+        return redcap_connect.SurveySetup(opts, ua, survey_id=opts.survey_id)
+
+    @singleton
+    @provides((redcap_connect.SurveySetup, OVERSIGHT_CONFIG_SECTION))
+    @inject(ua=urllib.URLopener)
+    def _rc_oversight(self, ua):
+        opts = self.get_options(redcap_connect.OPTIONS + (
+            'executives', 'project_id'), OVERSIGHT_CONFIG_SECTION)
+        return redcap_connect.SurveySetup(opts, ua,
+                                          project_id=opts.project_id,
+                                          executives=opts.executives)
 
     @classmethod
     def mods(cls, ini):
