@@ -92,6 +92,7 @@ By submitting this form, I agree to the foregoing and confirm my electronic sign
 is_identified_data,heron_oversight_request,,yesno,"Identified Data?",,,,,,,"[what_for] = '2'",y,,,,,
 hsc_number,heron_oversight_request,,text,"HSC/IRB number",,,integer,,,,"[what_for] = '2' and [is_identified_data] = '1'",y,,,,,
 irb_protocol,heron_oversight_request,,file,"Attach IRB protocol",,"* please attach IRB protocol or IRB letter to help the DROC evaluate your request",,,,,"[what_for] = '2' and [is_identified_data] = '1'",y,,,,,
+saved_search_name_in_heron,heron_oversight_request,,text,"Saved search name in HERON",,,,,,,"[what_for] = '2'",,,,,,
 supplemental_documentation,heron_oversight_request,"Supporting Materials",file,"Attach Supplemental documentation (optional)",,"* if you already have prepared documentation on your research and protocol which may assist the DROC in understanding your request, attach it here.",,,,,,,,,,,
 user_id_1,heron_oversight_request,"Review your study team and designate affiliation if they are not KUMC employees.",text,"User Id #1",,,,,,,,y,,,,,
 name_etc_1,heron_oversight_request,,notes,"Name, Title, Department",,,,,,y,,,,,,,
