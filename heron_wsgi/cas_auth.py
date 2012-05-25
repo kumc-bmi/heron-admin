@@ -116,8 +116,7 @@ Finally, log in again and log out, and then get a challenge::
 # python stdlib 1st, per PEP8
 import itertools
 import logging
-import urllib
-import urllib2
+from urllib import urlencode
 
 # from pypi
 import injector
@@ -131,6 +130,7 @@ from pyramid.authentication import AuthTktAuthenticationPolicy
 from admin_lib.rtconfig import Options, TestTimeOptions, RuntimeOptions
 from admin_lib.rtconfig import MockMixin
 from admin_lib import sealing
+from admin_lib.ocap_file import WebReadable
 
 log = logging.getLogger(__name__)
 
@@ -167,19 +167,18 @@ class Issuer(object):
 
 
 class Validator(object):
-    def __init__(self, cas_addr, app_secret, ua=None):
-        if ua is None:
-            ua = urllib2.build_opener()
-        self._ua = ua
-        self._a = cas_addr
+    @inject(cascap=(WebReadable, CONFIG_SECTION),
+            rt=(Options, CONFIG_SECTION))
+    def __init__(self, cascap, rt):
+        self.__cascap = cascap
         # When this thing is missing from the config file,
         # the stacktrace is really obscure.
-        assert app_secret
-        self._secret = app_secret
+        assert rt.app_secret
+        self._secret = rt.app_secret
         self._issuers = []
 
     def __str__(self):
-        return 'Validator(cas_addr=%s)' % self._a
+        return 'Validator(cas_addr=%s)' % self._webrdcap.fullPath()
 
     def configure(self, config, logout_route):
         '''Apply configuration hooks:
@@ -231,12 +230,12 @@ class Validator(object):
             log.info('checkTicket at %s: no ticket to check.', req.url)
             return None
 
-        a = self._a + 'validate?' + urllib.urlencode(dict(service=req.path_url,
-                                                          ticket=t))
+        valcap = self.__cascap.subRdFile('validate?' + urlencode(
+            dict(service=req.path_url, ticket=t)))
 
         log.info('checkTicket for <%s>: cas validation request: %s',
-                 req.url, a)
-        lines = self._ua.open(a).read().split('\n')
+                 req.url, valcap.fullPath())
+        lines = valcap.getBytes().split('\n')
 
         if not(lines and lines[0] == 'yes'):
             log.info('cas validation failed: %s', lines)
@@ -263,11 +262,11 @@ class Validator(object):
             # already been here before
             return HTTPForbidden()
 
-        there = (urllib.basejoin(self._a, 'login') + '?' +
-                 urllib.urlencode(dict(service=request.url)))
+        there = self.__cascap.subRdFile(
+            'login?' + urlencode(dict(service=request.url)))
         log.info('Validator.redirect to %s (service=%s)',
-                 there, request.url)
-        return HTTPSeeOther(there)
+                 there.fullPath(), request.url)
+        return HTTPSeeOther(there.fullPath())
 
     def issue_caps(self, uid, req):
         '''AuthTktAuthenticationPolicy callback that allows each issuer
@@ -280,8 +279,8 @@ class Validator(object):
                          for issuer in self._issuers])
 
     def logout(self, context, req):
-        there = urllib.basejoin(self._a, 'logout')
-        response = HTTPSeeOther(there)
+        there = self.__cascap.subRdFile('logout')
+        response = HTTPSeeOther(there.fullPath())
         response.headers.extend(security.forget(req))
         log.info('dropping session cooking and redirecting to %s', there)
         raise response
@@ -327,29 +326,25 @@ class CapabilityStyle(object):
         raise NotImplementedError
 
 
-class SetUp(injector.Module):
-    @provides(Validator)
-    @inject(rt=(Options, CONFIG_SECTION),
-            ua=urllib.URLopener)
-    def validator(self, rt, ua):
-        return Validator(rt.base, rt.app_secret, ua)
-
-
 class RunTime(injector.Module):
     def __init__(self, ini):
         self._ini = ini
 
-    def configure(self, binder):
-        binder.bind((Options, CONFIG_SECTION),
-                    RuntimeOptions(['base',
-                                    'app_secret']).load(self._ini, 'cas'))
+    @provides((WebReadable, CONFIG_SECTION))
+    @inject(rt=(Options, CONFIG_SECTION))
+    def cas_server(self, rt):
+        from urllib2 import build_opener, Request
 
-        binder.bind(urllib.URLopener,
-                    to=injector.InstanceProvider(urllib2.build_opener()))
+        return WebReadable(rt.base, build_opener(), Request)
+
+    @provides((Options, CONFIG_SECTION))
+    def opts(self):
+        return RuntimeOptions(['base', 'app_secret']).load(
+            self._ini, CONFIG_SECTION)
 
     @classmethod
     def mods(cls, ini):
-        return [SetUp(), RunTime(ini)]
+        return [RunTime(ini)]
 
     @classmethod
     def depgraph(cls, ini):
@@ -379,15 +374,19 @@ class Mock(injector.Module, MockMixin):
         binder.bind((Options, CONFIG_SECTION),
                     to=TestTimeOptions({'base': 'http://example/cas/',
                                         'app_secret': 'sekrit'}))
-        binder.bind(urllib.URLopener,
-                    to=injector.InstanceProvider(LinesUrlOpener(
-                    ['yes', 'john.smith'])))
-
         binder.bind(Issuer, MockIssuer)
+
+    @provides((WebReadable, CONFIG_SECTION))
+    @inject(rt=(Options, CONFIG_SECTION))
+    def cas_server(self, rt):
+        from urllib2 import Request
+        ua = LinesUrlOpener(['yes', 'john.smith'])
+
+        return WebReadable(rt.base, ua, Request)
 
     @classmethod
     def mods(cls):
-        return [SetUp(), Mock()]
+        return [Mock()]
 
 
 class MockIssuer(object):
