@@ -95,9 +95,14 @@ class MockMixin(object):
         '''
         if what is None:
             what = cls.stuff
-        depgraph = injector.Injector(cls.mods())
-        return [depgraph.get(it) if it else depgraph
-                for it in what]
+        modules = cls.mods()
+        depgraph = injector.Injector(modules)
+        try:
+            return [depgraph.get(it) if it else depgraph
+                    for it in what]
+        except TypeError:
+            raise TypeError('failed to instantiate: %s w.r.t. \n%s' % (
+                it, '\n'.join([str(m) for m in modules])))
 
 
 class IniModule(injector.Module):

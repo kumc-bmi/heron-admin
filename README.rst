@@ -38,22 +38,6 @@ __ http://misko.hevery.com/2011/02/14/video-recording-slides-psychology-of-testi
 __ http://wiki.erights.org/wiki/Walnut/Ordinary_Programming#Security_of_emakers
 
 
-injector gotchas
-................
-
-When you see this::
-
-    Traceback (most recent call last):
-      File "/home/dconnolly/raven-frontiers/heron_wsgi/admin_lib/heron_policy.py", line 433, in make_stuff
-        hr = depgraph.get(HeronRecords)
-    ...
-      File "build/bdist.linux-x86_64/egg/injector.py", line 467, in provider_for
-        elif isinstance(to, interface):
-    TypeError: isinstance() arg 2 must be a class, type, or tuple of classes and types
-
-Look for one of the constructor args to HeronRecords that isn't bound.
-
-
 Java Approach
 -------------
 
