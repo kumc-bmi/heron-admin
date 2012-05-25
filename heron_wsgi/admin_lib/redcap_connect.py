@@ -17,7 +17,7 @@ Configuration gives us access to the REDCap API::
   True
 
   >>> setup = SurveySetup(_test_settings,
-  ...                     endPoint(_MockREDCapAPI(), _test_settings.token))
+  ...                     EndPoint(_MockREDCapAPI(), _test_settings.token))
 
 Set up a link to survey associated with John Smith's email address::
 
@@ -54,11 +54,11 @@ log = logging.getLogger(__name__)
 OPTIONS = ('token', 'api_url', 'survey_url', 'domain', 'survey_id')
 
 
-def endPoint(webcap, token):
+def EndPoint(webcap, token):
     '''Make REDCap API endpoint with accept_json, post_json methods.
 
     >>> rt = _test_settings
-    >>> e = endPoint(_MockREDCapAPI(), rt.token)
+    >>> e = EndPoint(_MockREDCapAPI(), rt.token)
     >>> e.accept_json(content='survey', action='setup',
     ...               email='john.smith@jsmith.example')
     ... # doctest: +NORMALIZE_WHITESPACE
@@ -84,7 +84,7 @@ def endPoint(webcap, token):
         return webcap.post(urlencode(params)).read()
 
     def __repr__():
-        return 'redcap_connect.endPoint(%s)' % webcap.fullPath()
+        return 'redcap_connect.EndPoint(%s)' % webcap.fullPath()
 
     def record_import(data, **args):
         log.debug('import: %s', data)
@@ -162,9 +162,18 @@ class RunTime(rtconfig.IniModule):
         sopts = mod.get_options(OPTIONS, 'saa_survey')
         oopts = mod.get_options(OPTIONS, 'oversight_survey')
         redcap = WebPostable(sopts.api_url, build_opener(), Request)
-        s1 = SurveySetup(sopts, endPoint(redcap, sopts.token))
-        s2 = SurveySetup(oopts, endPoint(redcap, oopts.token))
+        s1 = SurveySetup(sopts, EndPoint(redcap, sopts.token))
+        s2 = SurveySetup(oopts, EndPoint(redcap, oopts.token))
         return s1, s2
+
+    @classmethod
+    def endpoint(cls, mod, section, extra=()):
+        from urllib2 import build_opener, Request
+        from ocap_file import WebPostable
+
+        opts = mod.get_options(OPTIONS + extra, section)
+        webcap = WebPostable(opts.api_url, build_opener(), Request)
+        return opts, EndPoint(webcap, opts.token)
 
 
 def _test_multi_use(c, uid, full_name):

@@ -146,12 +146,10 @@ class Mock(redcapdb.SetUp, rtconfig.MockMixin):
     def mods(cls):
         return redcapdb.Mock.mods() + [cls(), TestSetUp()]
 
-    def configure(self, binder):
-        api_url = 'http://example/recap/API'
-        token = '12345token'
-        ua = redcap_connect._MockREDCapAPI()
-        binder.bind((redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION),
-                    redcap_connect.EndPoint(ua, api_url, token))
+    @provides((redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION))
+    def redcap_api_endpoint(self):
+        webcap = redcap_connect._MockREDCapAPI()
+        return redcap_connect.EndPoint(webcap, '12345token')
 
     @provides(KTimeSource)
     def time_source(self):
@@ -197,32 +195,23 @@ class _TestTimeSource(object):
         return datetime.date(2011, 9, 2)
 
 
-class _TestURLopener(object):
-    def open(self, addr, data=None):
-        if addr.startswith('http://example/recap/API'):
-            # todo: verify contents?
-            return StringIO.StringIO('')
-        else:
-            raise IOError('404 not found')
-
-
 class RunTime(rtconfig.IniModule):
     def configure(self, binder):
-        import datetime
-        import urllib2
-
         drt = self.get_options(['project_id'], DISCLAIMERS_SECTION)
         Disclaimer.eav_map(drt.project_id)
 
-        art = self.get_options('project_id api_url token'.split(),
-                                ACKNOWLEGEMENTS_SECTION)
+        art, api = redcap_connect.RunTime.endpoint(
+            self, ACKNOWLEGEMENTS_SECTION, extra=('project_id',))
         Acknowledgement.eav_map(art.project_id)
 
-        ua = urllib2.build_opener()  # hmm... inject this?
         binder.bind((redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION),
-                    redcap_connect.EndPoint(ua, art.api_url, art.token))
+                    injector.InstanceProvider(api))
 
-        binder.bind(KTimeSource, injector.InstanceProvider(datetime.datetime))
+    @provides(KTimeSource)
+    def real_time(self):
+        import datetime
+
+        return datetime.datetime
 
     @classmethod
     def mods(cls, ini):

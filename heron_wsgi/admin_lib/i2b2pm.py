@@ -68,7 +68,6 @@ from sqlalchemy import Column, ForeignKey
 from sqlalchemy import func, orm
 from sqlalchemy.types import String, Date, Enum
 from sqlalchemy.ext.declarative import declarative_base
-import sqlalchemy
 
 import rtconfig
 import jndi_util
@@ -197,29 +196,22 @@ class UserRole(Base, Audited):
 
 
 class RunTime(rtconfig.IniModule):
-
-    @provides((rtconfig.Options, CONFIG_SECTION))
-    def settings(self):
-        rt = rtconfig.RuntimeOptions(['jboss_deploy'])
-        rt.load(self._ini, CONFIG_SECTION)
-        return rt
-
-    @singleton
-    @provides(jndi_util.JBossContext)
-    @inject(rt=(rtconfig.Options, CONFIG_SECTION))
-    def jndi_context(self, rt):
-        import os  # hmm... where to import?
-        jd = ocap_file.Readable(rt.jboss_deploy, os.path, os.listdir, open)
-        return jndi_util.JBossContext(jd, sqlalchemy.create_engine)
-
     jndi_name = 'PMBootStrapDS'
 
     # abusing Session a bit; this really provides a subclass, not an
     # instance, of Session
     @singleton
     @provides((orm.session.Session, CONFIG_SECTION))
-    @inject(ctx=jndi_util.JBossContext)
-    def pm_sessionmaker(self, ctx):
+    def pm_sessionmaker(self):
+        import os
+        from sqlalchemy import create_engine
+
+        rt = rtconfig.RuntimeOptions(['jboss_deploy'])
+        rt.load(self._ini, CONFIG_SECTION)
+
+        jdir = ocap_file.Readable(rt.jboss_deploy, os.path, os.listdir, open)
+        ctx = jndi_util.JBossContext(jdir, create_engine)
+
         sm = orm.session.sessionmaker()
 
         def make_session_and_revoke():
@@ -241,7 +233,9 @@ class Mock(injector.Module, rtconfig.MockMixin):
     @singleton
     @provides((orm.session.Session, CONFIG_SECTION))
     def pm_sessionmaker(self):
-        engine = sqlalchemy.create_engine('sqlite://')
+        from sqlalchemy import create_engine
+
+        engine = create_engine('sqlite://')
         Base.metadata.create_all(engine)
         return orm.session.sessionmaker(engine)
 
@@ -283,7 +277,7 @@ def _test_main():
 def _list_users():
     import csv, sys
     (sm, ) = RunTime.make(None,
-                          [(sqlalchemy.orm.session.Session, CONFIG_SECTION)])
+                          [(orm.session.Session, CONFIG_SECTION)])
     s = sm()
     # get column names
     #ans = s.execute("select * from pm_user_session "

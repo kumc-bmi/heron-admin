@@ -250,8 +250,6 @@ class HeronRecords(object):
     True
 
     .. todo:: check expiration date
-
-    .. todo:: reduce privilege from an arbitrary urlopener to what's needed.
     '''
     permissions = (PERM_USER, PERM_FACULTY)
     institutions = ('kuh', 'kupi', 'kumc')
@@ -843,25 +841,24 @@ def add_test_eav(s, project_id, event_id, e, avs):
 
 
 class Mock(injector.Module, rtconfig.MockMixin):
-
-    @singleton
-    @provides(urllib.URLopener)
-    def redcap_connect_web_ua(self):
-        return redcap_connect._MockREDCapAPI()
+    def __init__(self):
+        injector.Module.__init__(self)
+        token = redcap_connect._test_settings.token
+        webcap = redcap_connect._MockREDCapAPI()
+        self.__redcapapi = redcap_connect.EndPoint(webcap, token)
 
     @singleton
     @provides((redcap_connect.SurveySetup, SAA_CONFIG_SECTION))
-    @inject(ua=urllib.URLopener)
-    def _rc_saa(self, ua):
+    def _rc_saa(self):
         opts = redcap_connect._test_settings
-        return redcap_connect.SurveySetup(opts, ua, survey_id=opts.survey_id)
+        return redcap_connect.SurveySetup(opts, self.__redcapapi,
+                                          survey_id=opts.survey_id)
 
     @singleton
     @provides((redcap_connect.SurveySetup, OVERSIGHT_CONFIG_SECTION))
-    @inject(ua=urllib.URLopener)
-    def _rc_oversight(self, ua):
+    def _rc_oversight(self):
         opts = redcap_connect._test_settings
-        return redcap_connect.SurveySetup(opts, ua,
+        return redcap_connect.SurveySetup(opts, self.__redcapapi,
                                           project_id=opts.project_id,
                                           executives=['big.wig'])
 
@@ -885,29 +882,20 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
     @singleton
     @provides(KTimeSource)
     def _timesrc(self):
-        # This should be a constructor arg to this module.
         return datetime.datetime
 
     @singleton
-    @provides(urllib.URLopener)
-    def _web_ua(self):
-        # This should be a constructor arg to this module.
-        return urllib2.build_opener()
-
-    @singleton
     @provides((redcap_connect.SurveySetup, SAA_CONFIG_SECTION))
-    @inject(ua=urllib.URLopener)
-    def _rc_saa(self, ua):
-        opts = self.get_options(redcap_connect.OPTIONS, SAA_CONFIG_SECTION)
-        return redcap_connect.SurveySetup(opts, ua, survey_id=opts.survey_id)
+    def _rc_saa(self):
+        opts, api = redcap_connect.RunTime.endpoint(self, SAA_CONFIG_SECTION)
+        return redcap_connect.SurveySetup(opts, api, survey_id=opts.survey_id)
 
     @singleton
     @provides((redcap_connect.SurveySetup, OVERSIGHT_CONFIG_SECTION))
-    @inject(ua=urllib.URLopener)
-    def _rc_oversight(self, ua):
-        opts = self.get_options(redcap_connect.OPTIONS + (
-            'executives', 'project_id'), OVERSIGHT_CONFIG_SECTION)
-        return redcap_connect.SurveySetup(opts, ua,
+    def _rc_oversight(self):
+        opts, api = redcap_connect.RunTime.endpoint(
+            self, OVERSIGHT_CONFIG_SECTION, extra=('executives', 'project_id'))
+        return redcap_connect.SurveySetup(opts, api,
                                           project_id=opts.project_id,
                                           executives=opts.executives)
 

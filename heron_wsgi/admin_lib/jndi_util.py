@@ -44,7 +44,7 @@ def ds_access(jboss_deploy, jndi_name):
     :raises: XMLSyntaxError on failure to parse XML files therein,
     '''
     for f in jboss_deploy.subRdFiles():
-        if not f.fullpath().endswith('-ds.xml'):
+        if not f.fullPath().endswith('-ds.xml'):
             continue
         doc = etree.parse(f.inChannel())
         src_expr = ('/datasources/local-tx-datasource[jndi-name/text()="%s"]' %
