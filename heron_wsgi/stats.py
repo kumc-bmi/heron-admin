@@ -216,18 +216,18 @@ qm = Table('qt_query_master', meta,
            Column('user_id', String),
            Column('name', String),
            Column('request_xml', String),
-           schema='blueherondata')
+           schema='blueherondata').alias('qm')
 
 rt = Table('qt_query_result_type', meta,
            Column('result_type_id', Integer, primary_key=True),
            Column('name', String),  # result_type
            Column('description', String),
-           schema='blueherondata')
+           schema='blueherondata').alias('rt')
 
 qt = Table('qt_query_status_type', meta,
            Column('status_type_id', Integer, primary_key=True),
            Column('description', String),
-           schema='blueherondata')
+           schema='blueherondata').alias('qt')
 
 qi = Table('qt_query_instance', meta,
            Column('query_instance_id', Integer, primary_key=True),
@@ -238,7 +238,7 @@ qi = Table('qt_query_instance', meta,
            Column('start_date', DATETIME),
            Column('end_date', DATETIME),
            Column('message', String),
-           schema='blueherondata')
+           schema='blueherondata').alias('qi')
 
 qri = Table('qt_query_result_instance', meta,
             Column('query_instance_id', Integer,
@@ -246,14 +246,14 @@ qri = Table('qt_query_result_instance', meta,
             Column('result_type_id', Integer,
                    ForeignKey(rt.c.result_type_id)),
             Column('set_size', Integer),
-            schema='blueherondata')
+            schema='blueherondata').alias('qri')
 
 s = Table('pm_user_session', meta,
           Column('session_id', String),
           Column('user_id', String),
           Column('entry_date', DATETIME),
           Column('expired_date', DATETIME),
-          schema='i2b2pm')
+          schema='i2b2pm').alias('s')
 
 
 class PerformanceReports(UsageReports):
@@ -292,10 +292,38 @@ class PerformanceReports(UsageReports):
 
     @classmethod
     def query_data_select(cls, statuses):
-        log_or_null = case([(qi.c.end_date == None, None)],
-                           else_=func.log(2, (qi.c.end_date - qi.c.start_date) * 24 * 60 * 60))
+        '''
+        >>> print PerformanceReports.query_data_select(['ERROR'])
+        ... #doctest: +NORMALIZE_WHITESPACE
+        SELECT qm.query_master_id, qm.user_id, qm.name AS query_name,
+               rt.name AS result_type,
+               rt.description AS result_type_description,
+               qri.set_size, qi.start_date, qt.description AS status,
+               qi.message, qi.end_date,
+               CASE WHEN (qi.end_date IS NULL) THEN NULL
+                    ELSE log(:log_1, (qi.end_date - qi.start_date)
+                                  * :param_1 * :param_2 * :param_3)
+               END AS value, qm.request_xml
+        FROM blueherondata.qt_query_master AS qm
+        JOIN blueherondata.qt_query_instance AS qi
+          ON qm.query_master_id = qi.query_master_id
+        JOIN blueherondata.qt_query_result_instance AS qri
+          ON qi.query_instance_id = qri.query_instance_id
+        JOIN blueherondata.qt_query_result_type AS rt
+          ON rt.result_type_id = qri.result_type_id
+        JOIN blueherondata.qt_query_status_type AS qt
+          ON qt.status_type_id = qi.status_type_id
+        WHERE qt.description IN (:description_1)
 
-        stmt = select([qm.c.query_master_id, qm.c.user_id, qm.c.name.label('query_name'),
+        '''
+        log_or_null = case(
+            [(qi.c.end_date == None, None)],
+            else_=func.log(2, (qi.c.end_date
+                               - qi.c.start_date) * 24 * 60 * 60))
+
+        stmt = select([qm.c.query_master_id,
+                       qm.c.user_id,
+                       qm.c.name.label('query_name'),
                        rt.c.name.label('result_type'),
                        rt.c.description.label('result_type_description'),
                        qri.c.set_size,
