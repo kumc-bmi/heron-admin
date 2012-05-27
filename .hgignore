@@ -8,6 +8,8 @@ target
 catalog.xml
 .netbeans/
 
+.ropeproject
+
 # passwords and such for integration testing
 heron_wsgi/integration-test.ini
 heron_wsgi/admin_lib/integration-test.ini
@@ -29,3 +31,4 @@ man/
 
 # sphinx build stuff
 devdoc/_build
+.externalToolBuilders/
