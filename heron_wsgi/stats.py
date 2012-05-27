@@ -7,7 +7,7 @@ import itertools
 import operator
 
 from injector import inject
-from sqlalchemy import orm, func, between, case
+from sqlalchemy import orm, func, between, case, MetaData
 from sqlalchemy import select, Table, Column, ForeignKey
 from sqlalchemy.types import Integer, String, DATETIME
 import datetime
@@ -210,7 +210,9 @@ class Machine(object):
         return [(1, 0.00), (5, 0.00), (15, 0.00)]
 
 
-meta = i2b2pm.Base.metadata
+# Hmm... messy...
+# meta = i2b2pm.Base.metadata
+meta = MetaData()
 qm = Table('qt_query_master', meta,
            Column('query_master_id', Integer, primary_key=True),
            Column('user_id', String),

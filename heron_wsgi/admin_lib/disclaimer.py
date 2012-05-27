@@ -26,6 +26,11 @@ Now note the mapping to the Disclaimer class::
   [Disclaimer(disclaimer_id=1,
               url=http://example/blog/item/heron-release-xyz, current=1)]
 
+  .>> acksproj.add_record('bob', 'http://informatics.kumc.edu/blog/2012/x')
+  .>> for ack in s.query(Acknowledgement):
+  ...     print ack
+  '@@'
+
 '''
 
 # python stdlib http://docs.python.org/library/
@@ -44,6 +49,7 @@ import xpath
 import rtconfig
 import redcapdb
 import redcap_connect
+from ocap_file import WebReadable
 
 DISCLAIMERS_SECTION = 'disclaimers'
 ACKNOWLEGEMENTS_SECTION = 'disclaimer_acknowledgements'
@@ -55,7 +61,7 @@ log = logging.getLogger(__name__)
 class Disclaimer(redcapdb.REDCapRecord):
     fields = ('disclaimer_id', 'url', 'current')
 
-    def content(self, ua):
+    def content(self, rdcap):
         r'''
            >>> d = Disclaimer()
            >>> d.url = 'http://example/'
@@ -63,7 +69,7 @@ class Disclaimer(redcapdb.REDCapRecord):
            ... # doctest: +ELLIPSIS
            (u'<div id="blog-main">\n<h1 class="blog-title">...', u'headline')
         '''
-        body = ua.open(self.url).read()  # pylint: disable=E1101
+        body = rdcap.subRdFile(self.url).getBytes()
         kludge = StringIO.StringIO(body.replace('&larr;', '').\
                                        replace('&rarr;', ''))  # KLUDGE
         elt = xpath.findnode('//*[@id="blog-main"]', parse(kludge))
@@ -86,8 +92,14 @@ _test_doc = '''
 
 
 class _MockTracBlog(object):
-    def open(self, _):  # pylint: disable=R0201
+    def inChannel(self):
         return StringIO.StringIO(_test_doc)
+
+    def getBytes(self):
+        return self.inChannel().read()
+
+    def subRdFile(self, path):
+        return self
 
 
 class Acknowledgement(redcapdb.REDCapRecord):
@@ -138,6 +150,36 @@ def last_seg(addr):
     return addr[addr.rfind('/'):]
 
 
+class _MockREDCapAPI2(redcap_connect._MockREDCapAPI):
+    def __init__(self, smaker@@@@@@):
+        self.__smaker = smaker
+
+    def dispatch(self, params):
+        if 'import' in params['action']:
+            self.service_import(params)
+        else:
+            super(_MockREDCapAPI2, self).dispatch(params)
+
+    def service_import(self, params):
+        import json, StringIO
+        from heron_policy import add_test_eav
+
+        rows = json.loads(params['data'][0])
+        schema = rows[0].keys()
+        if sorted(schema) == sorted([u'ack', u'timestamp',
+                                     u'disclaimer_address',
+                                     u'user_id', u'acknowledgement_complete']):
+            values = rows[0]
+            record = hash(values['user_id'])
+            s = self.__smaker()
+            add_test_eav(s, self._art.project_id, 1,
+                                      record, values.items())
+            return StringIO.StringIO('')
+        else:
+            raise IOError('bad request: bad acknowledgement schema: '
+                          + str(schema))
+
+
 class Mock(redcapdb.SetUp, rtconfig.MockMixin):
     def __init__(self):
         sqlalchemy.orm.clear_mappers()
@@ -146,9 +188,13 @@ class Mock(redcapdb.SetUp, rtconfig.MockMixin):
     def mods(cls):
         return redcapdb.Mock.mods() + [cls(), TestSetUp()]
 
+    @provides((WebReadable, DISCLAIMERS_SECTION))
+    def rdblog(self):
+        return _MockTracBlog()
+
     @provides((redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION))
     def redcap_api_endpoint(self):
-        webcap = redcap_connect._MockREDCapAPI()
+        webcap = _MockREDCapAPI2()
         return redcap_connect.EndPoint(webcap, '12345token')
 
     @provides(KTimeSource)
@@ -207,6 +253,11 @@ class RunTime(rtconfig.IniModule):
         binder.bind((redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION),
                     injector.InstanceProvider(api))
 
+    @provides((WebReadable, DISCLAIMERS_SECTION))
+    def rdblog(self, site='http://informatics.kumc.edu/'):
+        from urllib2 import build_opener, Request
+        return WebReadable(site, build_opener, Request)
+
     @provides(KTimeSource)
     def real_time(self):
         import datetime
@@ -220,7 +271,8 @@ class RunTime(rtconfig.IniModule):
 
 def _test_main():
     import sys
-    import urllib2
+    from urllib2 import build_opener, Request
+    from ocap_file import WebReadable
 
     logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
@@ -274,7 +326,9 @@ def _test_main():
         print "current disclaimer and content:"
         for d in s.query(Disclaimer).filter(Disclaimer.current == 1):
             print d
-            c, h = d.content(urllib2.build_opener())
+            webrd = WebReadable('http://informatics.kumc.edu/',
+                                build_opener(), Request)
+            c, h = d.content(webrd)
             print h
             print c[:100]
 

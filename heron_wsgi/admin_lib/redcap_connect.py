@@ -47,7 +47,7 @@ from urllib import urlencode
 from urlparse import urljoin, parse_qs
 
 import rtconfig
-from ocap_file import edef
+from ocap_file import edef, WebPostable
 
 log = logging.getLogger(__name__)
 
@@ -98,8 +98,8 @@ class SurveySetup(object):
     def __init__(self, rt, endpoint, project_id=None, survey_id=None,
                  executives=None):
         self.__endpoint = endpoint
-        self.__domain = rt.domain
-        self.__base = rt.survey_url
+        self.domain = rt.domain
+        self.base = rt.survey_url
         self.survey_id = survey_id
         self.project_id = project_id
         self.executives = executives
@@ -108,11 +108,11 @@ class SurveySetup(object):
         redcap = self.__endpoint
         ans = redcap.accept_json(content='survey', action='setup',
                                  multi='yes' if multi else 'no',
-                                 email='%s@%s' % (userid, self.__domain))
+                                 email='%s@%s' % (userid, self.domain))
         surveycode = ans['hash']
         params = urlencode([('s', surveycode)]
                            + sorted(params.iteritems()))
-        return urljoin(self.__base, '?' + params)
+        return urljoin(self.base, '?' + params)
 
 
 _test_settings = rtconfig.TestTimeOptions(dict(
@@ -135,6 +135,17 @@ class _MockREDCapAPI(object):
         params = parse_qs(body)
         if 'action' not in params:
             raise IOError('action param missing: ' + str(params))
+        self.dispatch(params)
+
+    def dispatch(self, params):
+        if 'setup' in params['action']:
+            self.service_setup(params)
+        elif 'import' in params['action']:
+            self.service_import(params)
+        else:
+            raise IOError(params['action'])
+
+    def service_setup(self, params):
         if 'setup' in params['action']:
             h = hex(abs(hash(self.addr)))[-4:]
             out = {'PROJECT_ID': 123,
@@ -143,10 +154,9 @@ class _MockREDCapAPI(object):
                    'hash': h,
                    'email': u'BOGUS@%s' % _test_settings.domain}
             return StringIO(json.dumps(out))
-        elif 'import' in params['action']:
+
+    def service_import(self, params):
             return StringIO(json.dumps({}))
-        else:
-            raise IOError(params['action'])
 
     def fullPath(self):
         return self.addr
@@ -156,7 +166,6 @@ class RunTime(rtconfig.IniModule):
     @classmethod
     def integration_test(cls):
         from urllib2 import build_opener, Request
-        from ocap_file import WebPostable
 
         mod = cls(None)
         sopts = mod.get_options(OPTIONS, 'saa_survey')
@@ -169,7 +178,6 @@ class RunTime(rtconfig.IniModule):
     @classmethod
     def endpoint(cls, mod, section, extra=()):
         from urllib2 import build_opener, Request
-        from ocap_file import WebPostable
 
         opts = mod.get_options(OPTIONS + extra, section)
         webcap = WebPostable(opts.api_url, build_opener(), Request)
