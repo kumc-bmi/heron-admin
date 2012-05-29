@@ -34,6 +34,7 @@ Now note the mapping to the Disclaimer class::
 '''
 
 # python stdlib http://docs.python.org/library/
+import json
 import StringIO
 import logging
 from xml.dom.minidom import parse
@@ -151,17 +152,18 @@ def last_seg(addr):
 
 
 class _MockREDCapAPI2(redcap_connect._MockREDCapAPI):
-    def __init__(self, smaker@@@@@@):
+    project_id = redcap_connect._test_settings.project_id
+
+    def __init__(self, smaker):
         self.__smaker = smaker
 
     def dispatch(self, params):
         if 'import' in params['action']:
-            self.service_import(params)
+            return self.service_import(params)
         else:
-            super(_MockREDCapAPI2, self).dispatch(params)
+            return super(_MockREDCapAPI2, self).dispatch(params)
 
     def service_import(self, params):
-        import json, StringIO
         from heron_policy import add_test_eav
 
         rows = json.loads(params['data'][0])
@@ -172,8 +174,8 @@ class _MockREDCapAPI2(redcap_connect._MockREDCapAPI):
             values = rows[0]
             record = hash(values['user_id'])
             s = self.__smaker()
-            add_test_eav(s, self._art.project_id, 1,
-                                      record, values.items())
+            add_test_eav(s, self.project_id, 1,
+                         record, values.items())
             return StringIO.StringIO('')
         else:
             raise IOError('bad request: bad acknowledgement schema: '
@@ -193,8 +195,9 @@ class Mock(redcapdb.SetUp, rtconfig.MockMixin):
         return _MockTracBlog()
 
     @provides((redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION))
-    def redcap_api_endpoint(self):
-        webcap = _MockREDCapAPI2()
+    @inject(smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
+    def redcap_api_endpoint(self, smaker):
+        webcap = _MockREDCapAPI2(smaker)
         return redcap_connect.EndPoint(webcap, '12345token')
 
     @provides(KTimeSource)

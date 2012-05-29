@@ -135,28 +135,27 @@ class _MockREDCapAPI(object):
         params = parse_qs(body)
         if 'action' not in params:
             raise IOError('action param missing: ' + str(params))
-        self.dispatch(params)
+        return self.dispatch(params)
 
     def dispatch(self, params):
         if 'setup' in params['action']:
-            self.service_setup(params)
+            return self.service_setup(params)
         elif 'import' in params['action']:
-            self.service_import(params)
+            return self.service_import(params)
         else:
             raise IOError(params['action'])
 
     def service_setup(self, params):
-        if 'setup' in params['action']:
-            h = hex(abs(hash(self.addr)))[-4:]
-            out = {'PROJECT_ID': 123,
-                   'add': 0,
-                   'survey_id': _test_settings.survey_id,
-                   'hash': h,
-                   'email': u'BOGUS@%s' % _test_settings.domain}
-            return StringIO(json.dumps(out))
+        h = hex(abs(hash(self.addr)))[-4:]
+        out = {'PROJECT_ID': 123,
+               'add': 0,
+               'survey_id': _test_settings.survey_id,
+               'hash': h,
+               'email': u'BOGUS@%s' % _test_settings.domain}
+        return StringIO(json.dumps(out))
 
     def service_import(self, params):
-            return StringIO(json.dumps({}))
+        return StringIO(json.dumps({}))
 
     def fullPath(self):
         return self.addr
