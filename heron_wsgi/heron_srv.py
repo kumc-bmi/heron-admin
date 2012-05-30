@@ -126,6 +126,7 @@ class CheckListView(object):
         '''
         value = dict(self._checklist.screen(req.user, req.faculty,
                                             req.executive),
+                     droc=hasattr(req, 'droc_audit'),  # kinda kludgy
                      # req.route_url('i2b2_login')
                      logout_path=req.route_url('logout'),
                      saa_path=req.route_url('saa'),
