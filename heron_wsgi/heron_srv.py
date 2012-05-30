@@ -408,15 +408,17 @@ class HeronAdminConfig(Configurator):
             tb=TeamBuilder,
             mc=medcenter.MedCenter,
             hr=heron_policy.HeronRecords,
+            oc=heron_policy.OversightCommittee,
             dn=drocnotice.DROCNotice,
             report=stats.Reports)
     def __init__(self, guard, conf, clv, rcv,
-                 repo, tb, mc, hr, dn, report):
+                 repo, tb, mc, hr, oc, dn, report):
         log.debug('HeronAdminConfig settings: %s', conf)
         Configurator.__init__(self, settings=conf)
 
         guard.add_issuer(mc)
         guard.add_issuer(hr)
+        guard.add_issuer(oc)
 
         cap_style = cas_auth.CapabilityStyle([mc, hr])
         self.set_authorization_policy(cap_style)

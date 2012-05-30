@@ -279,6 +279,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
         log.debug('redcap create_engine: again?')
         e = sqlalchemy.create_engine('sqlite://')
         redcap_data.create(e)
+        redcap_user_rights.create(e)
         return e
 
     @classmethod

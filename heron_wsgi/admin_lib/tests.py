@@ -10,14 +10,20 @@ import doctest
 
 
 def main():
+    import sealing
+    doctest.testmod(sealing)
+
+    import ocap_file
+    doctest.testmod(ocap_file)
+
+    import jndi_util
+    doctest.testmod(jndi_util)
+
     import mock_directory
     doctest.testmod(mock_directory)
 
     import rtconfig
     doctest.testmod(rtconfig)
-
-    import i2b2pm
-    doctest.testmod(i2b2pm)
 
     import ldaplib
     doctest.testmod(ldaplib)
@@ -28,8 +34,14 @@ def main():
     import redcap_connect
     doctest.testmod(redcap_connect)
 
+    import i2b2pm
+    doctest.testmod(i2b2pm)
+
     import heron_policy
     doctest.testmod(heron_policy)
+
+    import noticelog
+    doctest.testmod(noticelog)
 
     import checklist
     doctest.testmod(checklist)

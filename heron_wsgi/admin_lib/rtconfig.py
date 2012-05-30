@@ -161,6 +161,11 @@ class IniModule(injector.Module):
         from classes (or other keys) to objects, create an `injector.Injector`
         and use it to instantiate each of the classes in `what`.
         '''
-        depgraph = injector.Injector(cls.mods(ini))
-        return [depgraph.get(it) if it else depgraph
-                for it in what]
+        modules = cls.mods(ini)
+        depgraph = injector.Injector(modules)
+        try:
+            return [depgraph.get(it) if it else depgraph
+                    for it in what]
+        except TypeError:
+            raise TypeError('failed to instantiate: %s w.r.t. \n%s' % (
+                it, '\n'.join([str(m) for m in modules])))

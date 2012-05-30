@@ -7,11 +7,12 @@ The following table is used to log notices::
   >>> from sqlalchemy.schema import CreateTable
   >>> print CreateTable(notice_log, bind=create_engine('sqlite:///'))
   ... #doctest: +NORMALIZE_WHITESPACE
-  CREATE TABLE droctools.notice_log (
+  CREATE TABLE notice_log (
       id INTEGER NOT NULL,
       record VARCHAR(100),
       timestamp TIMESTAMP,
-      PRIMARY KEY (id)
+      PRIMARY KEY (id),
+      FOREIGN KEY(record) REFERENCES redcap_data (record)
   )
 
 '''

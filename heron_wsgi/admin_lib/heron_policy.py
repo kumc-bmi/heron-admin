@@ -19,8 +19,8 @@ Excerpting from `HERON training materials`__:
 
 __ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
 
-  >>> hp, mc, dr = Mock.make((HeronRecords, medcenter.MedCenter,
-  ...                         DecisionRecords))
+  >>> hp, mc, dr, oc = Mock.make((HeronRecords, medcenter.MedCenter,
+  ...                             DecisionRecords, OversightCommittee))
 
 Recalling the login protocol from :mod:`heron_wsgi.admin_lib.medcenter`::
 
@@ -194,19 +194,32 @@ Get details that we might want to use in composing the notification::
 .. todo:: consider factoring out low level details to make
           the policy more clear as code.
 
+
+Overight Auditing
+=================
+
+Oversight committee members can get sensitive audit info::
+
+  >>> oc.issue(exreq)
+  [I2B2SensitiveUsage()]
+
+Ordinary users cannot, though they can get aggregate usage info::
+
+  >>> oc.issue(stureq)
+  []
+  >>> stureq.stats_reporter
+  I2B2AggregateUsage()
 '''
 
 import datetime
 import itertools
 import logging
-import urllib
 import csv  # csv, os only used _DataDict, i.e. testing
 import os
-import urllib2
 
 import injector
 from injector import inject, provides, singleton
-import sqlalchemy
+from sqlalchemy import orm, engine
 from sqlalchemy.sql import select, and_, func
 
 import rtconfig
@@ -217,11 +230,13 @@ import redcapdb
 import noticelog
 import disclaimer
 from disclaimer import Disclaimer, Acknowledgement, KTimeSource
+from audit_usage import I2B2AggregateUsage, I2B2SensitiveUsage
 
 SAA_CONFIG_SECTION = 'saa_survey'
 OVERSIGHT_CONFIG_SECTION = 'oversight_survey'
 PERM_USER = __name__ + '.user'
 PERM_FACULTY = __name__ + '.faculty'
+PERM_DROC = __name__ + '.droc'
 
 log = logging.getLogger(__name__)
 
@@ -251,7 +266,7 @@ class HeronRecords(object):
 
     .. todo:: check expiration date
     '''
-    permissions = (PERM_USER, PERM_FACULTY)
+    permissions = (PERM_USER, PERM_FACULTY, PERM_DROC)
     institutions = ('kuh', 'kupi', 'kumc')
 
     SPONSORSHIP = '1'
@@ -260,19 +275,21 @@ class HeronRecords(object):
 
     @inject(mc=medcenter.MedCenter,
             pm=i2b2pm.I2B2PM,
+            stats=I2B2AggregateUsage,
             saa_rc=(redcap_connect.SurveySetup,
                     SAA_CONFIG_SECTION),
             oversight_rc=(redcap_connect.SurveySetup,
                           OVERSIGHT_CONFIG_SECTION),
-            smaker=(sqlalchemy.orm.session.Session,
+            smaker=(orm.session.Session,
                     redcapdb.CONFIG_SECTION),
             timesrc=KTimeSource)
-    def __init__(self, mc, pm, saa_rc, oversight_rc,
+    def __init__(self, mc, pm, stats, saa_rc, oversight_rc,
                  smaker, timesrc):
         log.debug('HeronRecords.__init__ again?')
         self._smaker = smaker
         self._mc = mc
         self._pm = pm
+        self.__stats = stats
         self._t = timesrc
         self._saa_survey_id = saa_rc.survey_id
         self._saa_rc = saa_rc
@@ -288,6 +305,9 @@ class HeronRecords(object):
 
         # limit capabilities of self to one user
         class I2B2Account(object):
+            '''
+            .. todo:: consider moving this closer to i2b2pm.I2B2PM
+            '''
             def __init__(self, agent):
                 assert(agent.badge is badge)
                 self.agent = agent
@@ -303,6 +323,8 @@ class HeronRecords(object):
             ''''Users get to do LDAP searches,
             but they don't get to exercise the rights of
             the users they find.
+
+            .. todo:: consider moving this into MedCenter
             '''
             def lookup(self, uid):
                 return mc.lookup(uid)
@@ -372,6 +394,7 @@ class HeronRecords(object):
         req.executive = ex
         req.faculty = fac
         req.user = user
+        req.stats_reporter = self.__stats
 
         log.info('issue executive: %s faculty: %s user: %s', ex, fac, user)
 
@@ -700,7 +723,7 @@ class DecisionRecords(object):
     NO = '2'
 
     @inject(orc=(redcap_connect.SurveySetup, OVERSIGHT_CONFIG_SECTION),
-            smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
+            smaker=(orm.session.Session, redcapdb.CONFIG_SECTION),
             mc=medcenter.MedCenter)
     def __init__(self, orc, smaker, mc):
         self._oversight_project_id = orc.project_id
@@ -733,7 +756,55 @@ class DecisionRecords(object):
         return investigator, team, d
 
 
+class OversightCommittee(object):
+    @inject(redcap_sessionmaker=(orm.session.Session,
+                                 redcapdb.CONFIG_SECTION),
+            oversight_rc=(redcap_connect.SurveySetup,
+                          OVERSIGHT_CONFIG_SECTION),
+            auditor=I2B2SensitiveUsage)
+    def __init__(self, redcap_sessionmaker, oversight_rc, auditor):
+        self.__rcsm = redcap_sessionmaker
+        self.project_id = oversight_rc.project_id
+        self.__auditor = auditor
+
+    @classmethod
+    def _memberq(cls, pid, who):
+        '''
+        >>> print OversightCommittee._memberq(238, 'big.wig')
+        ... #doctest: +NORMALIZE_WHITESPACE
+        SELECT redcap_user_rights.project_id, redcap_user_rights.username
+        FROM redcap_user_rights
+        WHERE redcap_user_rights.project_id = :project_id_1
+        AND redcap_user_rights.username = :username_1
+        '''
+        t = redcapdb.redcap_user_rights
+        return t.select().\
+            where(t.c.project_id == pid).\
+            where(t.c.username == who)
+
+    def issue(self, req):
+        s = self.__rcsm()
+        ans = s.execute(self._memberq(self.project_id, req.badge.cn))
+        in_droc = len(ans.fetchall()) == 1
+        log.info('issue DROC? %s', in_droc)
+        log.debug('DROC member? %s project #%s', req.badge.cn, self.project_id)
+
+        if not in_droc:
+            return []
+        req.droc_audit = self.__auditor
+        return [self.__auditor]
+
+    def audit(self, cap, p):
+        if p != PERM_DROC:
+            raise TypeError
+        if cap != self.__auditor:
+            raise TypeError
+
+
 class _DataDict(object):
+    '''
+    .. todo:: use pkg_resources rather than os to get redcap_dd
+    '''
     def __init__(self, name,
                  base=os.path.join(os.path.dirname(__file__),
                                    '..', 'redcap_dd')):
@@ -762,8 +833,8 @@ class TestSetUp(disclaimer.TestSetUp):
     saa_sid = redcap_connect._test_settings.survey_id
 
     @singleton
-    @provides((sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
-    @inject(engine=(sqlalchemy.engine.base.Connectable,
+    @provides((orm.session.Session, redcapdb.CONFIG_SECTION))
+    @inject(engine=(engine.base.Connectable,
                     redcapdb.CONFIG_SECTION),
             timesrc=KTimeSource)
     def redcap_sessionmaker(self, engine, timesrc):
@@ -828,6 +899,12 @@ class TestSetUp(disclaimer.TestSetUp):
                         datetime.timedelta(days=-7),
                     participant_id=abs(hash(email))))
 
+        def add_droc_member(u, p):
+            log.debug('add DROC member: %s to project %s', u, p)
+            urt = redcapdb.redcap_user_rights
+            s.execute(urt.insert().values(project_id=p, username=u))
+        add_droc_member('big.wig', self.oversight_pid)
+
         s.commit()
         return smaker
 
@@ -871,7 +948,8 @@ class Mock(injector.Module, rtconfig.MockMixin):
     @classmethod
     def login_sim(cls, mc, hr):
         def mkrole(uid):
-            req = medcenter.Mock.login_info(uid)
+            req = medcenter.MockRequest()
+            req.remote_user = uid
             mc.issue(req)
             hr.issue(req)
             return req.user, req.faculty, req.executive
@@ -917,10 +995,19 @@ def _test_main():  # pragma nocover
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
     userid = sys.argv[1]
-    req = medcenter.Mock.login_info(userid)
-    hr, ds = RunTime.make(None, [HeronRecords, DecisionRecords])
+    req = medcenter.MockRequest()
+    req.remote_user = userid
+    hr, oc, ds = RunTime.make(None, [HeronRecords,
+                                     OversightCommittee,
+                                     DecisionRecords])
     hr._mc.issue(req)  # umm... peeking
     hr.issue(req)
+    oc.issue(req)
+    print "DROC auth?"
+    try:
+        print req.droc_audit.patient_set_queries(recent=True, small=True)
+    except AttributeError:
+        print "DROC auth: NO"
     print req.user.repository_authz()
 
     print "pending notifications:", ds.oversight_decisions()

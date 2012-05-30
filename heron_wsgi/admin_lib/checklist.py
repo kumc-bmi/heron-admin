@@ -129,7 +129,8 @@ if __name__ == '__main__':  # pragma nocover
                                         heron_policy.HeronRecords,
                                         Checklist])
 
-    req = medcenter.Mock.login_info(uid)
+    req = medcenter.MockRequest
+    req.remote_user = uid
     mc.issue(req)
     hr.issue(req)
 
