@@ -50,6 +50,12 @@ redcap_surveys_participants = Table('redcap_surveys_participants',
     )
 
 
+redcap_user_rights = Table(
+    'redcap_user_rights', Base.metadata,
+    Column('project_id', INTEGER),
+    Column('username', VARCHAR))
+
+
 def eachcol(t1, t2, cols):
     '''
       >>> pairs = eachcol(redcap_data, redcap_data,
@@ -315,12 +321,19 @@ def _test_main():
 
     (sm, ) = RunTime.make(None, [(sqlalchemy.orm.session.Session,
                                  CONFIG_SECTION)])
+    s = sm()
+    print "slice of redcap_data:"
+    pprint(s.query(redcap_data).slice(1, 10))
+    pprint(s.query(redcap_data).slice(1, 10).all())
 
-    pprint(sm().query(redcap_data).slice(1, 10))
-    pprint(sm().query(redcap_data).slice(1, 10).all())
+    print "field_name list:"
+    ans = s.execute(select([redcap_data.c.field_name], distinct=True).\
+                    where(redcap_data.c.project_id == project_id))
+    pprint(ans.fetchall())
 
-    ans = sm().execute(select([redcap_data.c.field_name], distinct=True).\
-                           where(redcap_data.c.project_id == project_id))
+    print "users:"
+    ans = s.execute(select([redcap_user_rights.c.username], distinct=True).\
+                    where(redcap_user_rights.c.project_id == project_id))
     pprint(ans.fetchall())
 
 
