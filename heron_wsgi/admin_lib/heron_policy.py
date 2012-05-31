@@ -22,12 +22,11 @@ __ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
   >>> hp, mc, dr, oc = Mock.make((HeronRecords, medcenter.MedCenter,
   ...                             DecisionRecords, OversightCommittee))
 
-Recalling the login protocol from :mod:`heron_wsgi.admin_lib.medcenter`::
+Recalling the login protocol from :mod:`heron_wsgi.cas_auth`::
 
   >>> def _login(uid):
-  ...     req = medcenter.MockRequest()
+  ...     req = MockRequest()
   ...     req.remote_user = uid
-  ...     mc.issue(req)
   ...     return req
 
 When a qualified faculty member from our mock directory logs in
@@ -36,15 +35,15 @@ request::
 
   >>> facreq = _login('john.smith')
   >>> hp.issue(facreq)
-  [Faculty(John Smith <john.smith@js.example>)]
-  >>> facreq.faculty
-  Faculty(John Smith <john.smith@js.example>)
+  [Faculty(john.smith)]
+  >>> facreq.agent
+  Faculty(john.smith)
 
 John has signed the system access agreement and is current on his
 human subjects training, so he can access the repository::
 
-  >>> facreq.user.repository_authz()
-  Access(Faculty(John Smith <john.smith@js.example>))
+  >>> facreq.agent.repository_authz()
+  Access(Faculty(john.smith))
 
 
 Unforgeable System Access Agreement
@@ -54,7 +53,7 @@ Unforgeable System Access Agreement
 capability, which provides a link to an authenticated system access
 survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
 
-  >>> facreq.user.ensure_saa_survey().split('?')
+  >>> facreq.agent.ensure_saa_survey().split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
   ['http://bmidev1/redcap-host/surveys/',
    's=8074&full_name=Smith%2C+John&user_id=john.smith']
@@ -67,10 +66,8 @@ faculty not sponsored::
 
   >>> stureq = _login('bill.student')
   >>> hp.issue(stureq)
-  [Affiliate(Bill Student <bill.student@js.example>)]
-  >>> stureq.faculty is None
-  True
-  >>> stureq.user.repository_authz()
+  [Affiliate(bill.student)]
+  >>> stureq.agent.repository_authz()
   Traceback (most recent call last):
     ...
   NotSponsored
@@ -80,7 +77,7 @@ faculty not sponsored::
 
 Nor has he completed human subjects training::
 
-  >>> stureq.user.training()
+  >>> stureq.agent.training()
   Traceback (most recent call last):
   ...
   NoTraining
@@ -90,12 +87,12 @@ not yet executed the system access agreement::
 
   >>> stu2req = _login('some.one')
   >>> hp.issue(stu2req)
-  [Affiliate(Some One <some.one@js.example>)]
-  >>> stu2req.user.sponsor()
+  [Affiliate(some.one)]
+  >>> stu2req.agent.sponsor() == True
   True
-  >>> stu2req.user.training()
+  >>> stu2req.agent.training()
   '2012-01-01'
-  >>> stu2req.user.repository_authz()
+  >>> stu2req.agent.repository_authz()
   Traceback (most recent call last):
   ...
   NoAgreement
@@ -110,9 +107,9 @@ Executives don't need sponsorship::
 
   >>> exreq = _login('big.wig')
   >>> hp.issue(exreq)
-  [Executive(Big Wig <big.wig@js.example>)]
-  >>> exreq.user.repository_authz()
-  Access(Executive(Big Wig <big.wig@js.example>))
+  [Affiliate(big.wig)]
+  >>> exreq.agent.repository_authz()
+  Access(Affiliate(big.wig))
 
 
 Sponsorship and data usage requests to the oversight committee
@@ -121,7 +118,7 @@ Sponsorship and data usage requests to the oversight committee
 Faculty can make sponsorship and data usage requests to the oversight
 committee::
 
-  >>> facreq.faculty.ensure_oversight_survey(
+  >>> facreq.agent.oversight_request().ensure_oversight_survey(
   ...        ['some.one'], what_for=HeronRecords.DATA_USE).split('&')
   ... # doctest: +NORMALIZE_WHITESPACE
   ['http://bmidev1/redcap-host/surveys/?s=8074',
@@ -137,9 +134,9 @@ Directory Search for Team Members
 
 Part of making oversight requests is nominating team members::
 
-  >>> facreq.user.browser.lookup('some.one')
+  >>> facreq.agent.browser.lookup('some.one')
   Some One <some.one@js.example>
-  >>> facreq.user.browser.search(5, 'john.smith', '', '')
+  >>> facreq.agent.browser.search(5, 'john.smith', '', '')
   [John Smith <john.smith@js.example>]
 
 
@@ -241,7 +238,49 @@ PERM_DROC = __name__ + '.droc'
 log = logging.getLogger(__name__)
 
 
-class HeronRecords(object):
+class Token(object):
+    '''a la Joe-E token. An authority-bearing object.
+    '''
+    def __repr__(self):
+        raise NotImplementedError('Token subclasses must override __repr__')
+
+
+class OversightCommittee(Token):
+    @inject(redcap_sessionmaker=(orm.session.Session,
+                                 redcapdb.CONFIG_SECTION),
+            oversight_rc=(redcap_connect.SurveySetup,
+                          OVERSIGHT_CONFIG_SECTION),
+            auditor=I2B2SensitiveUsage)
+    def __init__(self, redcap_sessionmaker, oversight_rc, auditor):
+        self.__rcsm = redcap_sessionmaker
+        self.project_id = oversight_rc.project_id
+        self.__auditor = auditor
+
+    @classmethod
+    def _memberq(cls, pid, who):
+        '''
+        >>> print OversightCommittee._memberq(238, 'big.wig')
+        ... #doctest: +NORMALIZE_WHITESPACE
+        SELECT redcap_user_rights.project_id, redcap_user_rights.username
+        FROM redcap_user_rights
+        WHERE redcap_user_rights.project_id = :project_id_1
+        AND redcap_user_rights.username = :username_1
+        '''
+        t = redcapdb.redcap_user_rights
+        return t.select().\
+            where(t.c.project_id == pid).\
+            where(t.c.username == who)
+
+    def droc_audit(self, cn):
+        s = self.__rcsm()
+        ans = s.execute(self._memberq(self.project_id, cn))
+        in_droc = len(ans.fetchall()) == 1
+        log.info('issue DROC? %s', in_droc)
+        log.debug('DROC member? %s project #%s', cn, self.project_id)
+        return [self.__auditor] if in_droc else []
+
+
+class HeronRecords(Token):
     '''
 
     In the oversight_project, userid of sponsored users are stored in
@@ -280,10 +319,11 @@ class HeronRecords(object):
                     SAA_CONFIG_SECTION),
             oversight_rc=(redcap_connect.SurveySetup,
                           OVERSIGHT_CONFIG_SECTION),
+            oc=OversightCommittee,
             smaker=(orm.session.Session,
                     redcapdb.CONFIG_SECTION),
             timesrc=KTimeSource)
-    def __init__(self, mc, pm, stats, saa_rc, oversight_rc,
+    def __init__(self, mc, pm, stats, saa_rc, oversight_rc, oc,
                  smaker, timesrc):
         log.debug('HeronRecords.__init__ again?')
         self._smaker = smaker
@@ -294,117 +334,44 @@ class HeronRecords(object):
         self._saa_survey_id = saa_rc.survey_id
         self._saa_rc = saa_rc
         self._oversight_rc = oversight_rc
+        self.__oc = oc
         self._oversight_project_id = oversight_rc.project_id
         self._executives = oversight_rc.executives
 
     def issue(self, req):
         mc = self._mc
 
-        hr = self
-        badge = req.badge
-
-        # limit capabilities of self to one user
-        class I2B2Account(object):
-            '''
-            .. todo:: consider moving this closer to i2b2pm.I2B2PM
-            '''
-            def __init__(self, agent):
-                assert(agent.badge is badge)
-                self.agent = agent
-
-            def __repr__(self):
-                return 'Access(%s)' % self.agent
-
-            def creds(self):
-                key, u = hr._pm.authz(badge.cn, badge.full_name())
-                return (badge.cn, key)
-
-        class Browser(object):
-            ''''Users get to do LDAP searches,
-            but they don't get to exercise the rights of
-            the users they find.
-
-            .. todo:: consider moving this into MedCenter
-            '''
-            def lookup(self, uid):
-                return mc.lookup(uid)
-
-            def search(self, max, cn, sn, givenname):
-                return mc.search(max, cn, sn, givenname)
-
-        class Record(object):
-            def ensure_saa(self, params):
-                return hr._saa_rc(badge.cn, params)
-
-            def get_sig(self):
-                return hr._check_saa_signed(badge.mail)
-
-            def ensure_oversight(self, params):
-                return hr._oversight_rc(badge.cn, params, multi=True)
-
-            def get_training(self):
-                try:
-                    when = mc.training(req.idvault_entry)
-                except (KeyError):
-                    log.info('no training on file for: %s (%s)',
-                             badge.cn, badge.full_name())
-                    raise NoTraining
-                except (IOError):
-                    log.warn('failed to look up training due to IOError')
-                    log.debug('training error detail', exc_info=True)
-                    raise NoTraining
-                current = when >= hr._t.today().isoformat()
-                if not current:
-                    log.info('training expried %s for: %s (%s)',
-                             when, badge.cn, badge.full_name())
-                    raise NoTraining(when)
-                return when
-
-            def get_sponsor(self):
-                return hr._sponsored(badge.cn)
-
-            def repository_authz(self, user):
-                # TODO: move sponsor checking from Affiliate to Record
-                # to follow ocap discipline.
-                user.sponsor()
-                self.get_sig()
-                self.get_training()
-                return I2B2Account(user)
-
-            def disclaimer_ack(self):
-                return hr._disclaimer_acknowledgement(badge.cn)
-
-        ex = fac = user = None
-
-        if badge.cn in self._executives:
-            ex = Executive(badge,
-                           req.idvault_entry,
-                           Record(), Browser())
-            user = ex
-        else:
-            try:
-                fac = Faculty(mc.faculty_badge(req.idvault_entry),
-                               req.idvault_entry,
-                               Record(), Browser())
-                user = fac
-            except medcenter.NotFaculty:
-                user = Affiliate(badge, req.idvault_entry,
-                                 Record(), Browser())
-
-        req.executive = ex
-        req.faculty = fac
-        req.user = user
+        aff = medcenter.Affiliate(req.session, req.remote_user, mc)
+        fac = mc.is_faculty(aff)
+        cls = Faculty if fac else Affiliate
+        req.agent = cls(req.remote_user, mc, req.session,
+                        self._t, self, self._pm, self.__oc)
         req.stats_reporter = self.__stats
 
-        log.info('issue executive: %s faculty: %s user: %s', ex, fac, user)
+        log.info('issue: %s faculty? %s', req.agent, fac)
 
-        return [user]
+        return [req.agent]
 
     def audit(self, cap, p=PERM_USER):
         log.debug('HeronRecords.audit(%s, %s)' % (cap, p))
-        if not isinstance(cap, Faculty if p is PERM_FACULTY else Affiliate):
+        try:
+            if not cap._hr is self:  # todo: consider using sealing
+                raise TypeError
+        except AttributeError:
             raise TypeError
-        self._mc.read_badge(cap.idcap)
+
+        if p is PERM_USER:
+            pass
+        elif p is PERM_FACULTY:
+            if not isinstance(cap, Faculty):
+                raise TypeError
+        elif p is PERM_DROC:
+            try:
+                cap.sensitive_usage()
+            except NoPermission:
+                raise TypeError
+        else:
+            raise TypeError
 
     def _disclaimer_acknowledgement(self, user_id):
         '''
@@ -435,8 +402,13 @@ class HeronRecords(object):
                 fetchall():
             log.info('no SAA: %s', mail)
             raise NoAgreement()
+        return True
 
     def _sponsored(self, uid):
+        if uid in self._executives:
+            log.info('sponsored by virtue of executive role: %s', uid)
+            return True
+
         decision, candidate, dc = _sponsor_queries(self._oversight_project_id)
 
         # mysql work-around for
@@ -615,71 +587,127 @@ class NoAgreement(NoPermission):
     pass
 
 
-class Affiliate(object):
-    def __init__(self, badge, idcap, record, browser):
-        self.badge = badge
-        self.idcap = idcap
-        self.record = record
-        self.browser = browser
-        self._sponsor = None
+class Affiliate(medcenter.Affiliate, Token):
+    '''
+      >>> Affiliate.cache_sizes_sum() < Affiliate.cache_max
+      True
+    '''
+    def __init__(self, cn, mc, cache, time_source, hr, pm, oc):
+        medcenter.Affiliate.__init__(self, cache, cn, mc)
+        cache['cn'] = cn
+        self.__t = time_source
+        self._hr = hr
+        self.__pm = pm
+        self.__oc = oc
 
     def __repr__(self):
-        return 'Affiliate(%s)' % (self.badge)
+        return 'Affiliate(%s)' % (self.cn)
 
-    def sort_name(self):
-        # law of demeter says move this to Badge()...
-        return "%s, %s" % (self.badge.sn, self.badge.givenname)
+    cache_sizes = dict(medcenter.Affiliate.cache_sizes,
+                       sa=200, sig=1, hstrain=10, sponsored=1,
+                       droc=1)
+
+    def _memo(self, k, thunk):
+        try:
+            return self[k]
+        except KeyError:
+            pass
+        v = thunk()
+        return self._put(k, v)
 
     def ensure_saa_survey(self):
-        return self.record.ensure_saa(dict(user_id=self.badge.cn,
-                                           full_name=self.sort_name()))
+        thunk = lambda: self._hr._saa_rc(self.__cn,
+                                         dict(user_id=self.__cn,
+                                              full_name=self.sort_name()))
+        return self._memo('sa', thunk)
 
     def signature(self):
-        return self.record.get_sig()
+        thunk = lambda: int(self._hr._check_saa_signed(self.mail))
+        return self._memo('sig', thunk)
 
     def training(self):
-        return self.record.get_training()
+        try:
+            when = self.trained_thru()
+        except (IOError):
+            log.warn('failed to look up training due to IOError')
+            log.debug('training error detail', exc_info=True)
+            raise NoTraining
+        except LookupError:
+            log.info('no training on file for: %s (%s)',
+                     self.cn, self.full_name())
+            raise NoTraining
+
+        current = when >= self.__t.today().isoformat()
+        if not current:
+            log.info('training expried %s for: %s (%s)',
+                     when, self.cn, self.full_name())
+            raise NoTraining(when)
+        return self._put('hstrain', when)
 
     def sponsor(self):
-        '''Since Affiliate objects are only used for the lifetime of a
-        request, we figure it's OK to cache the sponsor.
-        '''
-        if not self._sponsor:
-            self._sponsor = self.record.get_sponsor()
-        return self._sponsor
+        thunk = lambda: int(self._hr._sponsored(self.__cn))
+        return self._memo('sponsored', thunk)
+
+    def sensitive_usage(self):
+        if 'droc' in self and not self['droc']:
+            raise NoPermission
+
+        maybe = self.__oc.droc_audit(self.cn)
+
+        self._put('droc', 1 if maybe else 0)
+
+        if not maybe:
+            raise NoPermission
+        return maybe[0]
 
     def repository_authz(self):
-        return self.record.repository_authz(self)
+        self.sponsor()
+        self.signature()
+        self.training()
+        return self.__pm.account_for(self)
 
     def disclaimer_ack(self):
-        return self.record.disclaimer_ack()
+        return self._hr._disclaimer_acknowledgement(self.__cn)
 
-
-class Executive(Affiliate):
-    def __repr__(self):
-        return 'Executive(%s)' % (self.badge)
-
-    def sponsor(self):
-        return self
+    def oversight_request(self):
+        raise medcenter.NotFaculty
 
 
 class Faculty(Affiliate):
     def __repr__(self):
-        return 'Faculty(%s)' % (self.badge)
+        return 'Faculty(%s)' % (self.cn)
 
     def sponsor(self):
         return self
+
+    def oversight_request(self):
+        return OversightRequest(self,
+                                self._hr._oversight_rc)
+
+
+class OversightRequest(Token):
+    '''
+    '''
+    def __init__(self, agent, orc):
+        self.__agent = agent
+        self.__orc = orc
+        self.__lookup = agent.browser.lookup
+
+    def __repr__(self):
+        return 'OversightRequest(from=%s)' % self.__agent
 
     def ensure_oversight_survey(self, uids, what_for):
         if what_for not in HeronRecords.oversight_request_purposes:
             raise TypeError(what_for)
 
-        tp = team_params(self.browser.lookup, uids)
-        return self.record.ensure_oversight(dict(tp,
-                                                 user_id=self.badge.cn,
-                                                 full_name=self.sort_name(),
-                                                 what_for=what_for,
-                                                 multi='yes'))
+        tp = team_params(self.__lookup, uids)
+
+        return self.__orc(
+            self.__agent.cn, dict(tp,
+                           user_id=self.__agent.cn,
+                           full_name=self.__agent.sort_name(),
+                           what_for=what_for,
+                           multi='yes'), multi=True)
 
 
 def team_params(lookup, uids):
@@ -754,51 +782,6 @@ class DecisionRecords(object):
         d = dict(avl)
         investigator = mc.lookup(d['user_id'])
         return investigator, team, d
-
-
-class OversightCommittee(object):
-    @inject(redcap_sessionmaker=(orm.session.Session,
-                                 redcapdb.CONFIG_SECTION),
-            oversight_rc=(redcap_connect.SurveySetup,
-                          OVERSIGHT_CONFIG_SECTION),
-            auditor=I2B2SensitiveUsage)
-    def __init__(self, redcap_sessionmaker, oversight_rc, auditor):
-        self.__rcsm = redcap_sessionmaker
-        self.project_id = oversight_rc.project_id
-        self.__auditor = auditor
-
-    @classmethod
-    def _memberq(cls, pid, who):
-        '''
-        >>> print OversightCommittee._memberq(238, 'big.wig')
-        ... #doctest: +NORMALIZE_WHITESPACE
-        SELECT redcap_user_rights.project_id, redcap_user_rights.username
-        FROM redcap_user_rights
-        WHERE redcap_user_rights.project_id = :project_id_1
-        AND redcap_user_rights.username = :username_1
-        '''
-        t = redcapdb.redcap_user_rights
-        return t.select().\
-            where(t.c.project_id == pid).\
-            where(t.c.username == who)
-
-    def issue(self, req):
-        s = self.__rcsm()
-        ans = s.execute(self._memberq(self.project_id, req.badge.cn))
-        in_droc = len(ans.fetchall()) == 1
-        log.info('issue DROC? %s', in_droc)
-        log.debug('DROC member? %s project #%s', req.badge.cn, self.project_id)
-
-        if not in_droc:
-            return []
-        req.droc_audit = self.__auditor
-        return [self.__auditor]
-
-    def audit(self, cap, p):
-        if p != PERM_DROC:
-            raise TypeError
-        if cap != self.__auditor:
-            raise TypeError
 
 
 class _DataDict(object):
@@ -948,12 +931,24 @@ class Mock(injector.Module, rtconfig.MockMixin):
     @classmethod
     def login_sim(cls, mc, hr):
         def mkrole(uid):
-            req = medcenter.MockRequest()
+            req = MockRequest()
             req.remote_user = uid
             mc.issue(req)
             hr.issue(req)
             return req.user, req.faculty, req.executive
         return mkrole
+
+
+class _AttrDict(dict):
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+        self.__dict__ = self
+
+
+class MockRequest(_AttrDict):
+    def __init__(self):
+        _AttrDict.__init__(self)
+        self.session = {}
 
 
 class RunTime(rtconfig.IniModule):  # pragma nocover
@@ -995,7 +990,7 @@ def _test_main():  # pragma nocover
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
     userid = sys.argv[1]
-    req = medcenter.MockRequest()
+    req = MockRequest()
     req.remote_user = userid
     hr, oc, ds = RunTime.make(None, [HeronRecords,
                                      OversightCommittee,

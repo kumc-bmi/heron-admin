@@ -14,11 +14,14 @@ Use `url=mock:mockDirectory.csv` to use a mock service rather
 than a native LDAP service.
 '''
 
+import logging
+
 from injector import inject, provides, singleton
 
 import rtconfig
 
 CONFIG_SECTION = 'enterprise_directory'
+log = logging.getLogger(__name__)
 
 
 class LDAPService(object):
@@ -48,6 +51,7 @@ class NativeLDAPService(LDAPService):
         return l
 
     def search(self, query, attrs):
+        log.info('network fetch for %s', query)
         l = self._l or self._bind()
         base = self._rt.base
         try:
