@@ -615,6 +615,11 @@ class NoAgreement(NoPermission):
     pass
 
 
+class Affiliate2(medcenter.Affiliate):
+    def __init__(self, cn, mc, cache):
+        medcenter.Affiliate.__init__(self, cn, mc, cache)
+
+
 class Affiliate(object):
     def __init__(self, badge, idcap, record, browser):
         self.badge = badge

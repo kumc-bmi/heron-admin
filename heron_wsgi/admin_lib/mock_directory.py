@@ -37,6 +37,9 @@ It also supplies HSC training info::
 import pkg_resources
 import csv
 import re
+import logging
+
+log = logging.getLogger(__name__)
 
 
 class MockDirectory(object):
@@ -45,6 +48,7 @@ class MockDirectory(object):
         self._d = dict([(r['cn'], r) for r in records])
 
     def search(self, q, attrs):
+        log.info('network fetch for %s', q)
         i = self._qid(q)
         record = self._d[i]
         return [('(cn=%s)' % i,

@@ -25,6 +25,7 @@ directory::
   >>> req = MockRequest()
   >>> req.remote_user = 'john.smith'
   >>> login_caps = m.issue(req)
+  INFO:mock_directory:network fetch for (cn=john.smith)
   INFO:medcenter:issuing badge (LDAP): John Smith <john.smith@js.example>
   >>> req.badge
   John Smith <john.smith@js.example>
@@ -93,6 +94,7 @@ class MedCenter(object):
     To search the directory, without conferring authority::
       >>> (m, ) = Mock.make([MedCenter])
       >>> hits = m.search(10, 'john.smith', '', '')
+      INFO:mock_directory:network fetch for (cn=john.smith*)
       >>> hits
       [John Smith <john.smith@js.example>]
 
@@ -107,6 +109,9 @@ class MedCenter(object):
     '''
     excluded_jobcode = "24600"
     permissions = (PERM_ID,)
+
+    attributes = ("cn", "ou", "sn", "givenname", "title", "mail",
+                  "kumcPersonFaculty", "kumcPersonJobcode")
 
     @inject(searchsvc=ldaplib.LDAPService,
             trainingfn=KTrainingFunction,
@@ -123,6 +128,51 @@ class MedCenter(object):
 
     def __repr__(self):
         return "MedCenter(s, t)"
+
+    def get(self, name):
+        matches = self._svc.search('(cn=%s)' % name, self.attributes)
+        if len(matches) != 1:
+            if len(matches) == 0:
+                raise KeyError(name)
+            else:  # pragma nocover
+                raise ValueError(name)  # ambiguous
+
+        dn, ldapattrs = matches[0]
+        return self._simplify(ldapattrs)
+
+    @classmethod
+    def _simplify(cls, ldapattrs):
+        r'''Get the 1st of each LDAP style list of values for each attribute.
+
+          >>> d = MedCenter._simplify(
+          ...    {'kumcPersonJobcode': ['1234'],
+          ...     'kumcPersonFaculty': ['Y'],
+          ...      'cn': ['john.smith'],
+          ...      'title': ['Chair of Department of Neurology'],
+          ...      'sn': ['Smith'],
+          ...      'mail': ['john.smith@js.example'],
+          ...      'ou': [''],
+          ...      'givenname': ['John']})
+          >>> import pprint
+          >>> pprint.pprint(d)
+          {'cn': 'john.smith',
+           'givenname': 'John',
+           'kumcPersonFaculty': 'Y',
+           'kumcPersonJobcode': '1234',
+           'mail': 'john.smith@js.example',
+           'ou': '',
+           'sn': 'Smith',
+           'title': 'Chair of Department of Neurology'}
+        '''
+        d = dict([(n, ldapattrs.get(n, [None])[0])
+                  for n in cls.attributes])
+
+        for n in cls.attributes:
+            if d[n] is None:
+                log.warn('missing LDAP attribute %s for %s',
+                         n, d.get('cn', '<no cn either!>'))
+
+        return d
 
     def lookup(self, name):
         matches = self._svc.search('(cn=%s)' % name, Badge.attributes)
@@ -204,6 +254,78 @@ class NotFaculty(Exception):
     pass
 
 
+class Affiliate(object):
+    '''
+      >>> (mc, ) = Mock.make([MedCenter])
+      >>> session_cache = {}
+      >>> js = Affiliate('john.smith', mc, session_cache)
+
+      >>> js.sn
+      INFO:mock_directory:network fetch for (cn=john.smith)
+      'Smith'
+
+    Network fetches are cached::
+
+      >>> (js.sn, js.givenname)
+      ('Smith', 'John')
+
+      >>> js.sn_typo
+      Traceback (most recent call last):
+      ...
+      AttributeError: sn_typo
+
+      >>> js.is_faculty
+      True
+      >>> bill = Affiliate('bill.student', mc, {})
+      >>> bill.is_faculty
+      INFO:mock_directory:network fetch for (cn=bill.student)
+      False
+
+      >>> js.trained_thru()
+      '2012-01-01'
+      >>> bill.trained_thru()
+      Traceback (most recent call last):
+        ...
+      LookupError
+    '''
+    def __init__(self, cn, mc, cache):
+        self.__cn = cn
+        self.__mc = mc
+        self.__cache = cache
+
+    def __repr__(self):
+        # hmm... go remote to get repr?
+        return '%s %s <%s>' % (self.givenname, self.sn, self.mail)
+
+    def __getattr__(self, n):
+        cache = self.__cache
+        try:
+            return cache[n]
+        except KeyError:
+            if not n in MedCenter.attributes:
+                raise AttributeError(n)
+        d = self.__mc.get(self.__cn)
+        cache.update(d)
+        return cache[n]
+
+    @property
+    def is_faculty(self):
+        cn = self.__cn
+        log.debug('testing faculty kludge for %s', cn)
+        if ('faculty:' + cn) in self.__mc._testing_faculty:
+            log.debug('faculty status granted to %s by configuration', cn)
+            return True
+
+        return (self.kumcPersonFaculty == 'Y'
+                and self.kumcPersonJobcode != MedCenter.excluded_jobcode)
+
+    def trained_thru(self):
+        when = self.__mc._training(self.__cn)
+        if not when:
+            raise LookupError
+        return when
+
+        
 class _AttrDict(dict):
     def __init__(self, *args, **kwargs):
         dict.__init__(self, *args, **kwargs)
