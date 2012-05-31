@@ -1,0 +1,11 @@
+<datasources>
+
+<local-tx-datasource>
+  <jndi-name>QueryToolBLUEHERONDS</jndi-name>
+  <driver-class>oracle.jdbc.driver.OracleDriver</driver-class>
+  <connection-url>jdbc:oracle:thin:@bmidev1:1521:bmid</connection-url>
+  <user-name>BLUEHERONdata</user-name>
+  <password>xyzpdq</password>
+
+</local-tx-datasource>
+</datasources>

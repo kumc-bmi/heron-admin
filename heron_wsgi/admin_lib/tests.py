@@ -1,19 +1,29 @@
-'''tests.py -- run all the doctests for code coverage analysis.
+'''tests.py -- Run all the doctests for code coverage analysis.
+---------------------------------------------------------------
 
-.. todo:: use nose with doctest instead
+.. todo:: use nose__ with doctest instead
+
+__ http://readthedocs.org/docs/nose/en/latest/
 
 '''
 import doctest
 
+
 def main():
-    import hcard_mock
-    doctest.testmod(hcard_mock)
+    import sealing
+    doctest.testmod(sealing)
+
+    import ocap_file
+    doctest.testmod(ocap_file)
+
+    import jndi_util
+    doctest.testmod(jndi_util)
+
+    import mock_directory
+    doctest.testmod(mock_directory)
 
     import rtconfig
     doctest.testmod(rtconfig)
-
-    import i2b2pm
-    doctest.testmod(i2b2pm)
 
     import ldaplib
     doctest.testmod(ldaplib)
@@ -24,8 +34,14 @@ def main():
     import redcap_connect
     doctest.testmod(redcap_connect)
 
+    import i2b2pm
+    doctest.testmod(i2b2pm)
+
     import heron_policy
     doctest.testmod(heron_policy)
+
+    import noticelog
+    doctest.testmod(noticelog)
 
     import checklist
     doctest.testmod(checklist)

@@ -1,4 +1,5 @@
 '''disclaimer -- access disclaimers and acknowledgements from REDCap EAV DB
+---------------------------------------------------------------------------
 
 :class:`Disclaimer` and :class:`Acknowledgement` provide read-only
 access via SQL queries.
@@ -25,14 +26,17 @@ Now note the mapping to the Disclaimer class::
   [Disclaimer(disclaimer_id=1,
               url=http://example/blog/item/heron-release-xyz, current=1)]
 
+  .>> acksproj.add_record('bob', 'http://informatics.kumc.edu/blog/2012/x')
+  .>> for ack in s.query(Acknowledgement):
+  ...     print ack
+  '@@'
+
 '''
 
 # python stdlib http://docs.python.org/library/
+import json
 import StringIO
-import datetime
 import logging
-import urllib
-import urllib2
 from xml.dom.minidom import parse
 
 # from pypi
@@ -46,6 +50,7 @@ import xpath
 import rtconfig
 import redcapdb
 import redcap_connect
+from ocap_file import WebReadable
 
 DISCLAIMERS_SECTION = 'disclaimers'
 ACKNOWLEGEMENTS_SECTION = 'disclaimer_acknowledgements'
@@ -57,15 +62,15 @@ log = logging.getLogger(__name__)
 class Disclaimer(redcapdb.REDCapRecord):
     fields = ('disclaimer_id', 'url', 'current')
 
-    def content(self, ua):
+    def content(self, rdcap):
         r'''
            >>> d = Disclaimer()
            >>> d.url = 'http://example/'
-           >>> d.content(_TestUrlOpener())
+           >>> d.content(_MockTracBlog())
            ... # doctest: +ELLIPSIS
            (u'<div id="blog-main">\n<h1 class="blog-title">...', u'headline')
         '''
-        body = ua.open(self.url).read()  # pylint: disable=E1101
+        body = rdcap.subRdFile(self.url).getBytes()
         kludge = StringIO.StringIO(body.replace('&larr;', '').\
                                        replace('&rarr;', ''))  # KLUDGE
         elt = xpath.findnode('//*[@id="blog-main"]', parse(kludge))
@@ -87,9 +92,15 @@ _test_doc = '''
 '''
 
 
-class _TestUrlOpener(object):
-    def open(self, _):  # pylint: disable=R0201
+class _MockTracBlog(object):
+    def inChannel(self):
         return StringIO.StringIO(_test_doc)
+
+    def getBytes(self):
+        return self.inChannel().read()
+
+    def subRdFile(self, path):
+        return self
 
 
 class Acknowledgement(redcapdb.REDCapRecord):
@@ -100,14 +111,10 @@ class AcknowledgementsProject(object):
     '''AcknowledgementsProject serves as a REDCap API proxy for adding
     Acknowledgement records.
     '''
-    @inject(rt=(rtconfig.Options, ACKNOWLEGEMENTS_SECTION),
-            ua=urllib.URLopener,
+    @inject(proxy=(redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION),
             timesrc=KTimeSource)
-    def __init__(self, rt, ua, timesrc):
-        '''
-        .. todo:: take proxy as arg rather than ua, rt
-        '''
-        self._proxy = redcap_connect.endPoint(ua, rt.api_url, rt.token)
+    def __init__(self, proxy, timesrc):
+        self._proxy = proxy
         self._timesrc = timesrc
 
     def add_records(self, disclaimer_address, whowhen):
@@ -144,6 +151,37 @@ def last_seg(addr):
     return addr[addr.rfind('/'):]
 
 
+class _MockREDCapAPI2(redcap_connect._MockREDCapAPI):
+    project_id = redcap_connect._test_settings.project_id
+
+    def __init__(self, smaker):
+        self.__smaker = smaker
+
+    def dispatch(self, params):
+        if 'import' in params['action']:
+            return self.service_import(params)
+        else:
+            return super(_MockREDCapAPI2, self).dispatch(params)
+
+    def service_import(self, params):
+        from heron_policy import add_test_eav
+
+        rows = json.loads(params['data'][0])
+        schema = rows[0].keys()
+        if sorted(schema) == sorted([u'ack', u'timestamp',
+                                     u'disclaimer_address',
+                                     u'user_id', u'acknowledgement_complete']):
+            values = rows[0]
+            record = hash(values['user_id'])
+            s = self.__smaker()
+            add_test_eav(s, self.project_id, 1,
+                         record, values.items())
+            return StringIO.StringIO('')
+        else:
+            raise IOError('bad request: bad acknowledgement schema: '
+                          + str(schema))
+
+
 class Mock(redcapdb.SetUp, rtconfig.MockMixin):
     def __init__(self):
         sqlalchemy.orm.clear_mappers()
@@ -152,19 +190,15 @@ class Mock(redcapdb.SetUp, rtconfig.MockMixin):
     def mods(cls):
         return redcapdb.Mock.mods() + [cls(), TestSetUp()]
 
-    @provides((rtconfig.Options, DISCLAIMERS_SECTION))
-    def disclaimer_options(self):
-        return rtconfig.TestTimeOptions(dict(project_id='123'))
+    @provides((WebReadable, DISCLAIMERS_SECTION))
+    def rdblog(self):
+        return _MockTracBlog()
 
-    @provides((rtconfig.Options, ACKNOWLEGEMENTS_SECTION))
-    def acknowledgements_options(self):
-        return rtconfig.TestTimeOptions(dict(project_id='1234',
-                                           api_url='http://example/recap/API',
-                                           token='12345token'))
-
-    @provides(urllib.URLopener)
-    def web_ua(self):
-        return _TestURLopener()
+    @provides((redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION))
+    @inject(smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
+    def redcap_api_endpoint(self, smaker):
+        webcap = _MockREDCapAPI2(smaker)
+        return redcap_connect.EndPoint(webcap, '12345token')
 
     @provides(KTimeSource)
     def time_source(self):
@@ -172,16 +206,17 @@ class Mock(redcapdb.SetUp, rtconfig.MockMixin):
 
 
 class TestSetUp(redcapdb.SetUp):
+    disclaimer_pid = '123'
+    ack_pid = '1234'
+
     @singleton
     @provides((sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
     @inject(engine=(sqlalchemy.engine.base.Connectable,
-                    redcapdb.CONFIG_SECTION),
-            drt=(rtconfig.Options, DISCLAIMERS_SECTION),
-            art=(rtconfig.Options, ACKNOWLEGEMENTS_SECTION))
-    def redcap_sessionmaker(self, engine, drt, art):
+                    redcapdb.CONFIG_SECTION))
+    def redcap_sessionmaker(self, engine):
         smaker = super(TestSetUp, self).redcap_sessionmaker(engine=engine)
-        Disclaimer.eav_map(drt.project_id)
-        Acknowledgement.eav_map(art.project_id)
+        Disclaimer.eav_map(self.disclaimer_pid)
+        Acknowledgement.eav_map(self.ack_pid)
         s = smaker()
         insert_data = redcapdb.redcap_data.insert()
         for field_name, value in (
@@ -189,7 +224,8 @@ class TestSetUp(redcapdb.SetUp):
              ('url', 'http://example/blog/item/heron-release-xyz'),
              ('current', 1)):
             s.execute(insert_data.values(event_id=1,
-                                         project_id=drt.project_id, record=1,
+                                         project_id=self.disclaimer_pid,
+                                         record=1,
                                          field_name=field_name, value=value))
 
             log.debug('inserted: %s, %s', field_name, value)
@@ -200,33 +236,36 @@ class TestSetUp(redcapdb.SetUp):
 
 class _TestTimeSource(object):
     def now(self):
+        import datetime
         return datetime.datetime(2011, 9, 2)
 
     def today(self):
+        import datetime
         return datetime.date(2011, 9, 2)
-
-
-class _TestURLopener(object):
-    def open(self, addr, data=None):
-        if addr.startswith('http://example/recap/API'):
-            # todo: verify contents?
-            return StringIO.StringIO('')
-        else:
-            raise IOError('404 not found')
 
 
 class RunTime(rtconfig.IniModule):
     def configure(self, binder):
-        drt = self.bind_options(binder, ['project_id'], DISCLAIMERS_SECTION)
+        drt = self.get_options(['project_id'], DISCLAIMERS_SECTION)
         Disclaimer.eav_map(drt.project_id)
 
-        art = self.bind_options(binder,
-                                'project_id api_url token'.split(),
-                                ACKNOWLEGEMENTS_SECTION)
+        art, api = redcap_connect.RunTime.endpoint(
+            self, ACKNOWLEGEMENTS_SECTION, extra=('project_id',))
         Acknowledgement.eav_map(art.project_id)
 
-        binder.bind(KTimeSource, injector.InstanceProvider(datetime.datetime))
-        binder.bind(urllib.URLopener, urllib2.build_opener)
+        binder.bind((redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION),
+                    injector.InstanceProvider(api))
+
+    @provides((WebReadable, DISCLAIMERS_SECTION))
+    def rdblog(self, site='http://informatics.kumc.edu/'):
+        from urllib2 import build_opener, Request
+        return WebReadable(site, build_opener, Request)
+
+    @provides(KTimeSource)
+    def real_time(self):
+        import datetime
+
+        return datetime.datetime
 
     @classmethod
     def mods(cls, ini):
@@ -235,6 +274,9 @@ class RunTime(rtconfig.IniModule):
 
 def _test_main():
     import sys
+    from urllib2 import build_opener, Request
+    from ocap_file import WebReadable
+
     logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
     user_id = sys.argv[1]
@@ -268,11 +310,28 @@ def _test_main():
         for ack in s.query(Acknowledgement):
             print ack
 
+    if '--release-info' in sys.argv:
+        from operator import attrgetter
+        from itertools import groupby
+        acks = s.query(Acknowledgement).all()
+        per_release = dict([(addr, list(acks)) for addr, acks in
+                             groupby(acks, attrgetter('disclaimer_address'))])
+        users_per_release = dict([(addr, len(list(acks))) for addr, acks in
+                                  per_release.iteritems()])
+        start_release = dict([(addr, min([a.timestamp for a in acks]))
+                              for addr, acks in
+                              per_release.iteritems()])
+        for release in per_release.keys():
+            print "%s,%s,%s" % (start_release[release],
+                                users_per_release[release], release)
+
     if '--current' in sys.argv:
         print "current disclaimer and content:"
         for d in s.query(Disclaimer).filter(Disclaimer.current == 1):
             print d
-            c, h = d.content(urllib2.build_opener())
+            webrd = WebReadable('http://informatics.kumc.edu/',
+                                build_opener(), Request)
+            c, h = d.content(webrd)
             print h
             print c[:100]
 

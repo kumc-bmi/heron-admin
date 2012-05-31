@@ -1,17 +1,32 @@
-'''i2b2pm -- I2B2 Project Management cell client/proxy
+'''i2b2pm -- I2B2 Project Management accounts and permissions
+-------------------------------------------------------------
 
-Generate authorization to use an i2b2 project::
+We use :class:`I2B2PM` to manage user accounts and permissions in the
+I2B2 project management cell via its database.
 
-  >>> pm, depgraph = Mock.make([I2B2PM, None])
+  >>> pm, dbsrc = Mock.make([I2B2PM, (orm.session.Session, CONFIG_SECTION)])
+
+An object with a reference to this :class:`I2B2PM` can have us
+generate authorization to access I2B2, once it has verified to its
+satisfaction that the repository access policies are met.
+
+For example, an object of the `I2B2Account` nested class of
+:mod:`heron_wsgi.admin_lib.heron_policy.HeronRecords` would generate a
+one-time authorization password and the corresponding hashed form for
+John Smith like this::
+
   >>> pw, js = pm.authz('john.smith', 'John Smith')
   >>> pw
   'dfd03595-ab3e-4448-9c8e-a65a290cc3c5'
+
+The password field in the `User` record is hashed::
+
   >>> js.password
   u'da67296336429545fe63f61644e420'
 
-The result is a `pm_user_data` record::
+The effect is a `pm_user_data` record::
+
   >>> import pprint
-  >>> dbsrc = depgraph.get((orm.session.Session, CONFIG_SECTION))
   >>> ans = dbsrc().execute('select user_id, password, status_cd'
   ...                       ' from pm_user_data')
   >>> pprint.pprint(ans.fetchall())
@@ -28,7 +43,7 @@ The result is a `pm_user_data` record::
    (u'BlueHeron', u'john.smith', u'DATA_OBFSC', u'A'),
    (u'BlueHeron', u'john.smith', u'DATA_AGG', u'A')]
 
-Generate another authorization::
+If John logs in again, a new one-time authorization is issued::
 
   >>> auth, js2 = pm.authz('john.smith', 'John Smith')
   >>> auth
@@ -40,6 +55,7 @@ This updates the `password` column of the `pm_user_data` record::
   ...                       ' from pm_user_data')
   >>> pprint.pprint(ans.fetchall())
   [(u'john.smith', u'e5ab367ceece604b7f7583d024ac4e2b', u'A')]
+
 '''
 
 import logging
@@ -52,9 +68,10 @@ from sqlalchemy import Column, ForeignKey
 from sqlalchemy import func, orm
 from sqlalchemy.types import String, Date, Enum
 from sqlalchemy.ext.declarative import declarative_base
-import sqlalchemy
 
 import rtconfig
+import jndi_util
+import ocap_file
 
 CONFIG_SECTION = 'i2b2pm'
 KUUIDGen = injector.Key('UUIDGen')
@@ -68,7 +85,7 @@ class I2B2PM(object):
             uuidgen=KUUIDGen)
     def __init__(self, datasrc, uuidgen):
         '''
-        @param datasrc: a function that returns a sqlalchemy session
+        :param datasrc: a function that returns a sqlalchemy session
         '''
         self._datasrc = datasrc
         self._uuidgen = uuidgen
@@ -179,23 +196,27 @@ class UserRole(Base, Audited):
 
 
 class RunTime(rtconfig.IniModule):
-    @provides((rtconfig.Options, CONFIG_SECTION))
-    def settings(self):
-        rt = rtconfig.RuntimeOptions(['url'])
-        rt.load(self._ini, CONFIG_SECTION)
-        return rt
+    jndi_name = 'PMBootStrapDS'
 
     # abusing Session a bit; this really provides a subclass, not an
     # instance, of Session
     @singleton
     @provides((orm.session.Session, CONFIG_SECTION))
-    @inject(rt=(rtconfig.Options, CONFIG_SECTION))
-    def pm_sessionmaker(self, rt):
-        engine = sqlalchemy.engine_from_config(rt.settings(), 'sqlalchemy.')
-        sm = orm.session.sessionmaker(engine)
+    def pm_sessionmaker(self):
+        import os
+        from sqlalchemy import create_engine
+
+        rt = rtconfig.RuntimeOptions(['jboss_deploy'])
+        rt.load(self._ini, CONFIG_SECTION)
+
+        jdir = ocap_file.Readable(rt.jboss_deploy, os.path, os.listdir, open)
+        ctx = jndi_util.JBossContext(jdir, create_engine)
+
+        sm = orm.session.sessionmaker()
 
         def make_session_and_revoke():
-            ds = sm()
+            engine = ctx.lookup(self.jndi_name)
+            ds = sm(bind=engine)
             revoke_expired_auths(ds)
             return ds
 
@@ -212,7 +233,9 @@ class Mock(injector.Module, rtconfig.MockMixin):
     @singleton
     @provides((orm.session.Session, CONFIG_SECTION))
     def pm_sessionmaker(self):
-        engine = sqlalchemy.create_engine('sqlite://')
+        from sqlalchemy import create_engine
+
+        engine = create_engine('sqlite://')
         Base.metadata.create_all(engine)
         return orm.session.sessionmaker(engine)
 
@@ -254,7 +277,7 @@ def _test_main():
 def _list_users():
     import csv, sys
     (sm, ) = RunTime.make(None,
-                          [(sqlalchemy.orm.session.Session, CONFIG_SECTION)])
+                          [(orm.session.Session, CONFIG_SECTION)])
     s = sm()
     # get column names
     #ans = s.execute("select * from pm_user_session "

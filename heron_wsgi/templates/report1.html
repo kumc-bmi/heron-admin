@@ -5,29 +5,99 @@
 <xi:include href="kumc_layout.xml" />
 <head>
 <title>HERON Usage
-</title></head>
+</title>
+<style type="text/css">
+table { width: 85% }
+.stats td { text-align: right }
+.stats thead th { text-align: center }
+
+/*
+ * cribbed from Project 03 in
+ * Eric Meyer on Css: Mastering the Language of Web Design
+ * New Riders 2002
+ * http://more.ericmeyeroncss.com/projects/03/
+ */
+
+.stats th, td { padding: 0 0.5em;
+  border-bottom: 1px solid #DDD;}
+
+.amt, .ref {font: small Verdana, "Andale Mono", Courier, "Courier New", 
+  monospace;}
+
+.stats thead th {vertical-align: bottom; border: 1px solid gray;
+  border-width: 0 1px 1px 0;
+  white-space: normal;}
+.stats tfoot th {vertical-align: bottom; border: 1px solid gray;
+  border-width: 1px 0px 1px 0px;
+  white-space: normal;}
+.stats tfoot td { border-width: 1px 1px 0px 0px; border: 1px solid gray;
+       font-weight: bold}
+.stats th {border-right: 1px solid gray; border-bottom-style: dotted;
+  white-space: nowrap;}
+
+td {letter-spacing: -1px;}
+
+
+/*  media="screen" */
+table tr.odd * {background: #EEE;}
+tr.odd *, tr.even * {border-bottom: 1px solid #EEE;}
+td {border-right: 1px solid #CCC;}
+</style>
+</head>
 <body>
 
 <h1>HERON Usage</h1>
 
 <div id="main">
-<p>Total queries: ${total_number_of_queries}</p>
+<ul>
+<li>Total queries: ${total_number_of_queries}</li>
+<li><a href="#by_user">Queries by User</a></li>
+<li><a href="#by_month">Queries by Month</a></li>
+</ul>
 
-<table>
+<h2 id="by_user">Queries by User</h2>
+<table class="stats" py:with="cls=cycle(('odd', 'even'))">
 <thead>
  <tr>
   <th>User</th>
-  <th>Queries</th>
+  <th>Two Weeks</th>
+  <th>Last Month</th>
+  <th>Last Quarter</th>
+  <th>Last Year</th>
+  <th>All Time</th>
  </tr>
 </thead>
 <tbody>
   <!-- re py:for, see http://genshi.edgewall.org/wiki/Documentation/xml-templates.html#id3 -->
-  <tr py:for="row in query_volume">
-    <td>${row.users}</td>
-    <td>${row.number_of_queries}</td>
+  <tr py:for="row in query_volume" class="${cls.next()}">
+    <th>${row.full_name}</th>
+    <td>${row.two_weeks}</td>
+    <td>${row.last_month}</td>
+    <td>${row.last_quarter}</td>
+    <td>${row.last_year}</td>
+    <td>${row.all_time}</td>
   </tr>
 </tbody>
 </table>
+
+<h2 id="by_month">Queries by Month</h2>
+<table class="stats" py:with="cls=cycle(('odd', 'even'))">
+<thead>
+ <tr>
+  <th>Year-Month</th>
+  <th>Queries</th>
+  <th>Users</th>
+ </tr>
+</thead>
+<tbody>
+  <tr py:for="row in queries_by_month" class="${cls.next()}">
+    <th>${'%04d-%02d' % (row.y, row.m)}</th>
+    <td>${row.qty}</td>
+    <td>${row.users}</td>
+  </tr>
+</tbody>
+</table>
+
 </div>
 
 </body>

@@ -1,5 +1,12 @@
-'''
+'''checklist -- HERON repository access checklist
+-------------------------------------------------
 
+.. note:: This module remains for historical reasons;
+   in retrospect, its functionality probably belongs
+   in :mod:`heron_wsgi.admin_lib.heron_policy`
+   and :class:`heron_wsgi.heron_srv.ChecklistView`.
+
+For example, checklist for John Smith::
 
   >>> cl, hr, mc = Mock.make(
   ...    [Checklist, heron_policy.HeronRecords, medcenter.MedCenter])
@@ -15,6 +22,8 @@
    'sponsored': {'checked': 'checked'},
    'trainingCurrent': {'checked': 'checked'},
    'trainingExpiration': '2012-01-01'}
+
+And Bill Student::
 
   >>> pprint.pprint(cl.screen(*roles('bill.student')))
   {'accessDisabled': {'disabled': 'disabled'},
@@ -46,7 +55,8 @@ log = logging.getLogger(__name__)
 
 
 class Checklist(object):
-    '''@@there's no longer any reason for this to be a class.
+    '''
+    .. note:: There's no longer any reason for this to be a class.
     '''
     def __init__(self):
         pass
@@ -119,7 +129,8 @@ if __name__ == '__main__':  # pragma nocover
                                         heron_policy.HeronRecords,
                                         Checklist])
 
-    req = medcenter.Mock.login_info(uid)
+    req = medcenter.MockRequest
+    req.remote_user = uid
     mc.issue(req)
     hr.issue(req)
 

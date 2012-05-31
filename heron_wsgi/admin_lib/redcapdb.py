@@ -1,4 +1,5 @@
 '''redcapdb -- a little ORM support for REDCap's EAV structure
+--------------------------------------------------------------
 
 '''
 
@@ -47,6 +48,12 @@ redcap_surveys_participants = Table('redcap_surveys_participants',
             Column(u'participant_email', VARCHAR(length=255)),
             Column(u'participant_identifier', VARCHAR(length=255)),
     )
+
+
+redcap_user_rights = Table(
+    'redcap_user_rights', Base.metadata,
+    Column('project_id', INTEGER),
+    Column('username', VARCHAR))
 
 
 def eachcol(t1, t2, cols):
@@ -164,10 +171,12 @@ class REDCapRecord(object):
     def eav_map(cls, project_id, alias='eav'):
         '''Set up the ORM mapping based on project_id.
 
-        @param cls: class to map
-        @param pid: redcap project id to select
-        @param fields: 1st is primary key
-        @return: (value_columns, join_where_clause)
+        :param cls: class to map
+        :param pid: redcap project id to select
+        :param fields: 1st is primary key
+        :returns: (value_columns, join_where_clause)
+
+        For example::
 
           >>> cols, where = _TestRecord.eav_map(project_id=123)
           >>> [c.table.name for c in cols]
@@ -223,12 +232,13 @@ class _TestRecord(REDCapRecord):
 def allfields(ex, project_id, record):
     '''Iterate over all fields in a REDCap record.
 
-    @param ex: a SQLA executable (engine, session, ...)
-    @param project_id: to match redcap_data
-    @param record: to match redcap_data
-    @return: an iterator over (k, v) pairs
+    :param ex: a SQLA executable (engine, session, ...)
+    :param project_id: to match redcap_data
+    :param record: to match redcap_data
+    :return: an iterator over (k, v) pairs
 
     For example::
+
       >>> (smaker, ) = Mock.make([(sqlalchemy.orm.session.Session,
       ...                          CONFIG_SECTION)])
       >>> s = smaker()
@@ -269,6 +279,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
         log.debug('redcap create_engine: again?')
         e = sqlalchemy.create_engine('sqlite://')
         redcap_data.create(e)
+        redcap_user_rights.create(e)
         return e
 
     @classmethod
@@ -311,12 +322,19 @@ def _test_main():
 
     (sm, ) = RunTime.make(None, [(sqlalchemy.orm.session.Session,
                                  CONFIG_SECTION)])
+    s = sm()
+    print "slice of redcap_data:"
+    pprint(s.query(redcap_data).slice(1, 10))
+    pprint(s.query(redcap_data).slice(1, 10).all())
 
-    pprint(sm().query(redcap_data).slice(1, 10))
-    pprint(sm().query(redcap_data).slice(1, 10).all())
+    print "field_name list:"
+    ans = s.execute(select([redcap_data.c.field_name], distinct=True).\
+                    where(redcap_data.c.project_id == project_id))
+    pprint(ans.fetchall())
 
-    ans = sm().execute(select([redcap_data.c.field_name], distinct=True).\
-                           where(redcap_data.c.project_id == project_id))
+    print "users:"
+    ans = s.execute(select([redcap_user_rights.c.username], distinct=True).\
+                    where(redcap_user_rights.c.project_id == project_id))
     pprint(ans.fetchall())
 
 

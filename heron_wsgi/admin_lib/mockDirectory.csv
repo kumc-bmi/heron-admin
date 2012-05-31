@@ -1,0 +1,6 @@
+sn,cn,givenname,mail,title,ou,kumcPersonJobcode,kumcPersonFaculty,trainedThru
+Smith,john.smith,John,john.smith@js.example,Chair of Department of Neurology,,1234,Y,2012-01-01
+Student,bill.student,Bill,bill.student@js.example,,,0,N,
+Student,carol.student,Carol,carol.student@js.example,,,0,N,
+One,some.one,Some,some.one@js.example,,,0,N,2012-01-01
+Wig,big.wig,Big,big.wig@js.example,,,0,N,2012-01-01

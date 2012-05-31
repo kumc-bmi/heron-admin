@@ -1,0 +1,57 @@
+# Copy to integration-test.ini and fill in the values.
+# (Ask around for the various passwords etc.)
+[enterprise_directory]
+url= ldaps://...
+userDn= ...
+password= ...
+base=...
+
+[chalk]
+# one way to get this working is to run an ssh tunnel
+# from localhost:8080 to port 8080 on the test machine
+url=http://localhost:8080/chalk-checker-0.0.1-SNAPSHOT
+param=userid
+
+[redcapdb]
+user=....
+password=....
+# ssh tunnel, again
+host=127.0.0.1
+port=3307
+database=redcap
+
+[saa_survey]
+domain=kumc.edu
+
+# get an API token from redcap
+token=...
+api_url=https://redcap.kumc.edu/api/
+survey_url=https://redcap.kumc.edu/surveys/?s=npRuTQ
+survey_id=...
+
+[oversight_survey]
+domain=kumc.edu
+
+token=...
+api_url=https://redcap.kumc.edu/api/
+survey_url=https://redcap.kumc.edu/surveys/
+survey_id=...
+project_id=...
+
+level=WARN
+#executives=...
+executives=
+
+trigger_log=/tmp/oversight_log_dir/
+trigger_url=http://127.0.0.1/dummy
+
+[disclaimers]
+project_id=...
+
+[disclaimer_acknowledgements]
+token=...
+project_id=...
+api_url=https://redcap.kumc.edu/api/
+
+[i2b2pm]
+sqlalchemy.url = oracle://i2b2pm:...@localhost:5521/...

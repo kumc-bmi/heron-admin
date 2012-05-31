@@ -1,51 +1,42 @@
-'''stats -- HERON usage statistics
+'''stats -- HERON usage statistics views
+
 '''
 
-from injector import inject
-from sqlalchemy import orm
+import logging
+import itertools
+import operator
 
 from admin_lib import heron_policy
 
-CONFIG_SECTION = 'i2b2pm'
+log = logging.getLogger(__name__)
 
 
-class Report(object):
-    @inject(datasrc=(orm.session.Session, CONFIG_SECTION))
-    def __init__(self, datasrc):
-        self._datasrc = datasrc
-
-    def configure(self, config, route_name):
-        '''Connect this view to the rest of the application
-
-        :param config: a pyramid config thingy@@@
-        :param route_name: a pyramid route name@@@ cite refs
-
-        .. todo:: consider requiring DROC permissions on show_report
+class Reports(object):
+    def configure(self, config, mount_point):
+        '''Add report views to application config.
         '''
-        config.add_view(self.show_usage_report, route_name=route_name,
-                        request_method='GET', renderer='report1.html',
-                        permission=heron_policy.PERM_USER)
+        for route_name, path, renderer, impl, perm in (
+                ('usage', 'usage', 'report1.html',
+                 self.show_usage_report, heron_policy.PERM_USER),
+                ('usage_small', 'usage_small', 'report2.html',
+                 self.show_small_set_report, heron_policy.PERM_DROC),
+                ):
+            config.add_route(route_name, mount_point + path)
+            config.add_view(impl, route_name=route_name,
+                            request_method='GET', renderer=renderer,
+                            permission=perm)
 
     def show_usage_report(self, res, req):
-        connection = self._datasrc()
-        result = connection.execute('''
-            select count(*) as total_number_of_queries
-            from BLUEHERONDATA.qt_query_master
-        ''')
-        data = result.fetchall()
+        usage = req.stats_reporter
+        return dict(total_number_of_queries=usage.total_number_of_queries(),
+                    query_volume=usage.query_volume(),
+                    queries_by_month=usage.queries_by_month(),
+                    cycle=itertools.cycle)
 
-        if len(data) == 1:
-            count = data[0].total_number_of_queries
-        else:
-            raise ValueError('expected 1 row; got: %s' % len(data))
-
-        # overall query volume by user
-        result = connection.execute('''
-            select user_id as users, count(*) as number_of_queries
-            from BLUEHERONDATA.qt_query_master qqm
-            group by user_id
-            order by number_of_queries desc''')
-        query_volume = result.fetchall()
-
-        return dict(total_number_of_queries=count,
-                    query_volume=query_volume)
+    def show_small_set_report(self, res, req):
+        audit = req.droc_audit
+        return dict(
+            summary=audit.patient_set_queries(recent=True, small=True),
+            detail=itertools.groupby(audit.small_set_concepts(),
+                                     operator.itemgetter('query_master_id')),
+            cycle=itertools.cycle)
