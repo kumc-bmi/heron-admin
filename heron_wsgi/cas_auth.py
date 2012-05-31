@@ -279,10 +279,11 @@ class Validator(object):
                          for issuer in self._issuers])
 
     def logout(self, context, req):
+        req.session.invalidate()
         there = self.__cascap.subRdFile('logout')
         response = HTTPSeeOther(there.fullPath())
         response.headers.extend(security.forget(req))
-        log.info('dropping session cooking and redirecting to %s', there)
+        log.info('dropping session cookie and redirecting to %s', there)
         raise response
 
 

@@ -43,9 +43,6 @@ def main():
     import noticelog
     doctest.testmod(noticelog)
 
-    import checklist
-    doctest.testmod(checklist)
-
     import redcapdb
     doctest.testmod(redcapdb)
 

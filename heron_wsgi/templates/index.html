@@ -11,11 +11,11 @@
   <div id="menu">
   <div class="header png"><h3>i2b2 Query and Analysis Tool</h3>
   <ul>
-    <li py:if="'disabled' not in accessDisabled">
+    <li py:if="'checked' in repositoryAccess">
       <a href="${i2b2_login_path}"
 	 >Start Query Tool</a>
     </li>
-    <li py:if="'disabled' in accessDisabled">
+    <li py:if="'checked' not in repositoryAccess">
       <button disabled="disabled"
 	 >Start Query Tool</button>
     </li>

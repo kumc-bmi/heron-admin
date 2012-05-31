@@ -34,7 +34,7 @@ class Reports(object):
                     cycle=itertools.cycle)
 
     def show_small_set_report(self, res, req):
-        audit = req.droc_audit
+        audit = req.agent.sensitive_usage()
         return dict(
             summary=audit.patient_set_queries(recent=True, small=True),
             detail=itertools.groupby(audit.small_set_concepts(),

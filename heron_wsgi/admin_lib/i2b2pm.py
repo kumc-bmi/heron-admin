@@ -90,6 +90,9 @@ class I2B2PM(object):
         self._datasrc = datasrc
         self._uuidgen = uuidgen
 
+    def account_for(self, agent):
+        return I2B2Account(self, agent)
+
     def authz(self, uid, full_name,
               project_id='BlueHeron',
               roles=('USER', 'DATA_LDS', 'DATA_OBFSC', 'DATA_AGG')):
@@ -155,6 +158,22 @@ def revoke_expired_auths(ds):
         where ipus.user_id = ipud.user_id) < sysdate
     ''')
     ds.commit()
+
+
+class I2B2Account(object):
+    def __init__(self, pm, agent):
+        self.__pm = pm
+        self.__agent = agent
+
+    def __repr__(self):
+        return 'Access(%s)' % self.__agent
+
+    def creds(self):
+        agent = self.__agent
+        key, u = self.__pm.authz(agent.cn, agent.full_name())
+        return (agent.cn, key)
+
+
 
 
 class Audited(object):
