@@ -84,18 +84,13 @@ setup(name='heron_wsgi',
             ['main = heron_wsgi:main']
         },
       paster_plugins=['pyramid'],
+      package_data={'heron_wsgi': ['templates/*.html', 'templates/*.xml']},
       data_files=[('apache_mod_wsgi',
                    ['apache/heron_admin.conf',
                     'apache/heron_wsgi.py',
                     'apache/test.wsgi']),
                   ('av',
-                   ['heron_wsgi/htdocs-raven/av/220px-Heron_tricol_01.JPG']),
-                  ('heron_wsgi/htdocs-heron',
-                   ['heron_wsgi/htdocs-heron/build_team.html',
-                    'heron_wsgi/htdocs-heron/disclaimer.html',
-                    'heron_wsgi/htdocs-heron/drocnotice.html',
-                    'heron_wsgi/htdocs-heron/index.html',
-                    'heron_wsgi/htdocs-heron/kumc_layout.xml',
-                    'heron_wsgi/htdocs-heron/oops.html'])]
+                   ['heron_wsgi/templates/av/220px-Heron_tricol_01.JPG']),
+                    ]
       )
 
