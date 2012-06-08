@@ -259,7 +259,7 @@ class RunTime(rtconfig.IniModule):
     @provides((WebReadable, DISCLAIMERS_SECTION))
     def rdblog(self, site='http://informatics.kumc.edu/'):
         from urllib2 import build_opener, Request
-        return WebReadable(site, build_opener, Request)
+        return WebReadable(site, build_opener(), Request)
 
     @provides(KTimeSource)
     def real_time(self):
@@ -274,16 +274,16 @@ class RunTime(rtconfig.IniModule):
 
 def _test_main():
     import sys
-    from urllib2 import build_opener, Request
-    from ocap_file import WebReadable
 
     logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
     user_id = sys.argv[1]
 
-    engine, acks = RunTime.make(None, [(sqlalchemy.engine.base.Connectable,
-                                        redcapdb.CONFIG_SECTION),
-                                       AcknowledgementsProject])
+    engine, acks, webrd = RunTime.make(None,
+                                       [(sqlalchemy.engine.base.Connectable,
+                                         redcapdb.CONFIG_SECTION),
+                                        AcknowledgementsProject,
+                                        (WebReadable, DISCLAIMERS_SECTION)])
     redcapdb.Base.metadata.bind = engine
     sm = sessionmaker(engine)
 
@@ -329,8 +329,6 @@ def _test_main():
         print "current disclaimer and content:"
         for d in s.query(Disclaimer).filter(Disclaimer.current == 1):
             print d
-            webrd = WebReadable('http://informatics.kumc.edu/',
-                                build_opener(), Request)
             c, h = d.content(webrd)
             print h
             print c[:100]
