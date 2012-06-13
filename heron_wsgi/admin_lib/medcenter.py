@@ -41,6 +41,18 @@ We use an outboard service to check human subjects "chalk" training::
 
 .. todo:: document failure modes of `trained_thru`
 
+Regression testing
+------------------
+
+  >>> who = m.lookup('carol.student')
+  INFO:mock_directory:network fetch for (cn=carol.student)
+  WARNING:medcenter:missing LDAP attribute kumcPersonFaculty for carol.student
+  WARNING:medcenter:missing LDAP attribute kumcPersonJobcode for carol.student
+
+  >>> who.kumcPersonJobcode is None
+  True
+
+
 API
 ---
 
@@ -85,7 +97,7 @@ class MedCenter(object):
     .. note:: KUMC uses ou for department::
 
         >>> hits[0].ou
-        ''
+        'Neurology'
 
     '''
     excluded_jobcode = "24600"
@@ -317,7 +329,7 @@ class Affiliate(Badge):
         return self.__cache[k]
 
     def _put(self, k, v):
-        assert type(v) in (type(''), type(1)), (k, type(v))
+        assert type(v) in (type(''), type(1), type(None)), (k, type(v))
         cache = self.__cache
         if len(str(v)) <= self.cache_sizes[k]:
             cache[k] = v
