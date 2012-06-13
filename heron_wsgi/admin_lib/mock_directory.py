@@ -53,7 +53,8 @@ class MockDirectory(object):
         record = self._d[i]
         return [('(cn=%s)' % i,
                  dict([(a, [record[a]])
-                       for a in (attrs or record.keys())]))]
+                       for a in (attrs or record.keys())
+                       if record[a] != '']))]
 
     def trainedThru(self, cn):
         return self._d[cn]['trainedThru']
