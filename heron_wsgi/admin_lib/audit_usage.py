@@ -215,3 +215,26 @@ s = Table('pm_user_session', meta,
           Column('entry_date', DATETIME),
           Column('expired_date', DATETIME),
           schema='i2b2pm').alias('s')
+
+
+def _report_with_roles(argv):
+    import logging
+
+    import i2b2pm
+    import pprint
+
+    log = logging.getLogger(__name__)
+
+    logging.basicConfig(level=logging.DEBUG)
+    (usage, ) = i2b2pm.RunTime.make(None, [I2B2AggregateUsage])
+    data = usage.query_volume()
+    log.info(pprint.pformat(data))
+
+
+if __name__ == '__main__':
+
+    def _hide_sys():
+        import sys
+        return sys.argv
+
+    _report_with_roles(_hide_sys())
