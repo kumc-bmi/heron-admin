@@ -217,24 +217,42 @@ s = Table('pm_user_session', meta,
           schema='i2b2pm').alias('s')
 
 
-def _report_with_roles(argv):
+def _report_with_roles(argv, stdout):
     import logging
+    import pprint
+    import csv
 
     import i2b2pm
-    import pprint
+    import medcenter
 
     log = logging.getLogger(__name__)
 
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.WARN)
     (usage, ) = i2b2pm.RunTime.make(None, [I2B2AggregateUsage])
     data = usage.query_volume()
-    log.info(pprint.pformat(data))
+
+    (mc, ) = medcenter.RunTime.make(None, [medcenter.MedCenter])
+
+    out = csv.writer(stdout)
+    cols = ('Faculty', 'Title', 'Department', 'Name', 'ID',
+            'Weeks2', 'Month', 'Quarter', 'Year', 'All')
+    out.writerow(cols)
+
+    for row in data:
+        cn = row[1]
+        try:
+            agent = mc.lookup(cn)
+            fac, title, dept = mc.is_faculty(agent), agent.title, agent.ou
+        except KeyError:
+            fac, title, dept = None, None, None
+        out.writerow((fac, title, dept) + tuple(row))
 
 
 if __name__ == '__main__':
 
     def _hide_sys():
         import sys
-        return sys.argv
+        return sys.argv, sys.stdout
 
-    _report_with_roles(_hide_sys())
+    a, s = _hide_sys()
+    _report_with_roles(a, s)
