@@ -103,6 +103,56 @@ on last_year.user_id = all_time.user_id
 order by nvl(two_weeks.qty, -1) desc, nvl(all_time.qty, -1) desc
                       ''')
 
+    def current_sessions(self):
+        return self.q('''
+select ud.full_name, ud.user_id, us.entry_date
+from I2B2PM.pm_user_session us
+join I2B2PM.pm_user_data ud on ud.user_id = us.user_id
+where us.expired_date > sysdate
+and us.user_id not like '%_SERVICE_ACCOUNT'
+                      ''')
+
+    def current_queries(self):
+        return self.q('''
+select ud.full_name, ud.user_id, us.entry_date
+     , qm.query_master_id
+     , qm.name, qm.create_date
+     , qi.batch_mode
+     , st.description status
+     , qrt.description result_type
+
+from I2B2PM.pm_user_session us
+join I2B2PM.pm_user_data ud on ud.user_id = us.user_id
+
+left join BlueHeronData.qt_query_master qm
+  on ud.user_id = qm.user_id
+ and qm.create_date > us.entry_date
+left join BlueHeronData.qt_query_instance qi
+  on qi.query_master_id = qm.query_master_id
+left join BlueHeronData.qt_query_result_instance qri
+  on qri.query_instance_id = qi.query_instance_id
+left join BLUEHERONDATA.qt_query_status_type st
+  on st.status_type_id = qi.status_type_id
+left join BLUEHERONDATA.qt_query_result_type qrt
+  on qrt.result_type_id = qri.result_type_id
+
+
+where us.expired_date > sysdate
+and us.user_id not like '%_SERVICE_ACCOUNT'
+
+and (qm.query_master_id is null  or (
+    qi.status_type_id = 5 -- INCOMPLETE
+     and qm.delete_flag = 'N'
+     and qi.end_date is null
+
+     -- where qi.end_date is null
+     -- and qri.end_date is null
+     -- order by qm.create_date desc
+))
+
+order by ud.full_name, qm.create_date
+                      ''')
+
 
 class I2B2SensitiveUsage(I2B2Usage):
     def __repr__(self):
@@ -217,17 +267,26 @@ s = Table('pm_user_session', meta,
           schema='i2b2pm').alias('s')
 
 
-def _report_with_roles(argv, stdout):
+def _current_users_queries():
     import logging
     import pprint
+
+    log = logging.getLogger(__name__)
+
+    logging.basicConfig(level=logging.DEBUG)
+
+    (usage, ) = i2b2pm.RunTime.make(None, [I2B2AggregateUsage])
+
+    log.info('Current sessions: %s', pprint.pformat(usage.current_sessions()))
+    log.info('Current queries: %s', pprint.pformat(usage.current_queries()))
+
+
+def _report_with_roles(argv, stdout):
     import csv
 
     import i2b2pm
     import medcenter
 
-    log = logging.getLogger(__name__)
-
-    logging.basicConfig(level=logging.WARN)
     (usage, ) = i2b2pm.RunTime.make(None, [I2B2AggregateUsage])
     data = usage.query_volume()
 
@@ -254,5 +313,6 @@ if __name__ == '__main__':
         import sys
         return sys.argv, sys.stdout
 
-    a, s = _hide_sys()
-    _report_with_roles(a, s)
+    _current_users_queries()
+    #a, s = _hide_sys()
+    #_report_with_roles(a, s)

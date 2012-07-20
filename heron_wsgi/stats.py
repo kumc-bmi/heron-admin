@@ -18,6 +18,8 @@ class Reports(object):
         for route_name, path, renderer, impl, perm in (
                 ('usage', 'usage', 'report1.html',
                  self.show_usage_report, heron_policy.PERM_USER),
+                ('query_status', 'query_status', 'query_status.html',
+                 self.show_usage_current, heron_policy.PERM_USER),
                 ('usage_small', 'usage_small', 'report2.html',
                  self.show_small_set_report, heron_policy.PERM_DROC),
                 ):
@@ -31,6 +33,11 @@ class Reports(object):
         return dict(total_number_of_queries=usage.total_number_of_queries(),
                     query_volume=usage.query_volume(),
                     queries_by_month=usage.queries_by_month(),
+                    cycle=itertools.cycle)
+
+    def show_usage_current(self, res, req):
+        usage = req.stats_reporter
+        return dict(queries=usage.current_queries(),
                     cycle=itertools.cycle)
 
     def show_small_set_report(self, res, req):
