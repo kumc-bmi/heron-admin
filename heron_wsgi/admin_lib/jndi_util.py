@@ -3,7 +3,7 @@
 .. todo:: consider factoring out of rgate/i2b2hive.py
 '''
 
-from lxml import etree
+from xml.etree import cElementTree as xml
 
 from ocap_file import Readable
 
@@ -46,14 +46,14 @@ def ds_access(jboss_deploy, jndi_name):
     for f in jboss_deploy.subRdFiles():
         if not f.fullPath().endswith('-ds.xml'):
             continue
-        doc = etree.parse(f.inChannel())
-        src_expr = ('/datasources/local-tx-datasource[jndi-name/text()="%s"]' %
-                    jndi_name)
+        doc = xml.parse(f.inChannel())
+        srcs = doc.getroot().findall('local-tx-datasource')
         try:
-            src = doc.xpath(src_expr)[0]
-            un = src.xpath('user-name/text()')[0]
-            pw = src.xpath('password/text()')[0]
-            url = src.xpath('connection-url/text()')[0]
+            src = [src for src in srcs
+             if src.find('jndi-name').text == jndi_name][0]
+            un = src.find('user-name').text
+            pw = src.find('password').text
+            url = src.find('connection-url').text
             host, port, sid = url.split('@', 1)[1].split(':', 2)
             return un, pw, host, port, sid
         except IndexError:
