@@ -15,7 +15,7 @@ __license__ = 'MIT'
 __contact__ = 'http://informatics.kumc.edu/'
 
 from os import path
-from fabric.api import task, local
+from fabric.api import task, local, sudo, lcd
 
 
 @task
@@ -29,3 +29,17 @@ def deploy_hg_tip(usrlocal='/usr/local',
     # This should only involve files that this user created.
     local('find %s -not -perm -g=w -print0 | '
           'xargs -0 chmod g+w' % dest)
+    with lcd(dest):
+        local('. ../haenv/bin/activate; python setup.py install')
+
+
+@task
+def flush_app_cache():
+    '''Flush any config/template data cached by the application.
+
+    Note: requires root privilege, since we're restarting apache.
+    '''
+    # I'm struggling to confirm from docs, but I think restart doesn't
+    # do the job with mod_wsgi sometimes; stop/start is recommended.
+    sudo('/etc/init.d/apache2 stop')
+    sudo('/etc/init.d/apache2 start')
