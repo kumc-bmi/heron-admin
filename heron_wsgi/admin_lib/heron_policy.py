@@ -336,7 +336,7 @@ class HeronRecords(Token):
         self._oversight_rc = oversight_rc
         self.__oc = oc
         self._oversight_project_id = oversight_rc.project_id
-        self._executives = oversight_rc.executives
+        self._executives = oversight_rc.executives or ()
 
     def issue(self, req):
         mc = self._mc
