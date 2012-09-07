@@ -67,6 +67,7 @@ from injector import inject, provides, singleton
 
 import rtconfig
 import ldaplib
+import sealing
 
 log = logging.getLogger(__name__)
 
@@ -382,9 +383,7 @@ class RunTime(rtconfig.IniModule):
 
     @provides(KTestingFaculty)
     def no_testing_faculty(self):
-        rt = rtconfig.RuntimeOptions('testing_faculty'.split())
-        rt.load(self._ini, ldaplib.CONFIG_SECTION)
-        return rt.testing_faculty or ()
+        return ''
 
     @provides(KTrainingFunction)
     def training(self, section=CHALK_CONFIG_SECTION, ua=_ua):
