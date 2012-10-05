@@ -103,7 +103,7 @@ class CheckListView(object):
         >>> hp.issue(facreq) and None
         >>> from pprint import pprint
         >>> pprint(clv.get(facreq))
-        {'affiliate': Faculty(john.smith),
+        {'affiliate': CanSponsor(john.smith),
          'data_use_path': 'http://example.com/oversight',
          'droc': {},
          'executive': {},
@@ -191,7 +191,7 @@ class REDCapLink(object):
                         permission=heron_policy.PERM_USER)
         config.add_view(self.oversight_redir, route_name=rtd,
                         request_method='GET',
-                        permission=heron_policy.PERM_FACULTY)
+                        permission=heron_policy.PERM_CAN_SPONSOR)
 
     def saa_redir(self, req):
         '''Redirect to a per-user System Access Agreement REDCap survey.
@@ -339,10 +339,10 @@ class TeamBuilder(object):
           ...              '&uids=john.smith',
           ...              status=302)
           >>> dict(done.headers)['Location'].split('&')
-          ... # doctest: +NORMALIZE_WHITESPACE
+          ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
           ['http://bmidev1/redcap-host/surveys/?s=8074',
            'full_name=Smith%2C+John', 'multi=yes',
-           'name_etc_1=Smith%2C+John%0AChair+of+Department+of+Neurology%0A',
+           'name_etc_1=Smith%2C+John%0AChair+...+Neurology%0ANeurology',
            'user_id=john.smith', 'user_id_1=john.smith', 'what_for=1']
         '''
         params = req.GET
