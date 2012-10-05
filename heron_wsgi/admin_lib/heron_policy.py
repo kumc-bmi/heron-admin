@@ -717,14 +717,14 @@ def team_params(lookup, uids):
     >>> pprint.pprint(list(team_params(mc.lookup,
     ...                                ['john.smith', 'bill.student'])))
     [('user_id_1', 'john.smith'),
-     ('name_etc_1', 'Smith, John\nChair of Department of Neurology\n'),
+     ('name_etc_1', 'Smith, John\nChair of Department of Neurology\nNeurology'),
      ('user_id_2', 'bill.student'),
-     ('name_etc_2', 'Student, Bill\n\n')]
+     ('name_etc_2', 'Student, Bill\nStudent\nUndergrad')]
 
     '''
     nested = [[('user_id_%d' % (i + 1), uid),
                ('name_etc_%d' % (i + 1), '%s, %s\n%s\n%s' % (
-                    a.sn, a.givenname, a.title, a.ou))]
+                    a.sn, a.givenname, a.title or '', a.ou or ''))]
               for (i, uid, a) in
               [(i, uids[i], lookup(uids[i]))
                for i in range(0, len(uids))]]

@@ -136,7 +136,7 @@ class MedCenter(object):
     def is_faculty(self, badge):
         log.debug('testing faculty badge kludge for %s', badge.cn)
         if ('faculty:' + badge.cn) in self._testing_faculty:
-            log.debug('faculty badge granted to %s by configuration', badge.cn)
+            log.info('faculty badge granted to %s by configuration', badge.cn)
             return badge
 
         return (badge.kumcPersonJobcode != self.excluded_jobcode
