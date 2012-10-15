@@ -980,9 +980,10 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
     def _rc_oversight(self):
         opts, api = redcap_connect.RunTime.endpoint(
             self, OVERSIGHT_CONFIG_SECTION, extra=('executives', 'project_id'))
-        return redcap_connect.SurveySetup(opts, api,
-                                          project_id=opts.project_id,
-                                          executives=opts.executives)
+        return redcap_connect.SurveySetup(
+            opts, api,
+            project_id=opts.project_id,
+            executives=opts.executives.split(','))
 
     @classmethod
     def mods(cls, ini):
