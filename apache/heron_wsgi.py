@@ -9,7 +9,7 @@ prev_sys_path = list(sys.path)
 
 # virtualenv
 import site 
-site.addsitedir('/usr/local/haenv/lib/python2.6/site-packages')
+site.addsitedir('/usr/local/heron_admin/lib/python2.6/site-packages')
 
 import os, sys
 sys.path.append('/usr/local/heron_admin/')
