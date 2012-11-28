@@ -441,7 +441,7 @@ def _saa_query(mail, survey_id):
       ... # doctest: +NORMALIZE_WHITESPACE
       SELECT r.response_id, r.participant_id, r.record,
       r.first_submit_time, r.completion_time, r.return_code,
-      p.participant_id, p.survey_id, p.arm_id, p.hash, p.legacy_hash,
+      p.participant_id, p.survey_id, p.event_id, p.hash, p.legacy_hash,
       p.participant_email, p.participant_identifier FROM
       redcap_surveys_response AS r JOIN redcap_surveys_participants AS
       p ON r.participant_id = p.participant_id WHERE
