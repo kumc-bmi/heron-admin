@@ -28,7 +28,8 @@ class I2B2AggregateUsage(I2B2Usage):
     def total_number_of_queries(self):
         data = self.q('''
             select count(*) as total_number_of_queries
-            from BLUEHERONDATA.qt_query_master
+            from BLUEHERONDATA.qt_query_master qqm
+            where qqm.name != 'HERON MONITORING QUERY'
         ''')
         if len(data) != 1:
             raise ValueError('expected 1 row; got: %s' % len(data))
@@ -43,6 +44,7 @@ class I2B2AggregateUsage(I2B2Usage):
                      , extract(month from qqm.create_date) m
                      , qqm.user_id
                 from BLUEHERONDATA.qt_query_master qqm
+                where qqm.name != 'HERON MONITORING QUERY'
             ) group by y, m
             order by y desc, m desc
                       ''')
