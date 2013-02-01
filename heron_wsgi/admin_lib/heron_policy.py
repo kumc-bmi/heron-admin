@@ -56,7 +56,7 @@ survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
   >>> facreq.agent.ensure_saa_survey().split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
   ['http://bmidev1/redcap-host/surveys/',
-   's=8074&full_name=Smith%2C+John&user_id=john.smith']
+   's=f1f9&full_name=Smith%2C+John&user_id=john.smith']
 
 Sponsored Users
 ===============
@@ -121,7 +121,7 @@ the oversight committee::
   >>> facreq.agent.oversight_request().ensure_oversight_survey(
   ...        ['some.one'], what_for=HeronRecords.DATA_USE).split('&')
   ... # doctest: +NORMALIZE_WHITESPACE
-  ['http://bmidev1/redcap-host/surveys/?s=8074',
+  ['http://bmidev1/redcap-host/surveys/?s=f1f9',
    'full_name=Smith%2C+John',
    'multi=yes',
    'name_etc_1=One%2C+Some%0A%0A',
