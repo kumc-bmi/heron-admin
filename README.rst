@@ -15,6 +15,10 @@ heron_wsgi - the python approach
 
 .hgignore - stuff to ignore from version control (e.g. maven's target/)
 
+Development dependencies
+------------
+
+See setup.py for details.
 
 Object Capability Style and Dependency Injection
 ------------------------------------------------
