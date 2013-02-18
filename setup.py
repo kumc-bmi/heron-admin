@@ -1,4 +1,42 @@
 '''setup.py -- heron_wsgi package information
+
+Usage:
+
+A virtuale environment is recommended:
+
+  % mkdir haenv
+  % virtualenv haenv
+  % . haenv/bin/activate
+
+Then:
+
+  % export ORACLE_HOME=/usr/lib/oracle/11.2/client64/  # salt to taste
+  (haenv)% python setup.py develop
+
+Then compare the output of `pip freeze` with requirements.txt.
+
+
+Be careful with site-packages dependencies. You don't want:
+pkg_resources.VersionConflict: (zope.interface 3.6.1
+ (/usr/lib/python2.7/dist-packages),
+  Requirement.parse('zope.interface>=3.8.0'))
+
+Older notes:
+
+Starting from scratch seems to work, though it depends
+on some Ubuntu modules.
+
+$ sudo apt-get install libsasl2-dev libmysqlclient-dev python2.6-dev
+or:
+$ sudo zypper install libmysqlclient-devel
+
+$ curl -O https://raw.github.com/pypa/virtualenv/master/virtualenv.py
+$ mv virtualenv.py ~/bin/virtualenv
+$ chmod +x ~/bin/virtualenv
+$ virtualenv --python=python2.6 --no-site-packages haenv/
+$ . haenv/bin/activate
+
+
 '''
 
 __author__ = 'Dan Connolly <dconnolly@kumc.edu>'
@@ -15,24 +53,7 @@ from setuptools import setup, find_packages
 
 here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, 'README.rst')).read()
-CHANGES = '@@TODO' #open(os.path.join(here, 'CHANGES.txt')).read()
-
-# Be careful with site-packages dependencies. You don't want:
-# pkg_resources.VersionConflict: (zope.interface 3.6.1 (/usr/lib/python2.7/dist-packages), Requirement.parse('zope.interface>=3.8.0'))
-#
-
-# Starting from scratch seems to work, though it depends
-# on some Ubuntu modules.
-# $ sudo apt-get install libsasl2-dev libmysqlclient-dev python2.6-dev
-# or:
-# $ sudo zypper install libmysqlclient-devel
-# $ curl -O https://raw.github.com/pypa/virtualenv/master/virtualenv.py
-# $ mv virtualenv.py ~/bin/virtualenv
-# $ chmod +x ~/bin/virtualenv
-# $ virtualenv --python=python2.6 --no-site-packages haenv/
-# $ . haenv/bin/activate
-# $ cd raven-frontiers
-# $ python setup.py develop
+CHANGES = '@@TODO'  # open(os.path.join(here, 'CHANGES.txt')).read()
 
 requires = [
     'injector',
@@ -52,13 +73,13 @@ requires = [
     #'pyinotify'
     ]
 
-if sys.version_info[:3] < (2,5,0):
+if sys.version_info[:3] < (2, 5, 0):
     requires.append('pysqlite')
 
 setup(name='heron_wsgi',
       version=__version__,
       description=README.split('\n', 1)[0],
-      long_description=README + '\n\n' +  CHANGES,
+      long_description=README + '\n\n' + CHANGES,
       classifiers=[
         "Programming Language :: Python",
         "Topic :: Internet :: WWW/HTTP",
@@ -74,9 +95,9 @@ setup(name='heron_wsgi',
       zip_safe=False,
 # TODO: learn how test_suite works
 #     test_suite='heron_acct',
-      install_requires = requires,
-      tests_require = requires + ['lxml'],
-      entry_points = {
+      install_requires=requires,
+      tests_require=requires + ['lxml'],
+      entry_points={
         'console_scripts':
             ['logwatch=heron_wsgi.logwatch:main'],
         'paste.app_factory':
@@ -93,4 +114,3 @@ setup(name='heron_wsgi',
                    ['heron_wsgi/templates/av/220px-Heron_tricol_01.JPG']),
                     ]
       )
-

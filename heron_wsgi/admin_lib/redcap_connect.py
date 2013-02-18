@@ -25,7 +25,7 @@ Set up a link to survey associated with John Smith's email address::
   ...       {'user_id': 'john.smith', 'full_name': 'John Smith'}).split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
   ['http://bmidev1/redcap-host/surveys/',
-   's=8074&full_name=John+Smith&user_id=john.smith']
+   's=f1f9&full_name=John+Smith&user_id=john.smith']
 
 Fill in some of the fields in the survey, such as `full_name` and `what_for`::
 
@@ -34,7 +34,7 @@ Fill in some of the fields in the survey, such as `full_name` and `what_for`::
   ...        'what_for': '2', 'full_name': 'Smith, John'},
   ...       multi=True).split('&')
   ... # doctest: +NORMALIZE_WHITESPACE
-  ['http://bmidev1/redcap-host/surveys/?s=8074',
+  ['http://bmidev1/redcap-host/surveys/?s=f1f9',
    'full_name=Smith%2C+John',
    'multi=yes', 'user_id=john.smith', 'what_for=2']
 '''
@@ -62,7 +62,7 @@ def EndPoint(webcap, token):
     >>> e.accept_json(content='survey', action='setup',
     ...               email='john.smith@jsmith.example')
     ... # doctest: +NORMALIZE_WHITESPACE
-    {u'add': 0, u'PROJECT_ID': 123, u'hash': u'8074',
+    {u'add': 0, u'PROJECT_ID': 123, u'hash': u'f1f9',
      u'email': u'BOGUS@example.edu', u'survey_id': 11}
 
     >>> e.record_import([{'field': 'value'}])
@@ -146,7 +146,8 @@ class _MockREDCapAPI(object):
             raise IOError(params['action'])
 
     def service_setup(self, params):
-        h = hex(abs(hash(self.addr)))[-4:]
+        from hashlib import md5
+        h = md5(self.addr).hexdigest()[-4:]
         out = {'PROJECT_ID': 123,
                'add': 0,
                'survey_id': _test_settings.survey_id,

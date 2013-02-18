@@ -30,8 +30,23 @@ class Reports(object):
 
     def show_usage_report(self, res, req):
         usage = req.stats_reporter
+
+        query_volume = usage.query_volume()
+
+        def details(uid):
+            try:
+                a = req.agent.browser.lookup(user_id)
+                return '%s, %s' % (a.title, a.ou)
+            except KeyError:
+                return ''
+
+        user_ids = set([row.user_id for row in query_volume])
+        roles = dict([(user_id, details(user_id))
+                      for user_id in user_ids])
+
         return dict(total_number_of_queries=usage.total_number_of_queries(),
-                    query_volume=usage.query_volume(),
+                    query_volume=query_volume,
+                    roles=roles,
                     queries_by_month=usage.queries_by_month(),
                     cycle=itertools.cycle)
 

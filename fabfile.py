@@ -20,7 +20,7 @@ from fabric.api import task, local, sudo, lcd
 
 @task
 def deploy_hg_tip(usrlocal='/usr/local',
-                  app='heron-admin'):
+                  app='heron_admin'):
     dest = path.join(usrlocal, app)
     local('mkdir -p %s' % dest)
     local('hg archive %s' % dest)
@@ -30,7 +30,7 @@ def deploy_hg_tip(usrlocal='/usr/local',
     local('find %s -not -perm -g=w -print0 | '
           'xargs -0 chmod g+w' % dest)
     with lcd(dest):
-        local('. ../haenv/bin/activate; python setup.py install')
+        local('. bin/activate; python setup.py develop')
 
 
 @task

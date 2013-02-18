@@ -56,7 +56,7 @@ survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
   >>> facreq.agent.ensure_saa_survey().split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
   ['http://bmidev1/redcap-host/surveys/',
-   's=8074&full_name=Smith%2C+John&user_id=john.smith']
+   's=f1f9&full_name=Smith%2C+John&user_id=john.smith']
 
 Sponsored Users
 ===============
@@ -121,7 +121,7 @@ the oversight committee::
   >>> facreq.agent.oversight_request().ensure_oversight_survey(
   ...        ['some.one'], what_for=HeronRecords.DATA_USE).split('&')
   ... # doctest: +NORMALIZE_WHITESPACE
-  ['http://bmidev1/redcap-host/surveys/?s=8074',
+  ['http://bmidev1/redcap-host/surveys/?s=f1f9',
    'full_name=Smith%2C+John',
    'multi=yes',
    'name_etc_1=One%2C+Some%0A%0A',
@@ -441,7 +441,7 @@ def _saa_query(mail, survey_id):
       ... # doctest: +NORMALIZE_WHITESPACE
       SELECT r.response_id, r.participant_id, r.record,
       r.first_submit_time, r.completion_time, r.return_code,
-      p.participant_id, p.survey_id, p.arm_id, p.hash, p.legacy_hash,
+      p.participant_id, p.survey_id, p.event_id, p.hash, p.legacy_hash,
       p.participant_email, p.participant_identifier FROM
       redcap_surveys_response AS r JOIN redcap_surveys_participants AS
       p ON r.participant_id = p.participant_id WHERE
@@ -716,10 +716,10 @@ class OversightRequest(Token):
 
         return self.__orc(
             self.__agent.cn, dict(tp,
-                           user_id=self.__agent.cn,
-                           full_name=self.__agent.sort_name(),
-                           what_for=what_for,
-                           multi='yes'), multi=True)
+                                  user_id=self.__agent.cn,
+                                  full_name=self.__agent.sort_name(),
+                                  what_for=what_for,
+                                  multi='yes'), multi=True)
 
 
 def team_params(lookup, uids):

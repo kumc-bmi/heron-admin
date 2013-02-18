@@ -70,7 +70,9 @@ td {border-right: 1px solid #CCC;}
 <tbody>
   <!-- re py:for, see http://genshi.edgewall.org/wiki/Documentation/xml-templates.html#id3 -->
   <tr py:for="row in query_volume" class="${cls.next()}">
-    <th>${row.full_name}</th>
+    <th>${row.full_name}<br />
+         <small>${roles[row.user_id]}</small>
+    </th>
     <td>${row.two_weeks}</td>
     <td>${row.last_month}</td>
     <td>${row.last_quarter}</td>
