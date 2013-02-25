@@ -14,10 +14,10 @@ The mock directory has a handful of students and faculty::
 
 It implements the LDAP search API in a few cases::
 
-  >>> d.search('(cn=john.smith)', ['sn', 'givenname'])
+  >>> d.search_remote('(cn=john.smith)', ['sn', 'givenname'])
   [('(cn=john.smith)', {'givenname': ['John'], 'sn': ['Smith']})]
 
-  >>> d.search('(cn=john.smith)', [])
+  >>> d.search_remote('(cn=john.smith)', [])
   ... #doctest: +NORMALIZE_WHITESPACE
   [('(cn=john.smith)',
    {'kumcPersonJobcode': ['1234'], 'kumcPersonFaculty': ['Y'],
@@ -47,7 +47,7 @@ class MockDirectory(object):
         self.records = records = list(self._records(resource))
         self._d = dict([(r['cn'], r) for r in records])
 
-    def search(self, q, attrs):
+    def search_remote(self, q, attrs):
         log.info('network fetch for %s', q)
         i = self._qid(q)
         record = self._d[i]
@@ -78,3 +78,25 @@ class MockDirectory(object):
         if m:
             return m.group(1)
         raise ValueError
+
+
+class MockTimeSource(object):
+    '''
+    >>> s = MockTimeSource()
+    >>> now = s.now
+    >>> now()
+    datetime.datetime(2012, 2, 25, 11, 0, 0, 500000)
+    >>> now()
+    datetime.datetime(2012, 2, 25, 11, 0, 1)
+    '''
+    def __init__(self):
+        import datetime
+        self._t = datetime.datetime(2012, 2, 25, 11, 00, 00)
+
+    def now(self):
+        self.wait(seconds=0.5)
+        return self._t
+
+    def wait(self, seconds):
+        import datetime
+        self._t = self._t + datetime.timedelta(seconds=seconds)

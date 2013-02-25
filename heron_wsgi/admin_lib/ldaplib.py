@@ -1,6 +1,24 @@
 '''ldaplib.py -- LDAP configuration and search
 ----------------------------------------------
 
+Caching:
+
+  >>> import sys
+  >>> logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+  >>> ts = mock_directory.MockTimeSource()
+  >>> ds = MockLDAP(ts, ttl=2)
+  >>> ds.search("(cn=john.smith)", ['sn'])
+  INFO:mock_directory:network fetch for (cn=john.smith)
+  [('(cn=john.smith)', {'sn': ['Smith']})]
+
+  >>> ds.search("(cn=john.smith)", ['sn'])
+  [('(cn=john.smith)', {'sn': ['Smith']})]
+
+  >>> ts.wait(5)
+  >>> ds.search("(cn=john.smith)", ['sn'])
+  INFO:mock_directory:network fetch for (cn=john.smith)
+  [('(cn=john.smith)', {'sn': ['Smith']})]
+
 Sample configuration::
 
   >>> print _sample_settings.inifmt(CONFIG_SECTION)
@@ -15,10 +33,12 @@ than a native LDAP service.
 '''
 
 import logging
+from datetime import timedelta
 
 from injector import inject, provides, singleton
 
 import rtconfig
+import mock_directory
 
 CONFIG_SECTION = 'enterprise_directory'
 log = logging.getLogger(__name__)
@@ -27,8 +47,39 @@ log = logging.getLogger(__name__)
 class LDAPService(object):
     '''See :mod:`heron_wsgi.admin_lib.mock_directory` for API details.
     '''
+    def __init__(self, now, seconds):
+        self.__now = now
+        self._ttl = timedelta(seconds=seconds)
+        self._cache = {}
+
     def search(self, query, attrs):
+        tnow = self.__now()
+        attrs = tuple(sorted(attrs))
+        try:
+            tfound, v = self._cache[(query, attrs)]
+            if tnow - tfound <= self._ttl:
+                return v
+        except KeyError:
+            pass
+
+        # We're taking the time to go over the network; now is
+        # a good time to prune the cache.
+        for k, (t, v) in self._cache.items():
+            if tnow - t > self._ttl:
+                del self._cache[k]
+
+        v = self.search_remote(query, attrs)
+        self._cache[(query, attrs)] = (tnow, v)
+        return v
+
+    def search_remote(self, query, attrs):
         raise NotImplementedError('subclass must implement.')
+
+
+class MockLDAP(mock_directory.MockDirectory, LDAPService):
+    def __init__(self, ts, ttl):
+        mock_directory.MockDirectory.__init__(self)
+        LDAPService.__init__(self, ts.now, ttl)
 
 
 class NativeLDAPService(LDAPService):
@@ -39,7 +90,8 @@ class NativeLDAPService(LDAPService):
 
     '''
 
-    def __init__(self, rt, native):
+    def __init__(self, rt, native, now, ttl):
+        LDAPService.__init__(self, now, ttl)
         self._rt = rt
         self._native = native
         self._l = None
@@ -50,7 +102,7 @@ class NativeLDAPService(LDAPService):
         l.simple_bind_s(rt.userdn, rt.password)
         return l
 
-    def search(self, query, attrs):
+    def search_remote(self, query, attrs):
         log.info('network fetch for %s', query)
         l = self._l or self._bind()
         base = self._rt.base
