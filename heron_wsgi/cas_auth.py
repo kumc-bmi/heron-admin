@@ -17,8 +17,9 @@ A Simple Protected View
 
   >>> from pyramid.response import Response
   >>> def protected_view(context, req):
-  ...     log.debug('protected view: %s', ['I am: ', req.remote_user])
-  ...     return Response(app_iter=['I am: ', req.remote_user])
+  ...     log.debug('protected view: %s', ['found it: ',
+  ...                                      req.treasure_map.location()])
+  ...     return Response(app_iter=['found it: ', req.treasure_map.location()])
 
 
 Building a pyramid authorization policy using the cas_auth.Validator
@@ -85,7 +86,7 @@ Now, our protected app runs inside an `auth_tkt` session::
 
   >>> r4 = r3.follow(status=200)
   >>> r4
-  <Response 200 OK 'I am: john.smith'>
+  <Response 200 OK 'found it: Canary Isl'>
   >>> [v.split('=', 1)[0] for (n, v) in r3.headers
   ...  if n.lower() == 'set-cookie']
   ['auth_tkt', 'auth_tkt']
@@ -126,10 +127,12 @@ import pyramid
 from pyramid import security
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPSeeOther
 from pyramid.authentication import AuthTktAuthenticationPolicy
+from pyramid.session import UnencryptedCookieSessionFactoryConfig
 
 from admin_lib.rtconfig import Options, TestTimeOptions, RuntimeOptions
 from admin_lib.rtconfig import MockMixin
-from admin_lib import sealing
+from admin_lib import notary
+from admin_lib.ocap_file import edef
 from admin_lib.ocap_file import WebReadable
 
 log = logging.getLogger(__name__)
@@ -174,24 +177,30 @@ class Validator(object):
         # When this thing is missing from the config file,
         # the stacktrace is really obscure.
         assert rt.app_secret
-        self._secret = rt.app_secret
+        self.__secret = rt.app_secret
         self._issuers = []
 
     def __str__(self):
         return 'Validator(cas_addr=%s)' % self._webrdcap.fullPath()
 
-    def configure(self, config, logout_route):
+    def configure(self, config, logout_route,
+                  timeout=10 * 60,
+                  reissue_time=1 * 60):
         '''Apply configuration hooks:
 
-        1. an authentication policy that consults each issuer
+        1. an authentication policy
         2. checkTicket NewRequest event handler
         3. redirect-to-CAS-service view
         4. logout view
+        5. session factory
         '''
+        clearsigned = UnencryptedCookieSessionFactoryConfig(self.__secret)
+        config.set_session_factory(clearsigned)
+
         config.set_authentication_policy(AuthTktAuthenticationPolicy(
-                self._secret, callback=self.issue_caps,
-                timeout=10 * 60,
-                reissue_time=1 * 60,
+                self.__secret, callback=self.issue_caps,
+                timeout=timeout,
+                reissue_time=reissue_time,
                 wild_domain=False))
 
         config.add_subscriber(self.checkTicket, pyramid.events.NewRequest)
@@ -273,8 +282,6 @@ class Validator(object):
         to add capabilities to the request.
         '''
         log.debug('issuing CAS login capabilities for: %s', uid)
-        # 1st capability is the user id itself
-        req.remote_user = uid
         return _flatten([issuer.issue(req)
                          for issuer in self._issuers])
 
@@ -307,17 +314,12 @@ class CapabilityStyle(object):
         @return: True iff an audit raised no exception.
         '''
         for auditor in self._auditors:
-            if permission in auditor.permissions:
-                for cap in principals:
-                    try:
-                        # maybe pass all principals to audit in one go?
-                        auditor.audit(cap, permission)
-                        log.info('CapabilityStyle.permits: %s %s',
-                                 cap, permission)
-
-                        return True
-                    except TypeError:
-                        pass
+            try:
+                auditor.audit_all(principals, permission)
+                log.info('%s permits %s', auditor, permission)
+                return True
+            except TypeError:
+                pass
 
         log.info('CapabilityStyle.permits: %s do not have %s permission.',
                  principals, permission)
@@ -385,6 +387,10 @@ class Mock(injector.Module, MockMixin):
 
         return WebReadable(rt.base, ua, Request)
 
+    @provides(notary.makeNotary)
+    def notary(self):
+        return notary.makeNotary()
+
     @classmethod
     def mods(cls):
         return [Mock()]
@@ -393,20 +399,49 @@ class Mock(injector.Module, MockMixin):
 class MockIssuer(object):
     permissions = ('treasure',)
 
-    def __init__(self):
-        self.sealer, self._unsealer = sealing.makeBrandPair('treasure map')
+    def __str__(self):
+        return self.__class__.__name__ + '()'
+
+    @inject(notary=notary.makeNotary)
+    def __init__(self, notary):
+        self.__notary = notary
 
     def issue(self, req):
-        cap = 'Canary Islands'
-        req.treasure_location = cap
-        log.debug('issuing caps for: %s', self.permissions)
-        return [self.sealer.seal(cap)]
+        cap = TreasureMap(self.__notary, 'Canary Islands')
+        req.treasure_map = cap
+        log.debug('issuing caps')
+        return [cap]
 
-    def audit(self, cap, permission):
-        try:
-            self._unsealer.unseal(cap)
-        except AttributeError:  # e.g. in case of string principals
+    def audit_all(self, caps, permission):
+        log.debug('MockIssuer.audit_all(%s, %s)', caps, permission)
+        if not permission in self.permissions:
             raise TypeError
+
+        vouch = self.__notary.getInspector().vouch
+
+        for cap in caps:
+            try:
+                vouch(cap)
+                return
+            except:  # e.g. in case of string principals
+                pass
+        raise TypeError
+
+
+def TreasureMap(notary, sekret):
+    map_ = None  # forward reference
+
+    def startVouch():
+        notary.startVouch(map_)
+
+    def location():
+        return sekret
+
+    def __repr__(self):
+        return 'TreasureMap()'
+
+    map_ = edef(startVouch, location, __repr__)
+    return map_
 
 
 def _integration_test(ini, host='127.0.0.1', port=8123):
@@ -419,9 +454,8 @@ def _integration_test(ini, host='127.0.0.1', port=8123):
 
     def protected_view(req):
         log.info('protected_view for: %s', req.remote_user)
-        return Response(app_iter=['I am: ', req.remote_user,
-                                  ' and the location of the treasure is: ',
-                                  req.treasure_location])
+        return Response(app_iter=['Location of the treasure is: ',
+                                  req.treasure_map.location()])
 
     config = Configurator(settings={'pyramid.debug_routematch': True})
 
