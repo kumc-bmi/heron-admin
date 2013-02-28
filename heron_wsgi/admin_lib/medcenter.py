@@ -1,8 +1,8 @@
 '''medcenter --  academic medical center directory/policy
 =========================================================
 
-A :class:`MedCenter` looks up badges, delegates to affiliates, and keeps
-Human Subjects training records.
+A :class:`MedCenter` issues badges, and keeps Human Subjects training
+records.
 
   >>> (m, ) = Mock.make([MedCenter])
 
@@ -14,17 +14,27 @@ Access is logged at the :data:`logging.INFO` level.
   >>> import sys
   >>> logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
-Affiliate Authorization
------------------------
+Issuing Notarized Badges
+------------------------
 
-A :class:`MedCenter` delegates authority to an :class:`Affiliate`::
+A :class:`MedCenter` issues :class:`IDBadge` capabilities::
 
-  >>> js = Affiliate({}, 'john.smith', m)
-  >>> js.full_name()
+  >>> r1 = MockRequest()
+  >>> caps = m.issue('john.smith', r1)
   INFO:mock_directory:network fetch for (cn=john.smith)
+  >>> caps
+  [John Smith <john.smith@js.example>]
+  >>> m.audit_all(caps, PERM_ID)
+
+  >>> js = caps[0]
+  >>> js.full_name()
   'John Smith'
-  >>> js
-  John Smith <john.smith@js.example>
+
+   >>> r2 = MockRequest()
+   >>> bill = m.issue('bill.student', r2)[0]
+   INFO:mock_directory:network fetch for (cn=bill.student)
+   >>> m.is_faculty(bill)
+   False
 
 Human Subjects Training
 -----------------------
@@ -36,15 +46,19 @@ We use an outboard service to check human subjects "chalk" training::
   param=userid
   url=http://localhost:8080/chalk-checker
 
-  >>> js.trained_thru()
+  >>> m.trained_thru(js)
   '2012-01-01'
 
-.. todo:: document failure modes of `trained_thru`
+  >>> m.trained_thru(bill)
+  Traceback (most recent call last):
+    ...
+  LookupError
 
-Regression testing
-------------------
 
-  >>> who = m.lookup('carol.student')
+Robustness
+----------
+
+  >>> who = mc.peer_badge('carol.student')
   INFO:mock_directory:network fetch for (cn=carol.student)
   WARNING:medcenter:missing LDAP attribute kumcPersonFaculty for carol.student
   WARNING:medcenter:missing LDAP attribute kumcPersonJobcode for carol.student
@@ -67,7 +81,7 @@ from injector import inject, provides, singleton
 
 import rtconfig
 import ldaplib
-import sealing
+from notary import makeNotary
 
 log = logging.getLogger(__name__)
 
@@ -108,18 +122,40 @@ class MedCenter(object):
             testing_faculty=KTestingFaculty)
     def __init__(self, searchsvc, trainingfn, testing_faculty):
         '''
-        :param app_secret: testing hook for faculty badge.
+        :param testing_faculty: testing hook for faculty badge.
         '''
         log.debug('MedCenter.__init__ again?')
         self._svc = searchsvc
         self._training = trainingfn
         self._testing_faculty = testing_faculty
         self._browser = Browser(self)
+        self.__notary = makeNotary()
 
     def __repr__(self):
         return "MedCenter(s, t)"
 
-    def get(self, name):
+    def issue(self, uid, req):
+        req.badge = IDBadge(self.__notary,
+                            **self.directory_attributes(uid))
+        return [req.badge]
+
+    def audit_all(self, caps, permission):
+        if not permission in self.permissions:
+            raise TypeError
+
+        vouch = self.__notary.getInspector().vouch
+
+        for cap in caps:
+            try:
+                vouch(cap)
+                return
+            except:  # e.g. in case of string principals
+                pass
+        raise TypeError
+
+    def directory_attributes(self, name):
+        '''Get directory attributes.
+        '''
         matches = self._svc.search('(cn=%s)' % name, Badge.attributes)
         if len(matches) != 1:
             if len(matches) == 0:
@@ -130,19 +166,7 @@ class MedCenter(object):
         dn, ldapattrs = matches[0]
         return LDAPBadge._simplify(ldapattrs)
 
-    def lookup(self, name):
-        return LDAPBadge(**self.get(name))
-
-    def is_faculty(self, badge):
-        log.debug('testing faculty badge kludge for %s', badge.cn)
-        if ('faculty:' + badge.cn) in self._testing_faculty:
-            log.info('faculty badge granted to %s by configuration', badge.cn)
-            return badge
-
-        return (badge.kumcPersonJobcode != self.excluded_jobcode
-                and badge.kumcPersonFaculty == 'Y')
-
-    def search(self, max_qty, cn, sn, givenname):
+    def _search(self, max_qty, cn, sn, givenname):
         clauses = ['(%s=%s*)' % (n, v)
                    for (n, v) in (('cn', cn),
                                   ('sn', sn),
@@ -156,9 +180,40 @@ class MedCenter(object):
         else:
             q = clauses[0]
 
-        results = self._svc.search(q, Badge.attributes)[:max_qty]
+        return self._svc.search(q, Badge.attributes)[:max_qty]
+
+    def peer_badge(self, name):
+        '''Get a badge for a peer, i.e. with no authority.
+        '''
+        return LDAPBadge(**self.directory_attributes(name))
+
+    def search(self, max_qty, cn, sn, givenname):
+        '''Search for peers.
+        '''
         return [LDAPBadge.from_attrs(ldapattrs)
-                for dn, ldapattrs in results]
+                for dn, ldapattrs in self._search(max_qty, cn, sn, givenname)]
+
+    def is_faculty(self, alleged_badge):
+        badge = self.__notary.getInspector().vouch(alleged_badge)
+        log.debug('testing faculty badge kludge for %s', badge.cn)
+        if ('faculty:' + badge.cn) in self._testing_faculty:
+            log.info('faculty badge granted to %s by configuration', badge.cn)
+            return badge
+
+        return (badge.kumcPersonJobcode != self.excluded_jobcode
+                and badge.kumcPersonFaculty == 'Y')
+
+    def trained_thru(self, alleged_badge):
+        '''
+        :raises: :exc:`IOError`, :exc:`LookupError`
+        '''
+        badge = self.__notary.getInspector().vouch(alleged_badge)
+
+        when = self._training(badge.cn)
+        if not when:
+            raise LookupError
+
+        return when
 
 
 class Browser(object):
@@ -167,7 +222,7 @@ class Browser(object):
     the users they find.
     '''
     def __init__(self, mc):
-        self.lookup = mc.lookup
+        self.lookup = mc.peer_badge
         self.search = mc.search
 
 
@@ -176,8 +231,31 @@ class NotFaculty(Exception):
 
 
 class Badge(object):
+    '''Convenient access to directory info.
+
+      >>> js = LDAPBadge(cn='john.smith', sn='Smith', givenname='John',
+      ...                mail='john.smith@example', ou='')
+      >>> js
+      John Smith <john.smith@example>
+      >>> js.sn
+      'Smith'
+
+      >>> js.sn_typo
+      Traceback (most recent call last):
+      ...
+      AttributeError: sn_typo
+    '''
     attributes = ("cn", "ou", "sn", "givenname", "title", "mail",
                   "kumcPersonFaculty", "kumcPersonJobcode")
+
+    def __init__(self, **attrs):
+        self.__attrs = attrs
+
+    def __getattr__(self, n):
+        try:
+            return self.__attrs[n]
+        except KeyError:
+            raise AttributeError(n)
 
     def __repr__(self):
         return '%s %s <%s>' % (self.givenname, self.sn, self.mail)
@@ -195,19 +273,7 @@ class Badge(object):
 
 
 class LDAPBadge(Badge):
-    '''
-      >>> js = LDAPBadge(cn='john.smith', sn='Smith', givenname='John',
-      ...                mail='john.smith@example', ou='')
-      >>> js
-      John Smith <john.smith@example>
-      >>> js.sn
-      'Smith'
-
-      >>> js.sn_typo
-      Traceback (most recent call last):
-      ...
-      AttributeError: sn_typo
-
+    '''Utilities to handle LDAP data structures.
     '''
     @classmethod
     def from_attrs(cls, ldapattrs):
@@ -238,117 +304,60 @@ class LDAPBadge(Badge):
 
         return d
 
-    def __init__(self, **attrs):
-        self.__attrs = attrs
 
-    def __getattr__(self, n):
-        try:
-            return self.__attrs[n]
-        except KeyError:
-            raise AttributeError(n)
+class IDBadge(LDAPBadge):
+    '''Notarized badges.
 
-
-class Affiliate(Badge):
-    '''
       >>> (mc, ) = Mock.make([MedCenter])
-      >>> session_cache = {}
-      >>> js = Affiliate(session_cache, 'john.smith', mc)
-
-      >>> js.sn
+      >>> r1 = MockRequest()
+      >>> js = mc.issue('john.smith', r1)[0]
       INFO:mock_directory:network fetch for (cn=john.smith)
-      'Smith'
-
-    Network fetches are cached::
-
-      >>> (js.sn, js.givenname)
-      ('Smith', 'John')
-
-      >>> js.sn_typo
-      Traceback (most recent call last):
-      ...
-      AttributeError: sn_typo
 
       >>> mc.is_faculty(js)
       True
-      >>> bill = Affiliate({}, 'bill.student', mc)
-      >>> mc.is_faculty(bill)
-      INFO:mock_directory:network fetch for (cn=bill.student)
-      False
 
-      >>> js.trained_thru()
-      '2012-01-01'
-      >>> bill.trained_thru()
+    Note that only notarized badges are accepted:
+      >>> evil = Badge(
+      ...    kumcPersonJobcode='1234',
+      ...    kumcPersonFaculty='Y',
+      ...    cn='john.smith',
+      ...    sn='Smith',
+      ...    givenname='John')
+      >>> mc.is_faculty(evil)
       Traceback (most recent call last):
         ...
-      LookupError
+      NotVouchable
 
-
-      >>> Affiliate.cache_sizes_sum() < Affiliate.cache_max
-      True
     '''
 
-    cache_max = 4000  # TODO: cite sources about session cookie limitations
-    cache_sizes = dict(kumcPersonJobcode=20,
-                       kumcPersonFaculty=1,
-                       cn=60,
-                       title=80,
-                       sn=60,
-                       mail=80,
-                       ou=60,
-                       givenname=20)
-
     @classmethod
-    def cache_sizes_sum(cls):
-        return sum([len(k) + v for k, v in cls.cache_sizes.iteritems()])
+    def from_attrs(cls, notary, ldapattrs):
+        return cls(notary, **cls._simplify(ldapattrs))
 
-    def __init__(self, cache, cn, mc):
-        Badge.__init__(self)
-        cache['cn'] = cn
-        self.__cache = cache
-        self.__cn = cn
-        self.__mc = mc
-        self.browser = mc._browser
+    def __init__(self, notary, **attrs):
+        assert notary
+        self.__notary = notary  # has to go before LDAPBadge.__init__
+        # ... due to __getattr__ magic.
+        LDAPBadge.__init__(self, **attrs)
 
-    def __getattr__(self, n):
-        if not n in Badge.attributes:
-            raise AttributeError(n)
-        cache = self.__cache
-        try:
-            return cache[n]
-        except KeyError:
-            pass
-        d = self.__mc.get(self.__cn)
-        for k, v in d.iteritems():
-            self._put(k, v)
-        return d[n]
-
-    def __contains__(self, k):
-        return k in self.__cache
-
-    def __getitem__(self, k):
-        return self.__cache[k]
-
-    def _put(self, k, v):
-        assert type(v) in (type(''), type(1), type(None)), (k, type(v))
-        cache = self.__cache
-        if len(str(v)) <= self.cache_sizes[k]:
-            cache[k] = v
-        return v
-
-    def trained_thru(self):
-        '''
-        :raises: :exc:`IOError`, :exc:`LookupError`
-        '''
-        when = self.__mc._training(self.__cn)
-
-        if not when:
-            raise LookupError
-        return when
+    def startVouch(self):
+        self.__notary.startVouch(self)
 
 
 _sample_chalk_settings = rtconfig.TestTimeOptions(dict(
         url='http://localhost:8080/chalk-checker',
         param='userid'))
+
+
+class _AttrDict(dict):
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+        self.__dict__ = self
+
+
+class MockRequest(_AttrDict):
+    def __init__(self):
+        _AttrDict.__init__(self)
 
 
 class Mock(injector.Module, rtconfig.MockMixin):
@@ -387,6 +396,7 @@ class RunTime(rtconfig.IniModule):
 
     @provides(KTrainingFunction)
     def training(self, section=CHALK_CONFIG_SECTION, ua=_ua):
+        # TODO: cache training lookups
 
         rt = rtconfig.RuntimeOptions('url param'.split())
         rt.load(self._ini, section)
@@ -418,7 +428,8 @@ def integration_test():  # pragma: no cover
         print m.search(10, cn, sn, givenname)
     else:
         uid = sys.argv[1]
-        who = Affiliate({}, uid, m)
+        req = MockRequest()
+        who = m.issue(uid, req)[0]
         print who
         print "training: ", who.trained_thru()
 
