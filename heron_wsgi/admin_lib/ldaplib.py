@@ -39,38 +39,24 @@ from injector import inject, provides, singleton
 
 import rtconfig
 import mock_directory
+from cache_remote import Cache
 
 CONFIG_SECTION = 'enterprise_directory'
 log = logging.getLogger(__name__)
 
 
-class LDAPService(object):
+class LDAPService(Cache):
     '''See :mod:`heron_wsgi.admin_lib.mock_directory` for API details.
     '''
     def __init__(self, now, ttl):
-        self.__now = now
+        Cache.__init__(self, now)
         self._ttl = timedelta(seconds=ttl)
-        self._cache = {}
 
     def search(self, query, attrs):
-        tnow = self.__now()
         attrs = tuple(sorted(attrs))
-        try:
-            tfound, v = self._cache[(query, attrs)]
-            if tnow - tfound <= self._ttl:
-                return v
-        except KeyError:
-            pass
-
-        # We're taking the time to go over the network; now is
-        # a good time to prune the cache.
-        for k, (t, v) in self._cache.items():
-            if tnow - t > self._ttl:
-                del self._cache[k]
-
-        v = self.search_remote(query, attrs)
-        self._cache[(query, attrs)] = (tnow, v)
-        return v
+        return self._query((query, attrs),
+                           lambda: (self._ttl,
+                                    self.search_remote(query, attrs)))
 
     def search_remote(self, query, attrs):
         raise NotImplementedError('subclass must implement.')
