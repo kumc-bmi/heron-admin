@@ -47,9 +47,9 @@ log = logging.getLogger(__name__)
 class LDAPService(object):
     '''See :mod:`heron_wsgi.admin_lib.mock_directory` for API details.
     '''
-    def __init__(self, now, seconds):
+    def __init__(self, now, ttl):
         self.__now = now
-        self._ttl = timedelta(seconds=seconds)
+        self._ttl = timedelta(seconds=ttl)
         self._cache = {}
 
     def search(self, query, attrs):
@@ -76,10 +76,13 @@ class LDAPService(object):
         raise NotImplementedError('subclass must implement.')
 
 
-class MockLDAP(mock_directory.MockDirectory, LDAPService):
+class MockLDAP(LDAPService, mock_directory.MockDirectory):
     def __init__(self, ts, ttl):
         mock_directory.MockDirectory.__init__(self)
         LDAPService.__init__(self, ts.now, ttl)
+
+    def search_remote(self, q, attrs):
+        return mock_directory.MockDirectory.search(self, q, attrs)
 
 
 class NativeLDAPService(LDAPService):
@@ -131,7 +134,7 @@ class RunTime(rtconfig.IniModule):
     @singleton
     @provides(LDAPService)
     @inject(rt=(rtconfig.Options, CONFIG_SECTION))
-    def service(self, rt):
+    def service(self, rt, ttl=15):
         '''Provide native or mock LDAP implementation.
 
         This is demand-loaded so that the codebase can be tested
@@ -142,13 +145,16 @@ class RunTime(rtconfig.IniModule):
         __ http://www.python-ldap.org/doc/html/ldap.html
 
         '''
+        import datetime
+
         if rt.url.startswith('mock:'):
             res = rt.url[len('mock:'):]
             import mock_directory
             return mock_directory.MockDirectory(res)
 
         import ldap
-        return NativeLDAPService(rt, native=ldap)
+        return NativeLDAPService(rt, native=ldap,
+                                 now=datetime.datetime.now, ttl=ttl)
 
 
 if __name__ == '__main__':  # pragma nocover

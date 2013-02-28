@@ -14,10 +14,10 @@ The mock directory has a handful of students and faculty::
 
 It implements the LDAP search API in a few cases::
 
-  >>> d.search_remote('(cn=john.smith)', ['sn', 'givenname'])
+  >>> d.search('(cn=john.smith)', ['sn', 'givenname'])
   [('(cn=john.smith)', {'givenname': ['John'], 'sn': ['Smith']})]
 
-  >>> d.search_remote('(cn=john.smith)', [])
+  >>> d.search('(cn=john.smith)', [])
   ... #doctest: +NORMALIZE_WHITESPACE
   [('(cn=john.smith)',
    {'kumcPersonJobcode': ['1234'], 'kumcPersonFaculty': ['Y'],
@@ -47,7 +47,7 @@ class MockDirectory(object):
         self.records = records = list(self._records(resource))
         self._d = dict([(r['cn'], r) for r in records])
 
-    def search_remote(self, q, attrs):
+    def search(self, q, attrs):
         log.info('network fetch for %s', q)
         i = self._qid(q)
         record = self._d[i]
