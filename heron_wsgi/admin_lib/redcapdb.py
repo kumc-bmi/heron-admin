@@ -3,6 +3,8 @@
 
 '''
 
+import logging
+
 import injector
 from injector import inject, provides, singleton
 import sqlalchemy
@@ -14,6 +16,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 import rtconfig
 
+log = logging.getLogger(__name__)
 Base = declarative_base()
 CONFIG_SECTION = 'redcapdb'
 
@@ -285,6 +288,14 @@ class Mock(injector.Module, rtconfig.MockMixin):
     @classmethod
     def mods(cls):
         return [cls(), SetUp()]
+
+
+def add_test_eav(s, project_id, event_id, e, avs):
+    log.debug('add_test_eav: %s', (project_id, event_id, e, avs))
+    for a, v in avs:
+        s.execute(redcap_data.insert().values(
+                project_id=project_id, event_id=event_id,
+                record=e, field_name=a, value=v))
 
 
 class RunTime(rtconfig.IniModule):

@@ -134,6 +134,9 @@ class MedCenter(object):
     def __repr__(self):
         return "MedCenter(s, t)"
 
+    def getInspector(self):
+        return self.__notary.getInspector()
+
     def issue(self, uid, req):
         req.badge = IDBadge(self.__notary,
                             **self.directory_attributes(uid))

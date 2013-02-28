@@ -1,6 +1,52 @@
 '''disclaimer -- access disclaimers and acknowledgements from REDCap EAV DB
 ---------------------------------------------------------------------------
 
+  ... logging.basicConfig(level=logging.DEBUG)
+  ... logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
+A DisclaimerGuard provides a power only to those who have acknowledged
+a disclaimer:
+
+  >>> dg, notary = Mock.make((DisclaimerGuard, KNotary))
+  >>> dg
+  DisclaimerGuard(use_i2b2)
+  >>> notary
+  Notary(disclaimer)
+  >>> notary.getInspector()
+  Inspector(disclaimer)
+
+You can't acknowledge a disclaimer without a notarized badge:
+
+  >>> import medcenter
+  >>> x = medcenter.Badge(cn='john.smith',
+  ...                     givenname='John', sn='Smith')
+  >>> dg.ack_disclaimer(x)
+  Traceback (most recent call last):
+    ...
+  NotVouchable
+
+  >>> who = medcenter.IDBadge(notary, cn='john.smith',
+  ...                         givenname='John', sn='Smith',
+  ...                         mail='john.smith@js.example')
+  >>> who
+  John Smith <john.smith@js.example>
+  >>> notary.getInspector().vouch(who)
+  John Smith <john.smith@js.example>
+
+Smith can't redeem his acknowledgement yet because he hasn't done one::
+
+  >>> dg.redeem(who)
+  Traceback (most recent call last):
+    ...
+  NoResultFound: No row was found for one()
+
+  >>> dg.ack_disclaimer(who)
+  >>> dg.redeem(who)
+
+
+Database Access
+---------------
+
 :class:`Disclaimer` and :class:`Acknowledgement` provide read-only
 access via SQL queries.
 
@@ -43,18 +89,21 @@ from xml.dom.minidom import parse
 import injector
 from injector import inject, provides, singleton
 import sqlalchemy
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import session, sessionmaker
 import xpath
 
 # from this package
+from ocap_file import WebReadable, Token
 import rtconfig
 import redcapdb
 import redcap_connect
-from ocap_file import WebReadable
 
 DISCLAIMERS_SECTION = 'disclaimers'
 ACKNOWLEGEMENTS_SECTION = 'disclaimer_acknowledgements'
 KTimeSource = injector.Key('TimeSource')
+KNotary = injector.Key('Notary')
+KBadgeInspector = injector.Key('BadgeInspector')
+KPower = injector.Key(__name__ + '.Power')
 
 log = logging.getLogger(__name__)
 
@@ -151,6 +200,46 @@ def last_seg(addr):
     return addr[addr.rfind('/'):]
 
 
+class DisclaimerGuard(Token):
+    @inject(smaker=(session.Session,
+                    redcapdb.CONFIG_SECTION),
+            badge_inspector=KBadgeInspector,
+            acks=AcknowledgementsProject,
+            guarded_power=KPower)
+    def __init__(self, smaker, acks, badge_inspector, guarded_power):
+        self.__smaker = smaker
+        self.__badge_inspector = badge_inspector
+        self.__guarded_power = guarded_power
+        self.__acks = acks
+
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__,
+                           self.__guarded_power.__name__)
+
+    def ack_disclaimer(self, alleged_badge):
+        badge = self.__badge_inspector.vouch(alleged_badge)
+
+        s = self.__smaker()
+        d = s.query(Disclaimer).filter(Disclaimer.current == 1).one()
+        self.__acks.add_record(badge.cn, d.url)
+        s.commit()
+
+    def redeem(self, alleged_badge):
+        badge = self.__badge_inspector.vouch(alleged_badge)
+
+        s = self.__smaker()
+        d = s.query(Disclaimer).filter(Disclaimer.current == 1).one()
+        log.debug('disclaimer: %s', d)
+        log.debug('all acks: %s',
+                  s.query(Acknowledgement).all())
+        a = s.query(Acknowledgement).\
+            filter(Acknowledgement.disclaimer_address == d.url).\
+            filter(Acknowledgement.user_id == badge.cn).one()
+        log.info('disclaimer ack: %s', a)
+
+        return self.__guarded_power(badge)
+
+
 class _MockREDCapAPI2(redcap_connect._MockREDCapAPI):
     project_id = redcap_connect._test_settings.project_id
 
@@ -164,7 +253,7 @@ class _MockREDCapAPI2(redcap_connect._MockREDCapAPI):
             return super(_MockREDCapAPI2, self).dispatch(params)
 
     def service_import(self, params):
-        from heron_policy import add_test_eav
+        from redcapdb import add_test_eav
 
         rows = json.loads(params['data'][0])
         schema = rows[0].keys()
@@ -184,7 +273,9 @@ class _MockREDCapAPI2(redcap_connect._MockREDCapAPI):
 
 class Mock(redcapdb.SetUp, rtconfig.MockMixin):
     def __init__(self):
+        from notary import makeNotary
         sqlalchemy.orm.clear_mappers()
+        self._notary = makeNotary(__name__)
 
     @classmethod
     def mods(cls):
@@ -204,10 +295,24 @@ class Mock(redcapdb.SetUp, rtconfig.MockMixin):
     def time_source(self):
         return _TestTimeSource()
 
+    @provides(KPower)
+    def power_to_use_i2b2(self):
+        def use_i2b2(badge):
+            log.info('grant %s power to use i2b2', badge.cn)
+        return use_i2b2
+
+    @provides(KBadgeInspector)
+    def badge_inspector(self):
+        return self._notary.getInspector()
+
+    @provides(KNotary)
+    def notary(self):
+        return self._notary
+
 
 class TestSetUp(redcapdb.SetUp):
     disclaimer_pid = '123'
-    ack_pid = '1234'
+    ack_pid = redcap_connect._test_settings.project_id
 
     @singleton
     @provides((sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
