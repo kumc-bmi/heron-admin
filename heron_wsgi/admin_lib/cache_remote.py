@@ -15,15 +15,15 @@ class Cache(object):
         tnow = self.__now()
         try:
             expire, v = self._cache[k]
-            log.debug('cache hit? %s %s %s', expire, tnow, expire > tnow)
-            if expire > tnow:
-                return v
         except KeyError:
             pass
+        else:
+            if expire > tnow:
+                return v
 
         # We're taking the time to go over the network; now is
         # a good time to prune the cache.
-        for k, (t, v) in self._cache.items():
+        for k, (t, _) in self._cache.items():
             if t <= tnow:
                 del self._cache[k]
 
