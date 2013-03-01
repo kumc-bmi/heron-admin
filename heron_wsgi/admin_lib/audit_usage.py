@@ -288,7 +288,7 @@ def _current_users_queries():
     log.info('Current queries: %s', pprint.pformat(usage.current_queries()))
 
 
-def _report_with_roles(argv, stdout):
+def _report_with_roles(argv, stdout):  # pragma: nocover
     import csv
 
     import i2b2pm
@@ -315,10 +315,6 @@ def _report_with_roles(argv, stdout):
 
 
 if __name__ == '__main__':
-
-    def _hide_sys():
-        import sys
-        return sys.argv, sys.stdout
 
     _current_users_queries()
     #a, s = _hide_sys()

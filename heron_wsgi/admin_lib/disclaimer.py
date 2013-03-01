@@ -1,4 +1,4 @@
-'''disclaimer -- access disclaimers and acknowledgements from REDCap EAV DB
+r'''disclaimer -- access disclaimers and acknowledgements from REDCap EAV DB
 ---------------------------------------------------------------------------
 
   >>> logging.basicConfig(level=logging.INFO)
@@ -55,9 +55,9 @@ access via SQL queries.
 Let's get a sessionmaker and an AcknowledgementsProject, which causes
 the database to get set up::
 
-  >>> smaker, acksproj = Mock.make((
+  >>> smaker, acksproj, blog = Mock.make((
   ...       (sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
-  ...        AcknowledgementsProject))
+  ...        AcknowledgementsProject, (WebReadable, DISCLAIMERS_SECTION)))
   >>> s = smaker()
   >>> for row in s.execute(redcapdb.redcap_data.select()).fetchall():
   ...     print row
@@ -67,10 +67,12 @@ the database to get set up::
 
 Now note the mapping to the Disclaimer class::
 
-  >>> s.query(Disclaimer).all()
-  ... # doctest: +NORMALIZE_WHITESPACE
+  >>> dall = s.query(Disclaimer).all()
+  >>> dall # doctest: +NORMALIZE_WHITESPACE
   [Disclaimer(disclaimer_id=1,
               url=http://example/blog/item/heron-release-xyz, current=1)]
+  >>> dall[0].content(blog)[0][:30]
+  u'<div id="blog-main">\n<h1 class'
 
   .>> acksproj.add_record('bob', 'http://informatics.kumc.edu/blog/2012/x')
   .>> for ack in s.query(Acknowledgement):
@@ -349,7 +351,7 @@ class _TestTimeSource(object):
         return datetime.date(2011, 9, 2)
 
 
-class RunTime(rtconfig.IniModule):
+class RunTime(rtconfig.IniModule):  # pragma: nocover
     def configure(self, binder):
         drt = self.get_options(['project_id'], DISCLAIMERS_SECTION)
         Disclaimer.eav_map(drt.project_id)
@@ -377,7 +379,7 @@ class RunTime(rtconfig.IniModule):
         return redcapdb.RunTime.mods(ini) + [cls(ini)]
 
 
-def _test_main():
+def _test_main():  # pragma: nocover
     import sys
 
     logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
@@ -439,5 +441,5 @@ def _test_main():
             print c[:100]
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: nocover
     _test_main()

@@ -298,7 +298,7 @@ def add_test_eav(s, project_id, event_id, e, avs):
                 record=e, field_name=a, value=v))
 
 
-class RunTime(rtconfig.IniModule):
+class RunTime(rtconfig.IniModule):  # pragma: nocover
     def configure(self, binder):
         #@@todo: rename sid to database (check sqlalchemy docs 1st)
         self.bind_options(binder,
@@ -323,7 +323,7 @@ class RunTime(rtconfig.IniModule):
         return [cls(ini), SetUp()]
 
 
-def _test_main():
+def _test_main():  # pragma: nocover
     '''Print distinct field_name from a given project_id.
     '''
     import sys
@@ -349,5 +349,5 @@ def _test_main():
     pprint(ans.fetchall())
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: nocover
     _test_main()

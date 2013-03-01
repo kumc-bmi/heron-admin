@@ -162,7 +162,7 @@ class _MockREDCapAPI(object):
         return self.addr
 
 
-class RunTime(rtconfig.IniModule):
+class RunTime(rtconfig.IniModule):  # pragma: nocover
     @classmethod
     def integration_test(cls):
         from urllib2 import build_opener, Request
@@ -184,7 +184,7 @@ class RunTime(rtconfig.IniModule):
         return opts, EndPoint(webcap, opts.token)
 
 
-def _test_multi_use(c, uid, full_name):
+def _test_multi_use(c, uid, full_name):  # pragma: nocover
     '''Test that a user can use the same survey to make multiple requests.
     '''
     from urllib2 import urlopen
@@ -208,7 +208,7 @@ def _test_multi_use(c, uid, full_name):
         raise ValueError('form for 2nd request says ...already...')
 
 
-def _test_main():
+def _test_main():  # pragma: nocover
     import sys
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 

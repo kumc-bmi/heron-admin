@@ -62,7 +62,8 @@ class LDAPService(Cache):
                            'LDAP')
 
     def search_remote(self, query, attrs):
-        raise NotImplementedError('subclass must implement.')
+        raise NotImplementedError(
+            'subclass must implement.')  # pragma: nocover
 
 
 class MockLDAP(LDAPService, mock_directory.MockDirectory):
@@ -74,7 +75,7 @@ class MockLDAP(LDAPService, mock_directory.MockDirectory):
         return mock_directory.MockDirectory.search(self, q, attrs)
 
 
-class NativeLDAPService(LDAPService):
+class NativeLDAPService(LDAPService):  # pragma: nocover
     '''
     .. todo:: Investigate better way to deal with SSL certs
        than putting `TLS_REQCERT allow` in /etc/ldap/ldap.conf
@@ -95,7 +96,6 @@ class NativeLDAPService(LDAPService):
         return l
 
     def search_remote(self, query, attrs):
-        log.info('network fetch for %s', query)
         l = self._l or self._bind()
         base = self._rt.base
         try:
@@ -113,7 +113,7 @@ _sample_settings = rtconfig.TestTimeOptions(dict(
         base='ou=...,o=...'))
 
 
-class RunTime(rtconfig.IniModule):
+class RunTime(rtconfig.IniModule):  # pragma: nocover
     @provides((rtconfig.Options, CONFIG_SECTION))
     def opts(self):
         rt = rtconfig.RuntimeOptions('url userdn base password'.split())

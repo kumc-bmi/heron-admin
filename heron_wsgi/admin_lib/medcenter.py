@@ -5,6 +5,8 @@ A :class:`MedCenter` issues badges, and keeps Human Subjects training
 records.
 
   >>> (m, ) = Mock.make([MedCenter])
+  >>> m
+  MedCenter(directory_service, training)
 
 .. note:: See :class:`Mock` regarding the use of dependency injection
           to instantiate the :class:`MedCenter` class.
@@ -33,6 +35,14 @@ A :class:`MedCenter` issues :class:`IDBadge` capabilities::
    >>> bill = m.issue('bill.student', r2)[0]
    >>> m.is_faculty(bill)
    False
+
+Junk:
+
+  >>> m.audit_all(caps, 123)
+  Traceback (most recent call last):
+    ...
+  TypeError
+
 
 Human Subjects Training
 -----------------------
@@ -78,7 +88,7 @@ from injector import inject, provides, singleton
 
 import rtconfig
 import ldaplib
-from notary import makeNotary
+from notary import makeNotary, NotVouchable
 
 log = logging.getLogger(__name__)
 
@@ -109,6 +119,10 @@ class MedCenter(object):
         >>> hits[0].ou
         'Neurology'
 
+    Nonsense input:
+
+      >>> m.search(10, '', '', '')
+      []
     '''
     excluded_jobcode = "24600"
     permissions = (PERM_ID,)
@@ -128,7 +142,7 @@ class MedCenter(object):
         self.__notary = makeNotary()
 
     def __repr__(self):
-        return "MedCenter(s, t)"
+        return "MedCenter(directory_service, training)"
 
     def getInspector(self):
         return self.__notary.getInspector()
@@ -148,7 +162,7 @@ class MedCenter(object):
             try:
                 vouch(cap)
                 return
-            except:  # e.g. in case of string principals
+            except NotVouchable:
                 pass
         raise TypeError
 
@@ -156,10 +170,10 @@ class MedCenter(object):
         '''Get directory attributes.
         '''
         matches = self._svc.search('(cn=%s)' % name, Badge.attributes)
-        if len(matches) != 1:
+        if len(matches) != 1:  # pragma nocover
             if len(matches) == 0:
                 raise KeyError(name)
-            else:  # pragma nocover
+            else:
                 raise ValueError(name)  # ambiguous
 
         dn, ldapattrs = matches[0]
@@ -195,7 +209,7 @@ class MedCenter(object):
     def is_faculty(self, alleged_badge):
         badge = self.__notary.getInspector().vouch(alleged_badge)
         log.debug('testing faculty badge kludge for %s', badge.cn)
-        if ('faculty:' + badge.cn) in self._testing_faculty:
+        if ('faculty:' + badge.cn) in self._testing_faculty:  # pragma nocover
             log.info('faculty badge granted to %s by configuration', badge.cn)
             return badge
 
@@ -265,11 +279,6 @@ class Badge(object):
     def sort_name(self):
         return '%s, %s' % (self.sn, self.givenname)
 
-    def userid(self):
-        import warnings
-        warnings.warn("Badge.userid is deprecated", DeprecationWarning)
-        return self.cn
-
 
 class LDAPBadge(Badge):
     '''Utilities to handle LDAP data structures.
@@ -328,10 +337,6 @@ class IDBadge(LDAPBadge):
 
     '''
 
-    @classmethod
-    def from_attrs(cls, notary, ldapattrs):
-        return cls(notary, **cls._simplify(ldapattrs))
-
     def __init__(self, notary, **attrs):
         assert notary
         self.__notary = notary  # has to go before LDAPBadge.__init__
@@ -378,7 +383,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
                     injector.InstanceProvider(''))
 
 
-class RunTime(rtconfig.IniModule):
+class RunTime(rtconfig.IniModule):  # pragma: nocover
     '''Configure dependencies of :class:`MedCenter`:
       - :class:`ldap.LDAPService`
       - :data:`KTrainingFunction`

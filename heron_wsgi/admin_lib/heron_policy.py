@@ -243,17 +243,19 @@ Overight Auditing
 
 Oversight committee members can get sensitive audit info::
 
-.. todo: get these test working again
-
-  ### oc.issue(exreq)
-  [I2B2SensitiveUsage()]
+  >>> hp.audit_all([exreq.badge], PERM_DROC)
+  INFO:cache_remote:in DROC? query for big.wig
+  INFO:cache_remote:... cached until 2011-09-02 00:01:00
 
 Ordinary users cannot, though they can get aggregate usage info::
 
-  ### oc.issue(stureq)
-  []
   >>> stureq.stats_reporter
   I2B2AggregateUsage()
+
+  >>> hp.audit_all([stureq.badge], PERM_DROC)
+  Traceback (most recent call last):
+    ...
+  TypeError
 
 
 '''
@@ -298,8 +300,11 @@ class OversightCommittee(Token, Cache):
             oversight_rc=(redcap_connect.SurveySetup,
                           OVERSIGHT_CONFIG_SECTION),
             mc=medcenter.MedCenter,
+            timesrc=KTimeSource,
             auditor=I2B2SensitiveUsage)
-    def __init__(self, redcap_sessionmaker, oversight_rc, mc, auditor):
+    def __init__(self, redcap_sessionmaker, oversight_rc, mc,
+                 timesrc, auditor):
+        Cache.__init__(self, timesrc.now)
         self.__rcsm = redcap_sessionmaker
         self.project_id = oversight_rc.project_id
         self.__mc = mc
@@ -330,10 +335,9 @@ class OversightCommittee(Token, Cache):
             ans = s.execute(self._memberq(self.project_id, badge.cn))
 
             in_droc = len(ans.fetchall()) == 1
-            log.info('issue DROC? %s', in_droc)
             return ttl, in_droc
 
-        in_droc = self._query(badge.cn, db_q)
+        in_droc = self._query(badge.cn, db_q, 'in DROC?')
         if not in_droc:
             raise NotDROC
 
@@ -448,7 +452,8 @@ class HeronRecords(Token, Cache):
             for cap in caps:
                 try:
                     self.__oc.droc_auditor(cap)
-                except (NoPermission, notary.NotVouchable):
+                    return
+                except (NotDROC, notary.NotVouchable):
                     pass
 
         raise TypeError
@@ -697,7 +702,7 @@ class NoPermission(Exception):
         return '%s(%s)' % (self.__class__.__name__, self.whynot)
 
 
-class NotDROC(NoPermission):
+class NotDROC(Exception):
     pass
 
 

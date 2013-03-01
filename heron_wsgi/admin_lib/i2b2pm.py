@@ -24,6 +24,7 @@ The password field in the `User` record is hashed::
   >>> js.password
   u'da67296336429545fe63f61644e420'
 
+
 The effect is a `pm_user_data` record::
 
   >>> import pprint
@@ -59,7 +60,7 @@ This updates the `password` column of the `pm_user_data` record::
 '''
 
 import logging
-import uuid
+import uuid  # @@code review: push into TCB
 import hashlib
 
 import injector
@@ -80,7 +81,7 @@ Base = declarative_base()
 log = logging.getLogger(__name__)
 
 
-class I2B2PM(object):
+class I2B2PM(ocap_file.Token):
     @inject(datasrc=(orm.session.Session, CONFIG_SECTION),
             uuidgen=KUUIDGen)
     def __init__(self, datasrc, uuidgen):
@@ -160,7 +161,7 @@ def revoke_expired_auths(ds):
     ds.commit()
 
 
-class I2B2Account(object):
+class I2B2Account(ocap_file.Token):
     def __init__(self, pm, agent):
         self.__pm = pm
         self.__agent = agent
@@ -172,8 +173,6 @@ class I2B2Account(object):
         agent = self.__agent
         key, u = self.__pm.authz(agent.cn, agent.full_name())
         return (agent.cn, key)
-
-
 
 
 class Audited(object):
@@ -209,12 +208,12 @@ class UserRole(Base, Audited):
                           primary_key=True)
 
     def __repr__(self):
-        return "<UserRule(%s, %s, %s)>" % (self.project_id,
+        return "<UserRole(%s, %s, %s)>" % (self.project_id,
                                            self.user_id,
                                            self.user_role_cd)
 
 
-class RunTime(rtconfig.IniModule):
+class RunTime(rtconfig.IniModule):  # pragma: nocover
     jndi_name = 'PMBootStrapDS'
 
     # abusing Session a bit; this really provides a subclass, not an
@@ -275,7 +274,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
         return G()
 
 
-def _test_main():
+def _test_main():  # pragma: nocover
     import sys
 
     logging.basicConfig(level=logging.DEBUG)
@@ -293,7 +292,7 @@ def _test_main():
     print pm.authz(user_id, full_name)
 
 
-def _list_users():
+def _list_users():  # pragma: nocover
     import csv, sys
     (sm, ) = RunTime.make(None,
                           [(orm.session.Session, CONFIG_SECTION)])
@@ -315,5 +314,5 @@ def _list_users():
                    for when, qty, uid in ans.fetchall()])
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: nocover
     _test_main()
