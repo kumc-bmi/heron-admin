@@ -54,7 +54,7 @@ Unforgeable System Access Agreement
 capability, which provides a link to an authenticated system access
 survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
 
-  >>> facreq.agent.ensure_saa_survey().split('?')
+  >>> facreq.affiliate.ensure_saa_survey().split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
   ['http://bmidev1/redcap-host/surveys/',
    's=f1f9&full_name=Smith%2C+John&user_id=john.smith']
@@ -65,10 +65,10 @@ Sponsored Users
 Bill cannot access the HERON repository because he is neither
 faculty not sponsored::
 
-  >>> stureq = _login('bill.student')
-  >>> hp.issue(stureq)
-  [Affiliate(bill.student)]
-  >>> stureq.agent.repository_authz()
+  >>> stureq = _login('bill.student', mc, hp)
+  >>> stureq.affiliate
+  Affiliate(bill.student)
+  >>> hp.repository_authz(stureq.badge)
   Traceback (most recent call last):
     ...
   NotSponsored
@@ -78,7 +78,7 @@ faculty not sponsored::
 
 Nor has he completed human subjects training::
 
-  >>> stureq.agent.training()
+  >>> stureq.affiliate.training()
   Traceback (most recent call last):
   ...
   NoTraining
@@ -86,14 +86,14 @@ Nor has he completed human subjects training::
 Another student has been sponsored and is current on training, but has
 not yet executed the system access agreement::
 
-  >>> stu2req = _login('some.one')
-  >>> hp.issue(stu2req)
-  [Affiliate(some.one)]
-  >>> stu2req.agent.sponsor() == True
+  >>> stu2req = _login('some.one', mc, hp)
+  >>> stu2req.affiliate
+  Affiliate(some.one)
+  >>> stu2req.affiliate.sponsor() == True
   True
-  >>> stu2req.agent.training()
+  >>> stu2req.affiliate.training()
   '2012-01-01'
-  >>> stu2req.agent.repository_authz()
+  >>> hp.repository_authz(stu2req.badge)
   Traceback (most recent call last):
   ...
   NoAgreement
@@ -106,12 +106,11 @@ Exception for executives from participating instituions
 
 Executives don't need sponsorship::
 
-  >>> exreq = _login('big.wig')
-  >>> hp.issue(exreq)
-  [CanSponsor(big.wig)]
-  >>> exreq.agent.repository_authz()
-  Access(CanSponsor(big.wig))
-
+  >>> exreq = _login('big.wig', mc, hp)
+  >>> exreq.affiliate
+  Affiliate(big.wig)
+  >>> hp.repository_authz(exreq.badge)
+  Access(Big Wig <big.wig@js.example>)
 
 Sponsorship and data usage requests to the oversight committee
 ==============================================================
@@ -367,7 +366,12 @@ class HeronRecords(Token):
     def issue(self, uid, req):
         req.stats_reporter = self.__stats
 
-        return [req.stats_reporter]
+        req.affiliate = Affiliate(req.badge,
+                                  self._t,
+                                  self._saa_rc,
+                                  self._check_saa_signed,
+                                  self._sponsored)
+        return [req.stats_reporter, req.affiliate]
 
     def audit_all(self, caps, p):
         log.debug('HeronRecords.audit(%s, %s)' % (caps, p))
@@ -391,7 +395,6 @@ class HeronRecords(Token):
     def repository_authz(self, alleged_badge):
         badge = self._mc.getInspector().vouch(alleged_badge)
 
-        self._check_saa_signed(badge.mail)
         try:
             self.investigator_request(badge)
         except medcenter.NotFaculty:
@@ -623,12 +626,12 @@ class NotDROC(NoPermission):
 
 
 class Affiliate(Token, Cache):
-    def __init__(self, badge, mc, date_source, hr, pm, oc):
-        self._badge = badge
-        self.__t = date_source
-        self._hr = hr
-        self.__pm = pm
-        self.__oc = oc
+    def __init__(self, badge, timesrc, saa_rc, check_sig, sponsored):
+        Cache.__init__(self, timesrc.now)
+        self.badge = badge
+        self.__saa_rc = saa_rc
+        self.__check_sig = check_sig
+        self.__sponsored = sponsored
 
     def __repr__(self):
         return 'Affiliate(%s)' % (self.badge.cn)
@@ -637,37 +640,23 @@ class Affiliate(Token, Cache):
         def _ensure():
             fields = dict(user_id=self.badge.cn,
                           full_name=self.badge.sort_name())
-            return (ttl, self._hr._saa_rc(self.__cn, fields))
+            return (ttl, self.__saa_rc(self.badge.cn, fields))
 
         return self._query('sa', _ensure)
 
-    def signature(self):
-        thunk = lambda: int(self._hr._check_saa_signed(self.mail))
-        return self._memo('sig', thunk)
+    def signature(self, ttl=timedelta(seconds=15)):
+        def _sig():
+            return (ttl, int(self.__check_sig(self.badge.mail)))
+        return self._query('sig', _sig)
 
-    def sponsor(self):
-        thunk = lambda: int(self._hr._sponsored(self.__cn))
-        return self._memo('sponsored', thunk)
+    def sponsor(self, ttl=timedelta(seconds=60)):
+        return self._query('sponsored',
+                           lambda: (ttl,
+                                    int(self.__sponsored(self.badge.cn))))
 
     def disclaimer_ack(self):
+        raise NotImplementedError
         return self._hr._disclaimer_acknowledgement(self.__cn)
-
-    def oversight_request(self):
-        raise medcenter.NotFaculty
-
-
-class CanSponsor(Affiliate):
-    '''Faculty or executive who can sponsor and make data use requests
-    '''
-    def __repr__(self):
-        return 'CanSponsor(%s)' % (self.cn)
-
-    def sponsor(self):
-        return self
-
-    def oversight_request(self):
-        return OversightRequest(self,
-                                self._hr._oversight_rc)
 
 
 class InvestigatorRequest(Token):
