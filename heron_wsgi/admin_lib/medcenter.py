@@ -21,7 +21,6 @@ A :class:`MedCenter` issues :class:`IDBadge` capabilities::
 
   >>> r1 = MockRequest()
   >>> caps = m.issue('john.smith', r1)
-  INFO:mock_directory:network fetch for (cn=john.smith)
   >>> caps
   [John Smith <john.smith@js.example>]
   >>> m.audit_all(caps, PERM_ID)
@@ -32,7 +31,6 @@ A :class:`MedCenter` issues :class:`IDBadge` capabilities::
 
    >>> r2 = MockRequest()
    >>> bill = m.issue('bill.student', r2)[0]
-   INFO:mock_directory:network fetch for (cn=bill.student)
    >>> m.is_faculty(bill)
    False
 
@@ -58,8 +56,7 @@ We use an outboard service to check human subjects "chalk" training::
 Robustness
 ----------
 
-  >>> who = mc.peer_badge('carol.student')
-  INFO:mock_directory:network fetch for (cn=carol.student)
+  >>> who = m.peer_badge('carol.student')
   WARNING:medcenter:missing LDAP attribute kumcPersonFaculty for carol.student
   WARNING:medcenter:missing LDAP attribute kumcPersonJobcode for carol.student
 
@@ -101,7 +98,6 @@ class MedCenter(object):
     To search the directory, without conferring authority::
       >>> (m, ) = Mock.make([MedCenter])
       >>> hits = m.search(10, 'john.smith', '', '')
-      INFO:mock_directory:network fetch for (cn=john.smith*)
       >>> hits
       [John Smith <john.smith@js.example>]
 
@@ -314,7 +310,6 @@ class IDBadge(LDAPBadge):
       >>> (mc, ) = Mock.make([MedCenter])
       >>> r1 = MockRequest()
       >>> js = mc.issue('john.smith', r1)[0]
-      INFO:mock_directory:network fetch for (cn=john.smith)
 
       >>> mc.is_faculty(js)
       True

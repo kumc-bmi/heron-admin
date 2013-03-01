@@ -48,7 +48,7 @@ class MockDirectory(object):
         self._d = dict([(r['cn'], r) for r in records])
 
     def search(self, q, attrs):
-        log.info('network fetch for %s', q)
+        log.debug('network fetch for %s', q)  # TODO: caching, .info()
         i = self._qid(q)
         record = self._d[i]
         return [('(cn=%s)' % i,

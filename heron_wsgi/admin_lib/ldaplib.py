@@ -8,7 +8,8 @@ Caching:
   >>> ts = mock_directory.MockTimeSource()
   >>> ds = MockLDAP(ts, ttl=2)
   >>> ds.search("(cn=john.smith)", ['sn'])
-  INFO:mock_directory:network fetch for (cn=john.smith)
+  INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('sn',))
+  INFO:cache_remote:... cached until 2012-02-25 11:00:02.500000
   [('(cn=john.smith)', {'sn': ['Smith']})]
 
   >>> ds.search("(cn=john.smith)", ['sn'])
@@ -16,7 +17,8 @@ Caching:
 
   >>> ts.wait(5)
   >>> ds.search("(cn=john.smith)", ['sn'])
-  INFO:mock_directory:network fetch for (cn=john.smith)
+  INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('sn',))
+  INFO:cache_remote:... cached until 2012-02-25 11:00:08.500000
   [('(cn=john.smith)', {'sn': ['Smith']})]
 
 Sample configuration::
@@ -56,7 +58,8 @@ class LDAPService(Cache):
         attrs = tuple(sorted(attrs))
         return self._query((query, attrs),
                            lambda: (self._ttl,
-                                    self.search_remote(query, attrs)))
+                                    self.search_remote(query, attrs)),
+                           'LDAP')
 
     def search_remote(self, query, attrs):
         raise NotImplementedError('subclass must implement.')
