@@ -147,7 +147,7 @@ class Issuer(object):
     '''
     permissions = ()
 
-    def issue(self, req):
+    def issue(self, uid, req):
         '''Issue capabilities based on CAS login.
 
         @param req: request, bearing CAS userid in remote_user,
@@ -156,7 +156,7 @@ class Issuer(object):
                  added to this request, which will later be passed to
                  audit in case this issuer's permission is required.
         '''
-        raise NotImplemented
+        raise NotImplementedError  # pragma: nocover
 
     def audit(self, cap, permission):
         '''Test whether cap authorizes permission.
@@ -166,7 +166,7 @@ class Issuer(object):
         @param permission: one of this issuer's permissions
         @raises: TypeError if cap is not one we issued for permission.
         '''
-        raise NotImplemented
+        raise NotImplementedError  # pragma: nocover
 
 
 class Validator(object):
@@ -282,7 +282,7 @@ class Validator(object):
         to add capabilities to the request.
         '''
         log.debug('issuing CAS login capabilities for: %s', uid)
-        return _flatten([issuer.issue(req)
+        return _flatten([issuer.issue(uid, req)
                          for issuer in self._issuers])
 
     def logout(self, context, req):
@@ -326,10 +326,10 @@ class CapabilityStyle(object):
         return False
 
     def principals_allowed_by_permission(self, context, permission):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: nocover
 
 
-class RunTime(injector.Module):
+class RunTime(injector.Module):  # pragma: nocover
     def __init__(self, ini):
         self._ini = ini
 
@@ -396,7 +396,7 @@ class Mock(injector.Module, MockMixin):
         return [Mock()]
 
 
-class MockIssuer(object):
+class MockIssuer(object):  # pragma: nocover
     permissions = ('treasure',)
 
     def __str__(self):
@@ -406,7 +406,7 @@ class MockIssuer(object):
     def __init__(self, notary):
         self.__notary = notary
 
-    def issue(self, req):
+    def issue(self, uid, req):
         cap = TreasureMap(self.__notary, 'Canary Islands')
         req.treasure_map = cap
         log.debug('issuing caps')
@@ -428,7 +428,7 @@ class MockIssuer(object):
         raise TypeError
 
 
-def TreasureMap(notary, sekret):
+def TreasureMap(notary, sekret):  # pragma: nocover
     map_ = None  # forward reference
 
     def startVouch():
@@ -444,7 +444,7 @@ def TreasureMap(notary, sekret):
     return map_
 
 
-def _integration_test(ini, host='127.0.0.1', port=8123):
+def _integration_test(ini, host='127.0.0.1', port=8123):  # pragma: nocover
     from pyramid.config import Configurator
     from pyramid.response import Response
     from paste import httpserver
@@ -477,7 +477,7 @@ def _integration_test(ini, host='127.0.0.1', port=8123):
     httpserver.serve(app, host, port)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: nocover
     import sys
     ini = sys.argv[1]
     _integration_test(ini)
