@@ -416,7 +416,6 @@ class HeronRecords(Token, Cache):
 
     def issue(self, uid, req):
         req.stats_reporter = self.__stats
-        req.browser = self._mc._browser
 
         try:
             authz, inv, st = self.repository_authz(req.badge)

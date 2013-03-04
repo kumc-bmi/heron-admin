@@ -150,6 +150,7 @@ class MedCenter(object):
         return self.__notary.getInspector()
 
     def issue(self, uid, req):
+        req.browser = self._browser
         req.badge = IDBadge(self.__notary,
                             **self.directory_attributes(uid))
         return [req.badge]
