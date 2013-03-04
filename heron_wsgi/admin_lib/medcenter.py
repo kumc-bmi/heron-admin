@@ -82,6 +82,7 @@ API
 import logging
 import sys
 import urllib
+from datetime import timedelta
 
 import injector
 from injector import inject, provides, singleton
@@ -89,6 +90,7 @@ from injector import inject, provides, singleton
 import rtconfig
 import ldaplib
 from notary import makeNotary, NotVouchable
+import cache_remote
 
 log = logging.getLogger(__name__)
 
@@ -352,6 +354,27 @@ _sample_chalk_settings = rtconfig.TestTimeOptions(dict(
         param='userid'))
 
 
+class ChalkChecker(cache_remote.Cache):
+    def __init__(self, ua, now, url, param,
+                 ttl=timedelta(seconds=30)):
+        cache_remote.Cache.__init__(self, now)
+
+        def q_for(userid):
+            def q():
+                addr = url + '?' + urllib.urlencode({param: userid})
+                body = ua.open(addr).read()
+
+                if not body:  # no expiration on file
+                    raise KeyError
+
+                return ttl, body.strip()  # get rid of newline
+            return q
+        self.q_for = q_for
+
+    def check(self, userid):
+        return self._query(userid, self.q_for(userid), 'Chalk Training')
+
+
 class _AttrDict(dict):
     def __init__(self, *args, **kwargs):
         dict.__init__(self, *args, **kwargs)
@@ -390,6 +413,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
       - :data:`KTestingFaculty` (for faculty testing hook)
 
     '''
+    import datetime
     import urllib2
     _ua = urllib2.build_opener()
 
@@ -398,22 +422,13 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         return ''
 
     @provides(KTrainingFunction)
-    def training(self, section=CHALK_CONFIG_SECTION, ua=_ua):
-        # TODO: cache training lookups
-
+    def training(self, section=CHALK_CONFIG_SECTION, ua=_ua,
+                 now=datetime.datetime.now):
         rt = rtconfig.RuntimeOptions('url param'.split())
         rt.load(self._ini, section)
 
-        def training_expiration(userid):
-            addr = rt.url + '?' + urllib.urlencode({rt.param: userid})
-            body = ua.open(addr).read()
-
-            if not body:  # no expiration on file
-                raise KeyError
-
-            return body.strip()  # get rid of newline
-
-        return training_expiration
+        cc = ChalkChecker(ua, now, rt.url, rt.param)
+        return cc.check
 
     @classmethod
     def mods(cls, ini):
@@ -435,6 +450,13 @@ def integration_test():  # pragma: no cover
         who = m.issue(uid, req)[0]
         print who
         print "training: ", m.trained_thru(who)
+
+        print "Once more, to check caching..."
+        req = MockRequest()
+        who = m.issue(uid, req)[0]
+        print who
+        print "training: ", m.trained_thru(who)
+
 
 
 if __name__ == '__main__':  # pragma: no cover
