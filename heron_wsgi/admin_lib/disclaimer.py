@@ -379,7 +379,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         return redcapdb.RunTime.mods(ini) + [cls(ini)]
 
 
-def _test_main():  # pragma: nocover
+def _integration_test():  # pragma: nocover
     import sys
 
     logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
@@ -418,19 +418,8 @@ def _test_main():  # pragma: nocover
             print ack
 
     if '--release-info' in sys.argv:
-        from operator import attrgetter
-        from itertools import groupby
-        acks = s.query(Acknowledgement).all()
-        per_release = dict([(addr, list(acks)) for addr, acks in
-                             groupby(acks, attrgetter('disclaimer_address'))])
-        users_per_release = dict([(addr, len(list(acks))) for addr, acks in
-                                  per_release.iteritems()])
-        start_release = dict([(addr, min([a.timestamp for a in acks]))
-                              for addr, acks in
-                              per_release.iteritems()])
-        for release in per_release.keys():
-            print "%s,%s,%s" % (start_release[release],
-                                users_per_release[release], release)
+        for start, count, url in _release_info(s):
+            print "%s,%s,%s" % (start, count, url)
 
     if '--current' in sys.argv:
         print "current disclaimer and content:"
@@ -441,5 +430,23 @@ def _test_main():  # pragma: nocover
             print c[:100]
 
 
+def _release_info(s):
+    '''Look for 1st ack for each release
+    '''
+    from operator import attrgetter
+    from itertools import groupby
+    acks = s.query(Acknowledgement).all()
+    per_release = dict([(addr, list(acks)) for addr, acks in
+                        groupby(acks, attrgetter('disclaimer_address'))])
+    users_per_release = dict([(addr, len(list(acks))) for addr, acks in
+                              per_release.iteritems()])
+    start_release = dict([(addr, min([a.timestamp for a in acks]))
+                          for addr, acks in
+                          per_release.iteritems()])
+    return [(start_release[release],
+             users_per_release[release], release)
+            for release in sorted(per_release.keys(),
+                                  key=lambda r: start_release[r])]
+
 if __name__ == '__main__':  # pragma: nocover
-    _test_main()
+    _integration_test()
