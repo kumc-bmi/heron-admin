@@ -110,56 +110,6 @@ on last_year.user_id = all_time.user_id
 order by nvl(two_weeks.qty, -1) desc, nvl(all_time.qty, -1) desc
                       ''')
 
-    def current_sessions(self):
-        return self.q('''
-select ud.full_name, ud.user_id, us.entry_date
-from I2B2PM.pm_user_session us
-join I2B2PM.pm_user_data ud on ud.user_id = us.user_id
-where us.expired_date > sysdate
-and us.user_id not like '%_SERVICE_ACCOUNT'
-                      ''')
-
-    def current_queries(self):
-        return self.q('''
-select ud.full_name, ud.user_id, us.entry_date
-     , qm.query_master_id
-     , qm.name, qm.create_date
-     , qi.batch_mode
-     , st.description status
-     , qrt.description result_type
-
-from I2B2PM.pm_user_session us
-join I2B2PM.pm_user_data ud on ud.user_id = us.user_id
-
-left join BlueHeronData.qt_query_master qm
-  on ud.user_id = qm.user_id
- and qm.create_date > us.entry_date
-left join BlueHeronData.qt_query_instance qi
-  on qi.query_master_id = qm.query_master_id
-left join BlueHeronData.qt_query_result_instance qri
-  on qri.query_instance_id = qi.query_instance_id
-left join BLUEHERONDATA.qt_query_status_type st
-  on st.status_type_id = qi.status_type_id
-left join BLUEHERONDATA.qt_query_result_type qrt
-  on qrt.result_type_id = qri.result_type_id
-
-
-where us.expired_date > sysdate
-and us.user_id not like '%_SERVICE_ACCOUNT'
-
-and (qm.query_master_id is null  or (
-    qi.status_type_id = 5 -- INCOMPLETE
-     and qm.delete_flag = 'N'
-     and qi.end_date is null
-
-     -- where qi.end_date is null
-     -- and qri.end_date is null
-     -- order by qm.create_date desc
-))
-
-order by ud.full_name, qm.create_date
-                      ''')
-
 
 class I2B2SensitiveUsage(I2B2Usage):
     def __repr__(self):
@@ -225,6 +175,56 @@ class I2B2SensitiveUsage(I2B2Usage):
         order by create_date desc
         ''')
 
+    def current_sessions(self):
+        return self.q('''
+select ud.full_name, ud.user_id, us.entry_date
+from I2B2PM.pm_user_session us
+join I2B2PM.pm_user_data ud on ud.user_id = us.user_id
+where us.expired_date > sysdate
+and us.user_id not like '%_SERVICE_ACCOUNT'
+                      ''')
+
+    def current_queries(self):
+        return self.q('''
+select ud.full_name, ud.user_id, us.entry_date
+     , qm.query_master_id
+     , qm.name, qm.create_date
+     , qi.batch_mode
+     , st.description status
+     , qrt.description result_type
+
+from I2B2PM.pm_user_session us
+join I2B2PM.pm_user_data ud on ud.user_id = us.user_id
+
+left join BlueHeronData.qt_query_master qm
+  on ud.user_id = qm.user_id
+ and qm.create_date > us.entry_date
+left join BlueHeronData.qt_query_instance qi
+  on qi.query_master_id = qm.query_master_id
+left join BlueHeronData.qt_query_result_instance qri
+  on qri.query_instance_id = qi.query_instance_id
+left join BLUEHERONDATA.qt_query_status_type st
+  on st.status_type_id = qi.status_type_id
+left join BLUEHERONDATA.qt_query_result_type qrt
+  on qrt.result_type_id = qri.result_type_id
+
+
+where us.expired_date > sysdate
+and us.user_id not like '%_SERVICE_ACCOUNT'
+
+and (qm.query_master_id is null  or (
+    qi.status_type_id = 5 -- INCOMPLETE
+     and qm.delete_flag = 'N'
+     and qi.end_date is null
+
+     -- where qi.end_date is null
+     -- and qri.end_date is null
+     -- order by qm.create_date desc
+))
+
+order by ud.full_name, qm.create_date
+                      ''')
+
 
 # Hmm... messy...
 # meta = i2b2pm.Base.metadata
@@ -274,7 +274,7 @@ s = Table('pm_user_session', meta,
           schema='i2b2pm').alias('s')
 
 
-def _current_users_queries():
+def _integration_test():  # pragma: nocover
     import logging
     import pprint
 
@@ -282,10 +282,24 @@ def _current_users_queries():
 
     logging.basicConfig(level=logging.DEBUG)
 
-    (usage, ) = i2b2pm.RunTime.make(None, [I2B2AggregateUsage])
+    (agg, detail) = i2b2pm.RunTime.make(None,
+                                        [I2B2AggregateUsage,
+                                         I2B2SensitiveUsage])
 
-    log.info('Current sessions: %s', pprint.pformat(usage.current_sessions()))
-    log.info('Current queries: %s', pprint.pformat(usage.current_queries()))
+    
+    log.info('Total queries: %s',
+             pprint.pformat(agg.total_number_of_queries()))
+    log.info('Queries by month: %s',
+             pprint.pformat(agg.queries_by_month()))
+    log.info('Query volume by user: %s',
+             pprint.pformat(agg.query_volume()))
+    log.info('Recent small patient set queries: %s',
+             pprint.pformat(detail.patient_set_queries(recent=True,
+                                                       small=True)))
+    log.info('Concepts for recent small patient set queries: %s',
+             pprint.pformat(detail.small_set_concepts()))
+    log.info('Current sessions: %s', pprint.pformat(detail.current_sessions()))
+    log.info('Current queries: %s', pprint.pformat(detail.current_queries()))
 
 
 def _report_with_roles(argv, stdout):  # pragma: nocover
@@ -316,6 +330,6 @@ def _report_with_roles(argv, stdout):  # pragma: nocover
 
 if __name__ == '__main__':
 
-    _current_users_queries()
+    _integration_test()
     #a, s = _hide_sys()
     #_report_with_roles(a, s)
