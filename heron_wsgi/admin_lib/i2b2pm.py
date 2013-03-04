@@ -274,7 +274,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
         return G()
 
 
-def _test_main():  # pragma: nocover
+def _integration_test():  # pragma: nocover
     import sys
 
     logging.basicConfig(level=logging.DEBUG)
@@ -315,4 +315,4 @@ def _list_users():  # pragma: nocover
 
 
 if __name__ == '__main__':  # pragma: nocover
-    _test_main()
+    _integration_test()

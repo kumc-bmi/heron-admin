@@ -146,7 +146,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
                                  now=datetime.datetime.now, ttl=ttl)
 
 
-if __name__ == '__main__':  # pragma nocover
+def _integration_test():  # pragma nocover
     import logging
     import sys, pprint
     ldap_query = sys.argv[1]
@@ -155,3 +155,6 @@ if __name__ == '__main__':  # pragma nocover
     logging.basicConfig(level=logging.INFO)
     (ls, ) = RunTime.make(None, [LDAPService])
     pprint.pprint(ls.search(ldap_query, attrs))
+
+if __name__ == '__main__':  # pragma nocover
+    _integration_test()

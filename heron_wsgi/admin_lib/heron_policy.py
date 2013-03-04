@@ -995,7 +995,7 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
                 [cls(ini)])
 
 
-def _test_main():  # pragma nocover
+def _integration_test():  # pragma nocover
     import sys
 
     if '--doctest' in sys.argv:
@@ -1012,6 +1012,7 @@ def _test_main():  # pragma nocover
     caps = mc.issue(userid, req)
     caps = hr.issue(userid, req)
     print caps
+    print req.status
     print "DROC auth?"
     try:
         print req.droc_audit.patient_set_queries(recent=True, small=True)
@@ -1022,4 +1023,4 @@ def _test_main():  # pragma nocover
     print "pending notifications:", ds.oversight_decisions()
 
 if __name__ == '__main__':  # pragma nocover
-    _test_main()
+    _integration_test()

@@ -196,7 +196,7 @@ def _test_multi_use(c, uid, full_name):  # pragma: nocover
     if 'already' in content1:
         raise ValueError('form for 1st request says ...already...')
 
-    # @@ need to fill it out.
+    print "@@ The next couple tests are kinda broken."
 
     addr2 = c(uid, params, multi=True)
     if addr2 == addr1:
@@ -208,7 +208,7 @@ def _test_multi_use(c, uid, full_name):  # pragma: nocover
         raise ValueError('form for 2nd request says ...already...')
 
 
-def _test_main():  # pragma: nocover
+def _integration_test():  # pragma: nocover
     import sys
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
@@ -223,8 +223,8 @@ def _test_main():  # pragma: nocover
         print e.message
         print e
 
-    _test_multi_use(c2, userid, fullName)
+    #@@ _test_multi_use(c2, userid, fullName)
 
 
 if __name__ == '__main__':  # pragma nocover
-    _test_main()
+    _integration_test()

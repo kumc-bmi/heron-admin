@@ -323,7 +323,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         return [cls(ini), SetUp()]
 
 
-def _test_main():  # pragma: nocover
+def _integration_test():  # pragma: nocover
     '''Print distinct field_name from a given project_id.
     '''
     import sys
@@ -350,4 +350,4 @@ def _test_main():  # pragma: nocover
 
 
 if __name__ == '__main__':  # pragma: nocover
-    _test_main()
+    _integration_test()

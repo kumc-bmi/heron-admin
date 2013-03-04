@@ -435,7 +435,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         return [cls(ini), ldaplib.RunTime(ini)]
 
 
-def integration_test():  # pragma: no cover
+def _integration_test():  # pragma: no cover
     logging.basicConfig(level=logging.INFO)
     (m, ) = RunTime.make(None, [MedCenter])
 
@@ -460,4 +460,4 @@ def integration_test():  # pragma: no cover
 
 
 if __name__ == '__main__':  # pragma: no cover
-    integration_test()
+    _integration_test()
