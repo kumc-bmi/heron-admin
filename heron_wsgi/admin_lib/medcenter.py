@@ -434,7 +434,7 @@ def integration_test():  # pragma: no cover
         req = MockRequest()
         who = m.issue(uid, req)[0]
         print who
-        print "training: ", who.trained_thru()
+        print "training: ", m.trained_thru(who)
 
 
 if __name__ == '__main__':  # pragma: no cover
