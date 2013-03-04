@@ -1007,14 +1007,17 @@ def _test_main():  # pragma nocover
     userid = sys.argv[1]
     req = medcenter.MockRequest()
     req.remote_user = userid
-    hr, ds = RunTime.make(None, [HeronRecords, DecisionRecords])
-    hr.issue(req)
+    mc, hr, ds = RunTime.make(None, [medcenter.MedCenter,
+                                     HeronRecords, DecisionRecords])
+    caps = mc.issue(userid, req)
+    caps = hr.issue(userid, req)
+    print caps
     print "DROC auth?"
     try:
         print req.droc_audit.patient_set_queries(recent=True, small=True)
     except AttributeError:
         print "DROC auth: NO"
-    print req.agent.repository_authz()
+    print req.repository_authz
 
     print "pending notifications:", ds.oversight_decisions()
 
