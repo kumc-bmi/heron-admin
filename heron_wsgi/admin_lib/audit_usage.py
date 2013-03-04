@@ -286,7 +286,6 @@ def _integration_test():  # pragma: nocover
                                         [I2B2AggregateUsage,
                                          I2B2SensitiveUsage])
 
-    
     log.info('Total queries: %s',
              pprint.pformat(agg.total_number_of_queries()))
     log.info('Queries by month: %s',
