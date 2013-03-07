@@ -116,7 +116,8 @@ _sample_settings = rtconfig.TestTimeOptions(dict(
 class RunTime(rtconfig.IniModule):  # pragma: nocover
     @provides((rtconfig.Options, CONFIG_SECTION))
     def opts(self):
-        rt = rtconfig.RuntimeOptions('url userdn base password'.split())
+        rt = rtconfig.RuntimeOptions(
+            'url userdn base password executives'.split())
         rt.load(self._ini, CONFIG_SECTION)
         return rt
 

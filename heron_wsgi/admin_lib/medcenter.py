@@ -22,23 +22,25 @@ Issuing Notarized Badges
 A :class:`MedCenter` issues :class:`IDBadge` capabilities::
 
   >>> r1 = MockRequest()
-  >>> caps = m.issue('john.smith', r1)
+  >>> caps = m.authenticated('john.smith', r1)
   >>> caps
-  [John Smith <john.smith@js.example>]
-  >>> m.audit_all(caps, PERM_ID)
+  [<MedCenter sealed box>]
+  >>> m.grant(r1.context, PERM_BROWSER)
 
-  >>> js = caps[0]
+  >>> js = m.idbadge(r1.context)
   >>> js.full_name()
   'John Smith'
 
    >>> r2 = MockRequest()
-   >>> bill = m.issue('bill.student', r2)[0]
-   >>> m.is_faculty(bill)
+   >>> _ = m.authenticated('bill.student', r2)[0]
+   >>> bill = m.idbadge(r2.context)
+   >>> bill.is_faculty()
    False
 
 Junk:
 
-  >>> m.audit_all(caps, 123)
+  >>> r2.context.remote_user = 123
+  >>> m.grant(r2.context, PERM_BROWSER)
   Traceback (most recent call last):
     ...
   TypeError
@@ -89,26 +91,25 @@ from injector import inject, provides, singleton
 
 import rtconfig
 import ldaplib
-from notary import makeNotary, NotVouchable
+import sealing
+from notary import makeNotary
 import cache_remote
 
 log = logging.getLogger(__name__)
 
 KTrainingFunction = injector.Key('TrainingFunction')
+KExecutives = injector.Key('Executives')
 KTestingFaculty = injector.Key('TestingFaculty')
 
 CHALK_CONFIG_SECTION = 'chalk'
-PERM_ID = __name__ + '.idvault'
+PERM_BROWSER = __name__ + '.browse'
 
 
 @singleton
-class MedCenter(object):
-    '''Enterprise authorization and search.
+class Browser(object):
+    ''''Search the directory, without conferring authority.
 
-    .. note:: This implements the :class:`heron_wsgi.cas_auth.Issuer` protocol.
-
-    To search the directory, without conferring authority::
-      >>> (m, ) = Mock.make([MedCenter])
+      >>> (m, ) = Mock.make([Browser])
       >>> hits = m.search(10, 'john.smith', '', '')
       >>> hits
       [John Smith <john.smith@js.example>]
@@ -126,48 +127,9 @@ class MedCenter(object):
       >>> m.search(10, '', '', '')
       []
     '''
-    excluded_jobcode = "24600"
-    permissions = (PERM_ID,)
-
-    @inject(searchsvc=ldaplib.LDAPService,
-            trainingfn=KTrainingFunction,
-            testing_faculty=KTestingFaculty)
-    def __init__(self, searchsvc, trainingfn, testing_faculty):
-        '''
-        :param testing_faculty: testing hook for faculty badge.
-        '''
-        log.debug('MedCenter.__init__ again?')
+    @inject(searchsvc=ldaplib.LDAPService)
+    def __init__(self, searchsvc):
         self._svc = searchsvc
-        self._training = trainingfn
-        self._testing_faculty = testing_faculty
-        self._browser = Browser(self)
-        self.__notary = makeNotary()
-
-    def __repr__(self):
-        return "MedCenter(directory_service, training)"
-
-    def getInspector(self):
-        return self.__notary.getInspector()
-
-    def issue(self, uid, req):
-        req.browser = self._browser
-        req.badge = IDBadge(self.__notary,
-                            **self.directory_attributes(uid))
-        return [req.badge]
-
-    def audit_all(self, caps, permission):
-        if not permission in self.permissions:
-            raise TypeError
-
-        vouch = self.__notary.getInspector().vouch
-
-        for cap in caps:
-            try:
-                vouch(cap)
-                return
-            except NotVouchable:
-                pass
-        raise TypeError
 
     def directory_attributes(self, name):
         '''Get directory attributes.
@@ -198,7 +160,7 @@ class MedCenter(object):
 
         return self._svc.search(q, Badge.attributes)[:max_qty]
 
-    def peer_badge(self, name):
+    def lookup(self, name):
         '''Get a badge for a peer, i.e. with no authority.
         '''
         return LDAPBadge(**self.directory_attributes(name))
@@ -209,15 +171,68 @@ class MedCenter(object):
         return [LDAPBadge.from_attrs(ldapattrs)
                 for dn, ldapattrs in self._search(max_qty, cn, sn, givenname)]
 
-    def is_faculty(self, alleged_badge):
-        badge = self.__notary.getInspector().vouch(alleged_badge)
-        log.debug('testing faculty badge kludge for %s', badge.cn)
-        if ('faculty:' + badge.cn) in self._testing_faculty:  # pragma nocover
-            log.info('faculty badge granted to %s by configuration', badge.cn)
-            return badge
 
-        return (badge.kumcPersonJobcode != self.excluded_jobcode
-                and badge.kumcPersonFaculty == 'Y')
+@singleton
+class MedCenter(object):
+    '''Enterprise authorization and search.
+
+    .. note:: This implements the :class:`heron_wsgi.cas_auth.Issuer` protocol.
+    '''
+    excluded_jobcode = "24600"
+
+    @inject(browser=Browser,
+            trainingfn=KTrainingFunction,
+            executives=KExecutives,
+            testing_faculty=KTestingFaculty)
+    def __init__(self, browser, trainingfn,
+                 testing_faculty, executives):
+        '''
+        :param testing_faculty: testing hook for faculty badge.
+        '''
+        log.debug('MedCenter.__init__ again?')
+        self._training = trainingfn
+        self._testing_faculty = testing_faculty
+        self.__executives = executives
+        self._browser = browser
+        self.search = browser.search
+        self.peer_badge = browser.lookup
+        self.__notary = makeNotary()
+        self.__sealer, self.__unsealer = sealing.makeBrandPair(
+            self.__class__.__name__)
+
+    def __repr__(self):
+        return "MedCenter(directory_service, training)"
+
+    def getInspector(self):
+        return self.__notary.getInspector()
+
+    def authenticated(self, uid, req):
+        cred = self.__sealer.seal(uid)
+        req.context.remote_user = cred
+        return [cred]
+
+    def grant(self, context, permission):
+        if permission is not PERM_BROWSER:
+            raise TypeError
+
+        badge = self.idbadge(context)
+        if not badge.is_investigator():
+            raise TypeError
+
+        context.browser = self._browser
+
+    def idbadge(self, context):
+        '''
+        @raises AttributeError if context lacks remote user;
+                TypeError on failure to authenticate context.remote_user
+        '''
+        uid = self.__unsealer.unseal(context.remote_user)  # raises TypeError
+
+        def is_executive(uid):
+            return uid in self.__executives
+
+        return IDBadge(self.__notary, is_executive,
+                       **self._browser.directory_attributes(uid))
 
     def trained_thru(self, alleged_badge):
         '''
@@ -230,16 +245,6 @@ class MedCenter(object):
             raise LookupError
 
         return when
-
-
-class Browser(object):
-    ''''Users get to do LDAP searches,
-    but they don't get to exercise the rights of
-    the users they find.
-    '''
-    def __init__(self, mc):
-        self.lookup = mc.peer_badge
-        self.search = mc.search
 
 
 class NotFaculty(Exception):
@@ -305,8 +310,8 @@ class LDAPBadge(Badge):
 
     @classmethod
     def _simplify(cls, ldapattrs):
-        d = dict([(n, ldapattrs.get(n, [None])[0])
-                  for n in cls.attributes])
+        d = _AttrDict([(n, ldapattrs.get(n, [None])[0])
+                       for n in cls.attributes])
 
         for n in cls.attributes:
             if d[n] is None:
@@ -321,9 +326,9 @@ class IDBadge(LDAPBadge):
 
       >>> (mc, ) = Mock.make([MedCenter])
       >>> r1 = MockRequest()
-      >>> js = mc.issue('john.smith', r1)[0]
+      >>> js = mc.authenticated('john.smith', r1)[0]
 
-      >>> mc.is_faculty(js)
+      >>> mc.idbadge(r1.context).is_faculty()
       True
 
     Note that only notarized badges are accepted:
@@ -333,22 +338,35 @@ class IDBadge(LDAPBadge):
       ...    cn='john.smith',
       ...    sn='Smith',
       ...    givenname='John')
-      >>> mc.is_faculty(evil)
+      >>> mc.trained_thru(evil)
       Traceback (most recent call last):
         ...
       NotVouchable
 
     '''
 
-    def __init__(self, notary, **attrs):
+    def __init__(self, notary, is_executive, **attrs):
         assert notary
         self.__notary = notary  # has to go before LDAPBadge.__init__
         # ... due to __getattr__ magic.
+        self.__is_executive = is_executive
         LDAPBadge.__init__(self, **attrs)
 
     def startVouch(self):
         self.__notary.startVouch(self)
 
+    def is_faculty(self):
+        try:
+            return (self.kumcPersonJobcode != MedCenter.excluded_jobcode
+                    and self.kumcPersonFaculty == 'Y')
+        except AttributeError:
+            return False
+
+    def is_executive(self):
+        return self.__is_executive(self.cn)
+
+    def is_investigator(self):
+        return self.is_faculty() or self.is_executive()
 
 _sample_chalk_settings = rtconfig.TestTimeOptions(dict(
         url='http://localhost:8080/chalk-checker',
@@ -385,6 +403,7 @@ class _AttrDict(dict):
 class MockRequest(_AttrDict):
     def __init__(self):
         _AttrDict.__init__(self)
+        self.context = _AttrDict()
 
 
 class Mock(injector.Module, rtconfig.MockMixin):
@@ -406,6 +425,10 @@ class Mock(injector.Module, rtconfig.MockMixin):
         binder.bind(KTestingFaculty,
                     injector.InstanceProvider(''))
 
+    @provides(KExecutives)
+    def executives(self):
+        return ('big.wig',)
+
 
 class RunTime(rtconfig.IniModule):  # pragma: nocover
     '''Configure dependencies of :class:`MedCenter`:
@@ -417,6 +440,13 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     import datetime
     import urllib2
     _ua = urllib2.build_opener()
+
+    @provides(KExecutives)
+    @inject(rt=(rtconfig.Options, ldaplib.CONFIG_SECTION))
+    def executives(self, rt):
+        es = rt.executives.split()
+        assert es  # watch out for old config version
+        return es
 
     @provides(KTestingFaculty)
     def no_testing_faculty(self):
@@ -448,16 +478,17 @@ def _integration_test():  # pragma: no cover
     else:
         uid = sys.argv[1]
         req = MockRequest()
-        who = m.issue(uid, req)[0]
+        m.authenticated(uid, req)
+        who = m.idbadge(req.context)
         print who
         print "training: ", m.trained_thru(who)
 
         print "Once more, to check caching..."
         req = MockRequest()
-        who = m.issue(uid, req)[0]
+        m.authenticated(uid, req)
+        who = m.idbadge(req.context)
         print who
         print "training: ", m.trained_thru(who)
-
 
 
 if __name__ == '__main__':  # pragma: no cover
