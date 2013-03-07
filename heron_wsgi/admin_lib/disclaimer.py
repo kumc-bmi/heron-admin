@@ -9,7 +9,7 @@ a disclaimer:
 
   >>> dg, notary = Mock.make((DisclaimerGuard, KNotary))
   >>> dg
-  DisclaimerGuard(use_i2b2)
+  DisclaimerGuard()
   >>> notary
   Notary(disclaimer)
   >>> notary.getInspector()
@@ -33,16 +33,20 @@ You can't acknowledge a disclaimer without a notarized badge:
   >>> notary.getInspector().vouch(who)
   John Smith <john.smith@js.example>
 
+  >>> def use_i2b2(badge):
+  ...     return '%s authorized to use i2b2' % badge.cn
+  >>> redeem = dg.make_redeem(use_i2b2)
+
 Smith can't redeem his acknowledgement yet because he hasn't done one::
 
-  >>> dg.redeem(who)
+  >>> redeem(who)
   Traceback (most recent call last):
     ...
-  NoResultFound: No row was found for one()
+  KeyError: 'john.smith'
 
   >>> dg.ack_disclaimer(who)
-  >>> dg.redeem(who)
-
+  >>> redeem(who)
+  'john.smith authorized to use i2b2'
 
 Database Access
 ---------------
@@ -91,7 +95,7 @@ from xml.dom.minidom import parse
 import injector
 from injector import inject, provides, singleton
 import sqlalchemy
-from sqlalchemy.orm import session, sessionmaker
+from sqlalchemy.orm import session, sessionmaker, exc
 import xpath
 
 # from this package
@@ -102,10 +106,10 @@ import redcap_connect
 
 DISCLAIMERS_SECTION = 'disclaimers'
 ACKNOWLEGEMENTS_SECTION = 'disclaimer_acknowledgements'
+
 KTimeSource = injector.Key('TimeSource')
 KNotary = injector.Key('Notary')
 KBadgeInspector = injector.Key('BadgeInspector')
-KPower = injector.Key(__name__ + '.Power')
 
 log = logging.getLogger(__name__)
 
@@ -206,19 +210,19 @@ class DisclaimerGuard(Token):
     @inject(smaker=(session.Session,
                     redcapdb.CONFIG_SECTION),
             badge_inspector=KBadgeInspector,
-            acks=AcknowledgementsProject,
-            guarded_power=KPower)
-    def __init__(self, smaker, acks, badge_inspector, guarded_power):
+            acks=AcknowledgementsProject)
+    def __init__(self, smaker, acks, badge_inspector):
         self.__smaker = smaker
         self.__badge_inspector = badge_inspector
-        self.__guarded_power = guarded_power
         self.__acks = acks
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__,
-                           self.__guarded_power.__name__)
+        return '%s()' % self.__class__.__name__
 
     def ack_disclaimer(self, alleged_badge):
+        '''
+        TODO: split object between read-only and read/write
+        '''
         badge = self.__badge_inspector.vouch(alleged_badge)
 
         s = self.__smaker()
@@ -226,20 +230,28 @@ class DisclaimerGuard(Token):
         self.__acks.add_record(badge.cn, d.url)
         s.commit()
 
-    def redeem(self, alleged_badge):
-        badge = self.__badge_inspector.vouch(alleged_badge)
+    def make_redeem(self, guarded_power):
+        def redeem(alleged_badge):
+            badge = self.__badge_inspector.vouch(alleged_badge)
 
-        s = self.__smaker()
-        d = s.query(Disclaimer).filter(Disclaimer.current == 1).one()
-        log.debug('disclaimer: %s', d)
-        log.debug('all acks: %s',
-                  s.query(Acknowledgement).all())
-        a = s.query(Acknowledgement).\
-            filter(Acknowledgement.disclaimer_address == d.url).\
-            filter(Acknowledgement.user_id == badge.cn).one()
-        log.info('disclaimer ack: %s', a)
+            s = self.__smaker()
+            d = s.query(Disclaimer).filter(Disclaimer.current == 1).one()
+            log.debug('disclaimer: %s', d)
+            log.debug('all acks: %s',
+                      s.query(Acknowledgement).all())
 
-        return self.__guarded_power(badge)
+            try:
+                a = s.query(Acknowledgement).\
+                    filter(Acknowledgement.disclaimer_address == d.url).\
+                    filter(Acknowledgement.user_id == badge.cn).one()
+            except exc.NoResultFound:
+                raise KeyError(badge.cn)
+
+                log.info('disclaimer ack: %s', a)
+
+            return guarded_power(badge)
+
+        return redeem
 
 
 class _MockREDCapAPI2(redcap_connect._MockREDCapAPI):
@@ -296,12 +308,6 @@ class Mock(redcapdb.SetUp, rtconfig.MockMixin):
     @provides(KTimeSource)
     def time_source(self):
         return _TestTimeSource()
-
-    @provides(KPower)
-    def power_to_use_i2b2(self):
-        def use_i2b2(badge):
-            log.info('grant %s power to use i2b2', badge.cn)
-        return use_i2b2
 
     @provides(KBadgeInspector)
     def badge_inspector(self):

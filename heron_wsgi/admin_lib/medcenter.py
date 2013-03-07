@@ -76,6 +76,21 @@ Robustness
   True
 
 
+Directory Search for Team Members
+---------------------------------
+
+Part of making oversight requests is nominating team members::
+
+  >>> m.grant(r1.context, PERM_BROWSER)
+  >>> r1.context.browser.lookup('some.one')
+  WARNING:medcenter:missing LDAP attribute ou for some.one
+  WARNING:medcenter:missing LDAP attribute title for some.one
+  Some One <some.one@js.example>
+
+  >>> r1.context.browser.search(5, 'john.smith', '', '')
+  [John Smith <john.smith@js.example>]
+
+
 API
 ---
 
@@ -228,10 +243,7 @@ class MedCenter(object):
         '''
         uid = self.__unsealer.unseal(context.remote_user)  # raises TypeError
 
-        def is_executive(uid):
-            return uid in self.__executives
-
-        return IDBadge(self.__notary, is_executive,
+        return IDBadge(self.__notary, uid in self.__executives,
                        **self._browser.directory_attributes(uid))
 
     def trained_thru(self, alleged_badge):
@@ -345,11 +357,11 @@ class IDBadge(LDAPBadge):
 
     '''
 
-    def __init__(self, notary, is_executive, **attrs):
+    def __init__(self, notary, is_executive=False, **attrs):
         assert notary
         self.__notary = notary  # has to go before LDAPBadge.__init__
         # ... due to __getattr__ magic.
-        self.__is_executive = is_executive
+        self._is_executive = is_executive
         LDAPBadge.__init__(self, **attrs)
 
     def startVouch(self):
@@ -363,7 +375,7 @@ class IDBadge(LDAPBadge):
             return False
 
     def is_executive(self):
-        return self.__is_executive(self.cn)
+        return self._is_executive
 
     def is_investigator(self):
         return self.is_faculty() or self.is_executive()
@@ -481,6 +493,8 @@ def _integration_test():  # pragma: no cover
         m.authenticated(uid, req)
         who = m.idbadge(req.context)
         print who
+        print "faculty? ", who.is_faculty()
+        print "investigator? ", who.is_investigator()
         print "training: ", m.trained_thru(who)
 
         print "Once more, to check caching..."
