@@ -68,7 +68,7 @@ Once he acknowledges it, he can access the repository:
 Unforgeable System Access Agreement
 ***********************************
 
-:meth:`HeronRecords.issue` also issues an :class:`Affiliate` user
+:meth:`HeronRecords.grant` also issues an :class:`Affiliate` user
 capability, which provides a link to an authenticated system access
 survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
 
@@ -427,7 +427,7 @@ class HeronRecords(Token, Cache):
         return []
 
     def grant(self, context, p):
-        log.debug('HeronRecords.audit(%s, %s)' % (context, p))
+        log.debug('HeronRecords.grant(%s, %s)' % (context, p))
 
         badge = self._mc.idbadge(context)
         context.badge = badge
@@ -968,11 +968,10 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
     @provides((redcap_connect.SurveySetup, OVERSIGHT_CONFIG_SECTION))
     def _rc_oversight(self):
         opts, api = redcap_connect.RunTime.endpoint(
-            self, OVERSIGHT_CONFIG_SECTION, extra=('executives', 'project_id'))
+            self, OVERSIGHT_CONFIG_SECTION, extra=('project_id',))
         return redcap_connect.SurveySetup(
             opts, api,
-            project_id=opts.project_id,
-            executives=opts.executives.split(','))
+            project_id=opts.project_id)
 
     @provides(disclaimer.KBadgeInspector)
     @inject(mc=medcenter.MedCenter)
@@ -1001,16 +1000,12 @@ def _integration_test():  # pragma nocover
     req.remote_user = userid
     mc, hr, ds = RunTime.make(None, [medcenter.MedCenter,
                                      HeronRecords, DecisionRecords])
-    caps = mc.issue(userid, req)
-    caps = hr.issue(userid, req)
-    print caps
-    print req.status
-    print "DROC auth?"
-    try:
-        print req.droc_audit.patient_set_queries(recent=True, small=True)
-    except AttributeError:
-        print "DROC auth: NO"
-    print req.repository_authz
+    mc.authenticated(userid, req)
+    hr.grant(req.context, PERM_STATUS)
+    print req.context.status
+
+    hr.grant(req.context, PERM_START_I2B2)
+    print req.context.start_i2b2()
 
     print "pending notifications:", ds.oversight_decisions()
 
