@@ -26,32 +26,37 @@ __ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
 
 Recalling the login protocol from :mod:`heron_wsgi.cas_auth`::
 
-  >>> def _login(uid, mc, hp):
+  >>> def _login(uid, mc, hp, perm):
   ...     req = medcenter.MockRequest()
   ...     mc.authenticated(uid, req)
+  ...     hp.grant(req.context, perm)
   ...     return req
-
-Suppose Dr. Smith logs in::
-
-  >>> facreq = _login('john.smith', mc, hp)
 
 Dr. Smith has signed the system access agreement and is current on his
 human subjects training, so he can access the repository and make
 investigator requests::
 
-  >>> hp.grant(facreq.context, PERM_STATUS)
+  >>> facreq = _login('john.smith', mc, hp, PERM_STATUS)
   INFO:cache_remote:system access query for ('SAA', 'john.smith@js.example')
   INFO:cache_remote:... cached until 2011-09-02 00:00:15
+  INFO:cache_remote:in DROC? query for john.smith
+  INFO:cache_remote:... cached until 2011-09-02 00:01:00
   >>> facreq.context.status  # doctest: +NORMALIZE_WHITESPACE
-  Status(current_training='2012-01-01', executive=False,
+  Status(current_training='2012-01-01', droc=None, executive=False,
          expired_training=None, faculty=True, sponsored=None,
          system_access_signed=[datetime.datetime(2011, 8, 26, 0, 0)])
 
-  >>> hp.grant(facreq.context, PERM_START_I2B2)
+He can follow the "start i2b2" link:
+  >>> facreq = _login('john.smith', mc, hp, PERM_START_I2B2)
+
+But he has yet to acknowledge the disclaimer:
+
   >>> authz = facreq.context.start_i2b2()
   Traceback (most recent call last):
     ...
   KeyError: 'john.smith'
+
+Once he acknowledges it, he can access the repository:
 
   >>> dg.ack_disclaimer(facreq.context.badge)
   >>> facreq.context.start_i2b2()
@@ -64,10 +69,10 @@ Unforgeable System Access Agreement
 capability, which provides a link to an authenticated system access
 survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
 
-  >>> hp.grant(facreq.context, PERM_SIGN_SAA)
+  >>> facreq = _login('john.smith', mc, hp, PERM_SIGN_SAA)
   >>> facreq.context.sign_saa.ensure_saa_survey().split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
-  INFO:cache_remote:SAA survey link query for sa
+  INFO:cache_remote:SAA link query for ('SAA', 'john.smith')
   INFO:cache_remote:... cached until 2011-09-02 00:00:15
   ['http://bmidev1/redcap-host/surveys/',
    's=f1f9&full_name=Smith%2C+John&user_id=john.smith']
@@ -76,31 +81,33 @@ Sponsored Users
 ===============
 
 Bill cannot access the HERON repository because he is neither
-faculty not sponsored::
+faculty not sponsored, nor has he completed human subjects training::
 
-  >>> stureq = _login('bill.student', mc, hp)
-  >>> hp.grant(stureq.context, PERM_STATUS)
+  >>> stureq = _login('bill.student', mc, hp, PERM_STATUS)
   INFO:heron_policy:not sponsored: bill.student
   INFO:heron_policy:no training on file for: bill.student (Bill Student)
-  INFO:cache_remote:system access query for ('SAA', 'john.smith@js.example')
+  INFO:cache_remote:system access query for ('SAA', 'bill.student@js.example')
   INFO:cache_remote:... cached until 2011-09-02 00:00:15
+  INFO:cache_remote:in DROC? query for bill.student
+  INFO:cache_remote:... cached until 2011-09-02 00:01:00
   >>> stureq.context.status  #doctest: +NORMALIZE_WHITESPACE
-  Status(current_training=None, executive=False,
+  Status(current_training=None, droc=None, executive=False,
          expired_training=None, faculty=False,
          sponsored=False, system_access_signed=[])
 
-  >>> hp.grant(stureq.context, PERM_START_I2B2)
+  >>> stureq = _login('bill.student', mc, hp, PERM_START_I2B2)
   ... # doctest: +NORMALIZE_WHITESPACE
   Traceback (most recent call last):
     ...
-  NoPermission: NoPermission(Status(current_training=None,
+  NoPermission: NoPermission(Status(current_training=None, droc=None,
                                     executive=False, expired_training=None,
                                     faculty=False, sponsored=False,
                                     system_access_signed=[]))
 
 Verify that remote accesses are cached:
 
-  >>> hp.grant(stureq.context, PERM_START_I2B2)  # doctest: +ELLIPSIS
+  >>> stureq = _login('bill.student', mc, hp, PERM_START_I2B2)
+  ... # doctest: +ELLIPSIS
   Traceback (most recent call last):
     ...
   NoPermission: ...
@@ -108,27 +115,21 @@ Verify that remote accesses are cached:
 .. note:: We count on sqlalchemy to recover from errors in the connection
    to the database of sponsorship records.
 
-Nor has he completed human subjects training::
-
-  >>> status = stureq.context.status
-  >>> (status.current_training, status.expired_training)
-  (None, None)
-
 Another student has been sponsored and is current on training, but has
 not yet executed the system access agreement::
 
-  >>> stu2req = _login('some.one', mc, hp)
-
-  >>> hp.grant(stu2req.context, PERM_START_I2B2)
+  >>> stu2req = _login('some.one', mc, hp, PERM_START_I2B2)
   ... #doctest: +NORMALIZE_WHITESPACE
   Traceback (most recent call last):
     ...
   NoPermission: NoPermission(Status(current_training='2012-01-01',
-            executive=False,
+            droc=None, executive=False,
             expired_training=None, faculty=False, sponsored=True,
             system_access_signed=[]))
 
-  >>> hp.grant(stu2req.context, PERM_SIGN_SAA)
+This student does have authorization to sign the SAA:
+
+  >>> stu2req = _login('some.one', mc, hp, PERM_SIGN_SAA)
   WARNING:medcenter:missing LDAP attribute ou for some.one
   WARNING:medcenter:missing LDAP attribute title for some.one
   >>> stu2req.context.sign_saa
@@ -140,10 +141,11 @@ Exception for executives from participating instituions
 
 Executives don't need sponsorship::
 
-  >>> exreq = _login('big.wig', mc, hp)
-  >>> hp.grant(exreq.context, PERM_START_I2B2)
-  INFO:cache_remote:system access query for ('SAA', 'john.smith@js.example')
+  >>> exreq = _login('big.wig', mc, hp, PERM_START_I2B2)
+  INFO:cache_remote:system access query for ('SAA', 'big.wig@js.example')
   INFO:cache_remote:... cached until 2011-09-02 00:00:15
+  INFO:cache_remote:in DROC? query for big.wig
+  INFO:cache_remote:... cached until 2011-09-02 00:01:00
 
 
 Investigator Requests
@@ -152,7 +154,7 @@ Investigator Requests
 Faculty and executives can make sponsorship and data usage requests to
 the oversight committee::
 
-  >>> hp.grant(facreq.context, PERM_INVESTIGATOR_REQUEST)
+  >>> facreq = _login('john.smith', mc, hp, PERM_INVESTIGATOR_REQUEST)
   >>> facreq.context.investigator_request
   InvestigatorRequest(from=john.smith)
 
@@ -170,7 +172,7 @@ the oversight committee::
    'what_for=2']
 
 
-  >>> hp.grant(exreq.context, PERM_INVESTIGATOR_REQUEST)
+  >>> exreq = _login('big.wig', mc, hp, PERM_INVESTIGATOR_REQUEST)
   >>> ok = exreq.context.investigator_request.ensure_oversight_survey(
   ...        ['some.one'], what_for=HeronRecords.DATA_USE).split('&')
   WARNING:medcenter:missing LDAP attribute ou for some.one
@@ -238,17 +240,15 @@ Overight Auditing
 
 Oversight committee members can get sensitive audit info::
 
-  >>> hp.grant(exreq.context, PERM_DROC_AUDIT)
-  INFO:cache_remote:in DROC? query for big.wig
-  INFO:cache_remote:... cached until 2011-09-02 00:01:00
+  >>> exreq = _login('big.wig', mc, hp, PERM_DROC_AUDIT)
 
 Ordinary users cannot, though they can get aggregate usage info::
 
-  >>> hp.grant(stureq.context, PERM_STATS_REPORTER)
+  >>> stureq = _login('bill.student', mc, hp, PERM_STATS_REPORTER)
   >>> stureq.context.stats_reporter
   I2B2AggregateUsage()
 
-  >>> hp.grant(stureq.context, PERM_DROC_AUDIT)
+  >>> stureq = _login('bill.student', mc, hp, PERM_DROC_AUDIT)
   Traceback (most recent call last):
     ...
   NotDROC
@@ -347,6 +347,7 @@ class OversightCommittee(Token, Cache):
 
 Status = namedtuple('Status',
                     sorted(dict(faculty=0, executive=0, sponsored=0,
+                                droc=0,
                                 current_training=0, expired_training=0,
                                 system_access_signed=0).keys()))
 
@@ -430,7 +431,7 @@ class HeronRecords(Token, Cache):
         if p is PERM_STATUS:
             context.status = self._status(badge)
         elif p is PERM_SIGN_SAA:
-            context.sign_saa = Affiliate(badge, self._t, self._saa_rc)
+            context.sign_saa = Affiliate(badge, self._query, self._saa_rc)
         elif p is PERM_INVESTIGATOR_REQUEST:
             context.investigator_request = self._investigator_request(badge)
         elif p is PERM_DROC_AUDIT:
@@ -452,9 +453,15 @@ class HeronRecords(Token, Cache):
         system_access_sigs = [sig.completion_time
                               for sig in self._signatures(badge.mail)]
 
+        try:
+            droc_audit = self.__oc._droc_auditor(badge)
+        except NotDROC:
+            droc_audit = None
+
         return Status(faculty=badge.is_faculty(),
                       executive=badge.is_executive(),
                       sponsored=sponsored,
+                      droc=droc_audit,
                       current_training=current_training,
                       expired_training=expired_training,
                       system_access_signed=system_access_sigs)
@@ -673,11 +680,11 @@ class NotDROC(Exception):
     pass
 
 
-class Affiliate(Token, Cache):
-    def __init__(self, badge, timesrc, saa_rc):
-        Cache.__init__(self, timesrc.now)
+class Affiliate(Token):
+    def __init__(self, badge, query, saa_rc):
         self.badge = badge
         self.__saa_rc = saa_rc
+        self.__query = query
 
     def __repr__(self):
         return 'Affiliate(%s)' % (self.badge.cn)
@@ -685,12 +692,14 @@ class Affiliate(Token, Cache):
     def ensure_saa_survey(self, ttl=timedelta(seconds=15)):
         # TODO: redcap_connect should use notarized badges rather
         # than raw cn
-        def _ensure():
-            fields = dict(user_id=self.badge.cn,
-                          full_name=self.badge.sort_name())
-            return (ttl, self.__saa_rc(self.badge.cn, fields))
+        badge = self.badge
 
-        return self._query('sa', _ensure, 'SAA survey link')
+        def _ensure():
+            fields = dict(user_id=badge.cn,
+                          full_name=badge.sort_name())
+            return (ttl, self.__saa_rc(badge.cn, fields))
+
+        return self.__query(('SAA', badge.cn), _ensure, 'SAA link')
 
 
 class InvestigatorRequest(Token):
