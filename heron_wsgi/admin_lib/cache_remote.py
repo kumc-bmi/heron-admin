@@ -23,12 +23,15 @@ class Cache(object):
 
         # We're taking the time to go over the network; now is
         # a good time to prune the cache.
-        for k, (t, _) in self._cache.items():
-            if t <= tnow:
-                del self._cache[k]
+        self._prune(tnow)
 
         log.info('%s query for %s', label, k)
         ttl, v = thunk()
         log.info('... cached until %s', tnow + ttl)
         self._cache[k] = (tnow + ttl, v)
         return v
+
+    def _prune(self, tnow):
+        for k, (t, _) in self._cache.items():
+            if t <= tnow:
+                del self._cache[k]
