@@ -322,8 +322,8 @@ class LDAPBadge(Badge):
 
     @classmethod
     def _simplify(cls, ldapattrs):
-        d = _AttrDict([(n, ldapattrs.get(n, [None])[0])
-                       for n in cls.attributes])
+        d = AttrDict([(n, ldapattrs.get(n, [None])[0])
+                      for n in cls.attributes])
 
         for n in cls.attributes:
             if d[n] is None:
@@ -406,16 +406,16 @@ class ChalkChecker(cache_remote.Cache):
         return self._query(userid, self.q_for(userid), 'Chalk Training')
 
 
-class _AttrDict(dict):
+class AttrDict(dict):
     def __init__(self, *args, **kwargs):
         dict.__init__(self, *args, **kwargs)
         self.__dict__ = self
 
 
-class MockRequest(_AttrDict):
+class MockRequest(AttrDict):
     def __init__(self):
-        _AttrDict.__init__(self)
-        self.context = _AttrDict()
+        AttrDict.__init__(self)
+        self.context = AttrDict()
 
 
 class Mock(injector.Module, rtconfig.MockMixin):
