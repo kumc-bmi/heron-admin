@@ -263,10 +263,9 @@ class RepositoryLogin(Token):
         self._disclaimer_route = disclaimer_route  # mutable state. I'm lazy.
         self._login_route = route
 
-    def i2b2_login(self, req):
+    def i2b2_login(self, ctx, req):
         '''Log in to i2b2, provided credentials and current disclaimer.
         '''
-        ctx = req.context
         start_i2b2 = ctx.start_i2b2
 
         try:
@@ -312,7 +311,7 @@ class TeamBuilder(Token):
                         request_method='GET', renderer='build_team.html',
                         permission=medcenter.PERM_BROWSER)
 
-    def get(self, res, req, max_search_hits=15):
+    def get(self, context, req, max_search_hits=15):
         r'''
           >>> t, r1 = test_grant_access_with_valid_cas_ticket()
           >>> t.get('/build_team/sponsorship', status=200)
@@ -331,7 +330,7 @@ class TeamBuilder(Token):
            'name_etc_1=Smith%2C+John%0AChair+...+Neurology%0ANeurology',
            'user_id=john.smith', 'user_id_1=john.smith', 'what_for=1']
         '''
-        browser = req.context.browser
+        browser = context.browser
 
         params = req.GET
         uids, goal = edit_team(params)
@@ -479,7 +478,7 @@ class HeronAdminConfig(Configurator):
                       permission=pyramid.security.NO_PERMISSION_REQUIRED)
 
 
-class RunTime(injector.Module):
+class RunTime(injector.Module):  # pragma: nocover
     def __init__(self, settings):
         log.debug('RunTime settings: %s', settings)
         self._settings = settings
