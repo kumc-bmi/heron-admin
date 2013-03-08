@@ -20,9 +20,8 @@ Excerpting from `HERON training materials`__:
 
 __ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
 
-  >>> hp, mc, dr, oc, dg = Mock.make((HeronRecords, medcenter.MedCenter,
-  ...                                 DecisionRecords, OversightCommittee,
-  ...                                 disclaimer.DisclaimerGuard))
+  >>> hp, mc, dr, oc = Mock.make((HeronRecords, medcenter.MedCenter,
+  ...                             DecisionRecords, OversightCommittee))
 
 Recalling the login protocol from :mod:`heron_wsgi.cas_auth`::
 
@@ -58,7 +57,11 @@ But he has yet to acknowledge the disclaimer:
 
 Once he acknowledges it, he can access the repository:
 
-  >>> dg.ack_disclaimer(facreq.context.badge)
+  >>> facreq.context.disclaimers.current_disclaimer()
+  ... # doctest: +NORMALIZE_WHITESPACE
+  Disclaimer(disclaimer_id=1, url=http://example/blog/item/heron-release-xyz,
+             current=1)
+  >>> facreq.context.disclaimers.ack_disclaimer(facreq.context.badge)
   >>> facreq.context.start_i2b2()
   Access(John Smith <john.smith@js.example>)
 
@@ -414,6 +417,7 @@ class HeronRecords(Token, Cache):
         self._oversight_rc = oversight_rc
         self.__oc = oc
         self._oversight_project_id = oversight_rc.project_id
+        self.__dg = dg
 
         def repository_authz(badge):
             return pm.account_for(badge)
@@ -444,6 +448,7 @@ class HeronRecords(Token, Cache):
             if not sufficient(st):
                 raise NoPermission(st)
             context.start_i2b2 = lambda: self.__redeem(badge)
+            context.disclaimers = self.__dg
 
     def _status(self, badge):
         sponsored = (None if badge.is_investigator()

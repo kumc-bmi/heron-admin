@@ -169,8 +169,8 @@ class Validator(Token):
         self.__cascap = cascap
         self.__authenticated = None
 
-    def __str__(self):
-        return 'Validator(cas_addr=%s)' % self.__cas_rd.fullPath()
+    def __repr__(self):
+        return 'Validator(cas_addr=%s)' % self.__cascap.fullPath()
 
     def introduce(self, authenticated):
         '''Introduce Validator to authentication callback.

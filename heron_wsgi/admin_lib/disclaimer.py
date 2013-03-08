@@ -219,23 +219,25 @@ class DisclaimerGuard(Token):
     def __repr__(self):
         return '%s()' % self.__class__.__name__
 
+    def current_disclaimer(self):
+        s = self.__smaker()
+        return s.query(Disclaimer).filter(Disclaimer.current == 1).one()
+
     def ack_disclaimer(self, alleged_badge):
         '''
         TODO: split object between read-only and read/write
         '''
         badge = self.__badge_inspector.vouch(alleged_badge)
 
-        s = self.__smaker()
-        d = s.query(Disclaimer).filter(Disclaimer.current == 1).one()
+        d = self.current_disclaimer()
         self.__acks.add_record(badge.cn, d.url)
-        s.commit()
 
     def make_redeem(self, guarded_power):
         def redeem(alleged_badge):
             badge = self.__badge_inspector.vouch(alleged_badge)
 
             s = self.__smaker()
-            d = s.query(Disclaimer).filter(Disclaimer.current == 1).one()
+            d = self.current_disclaimer()
             log.debug('disclaimer: %s', d)
             log.debug('all acks: %s',
                       s.query(Acknowledgement).all())

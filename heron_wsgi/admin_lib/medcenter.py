@@ -238,10 +238,14 @@ class MedCenter(object):
 
     def idbadge(self, context):
         '''
-        @raises AttributeError if context lacks remote user;
-                TypeError on failure to authenticate context.remote_user
+        @raises TypeError on failure to authenticate context.remote_user
         '''
-        uid = self.__unsealer.unseal(context.remote_user)  # raises TypeError
+        try:
+            remote_user = context.remote_user
+        except AttributeError:
+            raise TypeError
+
+        uid = self.__unsealer.unseal(remote_user)  # raises TypeError
 
         return IDBadge(self.__notary, uid in self.__executives,
                        **self._browser.directory_attributes(uid))

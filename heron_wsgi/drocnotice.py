@@ -60,12 +60,13 @@ from admin_lib.heron_policy import DecisionRecords
 from admin_lib import noticelog
 from admin_lib import redcapdb
 from admin_lib import rtconfig
+from admin_lib.ocap_file import Token
 
 KMailSettings = injector.Key('MailSettings')
 log = logging.getLogger(__name__)
 
 
-class DROCNotice(object):
+class DROCNotice(Token):
     # We send notice only on final decisions, not defer.
     FINAL_DECISIONS = (DecisionRecords.YES, DecisionRecords.NO)
 
