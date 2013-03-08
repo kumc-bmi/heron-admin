@@ -89,8 +89,8 @@ class Reports(Token):
         return dict(queries=usage.current_queries(),
                     cycle=itertools.cycle)
 
-    def show_small_set_report(self, res, req):
-        audit = req.agent.sensitive_usage()
+    def show_small_set_report(self, context, req):
+        audit = context.droc_audit
         return dict(
             summary=audit.patient_set_queries(recent=True, small=True),
             detail=itertools.groupby(audit.small_set_concepts(),
