@@ -191,14 +191,14 @@ What decision notifications are pending?
 
   >>> ds = dr.oversight_decisions()
   >>> ds  # doctest: +NORMALIZE_WHITESPACE
-  [(34, u'-565402122873664774', u'2', 3),
-   (34, u'23180811818680005', u'1', 3),
-   (34, u'6373469799195807417', u'1', 3)]
+  [(u'-565402122873664774', u'2', 3),
+   (u'23180811818680005', u'1', 3),
+   (u'6373469799195807417', u'1', 3)]
 
 Get details that we might want to use in composing the notification::
 
   >>> from pprint import pprint
-  >>> for pid, record, decision, qty in ds:
+  >>> for record, decision, qty in ds:
   ...    pprint(dr.decision_detail(record))
   (John Smith <john.smith@js.example>,
    [Bill Student <bill.student@js.example>],
@@ -569,11 +569,14 @@ def _sponsor_queries(oversight_project_id):
 
       >>> print str(decision)
       ...  # doctest: +NORMALIZE_WHITESPACE
-      SELECT redcap_data.project_id, redcap_data.record,
-      redcap_data.value AS decision, count(*) AS count_1 FROM
-      redcap_data WHERE redcap_data.field_name LIKE :field_name_1 AND
-      redcap_data.project_id = :project_id_1 GROUP BY
-      redcap_data.project_id, redcap_data.record, redcap_data.value
+      SELECT p.record, p.value AS decision, count(*) AS count_1
+      FROM
+        (SELECT redcap_data.record AS record,
+                redcap_data.field_name AS field_name,
+                redcap_data.value AS value
+                FROM redcap_data
+                WHERE redcap_data.project_id = :project_id_1) AS p
+      WHERE p.field_name LIKE :field_name_1 GROUP BY p.record, p.value
       HAVING count(*) = :count_2
 
       >>> pprint(decision.compile().params)
@@ -582,55 +585,62 @@ def _sponsor_queries(oversight_project_id):
 
       >>> print str(candidate)
       ...  # doctest: +NORMALIZE_WHITESPACE
-      SELECT redcap_data.project_id, redcap_data.record,
-      redcap_data.value AS userid FROM redcap_data WHERE
-      redcap_data.field_name LIKE :field_name_1
-
-      >>> pprint(candidate.compile().params)
-      {u'field_name_1': 'user_id_%'}
-
-      >>> print str(cdwho) # doctest: +NORMALIZE_WHITESPACE
-      SELECT cd_record AS record,
-             cd_decision AS decision,
-             who_userid AS candidate,
-             expire_dt_exp AS dt_exp
+      SELECT p.record, p.value AS userid
       FROM
-        (SELECT cd.project_id AS cd_project_id,
-                cd.record AS cd_record,
-                cd.decision AS cd_decision,
-                cd.count_1 AS cd_count_1,
-                who.project_id AS who_project_id,
-                who.record AS who_record,
-                who.userid AS who_userid,
-                expire.project_id AS expire_project_id,
-                expire.record AS expire_record,
-                expire.dt_exp AS expire_dt_exp
+        (SELECT redcap_data.record AS record,
+                redcap_data.field_name AS field_name,
+                redcap_data.value AS value
+         FROM redcap_data
+         WHERE redcap_data.project_id = :project_id_1) AS p
+      WHERE p.field_name LIKE :field_name_1
+
+      >>> print str(cdwho)
+      ...  # doctest: +NORMALIZE_WHITESPACE
+      SELECT cd_record AS record, cd_decision AS decision, who_userid
+      AS candidate, expire_dt_exp AS dt_exp
+      FROM
+        (SELECT
+         cdwho.cd_record AS cd_record, cdwho.cd_decision AS cd_decision,
+         cdwho.cd_count_1 AS cd_count_1, cdwho.who_record AS who_record,
+         cdwho.who_userid AS who_userid, cdwho.expire_record AS
+         expire_record, cdwho.expire_dt_exp AS expire_dt_exp
          FROM
-           (SELECT redcap_data.project_id AS project_id,
-                   redcap_data.record AS record,
-                   redcap_data.value AS decision, count(*) AS count_1
-            FROM redcap_data
-            WHERE redcap_data.field_name LIKE :field_name_1
-              AND redcap_data.project_id = :project_id_1
-            GROUP BY redcap_data.project_id, redcap_data.record,
-                     redcap_data.value
-            HAVING count(*) = :count_2) AS cd
-           JOIN
-             (SELECT redcap_data.project_id AS project_id,
-                     redcap_data.record AS record,
-                     redcap_data.value AS userid
-              FROM redcap_data
-              WHERE redcap_data.field_name LIKE :field_name_2) AS who
-           ON who.record = cd.record
-           AND who.project_id = cd.project_id
-           LEFT OUTER JOIN (SELECT redcap_data.project_id AS project_id,
-                                   redcap_data.record AS record,
-                                   redcap_data.value AS dt_exp
-                            FROM redcap_data
-                            WHERE redcap_data.field_name = :field_name_3)
-                             AS expire
-           ON expire.record = cd.record AND expire.project_id = cd.project_id)
-              AS cdwho
+           (SELECT
+            cd.record AS cd_record, cd.decision AS cd_decision,
+            cd.count_1 AS cd_count_1, who.record AS who_record,
+            who.userid AS who_userid, expire.record AS expire_record,
+            expire.dt_exp AS expire_dt_exp
+            FROM
+              (SELECT p.record AS record, p.value AS decision,
+               count(*) AS count_1
+               FROM
+                 (SELECT redcap_data.record AS record,
+                  redcap_data.field_name AS field_name,
+                  redcap_data.value AS value
+                  FROM redcap_data
+                  WHERE redcap_data.project_id = :project_id_1) AS p
+               WHERE p.field_name LIKE :field_name_1
+               GROUP BY p.record, p.value HAVING count(*) = :count_2) AS cd
+               JOIN
+                 (SELECT p.record AS record, p.value AS userid
+                  FROM
+                    (SELECT redcap_data.record AS record,
+                     redcap_data.field_name AS field_name,
+                     redcap_data.value AS value
+                     FROM redcap_data
+                     WHERE redcap_data.project_id = :project_id_1) AS p
+                  WHERE p.field_name LIKE :field_name_2) AS who
+               ON who.record = cd.record
+               LEFT OUTER JOIN
+                 (SELECT p.record AS record, p.value AS dt_exp
+                  FROM
+                    (SELECT redcap_data.record AS record,
+                     redcap_data.field_name AS field_name,
+                     redcap_data.value AS value
+                     FROM redcap_data
+                     WHERE redcap_data.project_id = :project_id_1) AS p
+                  WHERE p.field_name = :field_name_3) AS expire
+               ON expire.record = cd.record) AS cdwho)
 
       >>> pprint(cdwho.compile().params)
       {u'count_2': 3,
@@ -643,35 +653,33 @@ def _sponsor_queries(oversight_project_id):
     # grumble... sql in python clothing
     # but for this price, we can run it on sqlite for testing as well as mysql
     # and sqlalchemy will take care of the bind parameter syntax
-    rd = redcapdb.redcap_data
+    rdc = redcapdb.redcap_data.c
+    proj = select([rdc.record, rdc.field_name, rdc.value]).where(
+        rdc.project_id == oversight_project_id).alias('p')
 
     # committee decisions
-    decision = select((rd.c.project_id, rd.c.record,
-                       rd.c.value.label('decision'),
+    decision = select((proj.c.record,
+                       proj.c.value.label('decision'),
                        func.count())).where(
-        and_(rd.c.field_name.like('approve_%'),
-             rd.c.project_id == oversight_project_id)).\
-             group_by(rd.c.project_id,
-                      rd.c.record,
-                      rd.c.value).having(
+        proj.c.field_name.like('approve_%')).\
+             group_by(proj.c.record,
+                      proj.c.value).having(
                  func.count() == len(HeronRecords.institutions)).alias('cd')
 
     # todo: consider combining record, event, project_id into one attr
-    candidate = select((rd.c.project_id, rd.c.record,
-                        rd.c.value.label('userid'))).where(
-        rd.c.field_name.like('user_id_%')).alias('who')
+    candidate = select((proj.c.record,
+                        proj.c.value.label('userid'))).where(
+        proj.c.field_name.like('user_id_%')).alias('who')
 
-    dt_exp = select((rd.c.project_id, rd.c.record,
-                    rd.c.value.label('dt_exp'))).where(
-        rd.c.field_name == 'date_of_expiration').alias('expire')
+    dt_exp = select((proj.c.record,
+                     proj.c.value.label('dt_exp'))).where(
+        proj.c.field_name == 'date_of_expiration').alias('expire')
 
     j = decision.join(candidate,
-                      and_(candidate.c.record == decision.c.record,
-                           candidate.c.project_id == decision.c.project_id)).\
-                           outerjoin(dt_exp, and_(
-            dt_exp.c.record == decision.c.record,
-            dt_exp.c.project_id == decision.c.project_id)).\
-            alias('cdwho').select()
+                      candidate.c.record == decision.c.record).\
+                          outerjoin(dt_exp,
+                                    dt_exp.c.record == decision.c.record).\
+                                        alias('cdwho').select()
 
     cdwho = j.with_only_columns((j.c.cd_record.label('record'),
                                  j.c.cd_decision.label('decision'),
