@@ -87,7 +87,9 @@ Bill cannot access the HERON repository because he is neither
 faculty not sponsored, nor has he completed human subjects training::
 
   >>> stureq = _login('bill.student', mc, hp, PERM_STATUS)
+  INFO:cache_remote:Sponsorship query for ('sponsorship', 'bill.student')
   INFO:heron_policy:not sponsored: bill.student
+  INFO:cache_remote:... cached until 2011-09-03 00:00:00
   INFO:heron_policy:no training on file for: bill.student (Bill Student)
   INFO:cache_remote:system access query for ('SAA', 'bill.student@js.example')
   INFO:cache_remote:... cached until 2011-09-02 00:00:15
@@ -472,7 +474,8 @@ class HeronRecords(Token, Cache):
                       expired_training=expired_training,
                       system_access_signed=system_access_sigs)
 
-    def _sponsorship(self, uid):
+    def _sponsorship(self, uid,
+                     ttl=timedelta(seconds=600)):
         decision, candidate, dc = _sponsor_queries(self._oversight_project_id)
 
         # mysql work-around for
@@ -481,14 +484,18 @@ class HeronRecords(Token, Cache):
         q = dc.select(and_(dc.c.candidate == uid,
                            dc.c.decision == DecisionRecords.YES))
 
-        for ans in self._smaker().execute(q).fetchall():
-            # hmm... why not do this date comparison in the database?
-            if ans.dt_exp <= '' or self._t.today().isoformat() <= ans.dt_exp:
-                log.info('sponsorship OK: %s', ans)
-                return ans
+        def do_q():
+            for ans in self._smaker().execute(q).fetchall():
+                # hmm... why not do this date comparison in the database?
+                if (ans.dt_exp <= ''
+                    or self._t.today().isoformat() <= ans.dt_exp):
+                    log.info('sponsorship OK: %s', ans)
+                    return ttl, ans
 
-        log.info('not sponsored: %s', uid)
-        return None
+            log.info('not sponsored: %s', uid)
+            return timedelta(1), None
+
+        return self._query(('sponsorship', uid), do_q, 'Sponsorship')
 
     def _training_current(self, badge):
         try:
