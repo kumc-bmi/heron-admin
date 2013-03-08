@@ -438,6 +438,7 @@ class HeronRecords(Token, Cache):
             context.droc_audit = self.__oc._droc_auditor(badge)
         elif p is PERM_STATS_REPORTER:
             context.stats_reporter = self.__stats
+            context.browser = self._mc._browser
         elif p is PERM_START_I2B2:
             st = self._status(badge)
             if not sufficient(st):
