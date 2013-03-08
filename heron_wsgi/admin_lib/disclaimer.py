@@ -239,8 +239,8 @@ class DisclaimerGuard(Token):
             s = self.__smaker()
             d = self.current_disclaimer()
             log.debug('disclaimer: %s', d)
-            log.debug('all acks: %s',
-                      s.query(Acknowledgement).all())
+            log.debug('first 10 acks: %s',
+                      s.query(Acknowledgement)[:10])
 
             try:
                 a = s.query(Acknowledgement).\
