@@ -139,7 +139,7 @@ class DecisionRecords(object):
 
         return self._smaker().execute(q).fetchall()
 
-    def oversight_decisions(self):
+    def oversight_decisions(self, pending=True):
         '''In order to facilitate email notification of committee
         decisions, find decisions where notification has not been sent.
         '''
@@ -147,22 +147,40 @@ class DecisionRecords(object):
                                           len(self.institutions))
 
         # decisions without notifications
-        nl = notice_log
-        dwn = cd.outerjoin(nl).select() \
-            .with_only_columns(cd.columns).where(nl.c.record == None)
+        if pending:
+            nl = notice_log
+            dwn = cd.outerjoin(nl).select() \
+                                  .with_only_columns(cd.columns)\
+                                  .where(nl.c.record == None)
+        else:
+            dwn = cd
+
         return self._smaker().execute(dwn).fetchall()
 
-    def decision_detail(self, record):
-        avl = list(redcapdb.allfields(self._smaker(),
+    def decision_detail(self, record, lookup=True):
+        s = self._smaker()
+        avl = list(redcapdb.allfields(s,
                                       self._oversight_project_id,
                                       record))
+        s.close()
         browser = self._browser
-        team = [browser.lookup(user_id)
-                for user_id in
-                [v for a, v in avl if v and a.startswith('user_id_')]]
+
+        def try_lookup(who):
+            try:
+                return browser.lookup(user_id)
+            except KeyError:
+                return None
+
+        team = [details
+                for details in [try_lookup(user_id) if lookup else user_id
+                                for user_id in
+                                [v for a, v in avl
+                                 if v and a.startswith('user_id_')]]
+                if details]
 
         d = dict(avl)
-        investigator = browser.lookup(d['user_id'])
+        inv = d['user_id']
+        investigator = browser.lookup(inv) if lookup else inv
         return investigator, team, d
 
 
@@ -326,6 +344,36 @@ def _sponsor_queries(oversight_project_id, parties):
     return decision, candidate, cdwho
 
 
+def migrate_decisions(ds, outfp):
+    import logging
+    import csv
+
+    logging.basicConfig(level=logging.DEBUG)
+    log = logging.getLogger(__name__)
+    out = csv.writer(outfp)
+
+    # schema
+    out.writerow(('record', 'decision',
+                  'inv', 'mem', 'expiration',
+                   'purpose', 'title', 'description'))
+
+    log.debug('about to query for all decisions...')
+    data = list(ds.oversight_decisions(pending=False))
+    log.debug('got %s decisions', len(data))
+    for record, decision, qty in data:
+        log.debug('about to get record %s ...', record)
+        inv, team, detail = ds.decision_detail(record, lookup=False)
+        log.debug('... got %s fields from record %s', len(detail), record)
+        for mem in team:
+            out.writerow((record, decision, inv, mem,
+                          detail.get('date_of_expiration', ''),
+                          detail.get('what_for'),
+                          detail.get('project_title', ''),
+                          detail.get('description_sponsor', '')))
+
+    raise NotImplementedError
+
+
 class Mock(injector.Module, rtconfig.MockMixin):
     @provides(KProjectId)
     def project_id(self):
@@ -352,7 +400,12 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
 
 
 def _integration_test():  # pragma nocover
+    import sys
     (ds, ) = RunTime.make(None, [DecisionRecords])
+
+    if '--migrate' in sys.argv:
+        migrate_decisions(ds, sys.stdout)
+        raise SystemExit(0)
 
     print "pending notifications:", ds.oversight_decisions()
 
