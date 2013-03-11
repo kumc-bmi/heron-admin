@@ -85,8 +85,9 @@ from sqlalchemy.sql import select, func, and_
 
 import rtconfig
 import redcapdb
-from medcenter import Browser
+import medcenter
 
+OVERSIGHT_CONFIG_SECTION = 'oversight_survey'
 KProjectId = injector.Key('ProjectId')
 notice_log = Table('notice_log', redcapdb.Base.metadata,
                    Column('id', Integer, primary_key=True),
@@ -120,7 +121,7 @@ class DecisionRecords(object):
 
     @inject(pid=KProjectId,
             smaker=(orm.session.Session, redcapdb.CONFIG_SECTION),
-            browser=Browser)
+            browser=medcenter.Browser)
     def __init__(self, pid, smaker, browser):
         self._oversight_project_id = pid
         self._browser = browser
@@ -335,3 +336,26 @@ class Mock(injector.Module, rtconfig.MockMixin):
     def mods(cls):
         import medcenter
         return redcapdb.Mock.mods() + medcenter.Mock.mods() + [cls()]
+
+
+class RunTime(rtconfig.IniModule):  # pragma nocover
+    @provides(KProjectId)
+    def project_id(self):
+        rt = self.get_options(['project_id'], OVERSIGHT_CONFIG_SECTION)
+        return rt.project_id
+
+    @classmethod
+    def mods(cls, ini):
+        return [im
+                for m in (redcapdb, medcenter)
+                for im in m.RunTime.mods(ini)] + [cls(ini)]
+
+
+def _integration_test():  # pragma nocover
+    (ds, ) = RunTime.make(None, [DecisionRecords])
+
+    print "pending notifications:", ds.oversight_decisions()
+
+
+if __name__ == '__main__':  # pragma nocover
+    _integration_test()

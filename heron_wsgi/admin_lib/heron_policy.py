@@ -222,13 +222,13 @@ import medcenter
 import redcap_connect
 import redcapdb
 import noticelog
+from noticelog import OVERSIGHT_CONFIG_SECTION
 import disclaimer
 from disclaimer import KTimeSource
 from audit_usage import I2B2AggregateUsage, I2B2SensitiveUsage
 from cache_remote import Cache
 
 SAA_CONFIG_SECTION = 'saa_survey'
-OVERSIGHT_CONFIG_SECTION = 'oversight_survey'
 
 PERM_STATUS = __name__ + '.status'
 PERM_SIGN_SAA = __name__ + '.sign_saa'
@@ -661,16 +661,13 @@ def _integration_test():  # pragma nocover
     userid = sys.argv[1]
     req = medcenter.MockRequest()
     req.remote_user = userid
-    mc, hr, ds = RunTime.make(None, [medcenter.MedCenter,
-                                     HeronRecords, noticelog.DecisionRecords])
+    mc, hr = RunTime.make(None, [medcenter.MedCenter, HeronRecords])
     mc.authenticated(userid, req)
     hr.grant(req.context, PERM_STATUS)
     print req.context.status
 
     hr.grant(req.context, PERM_START_I2B2)
     print req.context.start_i2b2()
-
-    print "pending notifications:", ds.oversight_decisions()
 
 if __name__ == '__main__':  # pragma nocover
     _integration_test()
