@@ -929,7 +929,23 @@ class TestSetUp(disclaimer.TestSetUp):
         add_droc_member('big.wig', self.oversight_pid)
 
         s.commit()
+
+        for t in (redcapdb.redcap_data,
+                  redcapdb.redcap_user_rights,
+                  redcapdb.redcap_surveys_participants,
+                  redcapdb.redcap_surveys_response):
+            save_csv(s, t, open('mock_' + t.name + '.csv', 'w'))
+
         return smaker
+
+
+def save_csv(s, t, fp):
+    import csv
+
+    ans = s.execute(t.select())
+    out = csv.writer(fp)
+    out.writerow(ans.keys())
+    out.writerows(ans.fetchall())
 
 
 class Mock(injector.Module, rtconfig.MockMixin):
