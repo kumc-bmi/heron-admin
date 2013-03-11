@@ -20,8 +20,8 @@ Excerpting from `HERON training materials`__:
 
 __ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
 
-  >>> hp, mc, dr, oc = Mock.make((HeronRecords, medcenter.MedCenter,
-  ...                             DecisionRecords, OversightCommittee))
+  >>> hp, mc, oc = Mock.make((HeronRecords, medcenter.MedCenter,
+  ...                         OversightCommittee))
 
 Recalling the login protocol from :mod:`heron_wsgi.cas_auth`::
 
@@ -184,62 +184,6 @@ the oversight committee::
   WARNING:medcenter:missing LDAP attribute title for some.one
 
 
-Notification of Oversight Decisions
-***********************************
-
-What decision notifications are pending?
-
-  >>> ds = dr.oversight_decisions()
-  >>> ds  # doctest: +NORMALIZE_WHITESPACE
-  [(u'-565402122873664774', u'2', 3),
-   (u'23180811818680005', u'1', 3),
-   (u'6373469799195807417', u'1', 3)]
-
-Get details that we might want to use in composing the notification::
-
-  >>> from pprint import pprint
-  >>> for record, decision, qty in ds:
-  ...    pprint(dr.decision_detail(record))
-  (John Smith <john.smith@js.example>,
-   [Bill Student <bill.student@js.example>],
-   {u'approve_kuh': u'2',
-    u'approve_kumc': u'2',
-    u'approve_kupi': u'2',
-    u'date_of_expiration': u'',
-    u'full_name': u'John Smith',
-    u'project_title': u'Cart Blanche',
-    u'user_id': u'john.smith',
-    u'user_id_1': u'bill.student'})
-  (John Smith <john.smith@js.example>,
-   [Bill Student <bill.student@js.example>],
-   {u'approve_kuh': u'1',
-    u'approve_kumc': u'1',
-    u'approve_kupi': u'1',
-    u'date_of_expiration': u'1950-02-27',
-    u'full_name': u'John Smith',
-    u'project_title': u'Cure Polio',
-    u'user_id': u'john.smith',
-    u'user_id_1': u'bill.student'})
-  WARNING:medcenter:missing LDAP attribute ou for some.one
-  WARNING:medcenter:missing LDAP attribute title for some.one
-  WARNING:medcenter:missing LDAP attribute kumcPersonFaculty for carol.student
-  WARNING:medcenter:missing LDAP attribute kumcPersonJobcode for carol.student
-  (John Smith <john.smith@js.example>,
-   [Some One <some.one@js.example>, Carol Student <carol.student@js.example>],
-   {u'approve_kuh': u'1',
-    u'approve_kumc': u'1',
-    u'approve_kupi': u'1',
-    u'date_of_expiration': u'',
-    u'full_name': u'John Smith',
-    u'project_title': u'Cure Warts',
-    u'user_id': u'john.smith',
-    u'user_id_1': u'some.one',
-    u'user_id_2': u'carol.student'})
-
-.. todo:: consider factoring out low level details to make
-          the policy more clear as code.
-
-
 Overight Auditing
 =================
 
@@ -264,14 +208,12 @@ Ordinary users cannot, though they can get aggregate usage info::
 from datetime import timedelta
 import itertools
 import logging
-import csv  # csv, os only used _DataDict, i.e. testing
-import os
 from collections import namedtuple
 
 import injector
 from injector import inject, provides, singleton
-from sqlalchemy import orm, engine
-from sqlalchemy.sql import select, and_, func
+from sqlalchemy import orm
+from sqlalchemy.sql import and_
 
 from ocap_file import Token
 import rtconfig
@@ -370,10 +312,11 @@ class HeronRecords(Token, Cache):
     stored in fields with names like approve_%, with a distinct
     approve_% field for each participating institution.
 
+    >>> from noticelog import _DataDict
     >>> ddict = _DataDict('oversight')
     >>> dd_orgs = [n[len('approve_'):] for (n, etc) in ddict.fields()
     ...            if n.startswith('approve_')]
-    >>> set(dd_orgs) == set(HeronRecords.institutions)
+    >>> set(dd_orgs) == set(noticelog.DecisionRecords.institutions)
     True
 
     >>> len([n for (n, etc) in ddict.fields() if n.startswith('user_id_')]) > 3
@@ -387,7 +330,6 @@ class HeronRecords(Token, Cache):
 
     .. todo:: check expiration date
     '''
-    institutions = ('kuh', 'kupi', 'kumc')
 
     SPONSORSHIP = '1'
     DATA_USE = '2'
@@ -395,6 +337,7 @@ class HeronRecords(Token, Cache):
 
     @inject(mc=medcenter.MedCenter,
             pm=i2b2pm.I2B2PM,
+            dr=noticelog.DecisionRecords,
             stats=I2B2AggregateUsage,
             saa_rc=(redcap_connect.SurveySetup,
                     SAA_CONFIG_SECTION),
@@ -405,13 +348,14 @@ class HeronRecords(Token, Cache):
             smaker=(orm.session.Session,
                     redcapdb.CONFIG_SECTION),
             timesrc=KTimeSource)
-    def __init__(self, mc, pm, stats, saa_rc, oversight_rc, oc,
+    def __init__(self, mc, pm, dr, stats, saa_rc, oversight_rc, oc,
                  dg, smaker, timesrc):
         Cache.__init__(self, timesrc.now)
         log.debug('HeronRecords.__init__ again?')
         self._smaker = smaker
         self._mc = mc
         self._pm = pm
+        self.__dr = dr
         self.__stats = stats
         self._t = timesrc
         self._saa_survey_id = saa_rc.survey_id
@@ -476,16 +420,8 @@ class HeronRecords(Token, Cache):
 
     def _sponsorship(self, uid,
                      ttl=timedelta(seconds=600)):
-        decision, candidate, dc = _sponsor_queries(self._oversight_project_id)
-
-        # mysql work-around for
-        # 1248, 'Every derived table must have its own alias'
-        dc = dc.alias('mw')
-        q = dc.select(and_(dc.c.candidate == uid,
-                           dc.c.decision == DecisionRecords.YES))
-
         def do_q():
-            for ans in self._smaker().execute(q).fetchall():
+            for ans in self.__dr.sponsorships(uid):
                 # hmm... why not do this date comparison in the database?
                 if (ans.dt_exp <= ''
                     or self._t.today().isoformat() <= ans.dt_exp):
@@ -559,136 +495,6 @@ def _saa_query(mail, survey_id):
             and_(p.c.participant_email == mail, p.c.survey_id == survey_id))
 
 
-def _sponsor_queries(oversight_project_id):
-    '''
-    TODO: consider a separate table of approved users, generated when
-    notices are sent. include expirations (and link back to request).
-
-      >>> from pprint import pprint
-      >>> decision, candidate, cdwho = _sponsor_queries(123)
-
-      >>> print str(decision)
-      ...  # doctest: +NORMALIZE_WHITESPACE
-      SELECT p.record, p.value AS decision, count(*) AS count_1
-      FROM
-        (SELECT redcap_data.record AS record,
-                redcap_data.field_name AS field_name,
-                redcap_data.value AS value
-                FROM redcap_data
-                WHERE redcap_data.project_id = :project_id_1) AS p
-      WHERE p.field_name LIKE :field_name_1 GROUP BY p.record, p.value
-      HAVING count(*) = :count_2
-
-      >>> pprint(decision.compile().params)
-      {u'count_2': 3, u'field_name_1': 'approve_%', u'project_id_1': 123}
-
-
-      >>> print str(candidate)
-      ...  # doctest: +NORMALIZE_WHITESPACE
-      SELECT p.record, p.value AS userid
-      FROM
-        (SELECT redcap_data.record AS record,
-                redcap_data.field_name AS field_name,
-                redcap_data.value AS value
-         FROM redcap_data
-         WHERE redcap_data.project_id = :project_id_1) AS p
-      WHERE p.field_name LIKE :field_name_1
-
-      >>> print str(cdwho)
-      ...  # doctest: +NORMALIZE_WHITESPACE
-      SELECT cd_record AS record, cd_decision AS decision, who_userid
-      AS candidate, expire_dt_exp AS dt_exp
-      FROM
-        (SELECT
-         cdwho.cd_record AS cd_record, cdwho.cd_decision AS cd_decision,
-         cdwho.cd_count_1 AS cd_count_1, cdwho.who_record AS who_record,
-         cdwho.who_userid AS who_userid, cdwho.expire_record AS
-         expire_record, cdwho.expire_dt_exp AS expire_dt_exp
-         FROM
-           (SELECT
-            cd.record AS cd_record, cd.decision AS cd_decision,
-            cd.count_1 AS cd_count_1, who.record AS who_record,
-            who.userid AS who_userid, expire.record AS expire_record,
-            expire.dt_exp AS expire_dt_exp
-            FROM
-              (SELECT p.record AS record, p.value AS decision,
-               count(*) AS count_1
-               FROM
-                 (SELECT redcap_data.record AS record,
-                  redcap_data.field_name AS field_name,
-                  redcap_data.value AS value
-                  FROM redcap_data
-                  WHERE redcap_data.project_id = :project_id_1) AS p
-               WHERE p.field_name LIKE :field_name_1
-               GROUP BY p.record, p.value HAVING count(*) = :count_2) AS cd
-               JOIN
-                 (SELECT p.record AS record, p.value AS userid
-                  FROM
-                    (SELECT redcap_data.record AS record,
-                     redcap_data.field_name AS field_name,
-                     redcap_data.value AS value
-                     FROM redcap_data
-                     WHERE redcap_data.project_id = :project_id_1) AS p
-                  WHERE p.field_name LIKE :field_name_2) AS who
-               ON who.record = cd.record
-               LEFT OUTER JOIN
-                 (SELECT p.record AS record, p.value AS dt_exp
-                  FROM
-                    (SELECT redcap_data.record AS record,
-                     redcap_data.field_name AS field_name,
-                     redcap_data.value AS value
-                     FROM redcap_data
-                     WHERE redcap_data.project_id = :project_id_1) AS p
-                  WHERE p.field_name = :field_name_3) AS expire
-               ON expire.record = cd.record) AS cdwho)
-
-      >>> pprint(cdwho.compile().params)
-      {u'count_2': 3,
-       u'field_name_1': 'approve_%',
-       u'field_name_2': 'user_id_%',
-       u'field_name_3': 'date_of_expiration',
-       u'project_id_1': 123}
-
-    '''
-    # grumble... sql in python clothing
-    # but for this price, we can run it on sqlite for testing as well as mysql
-    # and sqlalchemy will take care of the bind parameter syntax
-    rdc = redcapdb.redcap_data.c
-    proj = select([rdc.record, rdc.field_name, rdc.value]).where(
-        rdc.project_id == oversight_project_id).alias('p')
-
-    # committee decisions
-    decision = select((proj.c.record,
-                       proj.c.value.label('decision'),
-                       func.count())).where(
-        proj.c.field_name.like('approve_%')).\
-             group_by(proj.c.record,
-                      proj.c.value).having(
-                 func.count() == len(HeronRecords.institutions)).alias('cd')
-
-    # todo: consider combining record, event, project_id into one attr
-    candidate = select((proj.c.record,
-                        proj.c.value.label('userid'))).where(
-        proj.c.field_name.like('user_id_%')).alias('who')
-
-    dt_exp = select((proj.c.record,
-                     proj.c.value.label('dt_exp'))).where(
-        proj.c.field_name == 'date_of_expiration').alias('expire')
-
-    j = decision.join(candidate,
-                      candidate.c.record == decision.c.record).\
-                          outerjoin(dt_exp,
-                                    dt_exp.c.record == decision.c.record).\
-                                        alias('cdwho').select()
-
-    cdwho = j.with_only_columns((j.c.cd_record.label('record'),
-                                 j.c.cd_decision.label('decision'),
-                                 j.c.who_userid.label('candidate'),
-                                 j.c.expire_dt_exp.label('dt_exp')))
-
-    return decision, candidate, cdwho
-
-
 class NoPermission(Exception):
     def __init__(self, whynot):
         self.whynot = whynot
@@ -754,8 +560,9 @@ def team_params(lookup, uids):
     >>> (mc, ) = medcenter.Mock.make([medcenter.MedCenter])
     >>> pprint.pprint(list(team_params(mc.peer_badge,
     ...                                ['john.smith', 'bill.student'])))
+    ... # doctest: +ELLIPSIS
     [('user_id_1', 'john.smith'),
-     ('name_etc_1', 'Smith, John\nChair of Department of Neurology\nNeurology'),
+     ('name_etc_1', 'Smith, John\nChair of Department of Neur...'),
      ('user_id_2', 'bill.student'),
      ('name_etc_2', 'Student, Bill\nStudent\nUndergrad')]
 
@@ -767,182 +574,6 @@ def team_params(lookup, uids):
               [(i, uids[i], lookup(uids[i]))
                for i in range(0, len(uids))]]
     return itertools.chain.from_iterable(nested)
-
-
-class DecisionRecords(object):
-    '''
-
-    .. note:: At test time, let's check consistency with the data
-              dictionary.
-
-    >>> choices = dict(_DataDict('oversight').radio('approve_kuh'))
-    >>> choices[DecisionRecords.YES]
-    'Yes'
-    >>> choices[DecisionRecords.NO]
-    'No'
-    >>> len(choices)
-    3
-
-    '''
-
-    YES = '1'
-    NO = '2'
-
-    @inject(orc=(redcap_connect.SurveySetup, OVERSIGHT_CONFIG_SECTION),
-            smaker=(orm.session.Session, redcapdb.CONFIG_SECTION),
-            mc=medcenter.MedCenter)
-    def __init__(self, orc, smaker, mc):
-        self._oversight_project_id = orc.project_id
-        self._mc = mc
-        self._smaker = smaker
-
-    def oversight_decisions(self):
-        '''In order to facilitate email notification of committee
-        decisions, find decisions where notification has not been sent.
-        '''
-        cd, who, cdwho = _sponsor_queries(self._oversight_project_id)
-
-        # decisions without notifications
-        nl = noticelog.notice_log
-        dwn = cd.outerjoin(nl).select() \
-            .with_only_columns(cd.columns).where(nl.c.record == None)
-        return self._smaker().execute(dwn).fetchall()
-
-    def decision_detail(self, record):
-        avl = list(redcapdb.allfields(self._smaker(),
-                                      self._oversight_project_id,
-                                      record))
-        mc = self._mc
-        team = [mc.peer_badge(user_id)
-                for user_id in
-                [v for a, v in avl if v and a.startswith('user_id_')]]
-
-        d = dict(avl)
-        investigator = mc.peer_badge(d['user_id'])
-        return investigator, team, d
-
-
-class _DataDict(object):
-    '''
-    .. todo:: use pkg_resources rather than os to get redcap_dd
-    '''
-    def __init__(self, name,
-                 base=os.path.join(os.path.dirname(__file__),
-                                   '..', 'redcap_dd')):
-        def open_it():
-            return open(os.path.join(base, name + '.csv'))
-        self._open = open_it
-
-    def fields(self):
-        rows = csv.DictReader(self._open())
-        for row in rows:
-            yield row["Variable / Field Name"], row
-
-    def radio(self, field_name):
-        for n, row in self.fields():
-            if n == field_name:
-                choicetxt = row["Choices, Calculations, OR Slider Labels"]
-                break
-        else:
-            raise KeyError
-        return [tuple(choice.strip().split(", ", 1))
-                for choice in choicetxt.split('|')]
-
-
-class TestSetUp(disclaimer.TestSetUp):
-    oversight_pid = redcap_connect._test_settings.project_id
-    saa_sid = redcap_connect._test_settings.survey_id
-
-    @singleton
-    @provides((orm.session.Session, redcapdb.CONFIG_SECTION))
-    @inject(engine=(engine.base.Connectable,
-                    redcapdb.CONFIG_SECTION),
-            timesrc=KTimeSource)
-    def redcap_sessionmaker(self, engine, timesrc):
-        from redcapdb import add_test_eav
-
-        smaker = super(TestSetUp, self).redcap_sessionmaker(engine=engine)
-        s = smaker()
-
-        def add_oversight_request(user_id, full_name, project_title,
-                                  candidates, reviews,
-                                  date_of_expiration=''):
-            # e/a/v = entity/attribute/value
-            e = hash((user_id, project_title))
-            add_test_eav(s, self.oversight_pid, 1, e,
-                         (('user_id', user_id),
-                          ('full_name', full_name),
-                          ('project_title', project_title),
-                          ('date_of_expiration', date_of_expiration)))
-            add_test_eav(s, self.oversight_pid, 1, e,
-                         [('user_id_%d' % n, userid)
-                          for n, userid in candidates])
-            add_test_eav(s, self.oversight_pid, 1, e,
-                         [('approve_%s' % org, decision)
-                          for org, decision in reviews])
-
-        # approve 2 users in 1 request
-        add_oversight_request('john.smith', 'John Smith', 'Cure Warts',
-                              ((1, 'some.one'), (2, 'carol.student')),
-                              [(org, DecisionRecords.YES)
-                               for org in HeronRecords.institutions])
-
-        # A request to sponsor bill.student is only reviewed by 2 of 3 orgs:
-        add_oversight_request('john.smith', 'John Smith', 'Cure Hair Loss',
-                              ((1, 'bill.student'),),
-                              [(org, DecisionRecords.YES)
-                               for org in HeronRecords.institutions[:2]])
-
-        # Another request to sponsor bill.student was rejected:
-        add_oversight_request('john.smith', 'John Smith', 'Cart Blanche',
-                              ((1, 'bill.student'),),
-                              [(org, DecisionRecords.NO)
-                               for org in HeronRecords.institutions])
-
-        # Another request has expired:
-        add_oversight_request('john.smith', 'John Smith', 'Cure Polio',
-                              ((1, 'bill.student'),),
-                              [(org, DecisionRecords.YES)
-                               for org in HeronRecords.institutions],
-                              '1950-02-27')
-
-        log.debug('add SAA records')
-        redcapdb.redcap_surveys_participants.create(s.bind)
-        s.commit()
-        redcapdb.redcap_surveys_response.create(s.bind)
-        noticelog.notice_log.schema = None  # sqlite doesn't grok schemas
-        noticelog.notice_log.create(s.bind)
-        for email in ['john.smith@js.example', 'big.wig@js.example']:
-            s.execute(redcapdb.redcap_surveys_participants.insert().values(
-                    participant_id=abs(hash(email)),
-                    survey_id=self.saa_sid, participant_email=email))
-            s.execute(redcapdb.redcap_surveys_response.insert().values(
-                    response_id=abs(hash(email)), record=abs(hash(email)),
-                    completion_time=timesrc.today() + \
-                        timedelta(days=-7),
-                    participant_id=abs(hash(email))))
-
-        def add_droc_member(u, p):
-            log.debug('add DROC member: %s to project %s', u, p)
-            urt = redcapdb.redcap_user_rights
-            s.execute(urt.insert().values(project_id=p, username=u))
-        add_droc_member('big.wig', self.oversight_pid)
-
-        s.commit()
-
-        dump_db(s.bind, open('mock_redcapdb.sql', 'w'))
-
-        return smaker
-
-
-def dump_db(e, outfp):
-    import pdb; pdb.set_trace()
-    conn = e.connect()
-    # get underlying sqlite object
-    sqliteconn = conn.connection
-
-    for sql in sqliteconn.iterdump():
-        outfp.write(sql)
 
 
 class Mock(injector.Module, rtconfig.MockMixin):
@@ -975,8 +606,10 @@ class Mock(injector.Module, rtconfig.MockMixin):
     @classmethod
     def mods(cls):
         log.debug('heron_policy.Mock.mods')
-        return (medcenter.Mock.mods() + i2b2pm.Mock.mods()
-                + disclaimer.Mock.mods() + [TestSetUp(), cls()])
+        return ([im
+                 for m in (medcenter, i2b2pm, disclaimer,
+                           redcapdb, noticelog)
+                 for im in m.Mock.mods()] + [cls()])
 
 
 class RunTime(rtconfig.IniModule):  # pragma nocover
@@ -1008,10 +641,12 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
 
     @classmethod
     def mods(cls, ini):
-        return (medcenter.RunTime.mods(ini) +
-                i2b2pm.RunTime.mods(ini) +
-                disclaimer.RunTime.mods(ini) +
-                [cls(ini)])
+        return ([im for m in
+                 (medcenter,
+                  i2b2pm,
+                  disclaimer,
+                  noticelog)
+                 for im in m.RunTime.mods(ini)] + [cls(ini)])
 
 
 def _integration_test():  # pragma nocover
@@ -1027,7 +662,7 @@ def _integration_test():  # pragma nocover
     req = medcenter.MockRequest()
     req.remote_user = userid
     mc, hr, ds = RunTime.make(None, [medcenter.MedCenter,
-                                     HeronRecords, DecisionRecords])
+                                     HeronRecords, noticelog.DecisionRecords])
     mc.authenticated(userid, req)
     hr.grant(req.context, PERM_STATUS)
     print req.context.status

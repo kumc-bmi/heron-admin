@@ -63,11 +63,12 @@ the database to get set up::
   ...       (sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
   ...        AcknowledgementsProject, (WebReadable, DISCLAIMERS_SECTION)))
   >>> s = smaker()
-  >>> for row in s.execute(redcapdb.redcap_data.select()).fetchall():
+  >>> for row in s.execute(redcapdb.redcap_data.select().where(
+  ...  redcapdb.redcap_data.c.project_id == Mock.disclaimer_pid)).fetchall():
   ...     print row
+  (123, 1, u'1', u'current', u'1')
   (123, 1, u'1', u'disclaimer_id', u'1')
   (123, 1, u'1', u'url', u'http://example/blog/item/heron-release-xyz')
-  (123, 1, u'1', u'current', u'1')
 
 Now note the mapping to the Disclaimer class::
 
@@ -288,14 +289,20 @@ class _MockREDCapAPI2(redcap_connect._MockREDCapAPI):
 
 
 class Mock(redcapdb.SetUp, rtconfig.MockMixin):
+    disclaimer_pid = '123'
+    ack_pid = redcap_connect._test_settings.project_id
+
     def __init__(self):
         from notary import makeNotary
         sqlalchemy.orm.clear_mappers()
         self._notary = makeNotary(__name__)
 
+        Disclaimer.eav_map(self.disclaimer_pid)
+        Acknowledgement.eav_map(self.ack_pid)
+
     @classmethod
     def mods(cls):
-        return redcapdb.Mock.mods() + [cls(), TestSetUp()]
+        return redcapdb.Mock.mods() + [cls()]
 
     @provides((WebReadable, DISCLAIMERS_SECTION))
     def rdblog(self):
@@ -321,8 +328,6 @@ class Mock(redcapdb.SetUp, rtconfig.MockMixin):
 
 
 class TestSetUp(redcapdb.SetUp):
-    disclaimer_pid = '123'
-    ack_pid = redcap_connect._test_settings.project_id
 
     @singleton
     @provides((sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
@@ -330,8 +335,6 @@ class TestSetUp(redcapdb.SetUp):
                     redcapdb.CONFIG_SECTION))
     def redcap_sessionmaker(self, engine):
         smaker = super(TestSetUp, self).redcap_sessionmaker(engine=engine)
-        Disclaimer.eav_map(self.disclaimer_pid)
-        Acknowledgement.eav_map(self.ack_pid)
         s = smaker()
         insert_data = redcapdb.redcap_data.insert()
         for field_name, value in (

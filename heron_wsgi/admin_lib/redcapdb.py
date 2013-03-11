@@ -247,12 +247,12 @@ def allfields(ex, project_id, record):
       >>> s = smaker()
       >>> for k, v in (('study_id', 'test_002'), ('age', 32)):
       ...     s.execute(redcap_data.insert().values(event_id=321,
-      ...                                           project_id=123,
+      ...                                           project_id=1234,
       ...                                           record=1,
       ...                                           field_name=k,
       ...                                           value=v)) and None
 
-      >>> list(allfields(s, 123, 1))
+      >>> list(allfields(s, 1234, 1))
       [(u'age', u'32'), (u'study_id', u'test_002')]
     '''
     c = redcap_data.c
@@ -281,9 +281,19 @@ class Mock(injector.Module, rtconfig.MockMixin):
         #salog.setLevel(logging.INFO)
         log.debug('redcap create_engine: again?')
         e = sqlalchemy.create_engine('sqlite://')
-        redcap_data.create(e)
-        redcap_user_rights.create(e)
+        self.init_db(e)
+        self.noticelog_clobber_schema(e)
         return e
+
+    def init_db(self, e, script='mock_redcapdb.sql'):
+        sqlite = e.connect().connection
+        sqlite.executescript(open(script).read())
+
+    def noticelog_clobber_schema(self, e):
+        '''Clobber schema from noticelog to keep sqlite happy.
+        '''
+        import noticelog
+        noticelog.notice_log.schema = None
 
     @classmethod
     def mods(cls):
