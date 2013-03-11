@@ -930,22 +930,19 @@ class TestSetUp(disclaimer.TestSetUp):
 
         s.commit()
 
-        for t in (redcapdb.redcap_data,
-                  redcapdb.redcap_user_rights,
-                  redcapdb.redcap_surveys_participants,
-                  redcapdb.redcap_surveys_response):
-            save_csv(s, t, open('mock_' + t.name + '.csv', 'w'))
+        dump_db(s.bind, open('mock_redcapdb.sql', 'w'))
 
         return smaker
 
 
-def save_csv(s, t, fp):
-    import csv
+def dump_db(e, outfp):
+    import pdb; pdb.set_trace()
+    conn = e.connect()
+    # get underlying sqlite object
+    sqliteconn = conn.connection
 
-    ans = s.execute(t.select())
-    out = csv.writer(fp)
-    out.writerow(ans.keys())
-    out.writerows(ans.fetchall())
+    for sql in sqliteconn.iterdump():
+        outfp.write(sql)
 
 
 class Mock(injector.Module, rtconfig.MockMixin):
