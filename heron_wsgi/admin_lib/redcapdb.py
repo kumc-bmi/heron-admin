@@ -286,8 +286,11 @@ class Mock(injector.Module, rtconfig.MockMixin):
         return e
 
     def init_db(self, e, script='mock_redcapdb.sql'):
+        import pkg_resources
+        sql = pkg_resources.resource_string(
+                __name__, script)
         sqlite = e.connect().connection
-        sqlite.executescript(open(script).read())
+        sqlite.executescript(sql)
 
     def noticelog_clobber_schema(self, e):
         '''Clobber schema from noticelog to keep sqlite happy.

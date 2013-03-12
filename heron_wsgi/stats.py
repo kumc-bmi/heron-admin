@@ -91,8 +91,14 @@ class Reports(Token):
 
     def show_small_set_report(self, context, req):
         audit = context.droc_audit
+        dr = context.decision_records
+
+        summary = audit.patient_set_queries(recent=True, small=True)
+        sponsorships = dict([(q.user_id, dr.about_sponsorships(q.user_id))
+                             for q in summary])
         return dict(
-            summary=audit.patient_set_queries(recent=True, small=True),
+            summary=summary,
+            sponsorships=sponsorships,
             detail=itertools.groupby(audit.small_set_concepts(),
                                      operator.itemgetter('query_master_id')),
             cycle=itertools.cycle)

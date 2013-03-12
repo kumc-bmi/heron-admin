@@ -56,7 +56,7 @@ from sqlalchemy.sql import func
 
 import genshi_render
 from admin_lib import heron_policy
-from admin_lib.heron_policy import DecisionRecords
+from admin_lib.noticelog import DecisionRecords
 from admin_lib import noticelog
 from admin_lib import redcapdb
 from admin_lib import rtconfig
@@ -111,7 +111,7 @@ class DROCNotice(Token):
 
     def build_notices(self, req):
         dr = self._dr
-        for pid, record, decision, _ in dr.oversight_decisions():
+        for record, decision, _ in dr.oversight_decisions():
             if decision not in self.FINAL_DECISIONS:
                 continue
 

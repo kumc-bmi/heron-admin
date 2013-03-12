@@ -9,6 +9,9 @@ Sponsorship Records
   >>> dr.sponsorships('bill.student')
   [(u'23180811818680005', u'1', u'bill.student', u'1950-02-27')]
 
+  >>> dr.about_sponsorships('bill.student')
+  [(John Smith <john.smith@js.example>, u'Cure Polio', '')]
+
 Notification of Oversight Decisions
 ***********************************
 
@@ -138,6 +141,14 @@ class DecisionRecords(object):
                            dc.c.decision == DecisionRecords.YES))
 
         return self._smaker().execute(q).fetchall()
+
+    def about_sponsorships(self, who):
+        return [(inv, detail.get('project_title', ''),
+                 (detail.get('description_sponsor', None) or
+                  detail.get('data_use_description', '')))
+                for inv, team, detail in [
+                        self.decision_detail(sponsorship.record)
+                        for sponsorship in self.sponsorships(who)]]
 
     def oversight_decisions(self, pending=True):
         '''In order to facilitate email notification of committee
@@ -355,7 +366,7 @@ def migrate_decisions(ds, outfp):
     # schema
     out.writerow(('record', 'decision',
                   'inv', 'mem', 'expiration',
-                   'purpose', 'title', 'description'))
+                  'purpose', 'title', 'description'))
 
     log.debug('about to query for all decisions...')
     data = list(ds.oversight_decisions(pending=False))
@@ -406,6 +417,9 @@ def _integration_test():  # pragma nocover
     if '--migrate' in sys.argv:
         migrate_decisions(ds, sys.stdout)
         raise SystemExit(0)
+    elif '--sponsorships' in sys.argv:
+        who = sys.argv[2]
+        print ds.about_sponsorships(who)
 
     print "pending notifications:", ds.oversight_decisions()
 

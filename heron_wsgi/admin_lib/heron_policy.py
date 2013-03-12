@@ -249,15 +249,17 @@ class OversightCommittee(Token, Cache):
                           OVERSIGHT_CONFIG_SECTION),
             mc=medcenter.MedCenter,
             timesrc=KTimeSource,
-            auditor=I2B2SensitiveUsage)
+            auditor=I2B2SensitiveUsage,
+            dr=noticelog.DecisionRecords)
     def __init__(self, redcap_sessionmaker, oversight_rc, mc,
-                 timesrc, auditor):
+                 timesrc, auditor, dr):
         Cache.__init__(self, timesrc.now)
         self.__rcsm = redcap_sessionmaker
         self.project_id = oversight_rc.project_id
         self.__mc = mc
         self.inspector = mc.getInspector()
         self.__auditor = auditor
+        self.__dr = dr
 
     @classmethod
     def _memberq(cls, pid, who):
@@ -289,7 +291,7 @@ class OversightCommittee(Token, Cache):
         if not in_droc:
             raise NotDROC
 
-        return self.__auditor
+        return (self.__auditor, self.__dr)
 
 
 Status = namedtuple('Status',
@@ -385,7 +387,9 @@ class HeronRecords(Token, Cache):
         elif p is PERM_INVESTIGATOR_REQUEST:
             context.investigator_request = self._investigator_request(badge)
         elif p is PERM_DROC_AUDIT:
-            context.droc_audit = self.__oc._droc_auditor(badge)
+            audit, dr = self.__oc._droc_auditor(badge)
+            context.droc_audit = audit
+            context.decision_records = dr
         elif p is PERM_STATS_REPORTER:
             context.stats_reporter = self.__stats
             context.browser = self._mc._browser
