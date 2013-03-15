@@ -424,7 +424,7 @@ class HeronRecords(Token, Cache):
     def _sponsorship(self, uid,
                      ttl=timedelta(seconds=600)):
         def do_q():
-            for ans in self.__dr.sponsorships(uid, self._t.today()):
+            for ans in self.__dr.sponsorships(uid):
                 log.info('sponsorship OK: %s', ans)
                 return ttl, ans
 
