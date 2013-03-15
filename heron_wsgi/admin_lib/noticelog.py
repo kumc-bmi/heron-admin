@@ -9,8 +9,9 @@ Sponsorship Records
   >>> dr.sponsorships('bill.student')
   [(u'23180811818680005', u'1', u'bill.student', u'1950-02-27')]
 
-  >>> dr.about_sponsorships('bill.student')
-  [(John Smith <john.smith@js.example>, u'Cure Polio', '')]
+  >>> dr.about_sponsorships('bill.student')  # doctest: +NORMALIZE_WHITESPACE
+  [(u'23180811818680005', John Smith <john.smith@js.example>,
+    u'Cure Polio', '')]
 
 Notification of Oversight Decisions
 ***********************************
@@ -143,11 +144,12 @@ class DecisionRecords(object):
         return self._smaker().execute(q).fetchall()
 
     def about_sponsorships(self, who):
-        return [(inv, detail.get('project_title', ''),
+        return [(record, inv, detail.get('project_title', ''),
                  (detail.get('description_sponsor', None) or
                   detail.get('data_use_description', '')))
-                for inv, team, detail in [
-                        self.decision_detail(sponsorship.record)
+                for record, (inv, team, detail) in [
+                        (sponsorship.record,
+                         self.decision_detail(sponsorship.record))
                         for sponsorship in self.sponsorships(who)]]
 
     def oversight_decisions(self, pending=True):

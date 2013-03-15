@@ -36,13 +36,8 @@ class Reports(Token):
 
     def show_usage_report(self, context, req):
         '''
-        >>> from pyramid.testing import DummyRequest
+        >>> hp, context, req = mock_context('john.smith')
         >>> r = Reports()
-        >>> context=medcenter.AttrDict()
-        >>> req = DummyRequest(context=context)
-        >>> (mc, hp) = heron_policy.Mock.make([medcenter.MedCenter,
-        ...                                    heron_policy.HeronRecords])
-        >>> mc.authenticated('john.smith', req) and None
         >>> hp.grant(context, heron_policy.PERM_STATS_REPORTER)
 
         >>> context.stats_reporter = MockAggregateUsage()  # Kludge
@@ -90,15 +85,48 @@ class Reports(Token):
                     cycle=itertools.cycle)
 
     def show_small_set_report(self, context, req):
+        '''
+        >>> hp, context, req = mock_context('big.wig')
+        >>> r = Reports()
+        >>> hp.grant(context, heron_policy.PERM_DROC_AUDIT)
+
+        >>> context.droc_audit = MockDROCAudit()  # Kludge
+
+        >>> from pprint import pprint
+        >>> pprint(r.show_small_set_report(context, req))
+        ... # doctest: +ELLIPSIS
+        {'cycle': <type 'itertools.cycle'>,
+         'detail': <itertools.groupby object at ...>,
+         'projects': [(u'23180811818680005',
+                       (John Smith <john.smith@...>, u'Cure Polio', ''))],
+         'sponsorships': {'bill.student': [(u'23180811818680005',
+                                            John Smith <john.smith@js.example>,
+                                            u'Cure Polio',
+                                            '')]},
+         'summary': [{'create_date': datetime.date(2000, 1, 1),
+                      'full_name': 'Bill Student',
+                      'name': 'smallpox',
+                      'query_master_id': 1,
+                      'set_size': 9,
+                      'user_id': 'bill.student'}]}
+        '''
+
         audit = context.droc_audit
         dr = context.decision_records
 
         summary = audit.patient_set_queries(recent=True, small=True)
         sponsorships = dict([(q.user_id, dr.about_sponsorships(q.user_id))
                              for q in summary])
+        # making a dict throws out duplicates
+        projects_collate = dict([(record, (inv, title, desc))
+                                 for slist in sponsorships.values()
+                                 for record, inv, title, desc in slist])
+        projects = sorted(projects_collate.items(), key=lambda x: -int(x[0]))
+
         return dict(
             summary=summary,
             sponsorships=sponsorships,
+            projects=projects,
             detail=itertools.groupby(audit.small_set_concepts(),
                                      operator.itemgetter('query_master_id')),
             cycle=itertools.cycle)
@@ -122,3 +150,35 @@ class MockAggregateUsage(object):
                    two_weeks=5, last_month=10,
                    last_quarter=20, last_year=20,
                    all_time=20)]
+
+
+class MockDROCAudit(object):
+    def patient_set_queries(self, small, recent):
+        from datetime import date
+        AD = medcenter.AttrDict
+        return [AD(full_name='Bill Student',
+                   user_id='bill.student',
+                   query_master_id=1, name='smallpox',
+                   create_date=date(2000, 1, 1),
+                   set_size=9)]
+
+    def small_set_concepts(self):
+        from datetime import date
+        AD = medcenter.AttrDict
+        return [AD(user_id='bill.student',
+                   query_master_id=1,
+                   create_date=date(2000, 1, 1),
+                   name='smallpox',
+                   item_name='Smallpox',
+                   tooltip='Horrible Diseases : Smallpox',
+                   item_key='\\\\i2b2\\Horrible Diseases\\Smallpox\\')]
+
+
+def mock_context(who):
+    from pyramid.testing import DummyRequest
+    context = medcenter.AttrDict()
+    req = DummyRequest(context=context)
+    (mc, hp) = heron_policy.Mock.make([medcenter.MedCenter,
+                                       heron_policy.HeronRecords])
+    mc.authenticated(who, req) and None
+    return hp, context, req
