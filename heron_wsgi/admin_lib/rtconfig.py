@@ -109,7 +109,7 @@ class MockMixin(object):
                 it, '\n'.join([str(m) for m in modules])))
 
 
-class IniModule(injector.Module):
+class IniModule(injector.Module):  # pragma: nocover
     '''Provide runtime configuration in dependency injection graph.
     '''
     def __init__(self, ini):

@@ -9,6 +9,14 @@ from ocap_file import Readable
 
 
 class JBossContext(object):
+    '''
+    >>> import os
+    >>> here_path = os.path.dirname(__file__)
+    >>> here = Readable(here_path, os.path, os.listdir, open)
+
+    >>> JBossContext(here, lambda url: url).lookup('QueryToolBLUEHERONDS')
+    'oracle://BLUEHERONdata:xyzpdq@bmidev1:1521/bmid'
+    '''
     def __init__(self, jboss_deploy, create_engine):
         self.__d = jboss_deploy
         self.__create_engine = create_engine
@@ -24,7 +32,8 @@ def ds_access(jboss_deploy, jndi_name):
     :param jboss_deploy: a read-capability to a jboss deploy directory.
 
     >>> import os
-    >>> here = Readable('.', os.path, os.listdir, open)
+    >>> here_path = os.path.dirname(__file__)
+    >>> here = Readable(here_path, os.path, os.listdir, open)
 
     >>> ds_access(here, 'QueryToolBLUEHERONDS')
     ('BLUEHERONdata', 'xyzpdq', 'bmidev1', '1521', 'bmid')
@@ -37,9 +46,10 @@ def ds_access(jboss_deploy, jndi_name):
     KeyError: 'QueryToolBlueHeronDS'
 
     >>> ds_access(here.subRdFile('does_not_exist'), 'BLUEHERONdata')
+    ... # doctest: +ELLIPSIS
     Traceback (most recent call last):
       ...
-    OSError: [Errno 2] No such file or directory: './does_not_exist'
+    OSError: [Errno 2] No such file or directory: ...
 
     :raises: XMLSyntaxError on failure to parse XML files therein,
     '''

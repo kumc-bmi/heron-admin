@@ -7,7 +7,7 @@ from sqlalchemy import orm, case, select, func, between
 
 from admin_lib import heron_policy
 from admin_lib import i2b2pm
-from admin_lib.usage_audit import qi, qm, rt, qri, qt
+from admin_lib.audit_usage import qi, qm, rt, qri, qt
 from stats import UsageReports
 
 log = logging.getLogger(__name__)

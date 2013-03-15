@@ -7,13 +7,34 @@ SFOOD_GRAPH=sfood-graph
 # pip install coverage
 COVERAGE=coverage
 
-MODULES=admin_lib/checklist.py genshi_render.py \
-        admin_lib/rtconfig.py admin_lib/ldaplib.py heron_srv.py \
-        admin_lib/medcenter.py \
-        admin_lib/disclaimer.py admin_lib/redcap_connect.py \
-        admin_lib/hcard_mock.py admin_lib/sealing.py \
-        admin_lib/heron_policy.py admin_lib/tests.py \
-        admin_lib/i2b2pm.py cas_auth.py
+MODULES= \
+	admin_lib/audit_usage.py \
+	admin_lib/disclaimer.py \
+	admin_lib/heron_policy.py \
+	admin_lib/i2b2pm.py \
+	admin_lib/__init__.py \
+	admin_lib/jndi_util.py \
+	admin_lib/ldaplib.py \
+	admin_lib/medcenter.py \
+	admin_lib/migrate_approvals.py \
+	admin_lib/mock_directory.py \
+	admin_lib/notary.py \
+	admin_lib/noticelog.py \
+	admin_lib/ocap_file.py \
+	admin_lib/redcap_connect.py \
+	admin_lib/redcapdb.py \
+	admin_lib/rtconfig.py \
+	admin_lib/sealing.py \
+	admin_lib/tests.py \
+	cas_auth.py \
+	drocnotice.py \
+	genshi_render.py \
+	heron_srv.py \
+	__init__.py \
+	perf_reports.py \
+	powerbox.py \
+	stats.py \
+	tests.py
 
 
 view: ,deps.svg

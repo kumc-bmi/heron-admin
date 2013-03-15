@@ -6,30 +6,28 @@ r'''drocnotice -- notify investigators, team members of DROC decisions
 
   >>> (dn, ) = Mock.make([DROCNotice])
 
-  >>> config.add_route('heron_home', '')
-  >>> dn.configure(config, 'heron_home')
+  >>> config.add_route(DROCNotice.home, '')
+  >>> config.add_route('notifier', '/notifier')
+  >>> dn.configure(config, 'notifier')
 
   >>> for record, msg in dn.build_notices(DummyRequest()):
   ...     msg.sender = 'sender@example'  # kludge
   ...     m = msg.to_message()
-  ...     print m.items()
-  ... # doctest: +NORMALIZE_WHITESPACE
-  [('MIME-Version', '1.0'), ('From', 'sender@example'), ('Subject',
-  'HERON access request rejected'), ('To', 'john.smith@js.example'),
-  ('Content-Type', 'text/html; charset="us-ascii"'),
-  ('Content-Transfer-Encoding', '7bit')]
-  [('MIME-Version', '1.0'), ('From', 'sender@example'), ('Subject',
-  'HERON access request approved'), ('To', 'john.smith@js.example;
-  bill.student@js.example'), ('Content-Type',
-  'text/html; charset="us-ascii"'), ('Content-Transfer-Encoding',
-  '7bit')]
-  [('MIME-Version', '1.0'), ('From', 'sender@example'), ('Subject',
-  'HERON access request approved'), ('To', 'john.smith@js.example;
-  some.one@js.example; carol.student@js.example'), ('Content-Type',
-  'text/html; charset="us-ascii"'), ('Content-Transfer-Encoding',
-  '7bit')]
+  ...     print 'To:', m['to']
+  ...     print 'Subject:', m['subject']
+  ...     print 'Cc:', m['cc']
+  To: john.smith@js.example
+  Subject: HERON access request rejected
+  Cc: None
+  To: john.smith@js.example, bill.student@js.example
+  Subject: HERON access request approved
+  Cc: None
+  To: john.smith@js.example, some.one@js.example, carol.student@js.example
+  Subject: HERON access request approved
+  Cc: None
 
-  Send the notices and log them in the DB:
+Send the notices and log them in the DB:
+
   >>> ans = dn.send_notices(DummyRequest())
   >>> ans._app_iter # doctest: +NORMALIZE_WHITESPACE
   ['notice sent for record -565402122873664774:
@@ -39,7 +37,8 @@ r'''drocnotice -- notify investigators, team members of DROC decisions
    'notice sent for record 6373469799195807417:
    HERON access request approved\n']
 
-  Now there should be no pending notices:
+Now there should be no pending notices:
+
   >>> list(dn.build_notices(DummyRequest()))
   []
 
@@ -57,18 +56,22 @@ from sqlalchemy.sql import func
 
 import genshi_render
 from admin_lib import heron_policy
-from admin_lib.heron_policy import DecisionRecords
+from admin_lib.noticelog import DecisionRecords
 from admin_lib import noticelog
 from admin_lib import redcapdb
 from admin_lib import rtconfig
+from admin_lib.ocap_file import Token
 
 KMailSettings = injector.Key('MailSettings')
 log = logging.getLogger(__name__)
 
 
-class DROCNotice(object):
+class DROCNotice(Token):
     # We send notice only on final decisions, not defer.
     FINAL_DECISIONS = (DecisionRecords.YES, DecisionRecords.NO)
+
+    '''Route to HERON home page. '''
+    home = 'heron_home'  # oops... should be passed in from heron_srv
 
     @inject(dr=DecisionRecords,
             smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
@@ -108,14 +111,14 @@ class DROCNotice(object):
 
     def build_notices(self, req):
         dr = self._dr
-        for pid, record, decision, _ in dr.oversight_decisions():
+        for record, decision, _ in dr.oversight_decisions():
             if decision not in self.FINAL_DECISIONS:
                 continue
 
             investigator, team, detail = dr.decision_detail(record)
             log.debug('build_notices team: %s', team)
             s = self._rf(render_value(investigator, team, decision, detail,
-                              req.route_url('heron_home')),
+                              req.route_url(self.home)),
                          dict(renderer_name='drocnotice.html'))
 
             cc = ([b.mail for b in team
@@ -142,8 +145,8 @@ def render_value(investigator, team, decision, detail, heron_home):
     r'''
       >>> from admin_lib import medcenter
       >>> (mc, ) = medcenter.Mock.make([medcenter.MedCenter])
-      >>> v = render_value(mc.lookup('john.smith'),
-      ...                  [mc.lookup('some.one')], '1',
+      >>> v = render_value(mc.peer_badge('john.smith'),
+      ...                  [mc.peer_badge('some.one')], '1',
       ...                  dict(full_name='John Smith',
       ...                       project_title='Study Warts',
       ...                       name_etc_1='Some One\netc.'),

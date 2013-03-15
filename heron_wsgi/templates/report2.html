@@ -44,13 +44,26 @@ for patient sets had small (&lt;= 15) result sets:</em></p>
 <div py:for="qid, gen in detail">
   <div py:with="rows = list(gen)" py:strip="True">
     <h3 id="qm_${qid}">
-     #${qid} ${rows[0].query_name}</h3>
+     #${qid} ${rows[0].query_name} by ${rows[0].user_id}</h3>
 
     <ul>
       <li py:for="c in rows">
         <abbr title="${c.tooltip}">${c.item_name}</abbr>
       </li>
     </ul>
+
+    <div py:with="projects = sponsorships[rows[0].user_id]" py:strip="True">
+      <div py:if="projects">
+	<h4>Research Projects</h4>
+	<ul>
+	  <li py:for="inv, title, description in projects">
+	    <cite>${title}</cite><br />
+	    sponsored by <strong>${inv.full_name()}</strong><br />
+	    <blockquote>${description}</blockquote>
+	  </li>
+	  </ul>
+      </div>
+    </div>
   </div>
 </div>
 

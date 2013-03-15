@@ -1,6 +1,26 @@
 '''ldaplib.py -- LDAP configuration and search
 ----------------------------------------------
 
+Caching:
+
+  >>> import sys
+  >>> logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+  >>> ts = mock_directory.MockTimeSource()
+  >>> ds = MockLDAP(ts, ttl=2)
+  >>> ds.search("(cn=john.smith)", ['sn'])
+  INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('sn',))
+  INFO:cache_remote:... cached until 2012-02-25 11:00:02.500000
+  [('(cn=john.smith)', {'sn': ['Smith']})]
+
+  >>> ds.search("(cn=john.smith)", ['sn'])
+  [('(cn=john.smith)', {'sn': ['Smith']})]
+
+  >>> ts.wait(5)
+  >>> ds.search("(cn=john.smith)", ['sn'])
+  INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('sn',))
+  INFO:cache_remote:... cached until 2012-02-25 11:00:08.500000
+  [('(cn=john.smith)', {'sn': ['Smith']})]
+
 Sample configuration::
 
   >>> print _sample_settings.inifmt(CONFIG_SECTION)
@@ -15,23 +35,47 @@ than a native LDAP service.
 '''
 
 import logging
+from datetime import timedelta
 
 from injector import inject, provides, singleton
 
 import rtconfig
+import mock_directory
+from cache_remote import Cache
 
 CONFIG_SECTION = 'enterprise_directory'
 log = logging.getLogger(__name__)
 
 
-class LDAPService(object):
+class LDAPService(Cache):
     '''See :mod:`heron_wsgi.admin_lib.mock_directory` for API details.
     '''
+    def __init__(self, now, ttl):
+        Cache.__init__(self, now)
+        self._ttl = timedelta(seconds=ttl)
+
     def search(self, query, attrs):
-        raise NotImplementedError('subclass must implement.')
+        attrs = tuple(sorted(attrs))
+        return self._query((query, attrs),
+                           lambda: (self._ttl,
+                                    self.search_remote(query, attrs)),
+                           'LDAP')
+
+    def search_remote(self, query, attrs):
+        raise NotImplementedError(
+            'subclass must implement.')  # pragma: nocover
 
 
-class NativeLDAPService(LDAPService):
+class MockLDAP(LDAPService, mock_directory.MockDirectory):
+    def __init__(self, ts, ttl):
+        mock_directory.MockDirectory.__init__(self)
+        LDAPService.__init__(self, ts.now, ttl)
+
+    def search_remote(self, q, attrs):
+        return mock_directory.MockDirectory.search(self, q, attrs)
+
+
+class NativeLDAPService(LDAPService):  # pragma: nocover
     '''
     .. todo:: Investigate better way to deal with SSL certs
        than putting `TLS_REQCERT allow` in /etc/ldap/ldap.conf
@@ -39,7 +83,8 @@ class NativeLDAPService(LDAPService):
 
     '''
 
-    def __init__(self, rt, native):
+    def __init__(self, rt, native, now, ttl):
+        LDAPService.__init__(self, now, ttl)
         self._rt = rt
         self._native = native
         self._l = None
@@ -50,8 +95,7 @@ class NativeLDAPService(LDAPService):
         l.simple_bind_s(rt.userdn, rt.password)
         return l
 
-    def search(self, query, attrs):
-        log.info('network fetch for %s', query)
+    def search_remote(self, query, attrs):
         l = self._l or self._bind()
         base = self._rt.base
         try:
@@ -69,17 +113,18 @@ _sample_settings = rtconfig.TestTimeOptions(dict(
         base='ou=...,o=...'))
 
 
-class RunTime(rtconfig.IniModule):
+class RunTime(rtconfig.IniModule):  # pragma: nocover
     @provides((rtconfig.Options, CONFIG_SECTION))
     def opts(self):
-        rt = rtconfig.RuntimeOptions('url userdn base password'.split())
+        rt = rtconfig.RuntimeOptions(
+            'url userdn base password executives'.split())
         rt.load(self._ini, CONFIG_SECTION)
         return rt
 
     @singleton
     @provides(LDAPService)
     @inject(rt=(rtconfig.Options, CONFIG_SECTION))
-    def service(self, rt):
+    def service(self, rt, ttl=15):
         '''Provide native or mock LDAP implementation.
 
         This is demand-loaded so that the codebase can be tested
@@ -90,16 +135,19 @@ class RunTime(rtconfig.IniModule):
         __ http://www.python-ldap.org/doc/html/ldap.html
 
         '''
+        import datetime
+
         if rt.url.startswith('mock:'):
             res = rt.url[len('mock:'):]
             import mock_directory
             return mock_directory.MockDirectory(res)
 
         import ldap
-        return NativeLDAPService(rt, native=ldap)
+        return NativeLDAPService(rt, native=ldap,
+                                 now=datetime.datetime.now, ttl=ttl)
 
 
-if __name__ == '__main__':  # pragma nocover
+def _integration_test():  # pragma nocover
     import logging
     import sys, pprint
     ldap_query = sys.argv[1]
@@ -108,3 +156,6 @@ if __name__ == '__main__':  # pragma nocover
     logging.basicConfig(level=logging.INFO)
     (ls, ) = RunTime.make(None, [LDAPService])
     pprint.pprint(ls.search(ldap_query, attrs))
+
+if __name__ == '__main__':  # pragma nocover
+    _integration_test()

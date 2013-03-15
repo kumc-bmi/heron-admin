@@ -1,10 +1,12 @@
 '''medcenter --  academic medical center directory/policy
 =========================================================
 
-A :class:`MedCenter` looks up badges, delegates to affiliates, and keeps
-Human Subjects training records.
+A :class:`MedCenter` issues badges, and keeps Human Subjects training
+records.
 
   >>> (m, ) = Mock.make([MedCenter])
+  >>> m
+  MedCenter(directory_service, training)
 
 .. note:: See :class:`Mock` regarding the use of dependency injection
           to instantiate the :class:`MedCenter` class.
@@ -14,17 +16,35 @@ Access is logged at the :data:`logging.INFO` level.
   >>> import sys
   >>> logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
-Affiliate Authorization
------------------------
+Issuing Notarized Badges
+------------------------
 
-A :class:`MedCenter` delegates authority to an :class:`Affiliate`::
+A :class:`MedCenter` issues :class:`IDBadge` capabilities::
 
-  >>> js = Affiliate({}, 'john.smith', m)
+  >>> r1 = MockRequest()
+  >>> caps = m.authenticated('john.smith', r1)
+  >>> caps
+  [<MedCenter sealed box>]
+  >>> m.grant(r1.context, PERM_BROWSER)
+
+  >>> js = m.idbadge(r1.context)
   >>> js.full_name()
-  INFO:mock_directory:network fetch for (cn=john.smith)
   'John Smith'
-  >>> js
-  John Smith <john.smith@js.example>
+
+   >>> r2 = MockRequest()
+   >>> _ = m.authenticated('bill.student', r2)[0]
+   >>> bill = m.idbadge(r2.context)
+   >>> bill.is_faculty()
+   False
+
+Junk:
+
+  >>> r2.context.remote_user = 123
+  >>> m.grant(r2.context, PERM_BROWSER)
+  Traceback (most recent call last):
+    ...
+  TypeError
+
 
 Human Subjects Training
 -----------------------
@@ -36,21 +56,39 @@ We use an outboard service to check human subjects "chalk" training::
   param=userid
   url=http://localhost:8080/chalk-checker
 
-  >>> js.trained_thru()
+  >>> m.trained_thru(js)
   '2012-01-01'
 
-.. todo:: document failure modes of `trained_thru`
+  >>> m.trained_thru(bill)
+  Traceback (most recent call last):
+    ...
+  LookupError
 
-Regression testing
-------------------
 
-  >>> who = m.lookup('carol.student')
-  INFO:mock_directory:network fetch for (cn=carol.student)
+Robustness
+----------
+
+  >>> who = m.peer_badge('carol.student')
   WARNING:medcenter:missing LDAP attribute kumcPersonFaculty for carol.student
   WARNING:medcenter:missing LDAP attribute kumcPersonJobcode for carol.student
 
   >>> who.kumcPersonJobcode is None
   True
+
+
+Directory Search for Team Members
+---------------------------------
+
+Part of making oversight requests is nominating team members::
+
+  >>> m.grant(r1.context, PERM_BROWSER)
+  >>> r1.context.browser.lookup('some.one')
+  WARNING:medcenter:missing LDAP attribute ou for some.one
+  WARNING:medcenter:missing LDAP attribute title for some.one
+  Some One <some.one@js.example>
+
+  >>> r1.context.browser.search(5, 'john.smith', '', '')
+  [John Smith <john.smith@js.example>]
 
 
 API
@@ -61,6 +99,7 @@ API
 import logging
 import sys
 import urllib
+from datetime import timedelta
 
 import injector
 from injector import inject, provides, singleton
@@ -68,26 +107,25 @@ from injector import inject, provides, singleton
 import rtconfig
 import ldaplib
 import sealing
+from notary import makeNotary
+import cache_remote
 
 log = logging.getLogger(__name__)
 
 KTrainingFunction = injector.Key('TrainingFunction')
+KExecutives = injector.Key('Executives')
 KTestingFaculty = injector.Key('TestingFaculty')
 
 CHALK_CONFIG_SECTION = 'chalk'
-PERM_ID = __name__ + '.idvault'
+PERM_BROWSER = __name__ + '.browse'
 
 
 @singleton
-class MedCenter(object):
-    '''Enterprise authorization and search.
+class Browser(object):
+    ''''Search the directory, without conferring authority.
 
-    .. note:: This implements the :class:`heron_wsgi.cas_auth.Issuer` protocol.
-
-    To search the directory, without conferring authority::
-      >>> (m, ) = Mock.make([MedCenter])
+      >>> (m, ) = Mock.make([Browser])
       >>> hits = m.search(10, 'john.smith', '', '')
-      INFO:mock_directory:network fetch for (cn=john.smith*)
       >>> hits
       [John Smith <john.smith@js.example>]
 
@@ -99,50 +137,29 @@ class MedCenter(object):
         >>> hits[0].ou
         'Neurology'
 
+    Nonsense input:
+
+      >>> m.search(10, '', '', '')
+      []
     '''
-    excluded_jobcode = "24600"
-    permissions = (PERM_ID,)
-
-    @inject(searchsvc=ldaplib.LDAPService,
-            trainingfn=KTrainingFunction,
-            testing_faculty=KTestingFaculty)
-    def __init__(self, searchsvc, trainingfn, testing_faculty):
-        '''
-        :param app_secret: testing hook for faculty badge.
-        '''
-        log.debug('MedCenter.__init__ again?')
+    @inject(searchsvc=ldaplib.LDAPService)
+    def __init__(self, searchsvc):
         self._svc = searchsvc
-        self._training = trainingfn
-        self._testing_faculty = testing_faculty
-        self._browser = Browser(self)
 
-    def __repr__(self):
-        return "MedCenter(s, t)"
-
-    def get(self, name):
+    def directory_attributes(self, name):
+        '''Get directory attributes.
+        '''
         matches = self._svc.search('(cn=%s)' % name, Badge.attributes)
-        if len(matches) != 1:
+        if len(matches) != 1:  # pragma nocover
             if len(matches) == 0:
                 raise KeyError(name)
-            else:  # pragma nocover
+            else:
                 raise ValueError(name)  # ambiguous
 
         dn, ldapattrs = matches[0]
         return LDAPBadge._simplify(ldapattrs)
 
-    def lookup(self, name):
-        return LDAPBadge(**self.get(name))
-
-    def is_faculty(self, badge):
-        log.debug('testing faculty badge kludge for %s', badge.cn)
-        if ('faculty:' + badge.cn) in self._testing_faculty:
-            log.info('faculty badge granted to %s by configuration', badge.cn)
-            return badge
-
-        return (badge.kumcPersonJobcode != self.excluded_jobcode
-                and badge.kumcPersonFaculty == 'Y')
-
-    def search(self, max_qty, cn, sn, givenname):
+    def _search(self, max_qty, cn, sn, givenname):
         clauses = ['(%s=%s*)' % (n, v)
                    for (n, v) in (('cn', cn),
                                   ('sn', sn),
@@ -156,19 +173,94 @@ class MedCenter(object):
         else:
             q = clauses[0]
 
-        results = self._svc.search(q, Badge.attributes)[:max_qty]
+        return self._svc.search(q, Badge.attributes)[:max_qty]
+
+    def lookup(self, name):
+        '''Get a badge for a peer, i.e. with no authority.
+        '''
+        return LDAPBadge(**self.directory_attributes(name))
+
+    def search(self, max_qty, cn, sn, givenname):
+        '''Search for peers.
+        '''
         return [LDAPBadge.from_attrs(ldapattrs)
-                for dn, ldapattrs in results]
+                for dn, ldapattrs in self._search(max_qty, cn, sn, givenname)]
 
 
-class Browser(object):
-    ''''Users get to do LDAP searches,
-    but they don't get to exercise the rights of
-    the users they find.
+@singleton
+class MedCenter(object):
+    '''Enterprise authorization and search.
+
+    .. note:: This implements the :class:`heron_wsgi.cas_auth.Issuer` protocol.
     '''
-    def __init__(self, mc):
-        self.lookup = mc.lookup
-        self.search = mc.search
+    excluded_jobcode = "24600"
+
+    @inject(browser=Browser,
+            trainingfn=KTrainingFunction,
+            executives=KExecutives,
+            testing_faculty=KTestingFaculty)
+    def __init__(self, browser, trainingfn,
+                 testing_faculty, executives):
+        '''
+        :param testing_faculty: testing hook for faculty badge.
+        '''
+        log.debug('MedCenter.__init__ again?')
+        self._training = trainingfn
+        self._testing_faculty = testing_faculty
+        self.__executives = executives
+        self._browser = browser
+        self.search = browser.search
+        self.peer_badge = browser.lookup
+        self.__notary = makeNotary()
+        self.__sealer, self.__unsealer = sealing.makeBrandPair(
+            self.__class__.__name__)
+
+    def __repr__(self):
+        return "MedCenter(directory_service, training)"
+
+    def getInspector(self):
+        return self.__notary.getInspector()
+
+    def authenticated(self, uid, req):
+        cred = self.__sealer.seal(uid)
+        req.context.remote_user = cred
+        return [cred]
+
+    def grant(self, context, permission):
+        if permission is not PERM_BROWSER:
+            raise TypeError
+
+        badge = self.idbadge(context)
+        if not badge.is_investigator():
+            raise TypeError
+
+        context.browser = self._browser
+
+    def idbadge(self, context):
+        '''
+        @raises TypeError on failure to authenticate context.remote_user
+        '''
+        try:
+            remote_user = context.remote_user
+        except AttributeError:
+            raise TypeError
+
+        uid = self.__unsealer.unseal(remote_user)  # raises TypeError
+
+        return IDBadge(self.__notary, uid in self.__executives,
+                       **self._browser.directory_attributes(uid))
+
+    def trained_thru(self, alleged_badge):
+        '''
+        :raises: :exc:`IOError`, :exc:`LookupError`
+        '''
+        badge = self.__notary.getInspector().vouch(alleged_badge)
+
+        when = self._training(badge.cn)
+        if not when:
+            raise LookupError
+
+        return when
 
 
 class NotFaculty(Exception):
@@ -176,26 +268,8 @@ class NotFaculty(Exception):
 
 
 class Badge(object):
-    attributes = ("cn", "ou", "sn", "givenname", "title", "mail",
-                  "kumcPersonFaculty", "kumcPersonJobcode")
+    '''Convenient access to directory info.
 
-    def __repr__(self):
-        return '%s %s <%s>' % (self.givenname, self.sn, self.mail)
-
-    def full_name(self):
-        return '%s %s' % (self.givenname, self.sn)
-
-    def sort_name(self):
-        return '%s, %s' % (self.sn, self.givenname)
-
-    def userid(self):
-        import warnings
-        warnings.warn("Badge.userid is deprecated", DeprecationWarning)
-        return self.cn
-
-
-class LDAPBadge(Badge):
-    '''
       >>> js = LDAPBadge(cn='john.smith', sn='Smith', givenname='John',
       ...                mail='john.smith@example', ou='')
       >>> js
@@ -207,7 +281,31 @@ class LDAPBadge(Badge):
       Traceback (most recent call last):
       ...
       AttributeError: sn_typo
+    '''
+    attributes = ("cn", "ou", "sn", "givenname", "title", "mail",
+                  "kumcPersonFaculty", "kumcPersonJobcode")
 
+    def __init__(self, **attrs):
+        self.__attrs = attrs
+
+    def __getattr__(self, n):
+        try:
+            return self.__attrs[n]
+        except KeyError:
+            raise AttributeError(n)
+
+    def __repr__(self):
+        return '%s %s <%s>' % (self.givenname, self.sn, self.mail)
+
+    def full_name(self):
+        return '%s %s' % (self.givenname, self.sn)
+
+    def sort_name(self):
+        return '%s, %s' % (self.sn, self.givenname)
+
+
+class LDAPBadge(Badge):
+    '''Utilities to handle LDAP data structures.
     '''
     @classmethod
     def from_attrs(cls, ldapattrs):
@@ -228,8 +326,8 @@ class LDAPBadge(Badge):
 
     @classmethod
     def _simplify(cls, ldapattrs):
-        d = dict([(n, ldapattrs.get(n, [None])[0])
-                  for n in cls.attributes])
+        d = AttrDict([(n, ldapattrs.get(n, [None])[0])
+                      for n in cls.attributes])
 
         for n in cls.attributes:
             if d[n] is None:
@@ -238,117 +336,90 @@ class LDAPBadge(Badge):
 
         return d
 
-    def __init__(self, **attrs):
-        self.__attrs = attrs
 
-    def __getattr__(self, n):
-        try:
-            return self.__attrs[n]
-        except KeyError:
-            raise AttributeError(n)
+class IDBadge(LDAPBadge):
+    '''Notarized badges.
 
-
-class Affiliate(Badge):
-    '''
       >>> (mc, ) = Mock.make([MedCenter])
-      >>> session_cache = {}
-      >>> js = Affiliate(session_cache, 'john.smith', mc)
+      >>> r1 = MockRequest()
+      >>> js = mc.authenticated('john.smith', r1)[0]
 
-      >>> js.sn
-      INFO:mock_directory:network fetch for (cn=john.smith)
-      'Smith'
-
-    Network fetches are cached::
-
-      >>> (js.sn, js.givenname)
-      ('Smith', 'John')
-
-      >>> js.sn_typo
-      Traceback (most recent call last):
-      ...
-      AttributeError: sn_typo
-
-      >>> mc.is_faculty(js)
+      >>> mc.idbadge(r1.context).is_faculty()
       True
-      >>> bill = Affiliate({}, 'bill.student', mc)
-      >>> mc.is_faculty(bill)
-      INFO:mock_directory:network fetch for (cn=bill.student)
-      False
 
-      >>> js.trained_thru()
-      '2012-01-01'
-      >>> bill.trained_thru()
+    Note that only notarized badges are accepted:
+      >>> evil = Badge(
+      ...    kumcPersonJobcode='1234',
+      ...    kumcPersonFaculty='Y',
+      ...    cn='john.smith',
+      ...    sn='Smith',
+      ...    givenname='John')
+      >>> mc.trained_thru(evil)
       Traceback (most recent call last):
         ...
-      LookupError
+      NotVouchable
 
-
-      >>> Affiliate.cache_sizes_sum() < Affiliate.cache_max
-      True
     '''
 
-    cache_max = 4000  # TODO: cite sources about session cookie limitations
-    cache_sizes = dict(kumcPersonJobcode=20,
-                       kumcPersonFaculty=1,
-                       cn=60,
-                       title=80,
-                       sn=60,
-                       mail=80,
-                       ou=60,
-                       givenname=20)
+    def __init__(self, notary, is_executive=False, **attrs):
+        assert notary
+        self.__notary = notary  # has to go before LDAPBadge.__init__
+        # ... due to __getattr__ magic.
+        self._is_executive = is_executive
+        LDAPBadge.__init__(self, **attrs)
 
-    @classmethod
-    def cache_sizes_sum(cls):
-        return sum([len(k) + v for k, v in cls.cache_sizes.iteritems()])
+    def startVouch(self):
+        self.__notary.startVouch(self)
 
-    def __init__(self, cache, cn, mc):
-        Badge.__init__(self)
-        cache['cn'] = cn
-        self.__cache = cache
-        self.__cn = cn
-        self.__mc = mc
-        self.browser = mc._browser
-
-    def __getattr__(self, n):
-        if not n in Badge.attributes:
-            raise AttributeError(n)
-        cache = self.__cache
+    def is_faculty(self):
         try:
-            return cache[n]
-        except KeyError:
-            pass
-        d = self.__mc.get(self.__cn)
-        for k, v in d.iteritems():
-            self._put(k, v)
-        return d[n]
+            return (self.kumcPersonJobcode != MedCenter.excluded_jobcode
+                    and self.kumcPersonFaculty == 'Y')
+        except AttributeError:
+            return False
 
-    def __contains__(self, k):
-        return k in self.__cache
+    def is_executive(self):
+        return self._is_executive
 
-    def __getitem__(self, k):
-        return self.__cache[k]
-
-    def _put(self, k, v):
-        assert type(v) in (type(''), type(1), type(None)), (k, type(v))
-        cache = self.__cache
-        if len(str(v)) <= self.cache_sizes[k]:
-            cache[k] = v
-        return v
-
-    def trained_thru(self):
-        '''
-        :raises: :exc:`IOError`, :exc:`LookupError`
-        '''
-        when = self.__mc._training(self.__cn)
-
-        if not when:
-            raise LookupError
-        return when
-
+    def is_investigator(self):
+        return self.is_faculty() or self.is_executive()
 
 _sample_chalk_settings = rtconfig.TestTimeOptions(dict(
         url='http://localhost:8080/chalk-checker',
         param='userid'))
+
+
+class ChalkChecker(cache_remote.Cache):
+    def __init__(self, ua, now, url, param,
+                 ttl=timedelta(seconds=30)):
+        cache_remote.Cache.__init__(self, now)
+
+        def q_for(userid):
+            def q():
+                addr = url + '?' + urllib.urlencode({param: userid})
+                body = ua.open(addr).read()
+
+                if not body:  # no expiration on file
+                    raise KeyError
+
+                return ttl, body.strip()  # get rid of newline
+            return q
+        self.q_for = q_for
+
+    def check(self, userid):
+        return self._query(userid, self.q_for(userid), 'Chalk Training')
+
+
+class AttrDict(dict):
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+        self.__dict__ = self
+
+
+class MockRequest(AttrDict):
+    def __init__(self):
+        AttrDict.__init__(self)
+        self.context = AttrDict()
 
 
 class Mock(injector.Module, rtconfig.MockMixin):
@@ -370,44 +441,48 @@ class Mock(injector.Module, rtconfig.MockMixin):
         binder.bind(KTestingFaculty,
                     injector.InstanceProvider(''))
 
+    @provides(KExecutives)
+    def executives(self):
+        return ('big.wig',)
 
-class RunTime(rtconfig.IniModule):
+
+class RunTime(rtconfig.IniModule):  # pragma: nocover
     '''Configure dependencies of :class:`MedCenter`:
       - :class:`ldap.LDAPService`
       - :data:`KTrainingFunction`
       - :data:`KTestingFaculty` (for faculty testing hook)
 
     '''
+    import datetime
     import urllib2
     _ua = urllib2.build_opener()
+
+    @provides(KExecutives)
+    @inject(rt=(rtconfig.Options, ldaplib.CONFIG_SECTION))
+    def executives(self, rt):
+        es = rt.executives.split()
+        assert es  # watch out for old config version
+        return es
 
     @provides(KTestingFaculty)
     def no_testing_faculty(self):
         return ''
 
     @provides(KTrainingFunction)
-    def training(self, section=CHALK_CONFIG_SECTION, ua=_ua):
-
+    def training(self, section=CHALK_CONFIG_SECTION, ua=_ua,
+                 now=datetime.datetime.now):
         rt = rtconfig.RuntimeOptions('url param'.split())
         rt.load(self._ini, section)
 
-        def training_expiration(userid):
-            addr = rt.url + '?' + urllib.urlencode({rt.param: userid})
-            body = ua.open(addr).read()
-
-            if not body:  # no expiration on file
-                raise KeyError
-
-            return body.strip()  # get rid of newline
-
-        return training_expiration
+        cc = ChalkChecker(ua, now, rt.url, rt.param)
+        return cc.check
 
     @classmethod
     def mods(cls, ini):
         return [cls(ini), ldaplib.RunTime(ini)]
 
 
-def integration_test():  # pragma: no cover
+def _integration_test():  # pragma: no cover
     logging.basicConfig(level=logging.INFO)
     (m, ) = RunTime.make(None, [MedCenter])
 
@@ -418,10 +493,21 @@ def integration_test():  # pragma: no cover
         print m.search(10, cn, sn, givenname)
     else:
         uid = sys.argv[1]
-        who = Affiliate({}, uid, m)
+        req = MockRequest()
+        m.authenticated(uid, req)
+        who = m.idbadge(req.context)
         print who
-        print "training: ", who.trained_thru()
+        print "faculty? ", who.is_faculty()
+        print "investigator? ", who.is_investigator()
+        print "training: ", m.trained_thru(who)
+
+        print "Once more, to check caching..."
+        req = MockRequest()
+        m.authenticated(uid, req)
+        who = m.idbadge(req.context)
+        print who
+        print "training: ", m.trained_thru(who)
 
 
 if __name__ == '__main__':  # pragma: no cover
-    integration_test()
+    _integration_test()
