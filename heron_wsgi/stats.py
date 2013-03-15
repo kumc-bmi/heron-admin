@@ -97,18 +97,18 @@ class Reports(Token):
         ... # doctest: +ELLIPSIS
         {'cycle': <type 'itertools.cycle'>,
          'detail': <itertools.groupby object at ...>,
-         'projects': [(u'23180811818680005',
-                       (John Smith <john.smith@...>, u'Cure Polio', ''))],
-         'sponsorships': {'bill.student': [(u'23180811818680005',
-                                            John Smith <john.smith@js.example>,
-                                            u'Cure Polio',
-                                            '')]},
+         'projects': [(u'6373469799195807417',
+                       (John Smith <john.smith@...>, u'Cure Warts', ''))],
+         'sponsorships': {'some.one': [(u'6373469799195807417',
+                                        John Smith <john.smith@js.example>,
+                                        u'Cure Warts',
+                                        '')]},
          'summary': [{'create_date': datetime.date(2000, 1, 1),
-                      'full_name': 'Bill Student',
+                      'full_name': 'Some One',
                       'name': 'smallpox',
                       'query_master_id': 1,
                       'set_size': 9,
-                      'user_id': 'bill.student'}]}
+                      'user_id': 'some.one'}]}
         '''
 
         audit = context.droc_audit
@@ -156,8 +156,8 @@ class MockDROCAudit(object):
     def patient_set_queries(self, small, recent):
         from datetime import date
         AD = medcenter.AttrDict
-        return [AD(full_name='Bill Student',
-                   user_id='bill.student',
+        return [AD(full_name='Some One',
+                   user_id='some.one',
                    query_master_id=1, name='smallpox',
                    create_date=date(2000, 1, 1),
                    set_size=9)]
@@ -165,7 +165,7 @@ class MockDROCAudit(object):
     def small_set_concepts(self):
         from datetime import date
         AD = medcenter.AttrDict
-        return [AD(user_id='bill.student',
+        return [AD(user_id='some.one',
                    query_master_id=1,
                    create_date=date(2000, 1, 1),
                    name='smallpox',
