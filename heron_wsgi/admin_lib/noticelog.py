@@ -6,12 +6,28 @@
 Sponsorship Records
 *******************
 
-  >>> dr.sponsorships('bill.student')
-  [(u'23180811818680005', u'1', u'bill.student', u'1950-02-27')]
+  >>> dr.sponsorships('some.one')
+  [(u'6373469799195807417', u'1', u'some.one', u'')]
 
-  >>> dr.about_sponsorships('bill.student')  # doctest: +NORMALIZE_WHITESPACE
-  [(u'23180811818680005', John Smith <john.smith@js.example>,
-    u'Cure Polio', '')]
+Expired sponsorships are filtered out:
+
+  >>> dr.sponsorships('bill.student')
+  []
+
+Projects sponsored by an investigator:
+
+  >>> dr.sponsorships('john.smith', inv=True)
+  [(u'6373469799195807417', u'1', u'john.smith', u'')]
+
+Sponsorship details:
+  >>> dr.about_sponsorships('some.one')  # doctest: +NORMALIZE_WHITESPACE
+  [(u'6373469799195807417', John Smith <john.smith@js.example>,
+    u'Cure Warts', '')]
+
+  >>> dr.about_sponsorships('john.smith', inv=True)
+  ... # doctest: +NORMALIZE_WHITESPACE
+  [(u'6373469799195807417', John Smith <john.smith@js.example>,
+    u'Cure Warts', '')]
 
 Notification of Oversight Decisions
 ***********************************
@@ -90,6 +106,7 @@ from sqlalchemy.sql import select, func, and_
 import rtconfig
 import redcapdb
 import medcenter
+from ocap_file import Token
 
 OVERSIGHT_CONFIG_SECTION = 'oversight_survey'
 KProjectId = injector.Key('ProjectId')
@@ -103,7 +120,7 @@ notice_log = Table('notice_log', redcapdb.Base.metadata,
                    mysql_collate='utf8_unicode_ci')
 
 
-class DecisionRecords(object):
+class DecisionRecords(Token):
     '''
 
     .. note:: At test time, let's check consistency with the data
@@ -125,15 +142,17 @@ class DecisionRecords(object):
 
     @inject(pid=KProjectId,
             smaker=(orm.session.Session, redcapdb.CONFIG_SECTION),
-            browser=medcenter.Browser)
-    def __init__(self, pid, smaker, browser):
+            browser=medcenter.Browser,
+            clock=rtconfig.Clock)
+    def __init__(self, pid, smaker, browser, clock):
         self._oversight_project_id = pid
         self._browser = browser
         self._smaker = smaker
+        self._clock = clock
 
-    def sponsorships(self, uid):
-        decision, candidate, dc = _sponsor_queries(self._oversight_project_id,
-                                                   len(self.institutions))
+    def sponsorships(self, uid, inv=False):
+        _d, _c, dc = _sponsor_queries(self._oversight_project_id,
+                                      len(self.institutions), inv)
 
         # mysql work-around for
         # 1248, 'Every derived table must have its own alias'
@@ -141,16 +160,21 @@ class DecisionRecords(object):
         q = dc.select(and_(dc.c.candidate == uid,
                            dc.c.decision == DecisionRecords.YES))
 
-        return self._smaker().execute(q).fetchall()
+        answers = self._smaker().execute(q).fetchall()
+        min_exp = self._clock.now()
+        return [ans for ans in answers
+                # hmm... why not do this date comparison in the database?
+                if (ans.dt_exp <= ''
+                    or min_exp.isoformat() <= ans.dt_exp)]
 
-    def about_sponsorships(self, who):
+    def about_sponsorships(self, who, inv=False):
         return [(record, inv, detail.get('project_title', ''),
                  (detail.get('description_sponsor', None) or
                   detail.get('data_use_description', '')))
                 for record, (inv, team, detail) in [
                         (sponsorship.record,
                          self.decision_detail(sponsorship.record))
-                        for sponsorship in self.sponsorships(who)]]
+                        for sponsorship in self.sponsorships(who, inv)]]
 
     def oversight_decisions(self, pending=True):
         '''In order to facilitate email notification of committee
@@ -227,7 +251,7 @@ class _DataDict(object):
                 for choice in choicetxt.split('|')]
 
 
-def _sponsor_queries(oversight_project_id, parties):
+def _sponsor_queries(oversight_project_id, parties, inv=False):
     '''
     TODO: consider a separate table of approved users, generated when
     notices are sent. include expirations (and link back to request).
@@ -337,7 +361,7 @@ def _sponsor_queries(oversight_project_id, parties):
     # todo: consider combining record, event, project_id into one attr
     candidate = select((proj.c.record,
                         proj.c.value.label('userid'))).where(
-        proj.c.field_name.like('user_id_%')).alias('who')
+        proj.c.field_name.like('user_id' if inv else 'user_id_%')).alias('who')
 
     dt_exp = select((proj.c.record,
                      proj.c.value.label('dt_exp'))).where(
@@ -393,6 +417,10 @@ class Mock(injector.Module, rtconfig.MockMixin):
         import redcap_connect
         return redcap_connect._test_settings.project_id
 
+    @provides(rtconfig.Clock)
+    def clock(self):
+        return rtconfig.MockClock()
+
     @classmethod
     def mods(cls):
         import medcenter
@@ -404,6 +432,11 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
     def project_id(self):
         rt = self.get_options(['project_id'], OVERSIGHT_CONFIG_SECTION)
         return rt.project_id
+
+    @provides(rtconfig.Clock)
+    def real_time(self):
+        import datetime
+        return datetime.datetime
 
     @classmethod
     def mods(cls, ini):

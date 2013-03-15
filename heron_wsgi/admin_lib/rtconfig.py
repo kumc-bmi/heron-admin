@@ -48,6 +48,41 @@ class Options(object):
                                      sorted(self._d.keys()))
 
 
+class Calendar(object):
+    def today(self):
+        raise NotImplementedError
+
+
+class Clock(object):
+    def now(self):
+        raise NotImplementedError
+
+
+class MockClock(object):
+    '''
+    >>> s = MockClock()
+    >>> now = s.now
+    >>> now()
+    datetime.datetime(2011, 9, 2, 0, 0, 0, 500000)
+    >>> now()
+    datetime.datetime(2011, 9, 2, 0, 0, 1)
+    '''
+    def __init__(self):
+        import datetime
+        self._t = datetime.datetime(2011, 9, 2)
+
+    def now(self):
+        self.wait(seconds=0.5)
+        return self._t
+
+    def today(self):
+        return self._t.date()
+
+    def wait(self, seconds):
+        import datetime
+        self._t = self._t + datetime.timedelta(seconds=seconds)
+
+
 class RuntimeOptions(Options):  # pragma nocover
     def load(self, ini, section):
         p = ConfigParser.SafeConfigParser()

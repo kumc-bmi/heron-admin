@@ -78,25 +78,3 @@ class MockDirectory(object):
         if m:
             return m.group(1)
         raise ValueError
-
-
-class MockTimeSource(object):
-    '''
-    >>> s = MockTimeSource()
-    >>> now = s.now
-    >>> now()
-    datetime.datetime(2012, 2, 25, 11, 0, 0, 500000)
-    >>> now()
-    datetime.datetime(2012, 2, 25, 11, 0, 1)
-    '''
-    def __init__(self):
-        import datetime
-        self._t = datetime.datetime(2012, 2, 25, 11, 00, 00)
-
-    def now(self):
-        self.wait(seconds=0.5)
-        return self._t
-
-    def wait(self, seconds):
-        import datetime
-        self._t = self._t + datetime.timedelta(seconds=seconds)

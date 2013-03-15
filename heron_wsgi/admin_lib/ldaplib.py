@@ -5,11 +5,11 @@ Caching:
 
   >>> import sys
   >>> logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-  >>> ts = mock_directory.MockTimeSource()
+  >>> ts = rtconfig.MockClock()
   >>> ds = MockLDAP(ts, ttl=2)
   >>> ds.search("(cn=john.smith)", ['sn'])
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('sn',))
-  INFO:cache_remote:... cached until 2012-02-25 11:00:02.500000
+  INFO:cache_remote:... cached until 2011-09-02 00:00:02.500000
   [('(cn=john.smith)', {'sn': ['Smith']})]
 
   >>> ds.search("(cn=john.smith)", ['sn'])
@@ -18,7 +18,7 @@ Caching:
   >>> ts.wait(5)
   >>> ds.search("(cn=john.smith)", ['sn'])
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('sn',))
-  INFO:cache_remote:... cached until 2012-02-25 11:00:08.500000
+  INFO:cache_remote:... cached until 2011-09-02 00:00:08.500000
   [('(cn=john.smith)', {'sn': ['Smith']})]
 
 Sample configuration::

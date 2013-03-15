@@ -37,9 +37,9 @@ investigator requests::
 
   >>> facreq = _login('john.smith', mc, hp, PERM_STATUS)
   INFO:cache_remote:system access query for ('SAA', 'john.smith@js.example')
-  INFO:cache_remote:... cached until 2011-09-02 00:00:15
+  INFO:cache_remote:... cached until 2011-09-02 00:00:15.500000
   INFO:cache_remote:in DROC? query for john.smith
-  INFO:cache_remote:... cached until 2011-09-02 00:01:00
+  INFO:cache_remote:... cached until 2011-09-02 00:01:00.500000
   >>> facreq.context.status  # doctest: +NORMALIZE_WHITESPACE
   Status(current_training='2012-01-01', droc=None, executive=False,
          expired_training=None, faculty=True, sponsored=None,
@@ -76,7 +76,7 @@ survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
   >>> facreq.context.sign_saa.ensure_saa_survey().split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
   INFO:cache_remote:SAA link query for ('SAA', 'john.smith')
-  INFO:cache_remote:... cached until 2011-09-02 00:00:15
+  INFO:cache_remote:... cached until 2011-09-02 00:00:16.500000
   ['http://bmidev1/redcap-host/surveys/',
    's=f1f9&full_name=Smith%2C+John&user_id=john.smith']
 
@@ -89,12 +89,12 @@ faculty not sponsored, nor has he completed human subjects training::
   >>> stureq = _login('bill.student', mc, hp, PERM_STATUS)
   INFO:cache_remote:Sponsorship query for ('sponsorship', 'bill.student')
   INFO:heron_policy:not sponsored: bill.student
-  INFO:cache_remote:... cached until 2011-09-03 00:00:00
+  INFO:cache_remote:... cached until 2011-09-03 00:00:02
   INFO:heron_policy:no training on file for: bill.student (Bill Student)
   INFO:cache_remote:system access query for ('SAA', 'bill.student@js.example')
-  INFO:cache_remote:... cached until 2011-09-02 00:00:15
+  INFO:cache_remote:... cached until 2011-09-02 00:00:17.500000
   INFO:cache_remote:in DROC? query for bill.student
-  INFO:cache_remote:... cached until 2011-09-02 00:01:00
+  INFO:cache_remote:... cached until 2011-09-02 00:01:01.500000
   >>> stureq.context.status  #doctest: +NORMALIZE_WHITESPACE
   Status(current_training=None, droc=None, executive=False,
          expired_training=None, faculty=False,
@@ -148,9 +148,9 @@ Executives don't need sponsorship::
 
   >>> exreq = _login('big.wig', mc, hp, PERM_START_I2B2)
   INFO:cache_remote:system access query for ('SAA', 'big.wig@js.example')
-  INFO:cache_remote:... cached until 2011-09-02 00:00:15
+  INFO:cache_remote:... cached until 2011-09-02 00:00:21
   INFO:cache_remote:in DROC? query for big.wig
-  INFO:cache_remote:... cached until 2011-09-02 00:01:00
+  INFO:cache_remote:... cached until 2011-09-02 00:01:03.500000
 
 
 Investigator Requests
@@ -224,7 +224,6 @@ import redcapdb
 import noticelog
 from noticelog import OVERSIGHT_CONFIG_SECTION
 import disclaimer
-from disclaimer import KTimeSource
 from audit_usage import I2B2AggregateUsage, I2B2SensitiveUsage
 from cache_remote import Cache
 
@@ -248,7 +247,7 @@ class OversightCommittee(Token, Cache):
             oversight_rc=(redcap_connect.SurveySetup,
                           OVERSIGHT_CONFIG_SECTION),
             mc=medcenter.MedCenter,
-            timesrc=KTimeSource,
+            timesrc=rtconfig.Clock,
             auditor=I2B2SensitiveUsage,
             dr=noticelog.DecisionRecords)
     def __init__(self, redcap_sessionmaker, oversight_rc, mc,
@@ -349,7 +348,7 @@ class HeronRecords(Token, Cache):
             dg=disclaimer.DisclaimerGuard,
             smaker=(orm.session.Session,
                     redcapdb.CONFIG_SECTION),
-            timesrc=KTimeSource)
+            timesrc=rtconfig.Clock)
     def __init__(self, mc, pm, dr, stats, saa_rc, oversight_rc, oc,
                  dg, smaker, timesrc):
         Cache.__init__(self, timesrc.now)
@@ -425,12 +424,9 @@ class HeronRecords(Token, Cache):
     def _sponsorship(self, uid,
                      ttl=timedelta(seconds=600)):
         def do_q():
-            for ans in self.__dr.sponsorships(uid):
-                # hmm... why not do this date comparison in the database?
-                if (ans.dt_exp <= ''
-                    or self._t.today().isoformat() <= ans.dt_exp):
-                    log.info('sponsorship OK: %s', ans)
-                    return ttl, ans
+            for ans in self.__dr.sponsorships(uid, self._t.today()):
+                log.info('sponsorship OK: %s', ans)
+                return ttl, ans
 
             log.info('not sponsored: %s', uid)
             return timedelta(1), None
@@ -452,7 +448,7 @@ class HeronRecords(Token, Cache):
         current = when >= self._t.today().isoformat()
         if not current:
             log.info('training expired %s for: %s (%s)',
-                     when, self.cn, self.full_name())
+                     when, badge.cn, badge.full_name())
 
         return (when, None) if current else (None, when)
 
@@ -618,8 +614,8 @@ class Mock(injector.Module, rtconfig.MockMixin):
 
 class RunTime(rtconfig.IniModule):  # pragma nocover
     @singleton
-    @provides(KTimeSource)
-    def _timesrc(self):
+    @provides(rtconfig.Clock)
+    def _real_time(self):
         import datetime
         return datetime.datetime
 
