@@ -99,28 +99,44 @@ class Reports(Token):
          'detail': <itertools.groupby object at ...>,
          'projects': [(u'6373469799195807417',
                        (John Smith <john.smith@...>, u'Cure Warts', ''))],
-         'sponsorships': {'some.one': [(u'6373469799195807417',
-                                        John Smith <john.smith@js.example>,
-                                        u'Cure Warts',
-                                        '')]},
+         'sponsorships': {'john.smith': ([],
+                                         [(u'6373469799195807417',
+                                           John Smith <john.smith@js.example>,
+                                           u'Cure Warts',
+                                           '')]),
+                          'some.one': ([(u'6373469799195807417',
+                                         John Smith <john.smith@js.example>,
+                                         u'Cure Warts',
+                                         '')],
+                                       [])},
          'summary': [{'create_date': datetime.date(2000, 1, 1),
                       'full_name': 'Some One',
                       'name': 'smallpox',
                       'query_master_id': 1,
                       'set_size': 9,
-                      'user_id': 'some.one'}]}
+                      'user_id': 'some.one'},
+                     {'create_date': datetime.date(2000, 2, 1),
+                      'full_name': 'John Smith',
+                      'name': 'malaria',
+                      'query_master_id': 2,
+                      'set_size': 5,
+                      'user_id': 'john.smith'}]}
         '''
 
         audit = context.droc_audit
         dr = context.decision_records
 
         summary = audit.patient_set_queries(recent=True, small=True)
-        sponsorships = dict([(q.user_id, dr.about_sponsorships(q.user_id))
+        sponsorships = dict([(q.user_id,
+                              (dr.about_sponsorships(q.user_id),
+                               dr.about_sponsorships(q.user_id, inv=True)))
                              for q in summary])
         # making a dict throws out duplicates
         projects_collate = dict([(record, (inv, title, desc))
-                                 for slist in sponsorships.values()
+                                 for spair in sponsorships.values()
+                                 for slist in spair
                                  for record, inv, title, desc in slist])
+
         projects = sorted(projects_collate.items(), key=lambda x: -int(x[0]))
 
         return dict(
@@ -160,7 +176,12 @@ class MockDROCAudit(object):
                    user_id='some.one',
                    query_master_id=1, name='smallpox',
                    create_date=date(2000, 1, 1),
-                   set_size=9)]
+                   set_size=9),
+                AD(full_name='John Smith',
+                   user_id='john.smith',
+                   query_master_id=2, name='malaria',
+                   create_date=date(2000, 2, 1),
+                   set_size=5)]
 
     def small_set_concepts(self):
         from datetime import date
@@ -171,7 +192,14 @@ class MockDROCAudit(object):
                    name='smallpox',
                    item_name='Smallpox',
                    tooltip='Horrible Diseases : Smallpox',
-                   item_key='\\\\i2b2\\Horrible Diseases\\Smallpox\\')]
+                   item_key='\\\\i2b2\\Horrible Diseases\\Smallpox\\'),
+                AD(user_id='john.smith',
+                   query_master_id=2,
+                   create_date=date(2000, 2, 1),
+                   name='malaria',
+                   item_name='Malaria',
+                   tooltip='Horrible Diseases : Malaria',
+                   item_key='\\\\i2b2\\Horrible Diseases\\Malaria\\')]
 
 
 def mock_context(who):

@@ -53,11 +53,21 @@ for patient sets had small (&lt;= 15) result sets:</em></p>
       </li>
     </ul>
 
-    <div py:with="my_projects = sponsorships[rows[0].user_id]" py:strip="True">
-      <div py:if="my_projects">
+    <div py:with="sponsored_in, sponsor_of = sponsorships[rows[0].user_id]"
+	 py:strip="True">
+      <div py:if="sponsored_in">
 	<p>${rows[0].user_id} is sponsored in these projects:</p>
 	<ul>
-	  <li py:for="record, inv, title, description in my_projects">
+	  <li py:for="record, inv, title, description in sponsored_in">
+	    #${record} <a href="#project_${record}">${title}</a>
+	    sponsored by <strong>${inv.full_name()}</strong>
+	  </li>
+	  </ul>
+      </div>
+      <div py:if="sponsor_of">
+	<p>${rows[0].user_id} is the investigator in these projects:</p>
+	<ul>
+	  <li py:for="record, inv, title, description in sponsor_of">
 	    #${record} <a href="#project_${record}">${title}</a>
 	    sponsored by <strong>${inv.full_name()}</strong>
 	  </li>
