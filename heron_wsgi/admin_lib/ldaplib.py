@@ -117,7 +117,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     @provides((rtconfig.Options, CONFIG_SECTION))
     def opts(self):
         rt = rtconfig.RuntimeOptions(
-            'url userdn base password executives'.split())
+            'url userdn base password executives testing_faculty'.split())
         rt.load(self._ini, CONFIG_SECTION)
         return rt
 

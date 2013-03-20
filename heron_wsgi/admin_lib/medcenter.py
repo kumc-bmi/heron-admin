@@ -248,6 +248,7 @@ class MedCenter(object):
         uid = self.__unsealer.unseal(remote_user)  # raises TypeError
 
         return IDBadge(self.__notary, uid in self.__executives,
+                       uid in self._testing_faculty,
                        **self._browser.directory_attributes(uid))
 
     def trained_thru(self, alleged_badge):
@@ -361,22 +362,31 @@ class IDBadge(LDAPBadge):
 
     '''
 
-    def __init__(self, notary, is_executive=False, **attrs):
+    def __init__(self, notary, is_executive=False, testing_faculty=False,
+                 **attrs):
         assert notary
         self.__notary = notary  # has to go before LDAPBadge.__init__
         # ... due to __getattr__ magic.
         self._is_executive = is_executive
+        self._is_faculty = testing_faculty
+        if testing_faculty:
+            log.info('%s considered faculty by testing override.',
+                     attrs.get('cn', 'CN???'))
+        else:
+            try:
+                self._is_faculty = (
+                    attrs['kumcPersonJobcode'] != MedCenter.excluded_jobcode
+                    and attrs['kumcPersonFaculty'] == 'Y')
+            except KeyError:
+                pass
+
         LDAPBadge.__init__(self, **attrs)
 
     def startVouch(self):
         self.__notary.startVouch(self)
 
     def is_faculty(self):
-        try:
-            return (self.kumcPersonJobcode != MedCenter.excluded_jobcode
-                    and self.kumcPersonFaculty == 'Y')
-        except AttributeError:
-            return False
+        return self._is_faculty
 
     def is_executive(self):
         return self._is_executive
@@ -465,8 +475,9 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         return es
 
     @provides(KTestingFaculty)
-    def no_testing_faculty(self):
-        return ''
+    @inject(rt=(rtconfig.Options, ldaplib.CONFIG_SECTION))
+    def testing_faculty(self, rt):
+        return rt.testing_faculty.split()
 
     @provides(KTrainingFunction)
     def training(self, section=CHALK_CONFIG_SECTION, ua=_ua,
