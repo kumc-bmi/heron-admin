@@ -10,6 +10,8 @@ class Cache(object):
     def __init__(self, now):
         self.__now = now
         self._cache = {}
+        log.info('%s@%s cache initialized',
+                 self.__class__.__name__, id(self))
 
     def _query(self, k, thunk, label=None):
         tnow = self.__now()
