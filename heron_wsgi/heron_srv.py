@@ -500,11 +500,6 @@ class RunTime(injector.Module):  # pragma: nocover
             self._webapp_ini, 'i2b2')
         binder.bind(KI2B2Address, to=i2b2_settings.cas_login)
 
-    @provides(medcenter.KTestingFaculty)
-    @inject(rt=(Options, cas_auth.CONFIG_SECTION))
-    def cas_app_secret(self, rt):
-        return rt.app_secret
-
     @provides(drocnotice.KMailSettings)
     def settings(self):
         log.debug('mail settings: %s', self._settings)
