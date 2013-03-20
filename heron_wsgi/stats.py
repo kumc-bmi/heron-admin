@@ -92,8 +92,9 @@ class Reports(Token):
 
         >>> context.droc_audit = MockDROCAudit()  # Kludge
 
+        >>> ssr = r.show_small_set_report(context, req)
         >>> from pprint import pprint
-        >>> pprint(r.show_small_set_report(context, req))
+        >>> pprint(ssr)
         ... # doctest: +ELLIPSIS
         {'cycle': <type 'itertools.cycle'>,
          'detail': <itertools.groupby object at ...>,
@@ -115,22 +116,29 @@ class Reports(Token):
                       'query_master_id': 1,
                       'set_size': 9,
                       'user_id': 'some.one'},
+                     {'create_date': datetime.date(2000, 1, 2),
+                      'full_name': 'Some One',
+                      'name': 'smallpox2',
+                      'query_master_id': 10,
+                      'set_size': 8,
+                      'user_id': 'some.one'},
                      {'create_date': datetime.date(2000, 2, 1),
                       'full_name': 'John Smith',
                       'name': 'malaria',
                       'query_master_id': 2,
                       'set_size': 5,
                       'user_id': 'john.smith'}]}
+
+        Make sure we don't call about_sponsorships more than we need to.
+        >>> len(r._about(context.decision_records, ssr['summary']))
+        2
         '''
 
         audit = context.droc_audit
         dr = context.decision_records
 
         summary = audit.patient_set_queries(recent=True, small=True)
-        sponsorships = dict([(q.user_id,
-                              (dr.about_sponsorships(q.user_id),
-                               dr.about_sponsorships(q.user_id, inv=True)))
-                             for q in summary])
+        sponsorships = dict(self._about(dr, summary))
         # making a dict throws out duplicates
         projects_collate = dict([(record, (inv, title, desc))
                                  for spair in sponsorships.values()
@@ -146,6 +154,13 @@ class Reports(Token):
             detail=itertools.groupby(audit.small_set_concepts(),
                                      operator.itemgetter('query_master_id')),
             cycle=itertools.cycle)
+
+    def _about(self, dr, summary):
+        return [(user_id,
+                 (dr.about_sponsorships(user_id),
+                  dr.about_sponsorships(user_id, inv=True)))
+                for user_id in
+                set([q.user_id for q in summary])]
 
 
 class MockAggregateUsage(object):
@@ -177,6 +192,11 @@ class MockDROCAudit(object):
                    query_master_id=1, name='smallpox',
                    create_date=date(2000, 1, 1),
                    set_size=9),
+                AD(full_name='Some One',
+                   user_id='some.one',
+                   query_master_id=10, name='smallpox2',
+                   create_date=date(2000, 1, 2),
+                   set_size=8),
                 AD(full_name='John Smith',
                    user_id='john.smith',
                    query_master_id=2, name='malaria',
