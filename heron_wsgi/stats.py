@@ -38,7 +38,7 @@ class Reports(object):
 
     def show_usage_report(self, context, req):
         '''
-        >>> hp, context, req = mock_context('john.smith')
+        >>> hp, context, req = heron_policy.mock_context('john.smith')
         >>> r = Reports()
         >>> hp.grant(context, heron_policy.PERM_STATS_REPORTER)
 
@@ -97,7 +97,7 @@ class Reports(object):
 
     def show_small_set_report(self, context, req):
         '''
-        >>> hp, context, req = mock_context('big.wig')
+        >>> hp, context, req = heron_policy.mock_context('big.wig')
         >>> r = Reports()
         >>> hp.grant(context, heron_policy.PERM_DROC_AUDIT)
 
@@ -239,13 +239,3 @@ class MockDROCAudit(object):
                    item_name='Malaria',
                    tooltip='Horrible Diseases : Malaria',
                    item_key='\\\\i2b2\\Horrible Diseases\\Malaria\\')]
-
-
-def mock_context(who):
-    from pyramid.testing import DummyRequest
-    context = medcenter.AttrDict()
-    req = DummyRequest(context=context)
-    (mc, hp) = heron_policy.Mock.make([medcenter.MedCenter,
-                                       heron_policy.HeronRecords])
-    mc.authenticated(who, req) and None
-    return hp, context, req

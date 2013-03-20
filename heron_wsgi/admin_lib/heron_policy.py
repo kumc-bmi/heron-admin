@@ -612,6 +612,17 @@ class Mock(injector.Module, rtconfig.MockMixin):
                  for im in m.Mock.mods()] + [cls()])
 
 
+def mock_context(who, depgraph=None):
+    from pyramid.testing import DummyRequest
+    context = medcenter.AttrDict()
+    req = DummyRequest(context=context)
+    if not depgraph:
+        depgraph, = Mock.make([None])
+    (mc, hp) = depgraph.get(medcenter.MedCenter), depgraph.get(HeronRecords)
+    mc.authenticated(who, req)
+    return hp, context, req
+
+
 class RunTime(rtconfig.IniModule):  # pragma nocover
     @singleton
     @provides(rtconfig.Clock)
