@@ -164,6 +164,9 @@ class DecisionRecords(Token):
         self._clock = clock
 
     def sponsorships(self, uid, inv=False):
+        '''Enumerate current (un-expired) sponsorships by/for uid.
+        :param inv: True=by (i.e. investigator); False=for
+        '''
         _d, _c, dc = _sponsor_queries(self._oversight_project_id,
                                       len(self.institutions), inv)
 
@@ -171,7 +174,8 @@ class DecisionRecords(Token):
         # 1248, 'Every derived table must have its own alias'
         dc = dc.alias('mw')
         q = dc.select(and_(dc.c.candidate == uid,
-                           dc.c.decision == DecisionRecords.YES))
+                           dc.c.decision == DecisionRecords.YES)).\
+                               order_by(dc.c.record)
 
         answers = self._smaker().execute(q).fetchall()
         min_exp = self._clock.now()
@@ -182,8 +186,7 @@ class DecisionRecords(Token):
 
     def about_sponsorships(self, who, inv=False):
         return [(record, inv, detail.get('project_title', ''),
-                 (detail.get('description_sponsor', None) or
-                  detail.get('data_use_description', '')))
+                 project_description(detail))
                 for record, (inv, team, detail) in [
                         (sponsorship.record,
                          self.decision_detail(sponsorship.record))
@@ -214,13 +217,15 @@ class DecisionRecords(Token):
                                     record))
         s.close()
 
-        def full_name(user_id_n):
+        def ref(user_id_n):
+            cn = d[user_id_n]
             name_etc_n = user_id_n.replace('user_id_', 'name_etc_')
             name_etc = d.get(name_etc_n, '')
-            return name_etc.split('\n')[0]
+            fn = name_etc.split('\n')[0]
+            return Ref(cn, fn, name_etc)
 
-        inv = Ref(d['user_id'], d['full_name'])
-        team = [Ref(d[user_id_n], full_name(user_id_n))
+        inv = Ref(d['user_id'], d['full_name'], None)
+        team = [ref(user_id_n)
                 for user_id_n in sorted(d.keys())
                 if user_id_n.startswith('user_id_')]
 
@@ -245,7 +250,11 @@ class DecisionRecords(Token):
                  if entry and hasattr(entry, 'mail')])
 
 
-ProperName = namedtuple('ProperName', ('cn', 'fn'))
+def project_description(detail):
+    return (detail.get('description_sponsor', None) or
+            detail.get('data_use_description', ''))
+
+ProperName = namedtuple('ProperName', ('cn', 'fn', 'name_etc'))
 
 
 class Ref(ProperName):
