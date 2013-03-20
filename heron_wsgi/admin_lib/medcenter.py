@@ -477,7 +477,9 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     @provides(KTestingFaculty)
     @inject(rt=(rtconfig.Options, ldaplib.CONFIG_SECTION))
     def testing_faculty(self, rt):
-        return rt.testing_faculty.split()
+        tf = (rt.testing_faculty or '').split()
+        log.info('testing faculty: %s', tf)
+        return tf
 
     @provides(KTrainingFunction)
     def training(self, section=CHALK_CONFIG_SECTION, ua=_ua,
