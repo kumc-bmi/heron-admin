@@ -42,7 +42,8 @@ class Reports(Token):
 
         >>> context.stats_reporter = MockAggregateUsage()  # Kludge
 
-        >>> r.show_usage_report(context, req)
+        >>> v = r.show_usage_report(context, req)
+        >>> v
         ... # doctest: +NORMALIZE_WHITESPACE
         {'total_number_of_queries': 100,
          'queries_by_month':
@@ -55,6 +56,14 @@ class Reports(Token):
          'roles': {'john.smith':
                    'Chair of Department of Neurology, Neurology'},
          'cycle': <type 'itertools.cycle'>}
+
+
+        Check that this supplies everything the template expects::
+        >>> import genshi_render
+        >>> f = genshi_render.Factory({})
+        >>> pg = f(v, dict(renderer_name='report1.html'))
+        >>> 'John Smith' in pg and 'Chair of Department' in pg
+        True
 
         '''
         usage = context.stats_reporter
@@ -99,14 +108,14 @@ class Reports(Token):
         {'cycle': <type 'itertools.cycle'>,
          'detail': <itertools.groupby object at ...>,
          'projects': [(u'6373469799195807417',
-                       (John Smith <john.smith@...>, u'Cure Warts', ''))],
+                       (John Smith <john.smith>, u'Cure Warts', ''))],
          'sponsorships': {'john.smith': ([],
                                          [(u'6373469799195807417',
-                                           John Smith <john.smith@js.example>,
+                                           John Smith <john.smith>,
                                            u'Cure Warts',
                                            '')]),
                           'some.one': ([(u'6373469799195807417',
-                                         John Smith <john.smith@js.example>,
+                                         John Smith <john.smith>,
                                          u'Cure Warts',
                                          '')],
                                        [])},
@@ -132,6 +141,14 @@ class Reports(Token):
         Make sure we don't call about_sponsorships more than we need to.
         >>> len(r._about(context.decision_records, ssr['summary']))
         2
+
+        Check that this supplies everything the template expects::
+        >>> import genshi_render
+        >>> f = genshi_render.Factory({})
+        >>> pg = f(ssr, dict(renderer_name='report2.html'))
+        >>> 'Malaria' in pg
+        True
+
         '''
 
         audit = context.droc_audit
@@ -209,14 +226,14 @@ class MockDROCAudit(object):
         return [AD(user_id='some.one',
                    query_master_id=1,
                    create_date=date(2000, 1, 1),
-                   name='smallpox',
+                   query_name='smallpox',
                    item_name='Smallpox',
                    tooltip='Horrible Diseases : Smallpox',
                    item_key='\\\\i2b2\\Horrible Diseases\\Smallpox\\'),
                 AD(user_id='john.smith',
                    query_master_id=2,
                    create_date=date(2000, 2, 1),
-                   name='malaria',
+                   query_name='malaria',
                    item_name='Malaria',
                    tooltip='Horrible Diseases : Malaria',
                    item_key='\\\\i2b2\\Horrible Diseases\\Malaria\\')]

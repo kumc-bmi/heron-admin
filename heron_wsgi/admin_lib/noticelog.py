@@ -21,12 +21,12 @@ Projects sponsored by an investigator:
 
 Sponsorship details:
   >>> dr.about_sponsorships('some.one')  # doctest: +NORMALIZE_WHITESPACE
-  [(u'6373469799195807417', John Smith <john.smith@js.example>,
+  [(u'6373469799195807417', John Smith <john.smith>,
     u'Cure Warts', '')]
 
   >>> dr.about_sponsorships('john.smith', inv=True)
   ... # doctest: +NORMALIZE_WHITESPACE
-  [(u'6373469799195807417', John Smith <john.smith@js.example>,
+  [(u'6373469799195807417', John Smith <john.smith>,
     u'Cure Warts', '')]
 
 Notification of Oversight Decisions
@@ -40,13 +40,13 @@ What decision notifications are pending?
    (u'23180811818680005', u'1', 3),
    (u'6373469799195807417', u'1', 3)]
 
-Get details that we might want to use in composing the notification::
+Get oversight details that we might want to use in composing the notification::
 
   >>> from pprint import pprint
-  >>> for record, decision, qty in ds:
-  ...    pprint(dr.decision_detail(record))
-  (John Smith <john.smith@js.example>,
-   [Bill Student <bill.student@js.example>],
+
+  >>> pprint(dr.decision_detail(ds[0][0]))
+  (John Smith <john.smith>,
+   [? <bill.student>],
    {u'approve_kuh': u'2',
     u'approve_kumc': u'2',
     u'approve_kupi': u'2',
@@ -55,8 +55,9 @@ Get details that we might want to use in composing the notification::
     u'project_title': u'Cart Blanche',
     u'user_id': u'john.smith',
     u'user_id_1': u'bill.student'})
-  (John Smith <john.smith@js.example>,
-   [Bill Student <bill.student@js.example>],
+  >>> pprint(dr.decision_detail(ds[1][0]))
+  (John Smith <john.smith>,
+   [? <bill.student>],
    {u'approve_kuh': u'1',
     u'approve_kumc': u'1',
     u'approve_kupi': u'1',
@@ -65,18 +66,26 @@ Get details that we might want to use in composing the notification::
     u'project_title': u'Cure Polio',
     u'user_id': u'john.smith',
     u'user_id_1': u'bill.student'})
-  (John Smith <john.smith@js.example>,
-   [Some One <some.one@js.example>, Carol Student <carol.student@js.example>],
+  >>> pprint(dr.decision_detail(ds[2][0]))
+  (John Smith <john.smith>,
+   [Some One <some.one>, ? <carol.student>],
    {u'approve_kuh': u'1',
     u'approve_kumc': u'1',
     u'approve_kupi': u'1',
     u'date_of_expiration': u'',
     u'full_name': u'John Smith',
+    u'name_etc_1': u'Some One',
     u'project_title': u'Cure Warts',
     u'user_id': u'john.smith',
     u'user_id_1': u'some.one',
     u'user_id_2': u'carol.student'})
 
+Get current email addresses of the team:
+
+  >>> record = ds[0][0]
+  >>> inv, team, _ = dr.decision_detail(record)
+  >>> dr.team_email(inv.cn, [mem.cn for mem in team])
+  ('john.smith@js.example', ['bill.student@js.example'])
 
 The following table is used to log notices::
 
@@ -95,6 +104,9 @@ The following table is used to log notices::
 
 '''
 
+import logging
+from collections import namedtuple
+
 import injector
 from injector import inject, provides
 from sqlalchemy import Table, Column
@@ -108,6 +120,7 @@ import redcapdb
 import medcenter
 from ocap_file import Token
 
+log = logging.getLogger(__name__)
 OVERSIGHT_CONFIG_SECTION = 'oversight_survey'
 KProjectId = injector.Key('ProjectId')
 notice_log = Table('notice_log', redcapdb.Base.metadata,
@@ -196,29 +209,51 @@ class DecisionRecords(Token):
 
     def decision_detail(self, record, lookup=True):
         s = self._smaker()
-        avl = list(redcapdb.allfields(s,
-                                      self._oversight_project_id,
-                                      record))
+        d = dict(redcapdb.allfields(s,
+                                    self._oversight_project_id,
+                                    record))
         s.close()
+
+        def full_name(user_id_n):
+            name_etc_n = user_id_n.replace('user_id_', 'name_etc_')
+            name_etc = d.get(name_etc_n, '')
+            return name_etc.split('\n')[0]
+
+        inv = Ref(d['user_id'], d['full_name'])
+        team = [Ref(d[user_id_n], full_name(user_id_n))
+                for user_id_n in sorted(d.keys())
+                if user_id_n.startswith('user_id_')]
+
+        return inv, team, d
+
+    def team_email(self, inv_uid, team_uids):
+        '''Get email addresses for investigator plus those team members
+        that are on file.
+        '''
         browser = self._browser
 
         def try_lookup(who):
             try:
-                return browser.lookup(user_id)
+                return browser.lookup(who)
             except KeyError:
+                log.warn('no email for %s', who)
                 return None
 
-        team = [details
-                for details in [try_lookup(user_id) if lookup else user_id
-                                for user_id in
-                                [v for a, v in avl
-                                 if v and a.startswith('user_id_')]]
-                if details]
+        return (browser.lookup(inv_uid).mail,
+                [entry.mail
+                 for entry in [try_lookup(uid) for uid in team_uids]
+                 if entry and hasattr(entry, 'mail')])
 
-        d = dict(avl)
-        inv = d['user_id']
-        investigator = browser.lookup(inv) if lookup else inv
-        return investigator, team, d
+
+ProperName = namedtuple('ProperName', ('cn', 'fn'))
+
+
+class Ref(ProperName):
+    def __repr__(self):
+        return '%s <%s>' % (self.fn or '?', self.cn)
+
+    def full_name(self):
+        return self.fn
 
 
 class _DataDict(object):
@@ -382,7 +417,6 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
 
 
 def migrate_decisions(ds, outfp):
-    import logging
     import csv
 
     logging.basicConfig(level=logging.DEBUG)
