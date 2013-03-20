@@ -8,12 +8,14 @@ import operator
 
 from admin_lib import medcenter
 from admin_lib import heron_policy
-from admin_lib.ocap_file import Token
 
 log = logging.getLogger(__name__)
 
 
-class Reports(Token):
+class Reports(object):
+    def __repr__(self):
+        return '%s()' % self.__class__.__name__
+
     def configure(self, config, mount_point):
         '''Add report views to application config.
 
