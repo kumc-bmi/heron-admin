@@ -398,6 +398,8 @@ class HeronRecords(Token, Cache):
                 raise NoPermission(st)
             context.start_i2b2 = lambda: self.__redeem(badge)
             context.disclaimers = self.__dg
+        else:
+            raise TypeError
 
     def _status(self, badge):
         sponsored = (None if badge.is_investigator()
