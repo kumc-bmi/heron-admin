@@ -4,7 +4,10 @@
 We use :class:`I2B2PM` to manage user accounts and permissions in the
 I2B2 project management cell via its database.
 
-  >>> pm, dbsrc = Mock.make([I2B2PM, (orm.session.Session, CONFIG_SECTION)])
+  >>> pm, dbsrc, rcsm, mdsm, rcp = Mock.make([I2B2PM, (orm.session.Session,
+  ...     CONFIG_SECTION), (orm.session.Session, redcapdb.CONFIG_SECTION),
+  ...    (orm.session.Session, CONFIG_SECTION_MD),
+  ...    redcap_projects.REDCap_projects])
 
 An object with a reference to this :class:`I2B2PM` can have us
 generate authorization to access I2B2, once it has verified to its
@@ -16,6 +19,7 @@ one-time authorization password and the corresponding hashed form for
 John Smith like this::
 
   >>> pw, js = pm.authz('john.smith', 'John Smith')
+  BlueHeron
   >>> pw
   'dfd03595-ab3e-4448-9c8e-a65a290cc3c5'
 
@@ -47,6 +51,7 @@ The effect is a `pm_user_data` record::
 If John logs in again, a new one-time authorization is issued::
 
   >>> auth, js2 = pm.authz('john.smith', 'John Smith')
+  BlueHeron
   >>> auth
   '89cd1d9a-ace1-4673-8a12-50ebac2625f9'
 
@@ -57,24 +62,61 @@ This updates the `password` column of the `pm_user_data` record::
   >>> pprint.pprint(ans.fetchall())
   [(u'john.smith', u'e5ab367ceece604b7f7583d024ac4e2b', u'A')]
 
+Now giving user john.smith permissions to redcap projects
+
+  >>> _mock_redcap_permissions(pm._rcsm(), 'john.smith')
+
+Making up 4 i2b2 projects
+The first project should be selected
+  >>> _mock_i2b2_projects(dbsrc(), 1, ['redcap_11192',
+  ...    'redcap_11922','redcap_11109','redcap_11100'])
+  >>> pw, js = pm.authz('john.smith', 'John Smith')
+  REDCap2
+
+Creating roles for the user for some projects
+An empty project should be selected
+  >>> _mock_i2b2_roles(dbsrc(), ['1', '2', '3'])
+  >>> pw, js = pm.authz('john.smith', 'John Smith')
+  REDCap4
+
+Creating a project that has the exact data
+The project with exact data should be selected
+  >>> _mock_i2b2_projects(dbsrc(), 5, ['redcap_11191'])
+  >>> pw, js = pm.authz('john.smith', 'John Smith')
+  REDCap5
+
+Creating roles for the users for all projects so they are no empty projects
+Should fall back to the last picked project instead of blueheron
+  >>> _mock_i2b2_roles(dbsrc(), ['4', '5'])
+  >>> pw, js = pm.authz('john.smith', 'John Smith')
+
+  Next tests
+  _mock_i2b2_usage(dbsrc())
+  pw, js = pm.authz('john.smith', 'John Smith')
+
 '''
 
 import logging
 import uuid  # @@code review: push into TCB
 import hashlib
+from datetime import date
 
 import injector
 from injector import inject, provides, singleton
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy import func, orm
-from sqlalchemy.types import String, Date, Enum
+from sqlalchemy.types import String, Date, Enum, Integer
 from sqlalchemy.ext.declarative import declarative_base
 
 import rtconfig
 import jndi_util
 import ocap_file
+import redcapdb
+import redcap_projects
 
 CONFIG_SECTION = 'i2b2pm'
+CONFIG_SECTION_MD = 'i2b2md'
+
 KUUIDGen = injector.Key('UUIDGen')
 
 Base = declarative_base()
@@ -83,13 +125,21 @@ log = logging.getLogger(__name__)
 
 class I2B2PM(ocap_file.Token):
     @inject(datasrc=(orm.session.Session, CONFIG_SECTION),
+            redcap_sessionmaker=(orm.session.Session,
+                                 redcapdb.CONFIG_SECTION),
+            rcp=redcap_projects.REDCap_projects,
+            metadatasm=(orm.session.Session,
+                                 CONFIG_SECTION_MD),
             uuidgen=KUUIDGen)
-    def __init__(self, datasrc, uuidgen):
+    def __init__(self, datasrc, redcap_sessionmaker, metadatasm, uuidgen, rcp):
         '''
         :param datasrc: a function that returns a sqlalchemy session
         '''
         self._datasrc = datasrc
+        self._rcsm = redcap_sessionmaker
+        self._mdsm = metadatasm
         self._uuidgen = uuidgen
+        self._rcp = rcp
 
     def account_for(self, agent):
         return I2B2Account(self, agent)
@@ -101,17 +151,33 @@ class I2B2PM(ocap_file.Token):
         '''
         log.debug('generate authorization for: %s', (uid, full_name))
         ds = self._datasrc()
+        rs = self._rcsm()
         t = func.now()
         auth = str(self._uuidgen.uuid4())
         pw = hexdigest(auth)
+        rc_user_projs = rs.query(RedcapUser).filter(
+                        RedcapUser.username == uid).all()
 
+        #Does user have permissions to REDCap projects?
+        rc_pids = [row.project_id
+                   for row in rc_user_projs]
+        if rc_pids:
+            project_id_rc = self._rcp.pick_project(uid, rc_pids, ds,
+                            self._mdsm(), Project, UserRole, UserSession)
+            if project_id_rc:
+                project_id = project_id_rc
+
+        print project_id
         # TODO: consider factoring out the "update the change_date
         # whenever you set a field" aspect of Audited.
         try:
+            #Check if the user already exists in pm_user_roles
+            # TODO: ***change the following to check project also***
             me = ds.query(User).filter(User.user_id == uid).one()
             me.password, me.status_cd, me.change_date = pw, 'A', t
             log.info('found: %s', me)
         except orm.exc.NoResultFound:
+            #If the user doesn't exist in pm_user_roles, add him
             me = User(user_id=uid, full_name=full_name,
                       entry_date=t, change_date=t, status_cd='A',
                       password=pw,
@@ -198,7 +264,8 @@ class User(Base, Audited):
 class UserRole(Base, Audited):
     __tablename__ = 'pm_project_user_roles'
 
-    project_id = Column(String, primary_key=True)  # ForeignKey?
+    project_id = Column(String, ForeignKey('pm_project_data.project_id'),
+                        primary_key=True)
     user_id = Column(String,
                      ForeignKey('pm_user_data.user_id'),
                      primary_key=True)
@@ -211,6 +278,41 @@ class UserRole(Base, Audited):
         return "<UserRole(%s, %s, %s)>" % (self.project_id,
                                            self.user_id,
                                            self.user_role_cd)
+
+
+class UserSession(Base, Audited):
+    __tablename__ = 'pm_user_session'
+
+    user_id = Column(String,
+                     ForeignKey('pm_user_data.user_id'),
+                     primary_key=True)
+    expired_date = Column(Date)
+
+    def __repr__(self):
+        return "<UserSession(%s, %s)>" % (self.user_id,
+                                           self.expired_date)
+
+
+class Project(Base, Audited):
+    __tablename__ = 'pm_project_data'
+
+    project_id = Column(String, primary_key=True)
+    project_description = Column(String)
+
+    def __repr__(self):
+        return "<Project(%s, %s)>" % (self.project_id,
+                                           self.project_description)
+
+
+class RedcapUser(Base, Audited):
+    __tablename__ = 'redcap_user_rights'
+
+    project_id = Column(Integer, primary_key=True)
+    username = Column(String, primary_key=True)
+
+    def __repr__(self):
+        return "<RedcapUser(%s, %s)>" % (self.project_id,
+                                           self.username)
 
 
 class RunTime(rtconfig.IniModule):  # pragma: nocover
@@ -257,6 +359,26 @@ class Mock(injector.Module, rtconfig.MockMixin):
         Base.metadata.create_all(engine)
         return orm.session.sessionmaker(engine)
 
+    @provides((orm.session.Session, redcapdb.CONFIG_SECTION))
+    def rc_sessionmaker(self):
+        from sqlalchemy import create_engine
+
+        engine = create_engine('sqlite://')
+        Base.metadata.create_all(engine)
+        return orm.session.sessionmaker(engine)
+
+    @provides((orm.session.Session, CONFIG_SECTION_MD))
+    def mdsm_sessionmaker(self):
+        from sqlalchemy import create_engine
+
+        engine = create_engine('sqlite://')
+        Base.metadata.create_all(engine)
+        return orm.session.sessionmaker(engine)
+
+    @provides(redcap_projects.REDCap_projects)
+    def redcap_projectmaker(self):
+        return redcap_projects.REDCap_projects()
+
     @provides(KUUIDGen)
     def uuid_maker(self):
         class G(object):
@@ -266,12 +388,57 @@ class Mock(injector.Module, rtconfig.MockMixin):
                                 UUID('89cd1d9a-ace1-4673-8a12-50ebac2625f9'),
                                 UUID('dc584070-9e36-493e-80ce-ac277c1ce611'),
                                 UUID('0100f48b-c313-4086-92a9-6bfc621cc0df'),
-                                UUID('537d9d95-b017-4d9d-b096-2d1af316eb86')])
+                                UUID('537d9d95-b017-4d9d-b096-2d1af316eb86'),
+                                UUID('537d9d95-b017-4d9d-b096-2d1af316eb34'),
+                                UUID('537d9d95-b017-4d9d-b096-2d1af316eb92')])
 
             def uuid4(self):
                 return self._d.next()
 
         return G()
+
+
+def _mock_redcap_permissions(rcsm, uid):
+    '''Mock up user permissions to redcap projects
+    '''
+    rcsm.add_all([RedcapUser(project_id=01, username=uid),
+                  RedcapUser(project_id=91, username=uid),
+                  RedcapUser(project_id=11, username=uid)])
+    rcsm.commit()
+
+
+def _mock_i2b2_projects(ds, i, proj_desc):
+    '''Mock up i2b2 projects
+    '''
+    for desc in proj_desc:
+        ds.add(Project(project_id='REDCap' + str(i),
+                       project_description=desc))
+        i += 1
+    ds.commit()
+
+
+def _mock_i2b2_usage(ds):
+    '''Mock up user permissions to redcap projects
+    '''
+    ds.add_all([UserSession(user_id='john.smith',
+                            expired_date=date(2013, 3, 1)),
+                UserSession(user_id='barn.smith',
+                            expired_date=date(2013, 4, 8)),
+                UserSession(user_id='kyon.smith',
+                            expired_date=date(2013, 4, 1))
+                ])
+    ds.commit()
+
+
+def _mock_i2b2_roles(ds, pids):
+    '''Mock up user permissions to i2b2 projects
+    '''
+    i = 1
+    for pid in pids:
+        ds.add(UserRole(user_id='john.smith' + str(i),
+                        project_id='REDCap' + pid,
+                        user_role_cd='DATA_LDS'))
+        ds.commit()
 
 
 def _integration_test():  # pragma: nocover
