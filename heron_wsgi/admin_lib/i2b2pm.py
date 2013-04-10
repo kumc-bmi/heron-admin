@@ -68,27 +68,27 @@ Now giving user john.smith permissions to redcap projects
 
 Making up 4 i2b2 projects
 The first project should be selected
-  >>> _mock_i2b2_projects(dbsrc(), 1, ['redcap_11192',
-  ...    'redcap_11922','redcap_11109','redcap_11100'])
+  >>> _mock_i2b2_projects(dbsrc(), 1, ['0', '0', '0', '0'])
   >>> pw, js = pm.authz('john.smith', 'John Smith')
-  REDCap2
+  REDCap_1
 
 Creating roles for the user for some projects
 An empty project should be selected
   >>> _mock_i2b2_roles(dbsrc(), ['1', '2', '3'])
   >>> pw, js = pm.authz('john.smith', 'John Smith')
-  REDCap4
+  REDCap_4
 
 Creating a project that has the exact data
 The project with exact data should be selected
-  >>> _mock_i2b2_projects(dbsrc(), 5, ['redcap_11191'])
+  >>> _mock_i2b2_projects(dbsrc(), 5, ['redcap_1_11_91'])
   >>> pw, js = pm.authz('john.smith', 'John Smith')
-  REDCap5
+  REDCap_5
 
 Creating roles for the users for all projects so they are no empty projects
 Should fall back to the last picked project instead of blueheron
   >>> _mock_i2b2_roles(dbsrc(), ['4', '5'])
   >>> pw, js = pm.authz('john.smith', 'John Smith')
+  REDCap_5
 
   Next tests
   _mock_i2b2_usage(dbsrc())
@@ -317,17 +317,16 @@ class RedcapUser(Base, Audited):
 
 class RunTime(rtconfig.IniModule):  # pragma: nocover
     jndi_name = 'PMBootStrapDS'
+    jndi_name_md = 'REDCapMDDS'
 
     # abusing Session a bit; this really provides a subclass, not an
     # instance, of Session
-    @singleton
-    @provides((orm.session.Session, CONFIG_SECTION))
-    def pm_sessionmaker(self):
+    def sessionmaker(self, jndi, CONFIG):
         import os
         from sqlalchemy import create_engine
 
         rt = rtconfig.RuntimeOptions(['jboss_deploy'])
-        rt.load(self._ini, CONFIG_SECTION)
+        rt.load(self._ini, CONFIG)
 
         jdir = ocap_file.Readable(rt.jboss_deploy, os.path, os.listdir, open)
         ctx = jndi_util.JBossContext(jdir, create_engine)
@@ -335,12 +334,22 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         sm = orm.session.sessionmaker()
 
         def make_session_and_revoke():
-            engine = ctx.lookup(self.jndi_name)
+            engine = ctx.lookup(jndi)
             ds = sm(bind=engine)
             revoke_expired_auths(ds)
             return ds
 
         return make_session_and_revoke
+
+    @singleton
+    @provides((orm.session.Session, CONFIG_SECTION))
+    def pm_sessionmaker(self):
+        return self.sessionmaker(self.jndi_name, CONFIG_SECTION)
+
+    @singleton
+    @provides((orm.session.Session, CONFIG_SECTION_MD))
+    def md_sessionmaker(self):
+        return self.sessionmaker(self.jndi_name_md, CONFIG_SECTION_MD)
 
     @provides(KUUIDGen)
     def uuid_maker(self):
@@ -411,7 +420,9 @@ def _mock_i2b2_projects(ds, i, proj_desc):
     '''Mock up i2b2 projects
     '''
     for desc in proj_desc:
-        ds.add(Project(project_id='REDCap' + str(i),
+        if desc == '0':
+            desc = ''
+        ds.add(Project(project_id='REDCap_' + str(i),
                        project_description=desc))
         i += 1
     ds.commit()
@@ -436,7 +447,7 @@ def _mock_i2b2_roles(ds, pids):
     i = 1
     for pid in pids:
         ds.add(UserRole(user_id='john.smith' + str(i),
-                        project_id='REDCap' + pid,
+                        project_id='REDCap_' + pid,
                         user_role_cd='DATA_LDS'))
         ds.commit()
 
