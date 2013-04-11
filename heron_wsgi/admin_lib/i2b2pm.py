@@ -4,10 +4,9 @@
 We use :class:`I2B2PM` to manage user accounts and permissions in the
 I2B2 project management cell via its database.
 
-  >>> pm, dbsrc, rcsm, mdsm, rcp = Mock.make([I2B2PM, (orm.session.Session,
+  >>> pm, dbsrc, rcsm, mdsm = Mock.make([I2B2PM, (orm.session.Session,
   ...     CONFIG_SECTION), (orm.session.Session, redcapdb.CONFIG_SECTION),
-  ...    (orm.session.Session, CONFIG_SECTION_MD),
-  ...    redcap_projects.REDCap_projects])
+  ...    (orm.session.Session, CONFIG_SECTION_MD)])
 
 An object with a reference to this :class:`I2B2PM` can have us
 generate authorization to access I2B2, once it has verified to its
@@ -63,10 +62,9 @@ This updates the `password` column of the `pm_user_data` record::
 = REDCap Projects =
 
 When john.smith has permissions to no redcap data he is directed to blueheron
-  >>> pm1, dbsrc1, rcsm1, mdsm1, rcp1 = Mock.make([I2B2PM, (orm.session.Session,
+  >>> pm1, dbsrc1, rcsm1, mdsm1 = Mock.make([I2B2PM, (orm.session.Session,
   ...     CONFIG_SECTION), (orm.session.Session, redcapdb.CONFIG_SECTION),
-  ...    (orm.session.Session, CONFIG_SECTION_MD),
-  ...    redcap_projects.REDCap_projects])
+  ...    (orm.session.Session, CONFIG_SECTION_MD)])
   >>> pm1.redcap_i2b2_project('john.smith', 'BlueHeron')
   'BlueHeron'
 
@@ -74,10 +72,9 @@ Mocking up permissions for john.smith to 3 redcap projects with pids 1, 9, 11
 Mocking up i2b2 redcap projects REDCap_1, REDCap_2...
 All the projects have NULL project_description
 When john.smith logs in, he is directed to the first project
-  >>> pm2, dbsrc2, rcsm2, mdsm2, rcp2 = Mock.make([I2B2PM, (orm.session.Session,
+  >>> pm2, dbsrc2, rcsm2, mdsm2 = Mock.make([I2B2PM, (orm.session.Session,
   ...     CONFIG_SECTION), (orm.session.Session, redcapdb.CONFIG_SECTION),
-  ...    (orm.session.Session, CONFIG_SECTION_MD),
-  ...    redcap_projects.REDCap_projects])
+  ...    (orm.session.Session, CONFIG_SECTION_MD)])
   >>> _mock_redcap_permissions(pm2._rcsm(), 'john.smith')
   >>> _mock_i2b2_projects(dbsrc2(), 1, ['0', '0', '0', '0'])
   >>> pm2.redcap_i2b2_project('john.smith', 'BlueHeron')
@@ -85,10 +82,9 @@ When john.smith logs in, he is directed to the first project
 
 Mocking up some user roles for i2b2 projects
 When john.smith logs in, he is directed to the project with no users attached
-  >>> pm3, dbsrc3, rcsm3, mdsm3, rcp3 = Mock.make([I2B2PM, (orm.session.Session,
+  >>> pm3, dbsrc3, rcsm3, mdsm3 = Mock.make([I2B2PM, (orm.session.Session,
   ...     CONFIG_SECTION), (orm.session.Session, redcapdb.CONFIG_SECTION),
-  ...    (orm.session.Session, CONFIG_SECTION_MD),
-  ...    redcap_projects.REDCap_projects])
+  ...    (orm.session.Session, CONFIG_SECTION_MD)])
   >>> _mock_redcap_permissions(pm3._rcsm(), 'john.smith')
   >>> _mock_i2b2_projects(dbsrc3(), 1, ['0', '0', '0', '0'])
   >>> _mock_i2b2_roles(dbsrc3(), ['1', '2', '3'])
@@ -97,10 +93,9 @@ When john.smith logs in, he is directed to the project with no users attached
 
 Mocking up an i2b2 project (REDCap_5) which has data from REDCap pids 1,9,11
 When john.smith logs in he is directed to REDCap_5
-  >>> pm4, dbsrc4, rcsm4, mdsm4, rcp4 = Mock.make([I2B2PM, (orm.session.Session,
+  >>> pm4, dbsrc4, rcsm4, mdsm4 = Mock.make([I2B2PM, (orm.session.Session,
   ...     CONFIG_SECTION), (orm.session.Session, redcapdb.CONFIG_SECTION),
-  ...    (orm.session.Session, CONFIG_SECTION_MD),
-  ...    redcap_projects.REDCap_projects])
+  ...    (orm.session.Session, CONFIG_SECTION_MD)])
   >>> _mock_redcap_permissions(pm4._rcsm(), 'john.smith')
   >>> _mock_i2b2_projects(dbsrc4(), 1, ['0', '0', '0', '0'])
   >>> _mock_i2b2_roles(dbsrc4(), ['1', '2', '3'])
@@ -110,10 +105,9 @@ When john.smith logs in he is directed to REDCap_5
 
 Mocking up some user roles for all available i2b2 projects so none is available
 When john.smith logs in he is directed to Blueheron
-  >>> pm4, dbsrc4, rcsm4, mdsm4, rcp4 = Mock.make([I2B2PM, (orm.session.Session,
+  >>> pm4, dbsrc4, rcsm4, mdsm4 = Mock.make([I2B2PM, (orm.session.Session,
   ...     CONFIG_SECTION), (orm.session.Session, redcapdb.CONFIG_SECTION),
-  ...    (orm.session.Session, CONFIG_SECTION_MD),
-  ...    redcap_projects.REDCap_projects])
+  ...    (orm.session.Session, CONFIG_SECTION_MD)])
   >>> _mock_redcap_permissions(pm4._rcsm(), 'john.smith')
   >>> _mock_i2b2_projects(dbsrc4(), 1, ['0', '0', '0', '0'])
   >>> _mock_i2b2_roles(dbsrc4(), ['1', '2', '3'])
@@ -143,6 +137,8 @@ import redcap_projects
 
 CONFIG_SECTION = 'i2b2pm'
 CONFIG_SECTION_MD = 'i2b2md'
+i2b2_rc_pids = ('REDCap_1', 'REDCap_2',
+             'REDCap_3', 'REDCap_4', 'REDCap_5')
 
 KUUIDGen = injector.Key('UUIDGen')
 
@@ -154,11 +150,10 @@ class I2B2PM(ocap_file.Token):
     @inject(datasrc=(orm.session.Session, CONFIG_SECTION),
             redcap_sessionmaker=(orm.session.Session,
                                  redcapdb.CONFIG_SECTION),
-            rcp=redcap_projects.REDCap_projects,
             metadatasm=(orm.session.Session,
                                  CONFIG_SECTION_MD),
             uuidgen=KUUIDGen)
-    def __init__(self, datasrc, redcap_sessionmaker, metadatasm, uuidgen, rcp):
+    def __init__(self, datasrc, redcap_sessionmaker, metadatasm, uuidgen):
         '''
         :param datasrc: a function that returns a sqlalchemy session
         '''
@@ -166,7 +161,6 @@ class I2B2PM(ocap_file.Token):
         self._rcsm = redcap_sessionmaker
         self._mdsm = metadatasm
         self._uuidgen = uuidgen
-        self._rcp = rcp
 
     def account_for(self, agent):
         return I2B2Account(self, agent)
@@ -177,18 +171,35 @@ class I2B2PM(ocap_file.Token):
         rs = self._rcsm()
         rc_user_projs = rs.query(RedcapUser).filter(
                         RedcapUser.username == uid).all()
-
+        project_id_rc = ''
         #Does user have permissions to REDCap projects?
         rc_pids = [row.project_id
                    for row in rc_user_projs]
         if rc_pids:
-            project_id_rc = self._rcp.pick_project(uid, rc_pids,
-                            self._datasrc(),
-                            self._mdsm(), Project, UserRole, UserSession)
-            if project_id_rc:
-                project_id = project_id_rc
+            pmsm = self._datasrc()
+            mdsm = self._mdsm()
 
-        return project_id
+            proj_desc = 'redcap_' + ('_'.join([str(pid)
+                                              for pid in sorted(rc_pids)]))
+            log.debug('proj_desc in pick_project: %s', proj_desc)
+
+            #is there already an existing project with this redcap data?
+            rs = pmsm.query(Project).filter_by(
+                    project_description=proj_desc).order_by(
+                                        Project.project_id.desc()).first()
+            log.debug('rs in pick_project: %s', rs)
+
+            if rs:
+                log.debug('There is an existing project with this data')
+                project_id_rc = rs.project_id
+            else:
+                x = [rs.project_id for rs in pmsm.query(UserRole).all()]
+                empty_pid_list = list(set(i2b2_rc_pids).difference(set(x)))
+                #set(x) will remove duplicates. So no need for distinct.
+                empty_pid_list.sort()
+                project_id_rc = empty_pid_list[0] if empty_pid_list else ''
+
+        return project_id_rc if project_id_rc else project_id
 
     def authz(self, uid, full_name,
               project_id='BlueHeron',
@@ -325,7 +336,7 @@ class UserSession(Base, Audited):
 
     def __repr__(self):
         return "<UserSession(%s, %s)>" % (self.user_id,
-                                           self.expired_date)
+                                          self.expired_date)
 
 
 class Project(Base, Audited):
@@ -386,10 +397,6 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     def md_sessionmaker(self):
         return self.sessionmaker(self.jndi_name_md, CONFIG_SECTION_MD)
 
-    @provides(redcap_projects.REDCap_projects)
-    def redcap_projectmaker(self):
-        return redcap_projects.REDCap_projects()
-
     @provides(KUUIDGen)
     def uuid_maker(self):
         return uuid
@@ -422,10 +429,6 @@ class Mock(injector.Module, rtconfig.MockMixin):
         engine = create_engine('sqlite://')
         Base.metadata.create_all(engine)
         return orm.session.sessionmaker(engine)
-
-    @provides(redcap_projects.REDCap_projects)
-    def redcap_projectmaker(self):
-        return redcap_projects.REDCap_projects()
 
     @provides(KUUIDGen)
     def uuid_maker(self):
