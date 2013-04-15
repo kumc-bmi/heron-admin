@@ -368,7 +368,8 @@ class HeronRecords(Token, Cache):
         self.__dg = dg
 
         def repository_authz(badge):
-            return pm.account_for(badge)
+            #1880
+            return pm.account_for(badge, self._redcap_rights(badge.cn))
         self.__redeem = dg.make_redeem(repository_authz)
 
     def authenticated(self, uid, req):
@@ -480,6 +481,12 @@ class HeronRecords(Token, Cache):
 
         return InvestigatorRequest(badge, self._mc._browser,
                                    self._oversight_rc)
+
+    def _redcap_rights(self, uid):
+        r = redcapdb.redcap_user_rights
+        return self._smaker().execute(r.select(r.c.project_id).\
+                where(r.c.username == uid)).\
+                fetchall()
 
 
 def _saa_query(mail, survey_id):
