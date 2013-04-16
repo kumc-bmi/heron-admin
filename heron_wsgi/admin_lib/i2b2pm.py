@@ -129,7 +129,6 @@ import ocap_file
 import i2b2metadata
 
 CONFIG_SECTION = 'i2b2pm'
-CONFIG_SECTION_MD = 'i2b2md'
 
 KUUIDGen = injector.Key('UUIDGen')
 
@@ -383,10 +382,13 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     def pm_sessionmaker(self):
         return self.sessionmaker(self.jndi_name, CONFIG_SECTION)
 
-    @singleton
     @provides(i2b2metadata.i2b2Metadata)
-    def metadata(self):
-        return i2b2metadata.i2b2Metadata()
+    @inject(md=i2b2metadata.RunTime)
+    def metadata(self, mdsm):
+        import pdb
+        pdb.set_trace()
+        imd = i2b2metadata.i2b2Metadata(mdsm.sessionmaker())
+        return imd
 
     @provides(KUUIDGen)
     def uuid_maker(self):
