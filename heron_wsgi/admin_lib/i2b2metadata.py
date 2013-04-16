@@ -3,16 +3,25 @@
 '''
 
 import logging
-from sqlalchemy import text
+from sqlalchemy import text, orm
+import injector
+from injector import inject, provides, singleton
+
+import rtconfig
+import jndi_util
+import ocap_file
 
 log = logging.getLogger(__name__)
 
+CONFIG_SECTION_MD = 'i2b2pm'
 
-class i2b2Metadata():
-    def __init__(self):
-        pass
 
-    def project_terms(self, i2b2_pid, rc_pids, proj_desc, mdsm):
+class i2b2Metadata(ocap_file.Token):
+    @inject(metadatasm=(orm.session.Session, CONFIG_SECTION_MD))
+    def __init__(self, metadatasm):
+        self.mdsm = metadatasm
+
+    def project_terms(self, i2b2_pid, rc_pids, proj_desc):
         '''create heron_terms and table_access views in the chosen i2b2 project
         '''
         #Example i2b2_pid: REDCap_24
@@ -30,7 +39,7 @@ class i2b2Metadata():
             sql_ht += ''' UNION ALL
     SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
     WHERE C_FULLNAME LIKE \'\\i2b2\\redcap\\''' + rc_pid + '''%\''''
-        mdsm.execute(sql_ht)
+        self.mdsm.execute(sql_ht)
 
     def revoke_access(self, i2b2_pid, default_pid):
         '''Revoke user access to a project that will be re-purposed
@@ -40,16 +49,17 @@ class i2b2Metadata():
         where project_id = :pid''')
         self._ds.execute(sql_revoke, def_pid=default_pid, pid=i2b2_pid)
 
-    def rc_in_i2b2(self, rc_pids, mdsm):
+    def rc_in_i2b2(self, rc_pids):
         '''return true if data from atleast one rc_pid is in HERON
         '''
+        pid_lst = []
         for rc_pid in rc_pids:
             c_fullname = '\\i2b2\\redcap\\' + str(rc_pid) + '\\%'
             sql = text('''select * from blueheronmetadata.redcap_terms
-where c_hlevel = 2 and c_fullname LIKE :cfn''')
-            if mdsm.execute(sql, cfn=c_fullname):
-                return True
-        return False
+where c_hlevel = 2 and c_fullname LIKE :cfn and rownum=1''')
+            if self.mdsm.execute(sql, cfn=c_fullname):
+                pid_lst.append(rc_pid)
+        return pid_lst if pid_lst else False
 
 
 class MockMetadata():
@@ -57,8 +67,27 @@ class MockMetadata():
         self.i = i
 
     def rc_in_i2b2(self, pids):
-        return self.i
+        return  pids[::2]
 
     def project_terms(self, i2b2_pid,
-                         rc_pids, proj_desc, mdsm):
+                         rc_pids, proj_desc):
         return True
+
+
+class RunTime(rtconfig.IniModule):
+    #From i2b2pm.py
+    jndi_name_md = 'i2b2REDCapMgrDS'
+
+    @singleton
+    @provides((orm.session.Session, CONFIG_SECTION_MD))
+    def sessionmaker(self):
+        import os
+        from sqlalchemy import create_engine
+        rt = rtconfig.RuntimeOptions(['jboss_deploy'])
+        rt.load(self._ini, CONFIG_SECTION_MD)
+        jdir = ocap_file.Readable(rt.jboss_deploy, os.path, os.listdir, open)
+        sm = orm.session.sessionmaker()
+        engine = jndi_util.JBossContext(jdir,
+                    create_engine).lookup(self.jndi_name_md)
+        ds = sm(bind=engine)
+        return ds
