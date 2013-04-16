@@ -480,7 +480,7 @@ def _integration_test():  # pragma: nocover
 
     (pm, ) = RunTime.make(None, [I2B2PM])
 
-    print pm.authz(user_id, full_name)
+    print pm.authz(user_id, full_name, 'BlueHeron')
 
 
 def _list_users():  # pragma: nocover
