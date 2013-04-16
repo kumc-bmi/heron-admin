@@ -382,12 +382,11 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     def pm_sessionmaker(self):
         return self.sessionmaker(self.jndi_name, CONFIG_SECTION)
 
+    @singleton
     @provides(i2b2metadata.i2b2Metadata)
-    @inject(md=i2b2metadata.RunTime)
+    @inject(mdsm=(orm.session.Session, i2b2metadata.CONFIG_SECTION_MD))
     def metadata(self, mdsm):
-        import pdb
-        pdb.set_trace()
-        imd = i2b2metadata.i2b2Metadata(mdsm.sessionmaker())
+        imd = i2b2metadata.i2b2Metadata(mdsm)
         return imd
 
     @provides(KUUIDGen)
