@@ -154,7 +154,7 @@ class I2B2PM(ocap_file.Token):
     def i2b2_project(self, rc_pids, default_pid='BlueHeron'):
         '''Select project based on redcap projects user has access to.
         '''
-        pmsm = self._datasrc()
+        pms = self._datasrc()
         log.debug('User has access to REDCap pids: %s', rc_pids)
         rc_pids = self._md.rc_in_i2b2(rc_pids)
         if not rc_pids:
@@ -168,7 +168,7 @@ class I2B2PM(ocap_file.Token):
 
         def ready_project():
             #is there already an existing project with this redcap data?
-            rs = pmsm.query(Project).filter_by(
+            rs = pms.query(Project).filter_by(
                     project_description=proj_desc).order_by(
                                         Project.project_id.desc()).first()
             log.debug('rs in pick_project: %s', rs)
@@ -176,8 +176,8 @@ class I2B2PM(ocap_file.Token):
 
         def empty_project():
             #is there an empty redcap_i project available
-            x = [rs.project_id for rs in pmsm.query(UserRole).all()]
-            i2b2_pids = [rs.project_id for rs in pmsm.query(Project).\
+            x = [rs.project_id for rs in pms.query(UserRole).all()]
+            i2b2_pids = [rs.project_id for rs in pms.query(Project).\
                          filter(Project.project_id.like('REDCap_%')).all()]
             empty_pid_list = list(set(i2b2_pids).difference(set(x)))
             #set(x) will remove duplicates. So no need for distinct.
@@ -185,8 +185,8 @@ class I2B2PM(ocap_file.Token):
 
         def update_desc(pid, proj_desc):
             log.debug('Update description of project %s to %s',
-                      (pid, proj_desc))
-            pmsm.query(Project).filter_by(
+                      pid, proj_desc)
+            pms.query(Project).filter_by(
                     project_id=pid).update({"project_description": proj_desc})
 
         ready_pid = ready_project()
@@ -397,6 +397,10 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     def uuid_maker(self):
         return uuid
 
+    @classmethod
+    def mods(cls, ini):
+        return [i2b2metadata.RunTime(ini), cls(ini)]
+
 
 class Mock(injector.Module, rtconfig.MockMixin):
     '''Mock up I2B2PM dependencies: SQLite datasource
@@ -470,6 +474,7 @@ def _mock_i2b2_roles(ds, pids):
 
 
 def _integration_test():  # pragma: nocover
+    #python i2b2pm.py badagarla 12,11,53 'Bhargav A'
     import sys
 
     logging.basicConfig(level=logging.DEBUG)
@@ -480,10 +485,10 @@ def _integration_test():  # pragma: nocover
         _list_users()
         return
 
-    user_id, full_name = sys.argv[1:3]
+    user_id, rc_pids, full_name = sys.argv[1:4]
 
     (pm, ) = RunTime.make(None, [I2B2PM])
-    print pm.i2b2_project([1001, 1002, 1003])
+    print pm.i2b2_project(rc_pids.split(','))
     print pm.authz(user_id, full_name, 'BlueHeron')
 
 
