@@ -155,10 +155,12 @@ class I2B2PM(ocap_file.Token):
         '''Select project based on redcap projects user has access to.
         '''
         pmsm = self._datasrc()
+        log.debug('User has access to REDCap pids: %s', rc_pids)
         rc_pids = self._md.rc_in_i2b2(rc_pids)
         if not rc_pids:
             log.debug('User REDCap projects are not in HERON')
             return default_pid
+        log.debug('REDCap pids that are in HERON: %s', rc_pids)
 
         proj_desc = 'redcap_' + ('_'.join([str(pid)
                                               for pid in sorted(rc_pids)]))
@@ -182,6 +184,8 @@ class I2B2PM(ocap_file.Token):
             return sorted(empty_pid_list)[0] if empty_pid_list else False
 
         def update_desc(pid, proj_desc):
+            log.debug('Update description of project %s to %s',
+                      (pid, proj_desc))
             pmsm.query(Project).filter_by(
                     project_id=pid).update({"project_description": proj_desc})
 
@@ -194,7 +198,7 @@ class I2B2PM(ocap_file.Token):
             update_desc(pid, proj_desc)
             return pid
         elif empty_pid:
-            self._md.project_terms(empty_pid, rc_pids, proj_desc)
+            self._md.project_terms(empty_pid, rc_pids)
             update_desc(empty_pid, proj_desc)
             return empty_pid
         else:
@@ -479,7 +483,7 @@ def _integration_test():  # pragma: nocover
     user_id, full_name = sys.argv[1:3]
 
     (pm, ) = RunTime.make(None, [I2B2PM])
-
+    print pm.i2b2_project([1001, 1002, 1003])
     print pm.authz(user_id, full_name, 'BlueHeron')
 
 

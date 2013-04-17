@@ -19,9 +19,9 @@ CONFIG_SECTION_MD = 'i2b2pm'
 class i2b2Metadata(ocap_file.Token):
     @inject(metadatasm=(orm.session.Session, CONFIG_SECTION_MD))
     def __init__(self, metadatasm):
-        self.mdsm = metadatasm
+        self.mdsm = metadatasm()
 
-    def project_terms(self, i2b2_pid, rc_pids, proj_desc):
+    def project_terms(self, i2b2_pid, rc_pids):
         '''create heron_terms and table_access views in the chosen i2b2 project
         '''
         #Example i2b2_pid: REDCap_24
@@ -38,7 +38,7 @@ class i2b2Metadata(ocap_file.Token):
         for rc_pid in rc_pids:
             sql_ht += ''' UNION ALL
     SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
-    WHERE C_FULLNAME LIKE \'\\i2b2\\redcap\\''' + rc_pid + '''%\''''
+    WHERE C_FULLNAME LIKE \'\\i2b2\\redcap\\''' + str(rc_pid) + '''%\''''
         self.mdsm.execute(sql_ht)
 
     def revoke_access(self, i2b2_pid, default_pid):
@@ -57,7 +57,8 @@ class i2b2Metadata(ocap_file.Token):
             c_fullname = '\\i2b2\\redcap\\' + str(rc_pid) + '\\%'
             sql = text('''select * from blueheronmetadata.redcap_terms
 where c_hlevel = 2 and c_fullname LIKE :cfn and rownum=1''')
-            if self.mdsm.execute(sql, cfn=c_fullname):
+            if self.mdsm.execute(sql, params=dict(cfn=c_fullname)):
+                log.debug('Data from REDCap pid: %s is in HERON', rc_pid)
                 pid_lst.append(rc_pid)
         return pid_lst if pid_lst else False
 
@@ -70,7 +71,7 @@ class MockMetadata():
         return  pids[::2]
 
     def project_terms(self, i2b2_pid,
-                         rc_pids, proj_desc):
+                         rc_pids):
         return True
 
 
