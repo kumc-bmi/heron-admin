@@ -77,12 +77,12 @@ When john.smith logs in, he is directed to the first project
   u'REDCap_1'
 
 john.smith has permissions to 3 redcap projects with pids 1, 11, 91
-Mocking up some user roles for i2b2 projects
+Mocking up some usage for i2b2 projects
 When john.smith logs in, he is directed to the project with no users attached
   >>> pm3, dbsrc3, md3  = Mock.make([I2B2PM, (orm.session.Session,
   ...     CONFIG_SECTION), i2b2metadata.I2B2Metadata])
   >>> _mock_i2b2_projects(dbsrc3(), 1, ['0', '0', '0', '0'])
-  >>> _mock_i2b2_roles(dbsrc3(), ['1', '2', '3'])
+  >>> _mock_i2b2_proj_usage(dbsrc3(), ['1', '2', '3'])
   >>> pm3.i2b2_project([1, 11, 91])
   u'REDCap_4'
 
@@ -93,19 +93,19 @@ When john.smith logs in he is directed to REDCap_5
   >>> pm4, dbsrc4, md4 = Mock.make([I2B2PM, (orm.session.Session,
   ...     CONFIG_SECTION), i2b2metadata.I2B2Metadata])
   >>> _mock_i2b2_projects(dbsrc4(), 1, ['0', '0', '0', '0'])
-  >>> _mock_i2b2_roles(dbsrc4(), ['1', '2', '3'])
+  >>> _mock_i2b2_proj_usage(dbsrc4(), ['1', '2', '3'])
   >>> _mock_i2b2_projects(dbsrc4(), 5, ['redcap_1_91'])
   >>> pm4.i2b2_project([1, 11, 91])
   u'REDCap_5'
 
 john.smith has permissions to 3 redcap projects with pids 1, 11, 91
-Mocking up some user roles for all available i2b2 projects so none is available
+Mocking up usage for all available i2b2 projects so none is available
 When john.smith logs in he is directed to Blueheron
   >>> pm5, dbsrc5, md5 = Mock.make([I2B2PM, (orm.session.Session,
   ...     CONFIG_SECTION), i2b2metadata.I2B2Metadata])
   >>> _mock_i2b2_projects(dbsrc5(), 1, ['0', '0', '0', '0'])
-  >>> _mock_i2b2_roles(dbsrc5(), ['1', '2', '3'])
-  >>> _mock_i2b2_roles(dbsrc5(), ['4', '5'])
+  >>> _mock_i2b2_proj_usage(dbsrc5(), ['1', '2', '3'])
+  >>> _mock_i2b2_proj_usage(dbsrc5(), ['4', '5'])
   >>> pm5.i2b2_project([1, 11, 91])
   'BlueHeron'
 
@@ -176,12 +176,11 @@ class I2B2PM(ocap_file.Token):
 
         def empty_project():
             #is there an empty redcap_i project available
-            x = [rs.project_id for rs in pms.query(UserRole).all()]
-            i2b2_pids = [rs.project_id for rs in pms.query(Project).\
-                         filter(Project.project_id.like('REDCap_%')).all()]
-            empty_pid_list = list(set(i2b2_pids).difference(set(x)))
+            pid_list = [proj.project_id for proj in pms.query(Project).\
+                        filter(Project.project_description == None).\
+                        filter(Project.project_id.like('REDCap_%')).all()]
             #set(x) will remove duplicates. So no need for distinct.
-            return sorted(empty_pid_list)[0] if empty_pid_list else False
+            return sorted(pid_list)[0] if pid_list else False
 
         def update_desc(pid, proj_desc):
             log.debug('Update description of project %s to %s',
@@ -442,7 +441,7 @@ def _mock_i2b2_projects(ds, i, proj_desc):
     '''
     for desc in proj_desc:
         if desc == '0':
-            desc = ''
+            desc = None
         ds.add(Project(project_id='REDCap_' + str(i),
                        project_description=desc))
         i += 1
@@ -462,14 +461,14 @@ def _mock_i2b2_usage(ds):
     ds.commit()
 
 
-def _mock_i2b2_roles(ds, pids):
+def _mock_i2b2_proj_usage(ds, pids):
     '''Mock up user permissions to i2b2 projects
     '''
     i = 1
     for pid in pids:
-        ds.add(UserRole(user_id='john.smith' + str(i),
-                        project_id='REDCap_' + pid,
-                        user_role_cd='DATA_LDS'))
+        x = ds.query(Project).filter_by(project_id='REDCap_' + pid).\
+            update({"project_description": 'redcap_' + str(i)})
+        i += 1
         ds.commit()
 
 

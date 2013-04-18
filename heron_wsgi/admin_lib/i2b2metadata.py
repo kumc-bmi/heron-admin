@@ -33,38 +33,36 @@ class I2B2Metadata(ocap_file.Token):
         pid = i2b2_pid.split('_')[1]
         #http://stackoverflow.com/questions/2179493/
         #... adding-backslashes-without-escaping-python
+
+        #TODO: Separate redcap_terms from heron_terms
+        #... and insert only redcap_terms
+        sql_dl = '''DELETE FROM
+        REDCAPMETADATA''' + pid + '''.HERON_TERMS'''
+        mds.execute(sql_dl)
+
+        sql_ht = '''INSERT INTO
+    REDCAPMETADATA''' + pid + '''.HERON_TERMS
+    SELECT * FROM BLUEHERONMETADATA.HERON_TERMS
+    UNION ALL
+    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+    where C_FULLNAME='\\i2b2\\redcap\\\''''
+        for rc_pid in rc_pids:
+            sql_ht += ''' UNION ALL
+    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+    WHERE C_FULLNAME LIKE \'\\i2b2\\redcap\\''' + str(rc_pid) + '''%\''''
+        mds.execute(sql_ht)
         try:
-            sql_dl = '''TRUNCATE TABLE
-            REDCAPMETADATA''' + pid + '''.HERON_TERMS'''
-            mds.execute(sql_dl)
-
-            sql_drp = '''DROP TABLE
-            REDCAPMETADATA''' + pid + '''.HERON_TERMS'''
-            mds.execute(sql_drp)
-
-            sql_ht = '''CREATE TABLE
-        REDCAPMETADATA''' + pid + '''.HERON_TERMS AS
-        SELECT * FROM BLUEHERONMETADATA.HERON_TERMS
-        UNION ALL
-        SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
-        where C_FULLNAME='\\i2b2\\redcap\\\''''
-            for rc_pid in rc_pids:
-                sql_ht += ''' UNION ALL
-        SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
-        WHERE C_FULLNAME LIKE \'\\i2b2\\redcap\\''' + str(rc_pid) + '''%\''''
-            mds.execute(sql_ht)
-
             sql_im = '''CREATE INDEX
         REDCAPMETADATA1.META_FULLNAME_REDCAP_IDX
         ON REDCAPMETADATA1.HERON_TERMS (C_FULLNAME)
         TABLESPACE bheron_indexes'''
-            mds.execute(sql_im)
+            #mds.execute(sql_im)
 
             sql_ia = '''CREATE INDEX
         REDCAPMETADATA1.META_APPLIED_PATH_REDCAP_IDX
         ON REDCAPMETADATA1.HERON_TERMS (M_APPLIED_PATH)
         TABLESPACE bheron_indexes'''
-            mds.execute(sql_ia)
+            #mds.execute(sql_ia)
 
             mds.commit
             return True
