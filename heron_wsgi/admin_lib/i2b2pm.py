@@ -188,6 +188,7 @@ class I2B2PM(ocap_file.Token):
                       pid, proj_desc)
             pms.query(Project).filter_by(
                     project_id=pid).update({"project_description": proj_desc})
+            pms.commit()
 
         ready_pid = ready_project()
         empty_pid = empty_project()
@@ -488,8 +489,9 @@ def _integration_test():  # pragma: nocover
     user_id, rc_pids, full_name = sys.argv[1:4]
 
     (pm, ) = RunTime.make(None, [I2B2PM])
-    print pm.i2b2_project(rc_pids.split(','))
-    print pm.authz(user_id, full_name, 'BlueHeron')
+    t = pm.i2b2_project(rc_pids.split(','))
+    print "THE PROJECT THAT WAS PICKED: %s" % (t)
+    print pm.authz(user_id, full_name, t)
 
 
 def _list_users():  # pragma: nocover
