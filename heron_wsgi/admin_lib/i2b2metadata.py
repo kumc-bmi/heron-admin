@@ -33,19 +33,43 @@ class I2B2Metadata(ocap_file.Token):
         pid = i2b2_pid.split('_')[1]
         #http://stackoverflow.com/questions/2179493/
         #... adding-backslashes-without-escaping-python
-        sql_ht = '''CREATE OR REPLACE VIEW
-    REDCAPMETADATA''' + pid + '''.HERON_TERMS AS
-    SELECT * FROM BLUEHERONMETADATA.HERON_TERMS
-    UNION ALL
-    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
-    where C_FULLNAME='\\i2b2\\redcap\\\''''
+        try:
+            sql_dl = '''TRUNCATE TABLE
+            REDCAPMETADATA''' + pid + '''.HERON_TERMS'''
+            mds.execute(sql_dl)
 
-        for rc_pid in rc_pids:
-            sql_ht += ''' UNION ALL
-    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
-    WHERE C_FULLNAME LIKE \'\\i2b2\\redcap\\''' + str(rc_pid) + '''%\''''
+            sql_drp = '''DROP TABLE
+            REDCAPMETADATA''' + pid + '''.HERON_TERMS'''
+            mds.execute(sql_drp)
 
-        mds.execute(sql_ht)
+            sql_ht = '''CREATE TABLE
+        REDCAPMETADATA''' + pid + '''.HERON_TERMS AS
+        SELECT * FROM BLUEHERONMETADATA.HERON_TERMS
+        UNION ALL
+        SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+        where C_FULLNAME='\\i2b2\\redcap\\\''''
+            for rc_pid in rc_pids:
+                sql_ht += ''' UNION ALL
+        SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+        WHERE C_FULLNAME LIKE \'\\i2b2\\redcap\\''' + str(rc_pid) + '''%\''''
+            mds.execute(sql_ht)
+
+            sql_im = '''CREATE INDEX
+        REDCAPMETADATA1.META_FULLNAME_REDCAP_IDX
+        ON REDCAPMETADATA1.HERON_TERMS (C_FULLNAME)
+        TABLESPACE bheron_indexes'''
+            mds.execute(sql_im)
+
+            sql_ia = '''CREATE INDEX
+        REDCAPMETADATA1.META_APPLIED_PATH_REDCAP_IDX
+        ON REDCAPMETADATA1.HERON_TERMS (M_APPLIED_PATH)
+        TABLESPACE bheron_indexes'''
+            mds.execute(sql_ia)
+
+            mds.commit
+            return True
+        except:
+            return False
 
     def revoke_access(self, i2b2_pid, default_pid):
         '''Revoke user access to a project that will be re-purposed.
