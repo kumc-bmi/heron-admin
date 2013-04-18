@@ -5,7 +5,7 @@ We use :class:`I2B2PM` to manage user accounts and permissions in the
 I2B2 project management cell via its database.
 
   >>> pm, dbsrc, md = Mock.make([I2B2PM, (orm.session.Session,
-  ...     CONFIG_SECTION), i2b2metadata.i2b2Metadata])
+  ...     CONFIG_SECTION), i2b2metadata.I2B2Metadata])
 
 An object with a reference to this :class:`I2B2PM` can have us
 generate authorization to access I2B2, once it has verified to its
@@ -62,7 +62,7 @@ This updates the `password` column of the `pm_user_data` record::
 
 When john.smith has permissions to no redcap data he is directed to blueheron
   >>> pm1, dbsrc1, md1 = Mock.make([I2B2PM, (orm.session.Session,
-  ...     CONFIG_SECTION), i2b2metadata.i2b2Metadata])
+  ...     CONFIG_SECTION), i2b2metadata.I2B2Metadata])
   >>> pm1.i2b2_project([])
   'BlueHeron'
 
@@ -71,7 +71,7 @@ Mocking up i2b2 redcap projects REDCap_1, REDCap_2...
 All the projects have NULL project_description
 When john.smith logs in, he is directed to the first project
   >>> pm2, dbsrc2, md2 = Mock.make([I2B2PM, (orm.session.Session,
-  ...     CONFIG_SECTION), i2b2metadata.i2b2Metadata])
+  ...     CONFIG_SECTION), i2b2metadata.I2B2Metadata])
   >>> _mock_i2b2_projects(dbsrc2(), 1, ['0', '0', '0', '0'])
   >>> pm2.i2b2_project([1, 11, 91])
   u'REDCap_1'
@@ -80,7 +80,7 @@ john.smith has permissions to 3 redcap projects with pids 1, 11, 91
 Mocking up some user roles for i2b2 projects
 When john.smith logs in, he is directed to the project with no users attached
   >>> pm3, dbsrc3, md3  = Mock.make([I2B2PM, (orm.session.Session,
-  ...     CONFIG_SECTION), i2b2metadata.i2b2Metadata])
+  ...     CONFIG_SECTION), i2b2metadata.I2B2Metadata])
   >>> _mock_i2b2_projects(dbsrc3(), 1, ['0', '0', '0', '0'])
   >>> _mock_i2b2_roles(dbsrc3(), ['1', '2', '3'])
   >>> pm3.i2b2_project([1, 11, 91])
@@ -91,7 +91,7 @@ But data from on pids 1, 91 is in HERON
 Mocking up an i2b2 project (REDCap_5) which has data from REDCap pids 1,91
 When john.smith logs in he is directed to REDCap_5
   >>> pm4, dbsrc4, md4 = Mock.make([I2B2PM, (orm.session.Session,
-  ...     CONFIG_SECTION), i2b2metadata.i2b2Metadata])
+  ...     CONFIG_SECTION), i2b2metadata.I2B2Metadata])
   >>> _mock_i2b2_projects(dbsrc4(), 1, ['0', '0', '0', '0'])
   >>> _mock_i2b2_roles(dbsrc4(), ['1', '2', '3'])
   >>> _mock_i2b2_projects(dbsrc4(), 5, ['redcap_1_91'])
@@ -102,7 +102,7 @@ john.smith has permissions to 3 redcap projects with pids 1, 11, 91
 Mocking up some user roles for all available i2b2 projects so none is available
 When john.smith logs in he is directed to Blueheron
   >>> pm5, dbsrc5, md5 = Mock.make([I2B2PM, (orm.session.Session,
-  ...     CONFIG_SECTION), i2b2metadata.i2b2Metadata])
+  ...     CONFIG_SECTION), i2b2metadata.I2B2Metadata])
   >>> _mock_i2b2_projects(dbsrc5(), 1, ['0', '0', '0', '0'])
   >>> _mock_i2b2_roles(dbsrc5(), ['1', '2', '3'])
   >>> _mock_i2b2_roles(dbsrc5(), ['4', '5'])
@@ -138,7 +138,7 @@ log = logging.getLogger(__name__)
 
 class I2B2PM(ocap_file.Token):
     @inject(datasrc=(orm.session.Session, CONFIG_SECTION),
-            i2b2md=i2b2metadata.i2b2Metadata,
+            i2b2md=i2b2metadata.I2B2Metadata,
             uuidgen=KUUIDGen)
     def __init__(self, datasrc, i2b2md, uuidgen):
         '''
@@ -152,7 +152,7 @@ class I2B2PM(ocap_file.Token):
         return I2B2Account(self, agent, rc_pids)
 
     def i2b2_project(self, rc_pids, default_pid='BlueHeron'):
-        '''Select project based on redcap projects user has access to.
+        '''select project based on redcap projects user has access to.
         '''
         pms = self._datasrc()
         log.debug('User has access to REDCap pids: %s', rc_pids)
@@ -387,10 +387,10 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         return self.sessionmaker(self.jndi_name, CONFIG_SECTION)
 
     @singleton
-    @provides(i2b2metadata.i2b2Metadata)
+    @provides(i2b2metadata.I2B2Metadata)
     @inject(mdsm=(orm.session.Session, i2b2metadata.CONFIG_SECTION_MD))
     def metadata(self, mdsm):
-        imd = i2b2metadata.i2b2Metadata(mdsm)
+        imd = i2b2metadata.I2B2Metadata(mdsm)
         return imd
 
     @provides(KUUIDGen)
@@ -414,7 +414,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
         Base.metadata.create_all(engine)
         return orm.session.sessionmaker(engine)
 
-    @provides(i2b2metadata.i2b2Metadata)
+    @provides(i2b2metadata.I2B2Metadata)
     def metadata(self):
             return i2b2metadata.MockMetadata(1)
 

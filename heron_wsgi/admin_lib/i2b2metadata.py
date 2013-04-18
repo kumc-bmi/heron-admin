@@ -1,10 +1,9 @@
-'''i2b2metadata -- I2B2 project REDCap terms
+'''i2b2metadata -- Metadata for I2B2 REDCap projects
 -------------------------------------------------------------
 '''
 
 import logging
 from sqlalchemy import text, orm
-import injector
 from injector import inject, provides, singleton
 
 import rtconfig
@@ -16,16 +15,19 @@ log = logging.getLogger(__name__)
 CONFIG_SECTION_MD = 'i2b2md'
 
 
-class i2b2Metadata(ocap_file.Token):
+class I2B2Metadata(ocap_file.Token):
     @inject(metadatasm=(orm.session.Session, CONFIG_SECTION_MD))
     def __init__(self, metadatasm):
+        '''
+        :param metadatasm: a function that returns an sqlalchemy session
+        '''
         self._mds = metadatasm
 
     def project_terms(self, i2b2_pid, rc_pids):
-        '''create heron_terms and table_access views in the chosen i2b2 project
+        '''Create heron_terms view in the chosen i2b2 project.
         '''
-        log.debug('Creating heron_terms for %s with redcap pids: %s'
-                  , i2b2_pid, str(rc_pids))
+        log.debug('Creating heron_terms for %s with redcap pids: %s',
+                  i2b2_pid, str(rc_pids))
         mds = self._mds()
         #Example i2b2_pid: REDCap_24
         pid = i2b2_pid.split('_')[1]
@@ -37,14 +39,17 @@ class i2b2Metadata(ocap_file.Token):
     UNION ALL
     SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
     where C_FULLNAME='\\i2b2\\redcap\\\''''
+
         for rc_pid in rc_pids:
             sql_ht += ''' UNION ALL
     SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
     WHERE C_FULLNAME LIKE \'\\i2b2\\redcap\\''' + str(rc_pid) + '''%\''''
+
         mds.execute(sql_ht)
 
     def revoke_access(self, i2b2_pid, default_pid):
-        '''Revoke user access to a project that will be re-purposed
+        '''Revoke user access to a project that will be re-purposed.
+        #TODO: Retire this
         '''
         mds = self._mds()
         sql_revoke = text('''update i2b2pm.pm_project_user_roles
@@ -53,7 +58,7 @@ class i2b2Metadata(ocap_file.Token):
         mds.execute(sql_revoke, def_pid=default_pid, pid=i2b2_pid)
 
     def rc_in_i2b2(self, rc_pids):
-        '''return true if data from atleast one rc_pid is in HERON
+        '''Return pids of REDCap projects that have been loaded into HERON.
         '''
         mds = self._mds()
         pid_lst = []
@@ -68,6 +73,8 @@ where c_hlevel = 2 and c_fullname LIKE :cfn and rownum=1''')
 
 
 class MockMetadata():
+    '''Mock up I2B2Metadata.
+    '''
     def __init__(self, i):
         self.i = i
 
@@ -106,9 +113,8 @@ class RunTime(rtconfig.IniModule):
         return self.sessionmaker(self.jndi_name_md, CONFIG_SECTION_MD)
 
 
-def _integration_test():  # pragma: nocover
+def _integration_test():
     #e.g. python i2b2metadata.py REDCap_1 10,11,53,55
-
     import sys
 
     logging.basicConfig(level=logging.DEBUG)
@@ -117,10 +123,10 @@ def _integration_test():  # pragma: nocover
 
     i2b2_pid, rc_pids = sys.argv[1:3]
 
-    (md, ) = RunTime.make(None, [i2b2Metadata])
+    (md, ) = RunTime.make(None, [I2B2Metadata])
     t = md.rc_in_i2b2(rc_pids.split(','))
     print md.project_terms(i2b2_pid, t)
 
 
-if __name__ == '__main__':  # pragma: nocover
+if __name__ == '__main__':
     _integration_test()
