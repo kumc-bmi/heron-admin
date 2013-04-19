@@ -167,7 +167,9 @@ class I2B2PM(ocap_file.Token):
         log.debug('proj_desc in pick_project: %s', proj_desc)
 
         def ready_project():
-            #is there already an existing project with this redcap data?
+            '''Is there already an existing project with this redcap data?
+            '''
+            # Note first() returns None if there is no such project.
             rs = pms.query(Project).filter_by(
                     project_description=proj_desc).order_by(
                                         Project.project_id.desc()).first()
@@ -175,33 +177,29 @@ class I2B2PM(ocap_file.Token):
             return rs
 
         def empty_project():
-            #is there an empty redcap_i project available
-            pid_list = [proj.project_id for proj in pms.query(Project).\
+            '''Find a REDCap project whose project_description has
+            not been set.
+            '''
+            return pms.query(Project).\
                         filter(Project.project_description == None).\
-                        filter(Project.project_id.like('REDCap_%')).all()]
-            #set(x) will remove duplicates. So no need for distinct.
-            return sorted(pid_list)[0] if pid_list else False
+                        filter(Project.project_id.like('REDCap_%')).first()
 
-        def update_desc(pid, proj_desc):
+        def update_desc(project, proj_desc):
             log.debug('Update description of project %s to %s',
-                      pid, proj_desc)
-            pms.query(Project).filter_by(
-                    project_id=pid).update({"project_description": proj_desc})
+                      project.project_id, proj_desc)
+            project.project_description = proj_desc
             pms.commit()
+            return project.project_id
 
-        ready_pid = ready_project()
-        empty_pid = empty_project()
-
-        #A more elegant way to write this?
-        if ready_pid:
-            pid = ready_pid.project_id
-            update_desc(pid, proj_desc)
-            return pid
-        elif empty_pid and self._md.project_terms(empty_pid, rc_pids):
-            update_desc(empty_pid, proj_desc)
-            return empty_pid
+        ready = ready_project()
+        if ready:
+            return update_desc(ready, proj_desc)
         else:
-            return default_pid
+            empty = empty_project()
+            if empty and self._md.project_terms(empty.project_id, rc_pids):
+                return update_desc(empty, proj_desc)
+
+        return default_pid
 
     def authz(self, uid, full_name,
               project_id,
