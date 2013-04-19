@@ -21,14 +21,14 @@ class I2B2Metadata(ocap_file.Token):
         '''
         :param metadatasm: a function that returns an sqlalchemy session
         '''
-        self._mds = metadatasm
+        self._mdsm = metadatasm
 
     def project_terms(self, i2b2_pid, rc_pids):
         '''Create heron_terms view in the chosen i2b2 project.
         '''
         log.debug('Creating heron_terms for %s with redcap pids: %s',
                   i2b2_pid, str(rc_pids))
-        mds = self._mds()
+        mds = self._mdsm()
         #Example i2b2_pid: REDCap_24
         pid = i2b2_pid.split('_')[1]
         #http://stackoverflow.com/questions/2179493/
@@ -36,22 +36,23 @@ class I2B2Metadata(ocap_file.Token):
 
         #TODO: Separate redcap_terms from heron_terms
         #... and insert only redcap_terms
-        sql_dl = '''DELETE FROM
-        REDCAPMETADATA''' + pid + '''.HERON_TERMS'''
-        mds.execute(sql_dl)
-
-        sql_ht = '''INSERT INTO
-    REDCAPMETADATA''' + pid + '''.HERON_TERMS
-    SELECT * FROM BLUEHERONMETADATA.HERON_TERMS
-    UNION ALL
-    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
-    where C_FULLNAME='\\i2b2\\redcap\\\''''
-        for rc_pid in rc_pids:
-            sql_ht += ''' UNION ALL
-    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
-    WHERE C_FULLNAME LIKE \'\\i2b2\\redcap\\''' + str(rc_pid) + '''%\''''
-        mds.execute(sql_ht)
         try:
+            sql_dl = '''DELETE FROM
+            REDCAPMETADATA''' + pid + '''.HERON_TERMS'''
+            mds.execute(sql_dl)
+
+            sql_ht = '''INSERT INTO
+        REDCAPMETADATA''' + pid + '''.HERON_TERMS
+        SELECT * FROM BLUEHERONMETADATA.HERON_TERMS
+        UNION ALL
+        SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+        where C_FULLNAME='\\i2b2\\redcap\\\''''
+            for rc_pid in rc_pids:
+                sql_ht += ''' UNION ALL
+        SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+        WHERE C_FULLNAME LIKE \'\\i2b2\\redcap\\''' + str(rc_pid) + '''%\''''
+            mds.execute(sql_ht)
+
             sql_im = '''CREATE INDEX
         REDCAPMETADATA1.META_FULLNAME_REDCAP_IDX
         ON REDCAPMETADATA1.HERON_TERMS (C_FULLNAME)
@@ -73,7 +74,7 @@ class I2B2Metadata(ocap_file.Token):
         '''Revoke user access to a project that will be re-purposed.
         #TODO: Retire this
         '''
-        mds = self._mds()
+        mds = self._mdsm()
         sql_revoke = text('''update i2b2pm.pm_project_user_roles
         set project_id = :def_pid
         where project_id = :pid''')
@@ -82,7 +83,7 @@ class I2B2Metadata(ocap_file.Token):
     def rc_in_i2b2(self, rc_pids):
         '''Return pids of REDCap projects that have been loaded into HERON.
         '''
-        mds = self._mds()
+        mds = self._mdsm()
         pid_lst = []
         for rc_pid in rc_pids:
             c_fullname = '\\i2b2\\redcap\\' + str(rc_pid) + '\\%'
