@@ -197,6 +197,7 @@ class I2B2PM(ocap_file.Token):
         else:
             empty = empty_project()
             if empty and self._md.project_terms(empty.project_id, rc_pids):
+                log.debug('Terms have been built for %s', empty.project_id)
                 return update_desc(empty, proj_desc)
 
         return default_pid
