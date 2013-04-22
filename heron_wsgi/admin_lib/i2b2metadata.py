@@ -1,5 +1,5 @@
 '''i2b2metadata -- Metadata for I2B2 REDCap projects
--------------------------------------------------------------
+----------------------------------------------------
 '''
 
 import logging
@@ -29,60 +29,91 @@ class I2B2Metadata(ocap_file.Token):
         log.debug('Creating heron_terms for %s with redcap pids: %s',
                   i2b2_pid, str(rc_pids))
         mds = self._mdsm()
-        #Example i2b2_pid: REDCap_24
-        pid = i2b2_pid.split('_')[1]
+
+        pid, schema = schema_for(i2b2_pid)
         #http://stackoverflow.com/questions/2179493/
         #... adding-backslashes-without-escaping-python
 
         #TODO: Separate redcap_terms from heron_terms
         #... and insert only redcap_terms
-        try:
-            sql_dl = '''DELETE FROM
-            REDCAPMETADATA''' + pid + '''.HERON_TERMS'''
-            mds.execute(sql_dl)
+        mds.execute('''DELETE FROM %s.HERON_TERMS''' % schema)
 
-            sql_ht = '''INSERT INTO
-        REDCAPMETADATA''' + pid + '''.HERON_TERMS
-        SELECT * FROM BLUEHERONMETADATA.HERON_TERMS
-        UNION ALL
-        SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
-        where C_FULLNAME='\\i2b2\\redcap\\\''''
-            for rc_pid in rc_pids:
-                sql_ht += ''' UNION ALL
-        SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
-        WHERE C_FULLNAME LIKE \'\\i2b2\\redcap\\''' + str(rc_pid) + '''%\''''
-            mds.execute(sql_ht)
+        insert_cmd, params = insert_for(pid, schema, rc_pids)
+        mds.execute(insert_cmd, params)
 
-            sql_im = '''CREATE INDEX
-        REDCAPMETADATA1.META_FULLNAME_REDCAP_IDX
-        ON REDCAPMETADATA1.HERON_TERMS (C_FULLNAME)
-        TABLESPACE bheron_indexes'''
-            #mds.execute(sql_im)
-
-            sql_ia = '''CREATE INDEX
-        REDCAPMETADATA1.META_APPLIED_PATH_REDCAP_IDX
-        ON REDCAPMETADATA1.HERON_TERMS (M_APPLIED_PATH)
-        TABLESPACE bheron_indexes'''
-            #mds.execute(sql_ia)
-
-            mds.commit
-            return True
-        except:
-            return False
+        mds.commit()
 
     def rc_in_i2b2(self, rc_pids):
-        '''Return pids of REDCap projects that have been loaded into HERON.
-        '''
+        """Find out which REDCap projects are in HERON.
+
+        :return: subset of rc_pids that have corresponding terms
+                 in blueheronmetadata.
+        """
         mds = self._mdsm()
-        pid_lst = []
-        for rc_pid in rc_pids:
-            c_fullname = '\\i2b2\\redcap\\' + str(rc_pid) + '\\%'
-            sql = text('''select * from blueheronmetadata.redcap_terms
-where c_hlevel = 2 and c_fullname LIKE :cfn and rownum=1''')
-            if mds.execute(sql, params=dict(cfn=c_fullname)).fetchall():
-                log.debug('Data from REDCap pid: %s is in HERON', rc_pid)
-                pid_lst.append(rc_pid)
-        return pid_lst if pid_lst else False
+
+        terms = mds.execute(text(r"""select c_fullname
+        from blueheronmetadata.redcap_terms
+        where c_hlevel = 2
+        and c_fullname LIKE
+        '\i2b2\redcap\%\'
+        """)).fetchall()
+
+        return [t.c_fullname for t in terms
+                if t.c_fullname in rc_pids]
+
+
+def insert_for(pid, schema, rc_pids):
+    r"""
+    >>> sql, params = insert_for('24', 'REDCAPMETADATA24', [])
+    >>> params
+    {}
+    >>> print sql  # doctest: +NORMALIZE_WHITESPACE
+    INSERT INTO REDCAPMETADATA24.HERON_TERMS
+    SELECT * FROM BLUEHERONMETADATA.HERON_TERMS UNION ALL
+    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+        where C_FULLNAME='\i2b2\redcap\'
+
+    >>> sql, params = insert_for('24', 'REDCAPMETADATA24', [10, 20, 30])
+    >>> sorted(params.items())
+    [(':pid0', 10), (':pid1', 20), (':pid2', 30)]
+    >>> print sql  # doctest: +NORMALIZE_WHITESPACE
+    INSERT INTO REDCAPMETADATA24.HERON_TERMS
+    SELECT * FROM BLUEHERONMETADATA.HERON_TERMS UNION ALL
+    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+        where C_FULLNAME='\i2b2\redcap\'  UNION ALL
+    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+            WHERE C_FULLNAME LIKE '\i2b2\redcap\' || :pid2 || \%\  UNION ALL
+    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+            WHERE C_FULLNAME LIKE '\i2b2\redcap\' || :pid0 || \%\  UNION ALL
+    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+            WHERE C_FULLNAME LIKE '\i2b2\redcap\' || :pid1 || \%\
+    """
+
+    params = dict([(':pid%d' % ix, pid)
+                   for (ix, pid) in enumerate(rc_pids)])
+    clauses = [
+        r"""SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+        WHERE C_FULLNAME LIKE '\i2b2\redcap\' || %s || \%%\ """ % pname
+        for pname in params.keys()]
+
+    sql = ("INSERT INTO %s.HERON_TERMS\n" % schema) + ' UNION ALL\n'.join([
+    r"""SELECT * FROM BLUEHERONMETADATA.HERON_TERMS""",
+    r"""SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+    where C_FULLNAME='\i2b2\redcap\' """] + clauses)
+
+    return sql, params
+
+
+def schema_for(i2b2_pid):
+    '''Build schema name from specially formatted HERON project ID.
+
+    See also create_redcap_projects task in heron_build.py
+
+    >>> schema_for("REDCap_24")
+    ('24', 'REDCAPMETADATA24')
+    '''
+    pid = i2b2_pid.split('_')[1]
+    return pid, 'REDCAPMETADATA' + i2b2_pid.split('_')[1]
 
 
 class MockMetadata():
