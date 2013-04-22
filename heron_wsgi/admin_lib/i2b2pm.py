@@ -273,17 +273,14 @@ class I2B2PM(ocap_file.Token):
             log.info('found: %s', me)
             me.password, me.status_cd, me.change_date = pw_hash, 'A', t
 
-        my_role_codes = [mr.user_role_cd for mr in me.roles
-                         if mr.project_id == project_id]
-        log.debug('my role codes: %s', my_role_codes)
+        ds.query(UserRole).filter(UserRole.user_id == uid).delete()
+
         for r in roles:
-            #TODO: 1880 Is there a need to delete existing project roles here?
-            if r not in my_role_codes:
-                myrole = UserRole(user_id=uid, project_id=project_id,
-                                  user_role_cd=r,
-                                  entry_date=t, change_date=t, status_cd='A')
-                log.info('I2B2PM: adding: %s', myrole)
-                me.roles.append(myrole)
+            myrole = UserRole(user_id=uid, project_id=project_id,
+                              user_role_cd=r,
+                              entry_date=t, change_date=t, status_cd='A')
+            log.info('I2B2PM: adding: %s', myrole)
+            me.roles.append(myrole)
 
         ds.commit()
         return auth, me
