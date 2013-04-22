@@ -498,7 +498,7 @@ def _integration_test():  # pragma: nocover
     user_id, rc_pids, full_name = sys.argv[1:4]
 
     (pm, ) = RunTime.make(None, [I2B2PM])
-    t = pm.i2b2_project(rc_pids.split(','))
+    t, _ = pm.i2b2_project(rc_pids.split(','))
     print "THE PROJECT THAT WAS PICKED: %s" % (t)
     print pm.authz(user_id, full_name, t)
 

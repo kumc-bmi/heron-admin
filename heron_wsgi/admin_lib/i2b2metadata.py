@@ -36,7 +36,7 @@ class I2B2Metadata(ocap_file.Token):
 
         #TODO: Separate redcap_terms from heron_terms
         #... and insert only redcap_terms
-        mds.execute('''DELETE FROM %s.HERON_TERMS''' % schema)
+        mds.execute('''DELETE FROM %s.REDCAP_TERMS''' % schema)
 
         insert_cmd, params = insert_for(pid, schema, rc_pids)
         mds.execute(insert_cmd, params)
@@ -64,40 +64,29 @@ class I2B2Metadata(ocap_file.Token):
 
 def insert_for(pid, schema, rc_pids):
     r"""
-    >>> sql, params = insert_for('24', 'REDCAPMETADATA24', [])
-    >>> params
-    {}
-    >>> print sql  # doctest: +NORMALIZE_WHITESPACE
-    INSERT INTO REDCAPMETADATA24.HERON_TERMS
-    SELECT * FROM BLUEHERONMETADATA.HERON_TERMS UNION ALL
-    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
-        where C_FULLNAME='\i2b2\redcap\'
-
     >>> sql, params = insert_for('24', 'REDCAPMETADATA24', [10, 20, 30])
     >>> sorted(params.items())
     [(':pid0', 10), (':pid1', 20), (':pid2', 30)]
     >>> print sql  # doctest: +NORMALIZE_WHITESPACE
-    INSERT INTO REDCAPMETADATA24.HERON_TERMS
-    SELECT * FROM BLUEHERONMETADATA.HERON_TERMS UNION ALL
+    INSERT INTO REDCAPMETADATA24.REDCAP_TERMS
     SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
         where C_FULLNAME='\i2b2\redcap\'  UNION ALL
     SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
-            WHERE C_FULLNAME LIKE '\i2b2\redcap\' || :pid2 || \%\  UNION ALL
-    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
             WHERE C_FULLNAME LIKE '\i2b2\redcap\' || :pid0 || \%\  UNION ALL
     SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
-            WHERE C_FULLNAME LIKE '\i2b2\redcap\' || :pid1 || \%\
+            WHERE C_FULLNAME LIKE '\i2b2\redcap\' || :pid1 || \%\  UNION ALL
+    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+            WHERE C_FULLNAME LIKE '\i2b2\redcap\' || :pid2 || \%\
     """
-
+    assert rc_pids
     params = dict([(':pid%d' % ix, pid)
                    for (ix, pid) in enumerate(rc_pids)])
     clauses = [
         r"""SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
         WHERE C_FULLNAME LIKE '\i2b2\redcap\' || %s || \%%\ """ % pname
-        for pname in params.keys()]
+        for pname in sorted(params.keys())]
 
-    sql = ("INSERT INTO %s.HERON_TERMS\n" % schema) + ' UNION ALL\n'.join([
-    r"""SELECT * FROM BLUEHERONMETADATA.HERON_TERMS""",
+    sql = ("INSERT INTO %s.REDCAP_TERMS\n" % schema) + ' UNION ALL\n'.join([
     r"""SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
     where C_FULLNAME='\i2b2\redcap\' """] + clauses)
 

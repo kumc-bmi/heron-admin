@@ -485,9 +485,9 @@ class HeronRecords(Token, Cache):
 
     def _redcap_rights(self, uid):
         r = redcapdb.redcap_user_rights
-        return self._smaker().execute(r.select(r.c.project_id).\
-                where(r.c.username == uid)).\
-                fetchall()
+        return [row.project_id for row in self._smaker().\
+                execute(r.select(r.c.project_id).\
+                where(r.c.username == uid))]
 
 
 def _saa_query(mail, survey_id):
