@@ -1,4 +1,6 @@
-'''heron_wsgi/__init__.py -- Pyramid main() for the HERON admin interface
+'''heron_wsgi/__init__ -- Pyramid main() for the HERON admin interface
+-------------------------------------------------------------------------
+
 '''
 # python stdlib http://docs.python.org/library/
 import logging

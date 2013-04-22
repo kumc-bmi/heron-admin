@@ -238,7 +238,7 @@ class MedCenter(object):
 
     def idbadge(self, context):
         '''
-        @raises TypeError on failure to authenticate context.remote_user
+        :raises: TypeError on failure to authenticate context.remote_user
         '''
         try:
             remote_user = context.remote_user
