@@ -95,9 +95,9 @@ are updated suitably:
 In another case, suppose 4 i2b2 projects are created and eventually 1,
 2, and 3 get associated REDCap metadata:
 
-  >>> pm, md, dbsrc = Mock.make([
+  >>> pm, md, dbsrc, storyparts = Mock.make([
   ...     I2B2PM, i2b2metadata.I2B2Metadata,
-  ...     (orm.session.Session, CONFIG_SECTION)])
+  ...     (orm.session.Session, CONFIG_SECTION), None])
   >>> _mock_i2b2_projects(dbsrc(),
   ...                     ((1, None), (2, None), (3, None), (4, None)))
   >>> _mock_i2b2_proj_usage(dbsrc(),
@@ -123,6 +123,26 @@ is referred to the default project:
 
   >>> pm.i2b2_project([1, 41, 71])
   ('BlueHeron', None)
+
+
+Suppose John Smith logs in to one HERON project; he'll be
+given roles in that project:
+
+  >>> s = dbsrc()
+  >>> auth, js3 = pm.authz('john.smith', 'John Smith', 'REDCap_1')
+  >>> js = s.query(User).filter_by(user_id = 'john.smith').one()
+  >>> set([role.project_id for role in js.roles])
+  set([u'REDCap_1'])
+
+If his REDCap rights are changed, he'll get access to a different
+I2B2 project; his roles in the above project go away:
+
+  >>> s = dbsrc()
+  >>> auth, js3 = pm.authz('john.smith', 'John Smith', 'REDCap_4')
+  >>> js = s.query(User).filter_by(user_id = 'john.smith').one()
+  >>> set([role.project_id for role in js.roles])
+  set([u'REDCap_4'])
+
 
 """
 
