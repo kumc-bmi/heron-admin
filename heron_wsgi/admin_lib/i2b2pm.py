@@ -177,7 +177,7 @@ class I2B2PM(ocap_file.Token):
         :return: (project_id, project_desc)
         '''
         pms = self._datasrc()
-        log.debug('User has access to REDCap pids: %s', rc_pids)
+        log.info('Finding I2B2 project for REDCap pids: %s', rc_pids)
         rc_pids = self._md.rc_in_i2b2(rc_pids)
         if not rc_pids:
             log.info('User REDCap projects are not in HERON')

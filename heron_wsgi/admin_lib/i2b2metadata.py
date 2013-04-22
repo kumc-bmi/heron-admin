@@ -26,11 +26,11 @@ class I2B2Metadata(ocap_file.Token):
     def project_terms(self, i2b2_pid, rc_pids):
         '''Create heron_terms view in the chosen i2b2 project.
         '''
-        log.debug('Creating heron_terms for %s with redcap pids: %s',
-                  i2b2_pid, str(rc_pids))
         mds = self._mdsm()
 
         pid, schema = schema_for(i2b2_pid)
+        log.info('Updating redcap_terms for %s (%s) with redcap pids: %s',
+                 i2b2_pid, schema, rc_pids)
         #http://stackoverflow.com/questions/2179493/
         #... adding-backslashes-without-escaping-python
 
@@ -39,7 +39,8 @@ class I2B2Metadata(ocap_file.Token):
         mds.execute('''DELETE FROM %s.REDCAP_TERMS''' % schema)
 
         insert_cmd, params = insert_for(pid, schema, rc_pids)
-        mds.execute(insert_cmd, params)
+        log.debug('insert_cmd: %s', insert_cmd)
+        mds.execute(text(insert_cmd), params=params)
 
         mds.commit()
 
@@ -58,32 +59,35 @@ class I2B2Metadata(ocap_file.Token):
         '\i2b2\redcap\%\'
         """)).fetchall()
 
-        return [t.c_fullname for t in terms
-                if t.c_fullname in rc_pids]
+        term_ids = [int(t.c_fullname.split('\\')[3])
+                    for t in terms]
+        log.info('REDCap project terms: %s', term_ids)
+        return [pid for pid in rc_pids
+                if pid in term_ids]
 
 
 def insert_for(pid, schema, rc_pids):
     r"""
     >>> sql, params = insert_for('24', 'REDCAPMETADATA24', [10, 20, 30])
     >>> sorted(params.items())
-    [(':pid0', 10), (':pid1', 20), (':pid2', 30)]
+    [('pid0', 10), ('pid1', 20), ('pid2', 30)]
     >>> print sql  # doctest: +NORMALIZE_WHITESPACE
     INSERT INTO REDCAPMETADATA24.REDCAP_TERMS
     SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
         where C_FULLNAME='\i2b2\redcap\'  UNION ALL
     SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
-            WHERE C_FULLNAME LIKE '\i2b2\redcap\' || :pid0 || \%\  UNION ALL
+            WHERE C_FULLNAME LIKE ('\i2b2\redcap\' || :pid0 || '\%')  UNION ALL
     SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
-            WHERE C_FULLNAME LIKE '\i2b2\redcap\' || :pid1 || \%\  UNION ALL
+            WHERE C_FULLNAME LIKE ('\i2b2\redcap\' || :pid1 || '\%')  UNION ALL
     SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
-            WHERE C_FULLNAME LIKE '\i2b2\redcap\' || :pid2 || \%\
+            WHERE C_FULLNAME LIKE ('\i2b2\redcap\' || :pid2 || '\%')
     """
     assert rc_pids
-    params = dict([(':pid%d' % ix, pid)
+    params = dict([('pid%d' % ix, pid)
                    for (ix, pid) in enumerate(rc_pids)])
     clauses = [
         r"""SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
-        WHERE C_FULLNAME LIKE '\i2b2\redcap\' || %s || \%%\ """ % pname
+        WHERE C_FULLNAME LIKE ('\i2b2\redcap\' || :%s || '\%%') """ % pname
         for pname in sorted(params.keys())]
 
     sql = ("INSERT INTO %s.REDCAP_TERMS\n" % schema) + ' UNION ALL\n'.join([
