@@ -1,20 +1,17 @@
-'''i2b2pm -- I2B2 Project Management accounts and permissions
--------------------------------------------------------------
+"""i2b2pm -- Just-in-time I2B2 Project accounts and permissions
+---------------------------------------------------------------
 
-We use :class:`I2B2PM` to manage user accounts and permissions in the
-I2B2 project management cell via its database.
+We use :class:`I2B2PM` to establish user accounts and permissions in
+the I2B2 project management cell that represent a HERON user's authority.
 
-  >>> pm, dbsrc, md = Mock.make([I2B2PM, (orm.session.Session,
-  ...     CONFIG_SECTION), i2b2metadata.I2B2Metadata])
+  >>> pm, storyparts = Mock.make([I2B2PM, None])
 
 An object with a reference to this :class:`I2B2PM` can have us
 generate authorization to access I2B2, once it has verified to its
-satisfaction that the repository access policies are met.
-
-For example, an object of the `I2B2Account` nested class of
-:mod:`heron_wsgi.admin_lib.heron_policy.HeronRecords` would generate a
-one-time authorization password and the corresponding hashed form for
-John Smith like this::
+satisfaction that the repository access policies are met.  For
+example, to generate a one-time authorization password and the
+corresponding hashed form for a qualified investigator who has signed
+the system access agreement and acknowledged the disclaimer::
 
   >>> pw, js = pm.authz('john.smith', 'John Smith', 'BlueHeron')
   >>> pw
@@ -28,6 +25,7 @@ The password field in the `User` record is hashed::
 
 The effect is a `pm_user_data` record::
 
+  >>> dbsrc = storyparts.get((orm.session.Session, CONFIG_SECTION))
   >>> import pprint
   >>> ans = dbsrc().execute('select user_id, password, status_cd'
   ...                       ' from pm_user_data')
@@ -109,7 +107,7 @@ When john.smith logs in he is directed to Blueheron
   >>> pm5.i2b2_project([1, 11, 91])
   'BlueHeron'
 
-'''
+"""
 
 import logging
 import uuid  # @@code review: push into TCB
@@ -148,8 +146,14 @@ class I2B2PM(ocap_file.Token):
         self._md = i2b2md
         self._uuidgen = uuidgen
 
-    def account_for(self, agent, rc_pids):
-        return I2B2Account(self, agent, rc_pids)
+    def account_for(self, agent, project_id):
+        '''Build a facet with authority reduced to one user and one project.
+
+        Note: We only use the agent cn and full_name(), not its
+              unforgeable authority. The caller is responsible for
+              policy enforcement.
+        '''
+        return I2B2Account(self, agent, project_id)
 
     def i2b2_project(self, rc_pids, default_pid='BlueHeron'):
         '''select project based on redcap projects user has access to.
@@ -274,18 +278,17 @@ def revoke_expired_auths(ds):
 
 
 class I2B2Account(ocap_file.Token):
-    def __init__(self, pm, agent, rc_pids):
+    def __init__(self, pm, agent, project_id):
         self.__pm = pm
         self.__agent = agent
-        self._rc_pids = rc_pids
+        self._project_id = project_id
 
     def __repr__(self):
         return 'Access(%s)' % self.__agent
 
     def creds(self):
         agent = self.__agent
-        project_id = self.__pm.i2b2_project(agent.cn, self.__rc_pids)
-        key, u = self.__pm.authz(agent.cn, agent.full_name(), project_id)
+        key, u = self.__pm.authz(agent.cn, agent.full_name(), self._project_id)
         return (agent.cn, key)
 
 
