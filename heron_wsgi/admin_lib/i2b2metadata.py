@@ -70,16 +70,6 @@ class I2B2Metadata(ocap_file.Token):
         except:
             return False
 
-    def revoke_access(self, i2b2_pid, default_pid):
-        '''Revoke user access to a project that will be re-purposed.
-        #TODO: Retire this
-        '''
-        mds = self._mdsm()
-        sql_revoke = text('''update i2b2pm.pm_project_user_roles
-        set project_id = :def_pid
-        where project_id = :pid''')
-        mds.execute(sql_revoke, def_pid=default_pid, pid=i2b2_pid)
-
     def rc_in_i2b2(self, rc_pids):
         '''Return pids of REDCap projects that have been loaded into HERON.
         '''
