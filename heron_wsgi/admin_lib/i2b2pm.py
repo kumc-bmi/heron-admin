@@ -349,7 +349,7 @@ class Project(Base, Audited):
 
     def __repr__(self):
         return "<Project(%s, %s)>" % (self.project_id,
-                                           self.project_description)
+                                      self.project_description)
 
 
 class RunTime(rtconfig.IniModule):  # pragma: nocover
