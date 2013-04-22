@@ -56,63 +56,79 @@ This updates the `password` column of the `pm_user_data` record::
   >>> pprint.pprint(ans.fetchall())
   [(u'john.smith', u'e5ab367ceece604b7f7583d024ac4e2b', u'A')]
 
-= REDCap Projects =
 
-When john.smith has permissions to no redcap data he is directed to blueheron
-  >>> pm1, dbsrc1, md1 = Mock.make([I2B2PM, (orm.session.Session,
-  ...     CONFIG_SECTION), i2b2metadata.I2B2Metadata])
-  >>> pm1.i2b2_project([])
-  'BlueHeron'
+Access to REDCap Data
+=====================
 
-john.smith has permissions to 3 redcap projects with pids 1, 11, 91
-Mocking up i2b2 redcap projects REDCap_1, REDCap_2...
-All the projects have NULL project_description
-When john.smith logs in, he is directed to the first project
-  >>> pm2, dbsrc2, md2 = Mock.make([I2B2PM, (orm.session.Session,
-  ...     CONFIG_SECTION), i2b2metadata.I2B2Metadata])
-  >>> _mock_i2b2_projects(dbsrc2(), 1, ['0', '0', '0', '0'])
-  >>> pm2.i2b2_project([1, 11, 91])
-  u'REDCap_1'
+When REDCap data is integrated into HERON, HERON users should have
+access to the REDCap data corresponding to the REDCap projects that
+they have access to. Access to REDCap data is controlled via metadata.
+One I2B2 project can be shared among multiple HERON users that have
+access to the same REDCap projects.
 
-john.smith has permissions to 3 redcap projects with pids 1, 11, 91
-Mocking up some usage for i2b2 projects
-When john.smith logs in, he is directed to the project with no users attached
-  >>> pm3, dbsrc3, md3  = Mock.make([I2B2PM, (orm.session.Session,
-  ...     CONFIG_SECTION), i2b2metadata.I2B2Metadata])
-  >>> _mock_i2b2_projects(dbsrc3(), 1, ['0', '0', '0', '0'])
-  >>> _mock_i2b2_proj_usage(dbsrc3(), ['1', '2', '3'])
-  >>> pm3.i2b2_project([1, 11, 91])
-  u'REDCap_4'
+  >>> pm, md, dbsrc = Mock.make([
+  ...     I2B2PM, i2b2metadata.I2B2Metadata,
+  ...     (orm.session.Session, CONFIG_SECTION)])
 
-john.smith has permissions to 3 redcap projects with pids 1, 11, 91
-But data from on pids 1, 91 is in HERON
-Mocking up an i2b2 project (REDCap_5) which has data from REDCap pids 1,91
-When john.smith logs in he is directed to REDCap_5
-  >>> pm4, dbsrc4, md4 = Mock.make([I2B2PM, (orm.session.Session,
-  ...     CONFIG_SECTION), i2b2metadata.I2B2Metadata])
-  >>> _mock_i2b2_projects(dbsrc4(), 1, ['0', '0', '0', '0'])
-  >>> _mock_i2b2_proj_usage(dbsrc4(), ['1', '2', '3'])
-  >>> _mock_i2b2_projects(dbsrc4(), 5, ['redcap_1_91'])
-  >>> pm4.i2b2_project([1, 11, 91])
-  u'REDCap_5'
 
-john.smith has permissions to 3 redcap projects with pids 1, 11, 91
-Mocking up usage for all available i2b2 projects so none is available
-When john.smith logs in he is directed to Blueheron
-  >>> pm5, dbsrc5, md5 = Mock.make([I2B2PM, (orm.session.Session,
-  ...     CONFIG_SECTION), i2b2metadata.I2B2Metadata])
-  >>> _mock_i2b2_projects(dbsrc5(), 1, ['0', '0', '0', '0'])
-  >>> _mock_i2b2_proj_usage(dbsrc5(), ['1', '2', '3'])
-  >>> _mock_i2b2_proj_usage(dbsrc5(), ['4', '5'])
-  >>> pm5.i2b2_project([1, 11, 91])
-  'BlueHeron'
+Suppose redcap projects 1, 2, 3, and 4 have been loaded into HERON,
+but their metadata has not been associated with any I2B2 projects:
+
+  >>> _mock_i2b2_projects(dbsrc(),
+  ...                     ((1, None), (2, None), (3, None), (4, None)))
+
+The default HERON project has no REDCap data, so it is a suitable
+project in the case where the list of REDCap projects is empty:
+
+  >>> pm.i2b2_project([])
+  ('BlueHeron', None)
+
+Suppose a HERON user has permission to REDCap projects 1, 11, and 91.
+Note that REDCap project 11 is not loaded into HERON.  The first
+available I2B2 project is selected and its description and metadata
+are updated suitably:
+
+  >>> pm.i2b2_project([1, 11, 91])
+  (u'REDCap_1', 'redcap_1_91')
+
+
+In another case, suppose 4 i2b2 projects are created and eventually 1,
+2, and 3 get associated REDCap metadata:
+
+  >>> pm, md, dbsrc = Mock.make([
+  ...     I2B2PM, i2b2metadata.I2B2Metadata,
+  ...     (orm.session.Session, CONFIG_SECTION)])
+  >>> _mock_i2b2_projects(dbsrc(),
+  ...                     ((1, None), (2, None), (3, None), (4, None)))
+  >>> _mock_i2b2_proj_usage(dbsrc(),
+  ...                       (('1', 'redcap_10'),
+  ...                        ('2', 'redcap_20'),
+  ...                        ('3', 'redcap_30')))
+
+Someone with permissions to REDCap projects 1, 11, and 91 is directed
+to as-yet-unused I2B2 project:
+
+  >>> pm.i2b2_project([1, 11, 91])
+  (u'REDCap_4', 'redcap_1_91')
+
+Another users with permissions to REDCap projects 1, 11, and 91
+can use the same I2B2 project:
+
+  >>> pm.i2b2_project([1, 11, 91])
+  (u'REDCap_4', 'redcap_1_91')
+
+At this point, all the I2B2 projects have associated REDCap metadata.
+A user with access to an as-yet-unseen list of REDCap projects
+is referred to the default project:
+
+  >>> pm.i2b2_project([1, 41, 71])
+  ('BlueHeron', None)
 
 """
 
 import logging
 import uuid  # @@code review: push into TCB
 import hashlib
-from datetime import date
 
 import injector
 from injector import inject, provides, singleton
@@ -157,17 +173,18 @@ class I2B2PM(ocap_file.Token):
 
     def i2b2_project(self, rc_pids, default_pid='BlueHeron'):
         '''select project based on redcap projects user has access to.
+
+        :return: (project_id, project_desc)
         '''
         pms = self._datasrc()
         log.debug('User has access to REDCap pids: %s', rc_pids)
         rc_pids = self._md.rc_in_i2b2(rc_pids)
         if not rc_pids:
-            log.debug('User REDCap projects are not in HERON')
-            return default_pid
+            log.info('User REDCap projects are not in HERON')
+            return default_pid, None
         log.debug('REDCap pids that are in HERON: %s', rc_pids)
 
-        proj_desc = 'redcap_' + ('_'.join([str(pid)
-                                              for pid in sorted(rc_pids)]))
+        proj_desc = proj_desc_for(rc_pids)
         log.debug('proj_desc in pick_project: %s', proj_desc)
 
         def ready_project():
@@ -189,11 +206,11 @@ class I2B2PM(ocap_file.Token):
                         filter(Project.project_id.like('REDCap_%')).first()
 
         def update_desc(project, proj_desc):
-            log.debug('Update description of project %s to %s',
+            log.info('Update description of project %s to %s',
                       project.project_id, proj_desc)
             project.project_description = proj_desc
             pms.commit()
-            return project.project_id
+            return project.project_id, proj_desc
 
         ready = ready_project()
         if ready:
@@ -204,7 +221,8 @@ class I2B2PM(ocap_file.Token):
                 self._md.project_terms(empty.project_id, rc_pids)
                 return update_desc(empty, proj_desc)
 
-        return default_pid
+        log.warn('Ran out of projects! Using default.')
+        return default_pid, None
 
     def authz(self, uid, full_name,
               project_id,
@@ -276,6 +294,15 @@ def revoke_expired_auths(ds):
         where ipus.user_id = ipud.user_id) < sysdate
     ''')
     ds.commit()
+
+
+def proj_desc_for(rc_pids):
+    """Encode a set of REDCap project IDs in an I2B2 project description.
+
+    >>> proj_desc_for((1, 15, 2))
+    'redcap_1_2_15'
+    """
+    return 'redcap_' + ('_'.join([str(pid) for pid in sorted(rc_pids)]))
 
 
 class I2B2Account(ocap_file.Token):
@@ -438,39 +465,21 @@ class Mock(injector.Module, rtconfig.MockMixin):
         return G()
 
 
-def _mock_i2b2_projects(ds, i, proj_desc):
+def _mock_i2b2_projects(ds, id_descs):
     '''Mock up i2b2 projects
     '''
-    for desc in proj_desc:
-        if desc == '0':
-            desc = None
-        ds.add(Project(project_id='REDCap_' + str(i),
+    for pid, desc in id_descs:
+        ds.add(Project(project_id='REDCap_%s' % pid,
                        project_description=desc))
-        i += 1
     ds.commit()
 
 
-def _mock_i2b2_usage(ds):
-    '''Mock up user permissions to redcap projects
+def _mock_i2b2_proj_usage(ds, assignments):
+    '''Mock up assigning REDCap metadata to i2b2 projects.
     '''
-    ds.add_all([UserSession(user_id='john.smith',
-                            expired_date=date(2013, 3, 1)),
-                UserSession(user_id='barn.smith',
-                            expired_date=date(2013, 4, 8)),
-                UserSession(user_id='kyon.smith',
-                            expired_date=date(2013, 4, 1))
-                ])
-    ds.commit()
-
-
-def _mock_i2b2_proj_usage(ds, pids):
-    '''Mock up user permissions to i2b2 projects
-    '''
-    i = 1
-    for pid in pids:
-        x = ds.query(Project).filter_by(project_id='REDCap_' + pid).\
-            update({"project_description": 'redcap_' + str(i)})
-        i += 1
+    for (i2b2_id, rc_pid) in assignments:
+        ds.query(Project).filter_by(project_id='REDCap_' + i2b2_id).\
+            update({"project_description": 'redcap_%s' % rc_pid})
         ds.commit()
 
 

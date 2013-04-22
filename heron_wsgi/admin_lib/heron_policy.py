@@ -369,7 +369,7 @@ class HeronRecords(Token, Cache):
 
         def repository_authz(badge):
             rc_pids = self._redcap_rights(badge.cn)
-            project_id = pm.i2b2_project(rc_pids)
+            project_id, _ = pm.i2b2_project(rc_pids)
             return pm.account_for(badge, project_id)
         self.__redeem = dg.make_redeem(repository_authz)
 

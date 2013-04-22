@@ -123,11 +123,12 @@ class MockMetadata():
         self.i = i
 
     def rc_in_i2b2(self, pids):
+        '''Every other REDCap project is loaded in i2b2
+        '''
         return  pids[::2]
 
-    def project_terms(self, i2b2_pid,
-                         rc_pids):
-        return True
+    def project_terms(self, i2b2_pid, rc_pids):
+        pass
 
 
 class RunTime(rtconfig.IniModule):
