@@ -211,24 +211,24 @@ class I2B2PM(ocap_file.Token):
 
         t = func.now()
         auth = str(self._uuidgen.uuid4())
-        pw = hexdigest(auth)
+        pw_hash = hexdigest(auth)
 
         # TODO: consider factoring out the "update the change_date
         # whenever you set a field" aspect of Audited.
         try:
-            #Check if the user already exists in pm_user_roles
-            # TODO: ***change the following to check project also***
             me = ds.query(User).filter(User.user_id == uid).one()
-            me.password, me.status_cd, me.change_date = pw, 'A', t
-            log.info('found: %s', me)
         except orm.exc.NoResultFound:
-            #If the user doesn't exist in pm_user_roles, add him
             me = User(user_id=uid, full_name=full_name,
                       entry_date=t, change_date=t, status_cd='A',
-                      password=pw,
+                      password=pw_hash,
+                      # Related UserRole records might exist
+                      # even though there is no User record.
                       roles=ds.query(UserRole).filter_by(user_id=uid).all())
             log.info('adding: %s', me)
             ds.add(me)
+        else:
+            log.info('found: %s', me)
+            me.password, me.status_cd, me.change_date = pw_hash, 'A', t
 
         my_role_codes = [mr.user_role_cd for mr in me.roles
                          if mr.project_id == project_id]
