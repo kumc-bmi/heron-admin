@@ -285,7 +285,7 @@ class I2B2Account(ocap_file.Token):
 
     def creds(self):
         agent = self.__agent
-        project_id = self.__pm.i2b2_project(agent.cn, self.__rc_pids)
+        project_id = self.__pm.i2b2_project(agent.cn, self._rc_pids)
         key, u = self.__pm.authz(agent.cn, agent.full_name(), project_id)
         return (agent.cn, key)
 
