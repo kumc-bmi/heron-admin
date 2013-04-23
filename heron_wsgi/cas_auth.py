@@ -270,6 +270,11 @@ class Validator(Token):
 
         A la r1 in protocol walkthrough above.
         '''
+
+        if request.session:
+            request.session.invalidate()
+            return HTTPForbidden()
+
         if 'ticket' in request.params:
             # already been here before
             return HTTPForbidden()

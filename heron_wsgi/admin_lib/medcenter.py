@@ -264,7 +264,8 @@ class MedCenter(object):
         return when
 
 
-class NotFaculty(Exception):
+class NotFaculty(TypeError):
+    # subclass TypeError for compatibility with cas_auth grant()
     pass
 
 

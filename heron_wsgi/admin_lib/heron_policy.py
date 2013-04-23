@@ -511,7 +511,7 @@ def _saa_query(mail, survey_id):
             and_(p.c.participant_email == mail, p.c.survey_id == survey_id))
 
 
-class NoPermission(Exception):
+class NoPermission(TypeError):
     def __init__(self, whynot):
         self.whynot = whynot
 
@@ -519,7 +519,7 @@ class NoPermission(Exception):
         return '%s(%s)' % (self.__class__.__name__, self.whynot)
 
 
-class NotDROC(Exception):
+class NotDROC(TypeError):
     pass
 
 
