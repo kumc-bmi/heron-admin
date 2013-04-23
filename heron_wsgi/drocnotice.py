@@ -1,4 +1,5 @@
 r'''drocnotice -- notify investigators, team members of DROC decisions
+----------------------------------------------------------------------
 
   >>> from pyramid import testing
   >>> from pyramid.testing import DummyRequest

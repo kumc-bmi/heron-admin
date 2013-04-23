@@ -55,4 +55,7 @@ project_id=...
 api_url=https://redcap.kumc.edu/api/
 
 [i2b2pm]
-sqlalchemy.url = oracle://i2b2pm:...@localhost:5521/...
+jboss_deploy=/usr/local/jboss/deploy/
+
+[i2b2md]
+jboss_deploy=/usr/local/jboss/deploy/

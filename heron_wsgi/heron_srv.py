@@ -1,5 +1,5 @@
-'''heron_srv.py -- HERON administrative web interface
------------------------------------------------------
+'''heron_srv -- HERON administrative web interface
+--------------------------------------------------
 
 See also: `HERON training materials`__
 
