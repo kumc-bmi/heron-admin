@@ -53,7 +53,7 @@ class I2B2Metadata(ocap_file.Token):
         mds = self._mdsm()
 
         terms = mds.execute(text(r"""select c_fullname
-        from blueheronmetadata.redcap_terms
+        from blueheronmetadata.REDCAP_TERMS_ENHANCED
         where c_hlevel = 2
         and c_fullname LIKE
         '\i2b2\redcap\%\'
@@ -73,25 +73,25 @@ def insert_for(pid, schema, rc_pids):
     [('pid0', 10), ('pid1', 20), ('pid2', 30)]
     >>> print sql  # doctest: +NORMALIZE_WHITESPACE
     INSERT INTO REDCAPMETADATA24.REDCAP_TERMS
-    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
         where C_FULLNAME='\i2b2\redcap\'  UNION ALL
-    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
             WHERE C_FULLNAME LIKE ('\i2b2\redcap\' || :pid0 || '\%')  UNION ALL
-    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
             WHERE C_FULLNAME LIKE ('\i2b2\redcap\' || :pid1 || '\%')  UNION ALL
-    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
             WHERE C_FULLNAME LIKE ('\i2b2\redcap\' || :pid2 || '\%')
     """
     assert rc_pids
     params = dict([('pid%d' % ix, pid)
                    for (ix, pid) in enumerate(rc_pids)])
     clauses = [
-        r"""SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+        r"""SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
         WHERE C_FULLNAME LIKE ('\i2b2\redcap\' || :%s || '\%%') """ % pname
         for pname in sorted(params.keys())]
 
     sql = ("INSERT INTO %s.REDCAP_TERMS\n" % schema) + ' UNION ALL\n'.join([
-    r"""SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS
+    r"""SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
     where C_FULLNAME='\i2b2\redcap\' """] + clauses)
 
     return sql, params
