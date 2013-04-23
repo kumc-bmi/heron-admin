@@ -271,11 +271,8 @@ class Validator(Token):
         A la r1 in protocol walkthrough above.
         '''
 
-        if request.session:
-            request.session.invalidate()
-            return HTTPForbidden()
-
-        if 'ticket' in request.params:
+        if ('ticket' in request.params
+            or security.unauthenticated_userid(request)):
             # already been here before
             return HTTPForbidden()
 
