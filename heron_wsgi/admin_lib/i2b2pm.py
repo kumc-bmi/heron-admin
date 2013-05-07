@@ -143,6 +143,16 @@ I2B2 project; his roles in the above project go away:
   >>> set([role.project_id for role in js.roles])
   set([u'REDCap_4'])
 
+If he has an ADMIN role when he logs in, the Admin role should not be deleted.
+The ADMIN role is not project specific:
+  >>> s = dbsrc()
+  >>> admin_role = UserRole(user_id='john.smith', project_id='@',
+  ...     user_role_cd='ADMIN', status_cd='A')
+  >>> s.add(admin_role)
+  >>> auth, js3 = pm.authz('john.smith', 'John Smith', 'REDCap_4')
+  >>> js = s.query(User).filter_by(user_id = 'john.smith').one()
+  >>> set([role.user_role_cd for role in js.roles])
+  set(['ADMIN', u'DATA_OBFSC', u'USER', u'DATA_LDS', u'DATA_AGG'])
 
 """
 
@@ -152,7 +162,7 @@ import hashlib
 
 import injector
 from injector import inject, provides, singleton
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, and_
 from sqlalchemy import func, orm
 from sqlalchemy.types import String, Date, Enum
 from sqlalchemy.ext.declarative import declarative_base
@@ -272,8 +282,10 @@ class I2B2PM(ocap_file.Token):
         else:
             log.info('found: %s', me)
             me.password, me.status_cd, me.change_date = pw_hash, 'A', t
-
-        ds.query(UserRole).filter(UserRole.user_id == uid).delete()
+        #http://docs.sqlalchemy.org/en/rel_0_8/orm/query.html?highlight=query.update#sqlalchemy.orm.query.Query.update
+        ds.query(UserRole).filter(and_(UserRole.user_id == uid,
+            UserRole.user_role_cd.in_(list(roles)))).\
+            delete(synchronize_session='fetch')
 
         for r in roles:
             myrole = UserRole(user_id=uid, project_id=project_id,
