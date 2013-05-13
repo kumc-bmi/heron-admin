@@ -159,6 +159,13 @@ class _MockTracBlog(object):
 
 
 class Acknowledgement(redcapdb.REDCapRecord):
+    '''
+    >>> from ddict import DataDict
+    >>> fn = [n for (n, r) in DataDict('disclaimers').fields()]
+    >>> [fn[i] for i in range(len(fn))
+    ...  if Acknowledgement.fields[i] != fn[i]]
+    []
+    '''
     fields = ('ack', 'timestamp', 'user_id', 'disclaimer_address')
 
 
