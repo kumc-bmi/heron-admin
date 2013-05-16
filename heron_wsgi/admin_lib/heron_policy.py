@@ -317,8 +317,8 @@ class HeronRecords(Token, Cache):
     stored in fields with names like approve_%, with a distinct
     approve_% field for each participating institution.
 
-    >>> from noticelog import _DataDict
-    >>> ddict = _DataDict('oversight')
+    >>> from ddict import DataDict
+    >>> ddict = DataDict('oversight')
     >>> dd_orgs = [n[len('approve_'):] for (n, etc) in ddict.fields()
     ...            if n.startswith('approve_')]
     >>> set(dd_orgs) == set(noticelog.DecisionRecords.institutions)
