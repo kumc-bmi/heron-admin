@@ -63,6 +63,8 @@ Once he acknowledges it, he can access the repository:
              current=1)
   >>> facreq.context.disclaimers.ack_disclaimer(facreq.context.badge)
   >>> facreq.context.start_i2b2()
+  INFO:i2b2pm:Finding I2B2 project for REDCap pids: []
+  INFO:i2b2pm:User REDCap projects are not in HERON
   Access(John Smith <john.smith@js.example>)
 
 Unforgeable System Access Agreement
