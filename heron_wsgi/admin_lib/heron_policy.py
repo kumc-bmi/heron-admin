@@ -440,8 +440,14 @@ class HeronRecords(Token, Cache):
                      ttl=timedelta(seconds=600)):
         def do_q():
             for ans in self.__dr.sponsorships(uid):
-                log.info('sponsorship OK: %s', ans)
-                return ttl, ans
+                try:
+                    self._mc._browser.lookup(ans.sponsor)
+                except KeyError:
+                    log.warn('Sponsor %s not at med center anymore.',
+                             ans.sponsor)
+                else:
+                    log.info('sponsorship OK: %s', ans)
+                    return ttl, ans
 
             log.info('not sponsored: %s', uid)
             return timedelta(1), None

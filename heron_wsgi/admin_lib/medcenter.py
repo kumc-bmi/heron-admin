@@ -137,6 +137,12 @@ class Browser(object):
         >>> hits[0].ou
         'Neurology'
 
+      >>> m.lookup('nobody-by-this-cn')
+      Traceback (most recent call last):
+        ....
+      KeyError: 'nobody-by-this-cn'
+
+
     Nonsense input:
 
       >>> m.search(10, '', '', '')
