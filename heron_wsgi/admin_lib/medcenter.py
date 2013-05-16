@@ -137,6 +137,12 @@ class Browser(object):
         >>> hits[0].ou
         'Neurology'
 
+      >>> m.lookup('nobody-by-this-cn')
+      Traceback (most recent call last):
+        ....
+      KeyError: 'nobody-by-this-cn'
+
+
     Nonsense input:
 
       >>> m.search(10, '', '', '')
@@ -158,12 +164,6 @@ class Browser(object):
 
         dn, ldapattrs = matches[0]
         return LDAPBadge._simplify(ldapattrs)
-
-    def validate_cn(self, name):
-        '''Validate a cn
-        '''
-        matches = self._svc.search('(cn=%s)' % name, Badge.attributes)
-        return True if len(matches) == 1 else False
 
     def _search(self, max_qty, cn, sn, givenname):
         clauses = ['(%s=%s*)' % (n, v)

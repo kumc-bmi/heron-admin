@@ -437,22 +437,19 @@ class HeronRecords(Token, Cache):
                      ttl=timedelta(seconds=600)):
         def do_q():
             for ans in self.__dr.sponsorships(uid):
-                if self._sponsor_valid(ans.sponsor):
-                    log.info('sponsor is still at KUMC')
+                try:
+                    self._mc._browser.lookup(ans.sponsor)
+                except KeyError:
+                    log.warn('Sponsor %s not at med center anymore.',
+                             ans.sponsor)
+                else:
                     log.info('sponsorship OK: %s', ans)
                     return ttl, ans
-                else:
-                    log.info('sponsor is not at KUMC anymore')
 
             log.info('not sponsored: %s', uid)
             return timedelta(1), None
 
         return self._query(('sponsorship', uid), do_q, 'Sponsorship')
-
-    def _sponsor_valid(self, uid):
-        #Check if the sponsor is still with KU
-        log.info('checking if sponsor %s is at KUMC', uid)
-        return True if self._mc._browser.validate_cn(uid) else False
 
     def _training_current(self, badge):
         try:
