@@ -63,6 +63,8 @@ Once he acknowledges it, he can access the repository:
              current=1)
   >>> facreq.context.disclaimers.ack_disclaimer(facreq.context.badge)
   >>> facreq.context.start_i2b2()
+  INFO:i2b2pm:Finding I2B2 project for REDCap pids: []
+  INFO:i2b2pm:User REDCap projects are not in HERON
   Access(John Smith <john.smith@js.example>)
 
 Unforgeable System Access Agreement
@@ -435,13 +437,22 @@ class HeronRecords(Token, Cache):
                      ttl=timedelta(seconds=600)):
         def do_q():
             for ans in self.__dr.sponsorships(uid):
-                log.info('sponsorship OK: %s', ans)
-                return ttl, ans
+                if self._sponsor_valid(ans.sponsor):
+                    log.info('sponsor is still at KUMC')
+                    log.info('sponsorship OK: %s', ans)
+                    return ttl, ans
+                else:
+                    log.info('sponsor is not at KUMC anymore')
 
             log.info('not sponsored: %s', uid)
             return timedelta(1), None
 
         return self._query(('sponsorship', uid), do_q, 'Sponsorship')
+
+    def _sponsor_valid(self, uid):
+        #Check if the sponsor is still with KU
+        log.info('checking if sponsor %s is at KUMC', uid)
+        return True if self._mc._browser.validate_cn(uid) else False
 
     def _training_current(self, badge):
         try:

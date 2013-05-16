@@ -159,6 +159,12 @@ class Browser(object):
         dn, ldapattrs = matches[0]
         return LDAPBadge._simplify(ldapattrs)
 
+    def validate_cn(self, name):
+        '''Validate a cn
+        '''
+        matches = self._svc.search('(cn=%s)' % name, Badge.attributes)
+        return True if len(matches) == 1 else False
+
     def _search(self, max_qty, cn, sn, givenname):
         clauses = ['(%s=%s*)' % (n, v)
                    for (n, v) in (('cn', cn),

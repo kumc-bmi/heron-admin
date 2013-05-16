@@ -7,7 +7,7 @@ Sponsorship Records
 *******************
 
   >>> dr.sponsorships('some.one')
-  [(u'6373469799195807417', u'1', u'some.one', u'')]
+  [(u'6373469799195807417', u'1', u'some.one', u'john.smith', u'')]
 
 Expired sponsorships are filtered out:
 
@@ -17,7 +17,7 @@ Expired sponsorships are filtered out:
 Projects sponsored by an investigator:
 
   >>> dr.sponsorships('john.smith', inv=True)
-  [(u'6373469799195807417', u'1', u'john.smith', u'')]
+  [(u'6373469799195807417', u'1', u'john.smith', u'john.smith', u'')]
 
 Sponsorship details:
   >>> dr.about_sponsorships('some.one')  # doctest: +NORMALIZE_WHITESPACE
@@ -303,57 +303,72 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
 
       >>> print str(cdwho)
       ...  # doctest: +NORMALIZE_WHITESPACE
-      SELECT cd_record AS record, cd_decision AS decision, who_userid
-      AS candidate, expire_dt_exp AS dt_exp
-      FROM
-        (SELECT
-         cdwho.cd_record AS cd_record, cdwho.cd_decision AS cd_decision,
-         cdwho.cd_count_1 AS cd_count_1, cdwho.who_record AS who_record,
-         cdwho.who_userid AS who_userid, cdwho.expire_record AS
-         expire_record, cdwho.expire_dt_exp AS expire_dt_exp
-         FROM
-           (SELECT
-            cd.record AS cd_record, cd.decision AS cd_decision,
-            cd.count_1 AS cd_count_1, who.record AS who_record,
-            who.userid AS who_userid, expire.record AS expire_record,
+      SELECT cd_record AS record,
+      cd_decision AS decision,
+      who_userid AS candidate,
+      sponsor_userid AS sponsor,
+      expire_dt_exp AS dt_exp
+        FROM
+            (SELECT cd.record AS cd_record,
+            cd.decision AS cd_decision,
+            cd.count_1 AS cd_count_1,
+            who.record AS who_record,
+            who.userid AS who_userid,
+            sponsor.record AS sponsor_record,
+            sponsor.userid AS sponsor_userid,
+            expire.record AS expire_record,
             expire.dt_exp AS expire_dt_exp
             FROM
-              (SELECT p.record AS record, p.value AS decision,
-               count(*) AS count_1
-               FROM
-                 (SELECT redcap_data.record AS record,
-                  redcap_data.field_name AS field_name,
-                  redcap_data.value AS value
-                  FROM redcap_data
-                  WHERE redcap_data.project_id = :project_id_1) AS p
-               WHERE p.field_name LIKE :field_name_1
-               GROUP BY p.record, p.value HAVING count(*) = :count_2) AS cd
-               JOIN
-                 (SELECT p.record AS record, p.value AS userid
-                  FROM
+                (SELECT p.record AS record,
+                p.value AS decision, count(*) AS count_1
+                FROM
                     (SELECT redcap_data.record AS record,
-                     redcap_data.field_name AS field_name,
-                     redcap_data.value AS value
-                     FROM redcap_data
-                     WHERE redcap_data.project_id = :project_id_1) AS p
-                  WHERE p.field_name LIKE :field_name_2) AS who
-               ON who.record = cd.record
-               LEFT OUTER JOIN
-                 (SELECT p.record AS record, p.value AS dt_exp
-                  FROM
+                    redcap_data.field_name AS field_name,
+                    redcap_data.value AS value
+                    FROM redcap_data
+                    WHERE redcap_data.project_id = :project_id_1) AS p
+                WHERE p.field_name LIKE :field_name_1 GROUP
+                BY p.record, p.value
+                HAVING count(*) = :count_2) AS cd
+            JOIN
+                (SELECT p.record AS record,
+                p.value AS userid
+                FROM
                     (SELECT redcap_data.record AS record,
-                     redcap_data.field_name AS field_name,
-                     redcap_data.value AS value
-                     FROM redcap_data
-                     WHERE redcap_data.project_id = :project_id_1) AS p
-                  WHERE p.field_name = :field_name_3) AS expire
-               ON expire.record = cd.record) AS cdwho)
+                    redcap_data.field_name AS field_name,
+                    redcap_data.value AS value
+                    FROM redcap_data
+                    WHERE redcap_data.project_id = :project_id_1) AS p
+                WHERE p.field_name LIKE :field_name_2) AS who
+            ON who.record = cd.record
+            JOIN
+                (SELECT p.record AS record, p.value AS userid
+                FROM
+                    (SELECT redcap_data.record AS record,
+                    redcap_data.field_name AS field_name,
+                    redcap_data.value AS value
+                    FROM redcap_data
+                    WHERE redcap_data.project_id = :project_id_1) AS p
+                WHERE p.field_name = :field_name_3) AS sponsor
+            ON sponsor.record = cd.record
+            LEFT OUTER JOIN
+                (SELECT p.record AS record,
+                p.value AS dt_exp
+                FROM
+                    (SELECT redcap_data.record AS record,
+                    redcap_data.field_name AS field_name,
+                    redcap_data.value AS value
+                    FROM redcap_data
+                    WHERE redcap_data.project_id = :project_id_1) AS p
+                WHERE p.field_name = :field_name_4) AS expire
+            ON expire.record = cd.record) AS cdwho
 
       >>> pprint(cdwho.compile().params)
       {u'count_2': 3,
        u'field_name_1': 'approve_%',
        u'field_name_2': 'user_id_%',
-       u'field_name_3': 'date_of_expiration',
+       u'field_name_3': 'user_id',
+       u'field_name_4': 'date_of_expiration',
        u'project_id_1': 123}
 
     '''
@@ -378,12 +393,18 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
                         proj.c.value.label('userid'))).where(
         proj.c.field_name.like('user_id' if inv else 'user_id_%')).alias('who')
 
+    sponsor = select((proj.c.record,
+                        proj.c.value.label('userid'))).where(
+        proj.c.field_name == 'user_id').alias('sponsor')
+
     dt_exp = select((proj.c.record,
                      proj.c.value.label('dt_exp'))).where(
         proj.c.field_name == 'date_of_expiration').alias('expire')
 
     j = decision.join(candidate,
                       candidate.c.record == decision.c.record).\
+                      join(sponsor,
+                      sponsor.c.record == decision.c.record).\
                           outerjoin(dt_exp,
                                     dt_exp.c.record == decision.c.record).\
                                         alias('cdwho').select()
@@ -391,6 +412,7 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
     cdwho = j.with_only_columns((j.c.cd_record.label('record'),
                                  j.c.cd_decision.label('decision'),
                                  j.c.who_userid.label('candidate'),
+                                 j.c.sponsor_userid.label('sponsor'),
                                  j.c.expire_dt_exp.label('dt_exp')))
 
     return decision, candidate, cdwho
