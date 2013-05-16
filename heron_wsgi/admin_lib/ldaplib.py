@@ -7,6 +7,7 @@ Caching:
   >>> logging.basicConfig(level=logging.INFO, stream=sys.stdout)
   >>> ts = rtconfig.MockClock()
   >>> ds = MockLDAP(ts, ttl=2)
+  INFO:cache_remote:MockLDAP@1 cache initialized
   >>> ds.search("(cn=john.smith)", ['sn'])
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('sn',))
   INFO:cache_remote:... cached until 2011-09-02 00:00:02.500000

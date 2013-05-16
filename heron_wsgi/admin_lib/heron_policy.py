@@ -22,6 +22,8 @@ __ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
 
   >>> hp, mc, oc = Mock.make((HeronRecords, medcenter.MedCenter,
   ...                         OversightCommittee))
+  INFO:cache_remote:OversightCommittee@1 cache initialized
+  INFO:cache_remote:HeronRecords@1 cache initialized
 
 Recalling the login protocol from :mod:`heron_wsgi.cas_auth`::
 
@@ -242,6 +244,7 @@ PERM_PROJECT_EDITOR = __name__ + '.project_editor'
 log = logging.getLogger(__name__)
 
 
+@singleton
 class OversightCommittee(Token, Cache):
     @inject(redcap_sessionmaker=(orm.session.Session,
                                  redcapdb.CONFIG_SECTION),
