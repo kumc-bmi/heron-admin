@@ -38,7 +38,8 @@ What decision notifications are pending?
   >>> ds  # doctest: +NORMALIZE_WHITESPACE
   [(u'-565402122873664774', u'2', 3),
    (u'23180811818680005', u'1', 3),
-   (u'6373469799195807417', u'1', 3)]
+   (u'6373469799195807417', u'1', 3),
+   (u'93180811818667777', u'1', 3)]
 
 Get oversight details that we might want to use in composing the notification::
 

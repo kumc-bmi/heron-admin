@@ -144,17 +144,29 @@ This student does have authorization to sign the SAA:
   >>> stu2req.context.sign_saa
   Affiliate(some.one)
 
+This student's sponsor is not with KUMC anymore
 
-Exception for executives from participating instituions
+  >>> stureq = _login('jill.student', mc, hp, PERM_STATUS)
+  ... #doctest: +NORMALIZE_WHITESPACE
+  INFO:cache_remote:Sponsorship query for ('sponsorship', 'jill.student')
+  WARNING:heron_policy:Sponsor prof.fickle not at med center anymore.
+  INFO:heron_policy:not sponsored: jill.student
+  INFO:cache_remote:... cached until 2011-09-03 00:00:06
+  INFO:cache_remote:system access query for ('SAA', 'jill.student@js.example')
+  INFO:cache_remote:... cached until 2011-09-02 00:00:21.500000
+  INFO:cache_remote:in DROC? query for jill.student
+  INFO:cache_remote:... cached until 2011-09-02 00:01:03.500000
+
+Exception for executives from participating institutions
 =======================================================
 
 Executives don't need sponsorship::
 
   >>> exreq = _login('big.wig', mc, hp, PERM_START_I2B2)
   INFO:cache_remote:system access query for ('SAA', 'big.wig@js.example')
-  INFO:cache_remote:... cached until 2011-09-02 00:00:21
+  INFO:cache_remote:... cached until 2011-09-02 00:00:22
   INFO:cache_remote:in DROC? query for big.wig
-  INFO:cache_remote:... cached until 2011-09-02 00:01:03.500000
+  INFO:cache_remote:... cached until 2011-09-02 00:01:04
 
 
 Investigator Requests
