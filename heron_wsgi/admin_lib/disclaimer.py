@@ -245,11 +245,16 @@ class DisclaimerGuard(Token):
                     filter(Acknowledgement.disclaimer_address == d.url).\
                     filter(Acknowledgement.user_id == badge.cn).one()
             except exc.NoResultFound:
+                log.info('no disclaimer ack for %s', badge.cn)
                 raise KeyError(badge.cn)
 
-                log.info('disclaimer ack: %s', a)
+            log.info('disclaimer ack: %s', a)
 
-            return guarded_power(badge)
+            try:
+                return guarded_power(badge)
+            except Exception as ex:
+                log.warn('guarded power raised exception', exc_info=ex)
+                raise
 
         return redeem
 
@@ -362,7 +367,8 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
                     injector.InstanceProvider(api))
 
     @provides((WebReadable, DISCLAIMERS_SECTION))
-    def rdblog(self, site='http://informatics.kumc.edu/'):
+#    def rdblog(self, site='http://informatics.kumc.edu/'):
+    def rdblog(self, site='http'):
         from urllib2 import build_opener, Request
         return WebReadable(site, build_opener(), Request)
 
