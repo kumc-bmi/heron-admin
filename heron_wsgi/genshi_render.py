@@ -1,4 +1,6 @@
 '''genshi_render.py -- Use genshi to render Pyramid views
+---------------------------------------------------------
+
 '''
 
 import logging

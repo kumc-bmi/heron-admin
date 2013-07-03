@@ -1,4 +1,5 @@
 r'''drocnotice -- notify investigators, team members of DROC decisions
+----------------------------------------------------------------------
 
   >>> from pyramid import testing
   >>> from pyramid.testing import DummyRequest
@@ -56,7 +57,7 @@ from sqlalchemy.sql import func
 
 import genshi_render
 from admin_lib import heron_policy
-from admin_lib.heron_policy import DecisionRecords
+from admin_lib.noticelog import DecisionRecords
 from admin_lib import noticelog
 from admin_lib import redcapdb
 from admin_lib import rtconfig
@@ -111,7 +112,7 @@ class DROCNotice(Token):
 
     def build_notices(self, req):
         dr = self._dr
-        for pid, record, decision, _ in dr.oversight_decisions():
+        for record, decision, _ in dr.oversight_decisions():
             if decision not in self.FINAL_DECISIONS:
                 continue
 
@@ -121,10 +122,9 @@ class DROCNotice(Token):
                               req.route_url(self.home)),
                          dict(renderer_name='drocnotice.html'))
 
-            cc = ([b.mail for b in team
-                   # In case an idvault entry is missing a mail
-                   # attribute, skip it.
-                   if b.mail]
+            inv_mail, team_mail = dr.team_email(investigator.cn,
+                                                [mem.cn for mem in team])
+            cc = (team_mail
                   if decision == DecisionRecords.YES
                   else [])
             m = Message(subject='HERON access request ' + (
@@ -135,7 +135,7 @@ class DROCNotice(Token):
                         # https://github.com/dckc/pyramid_mailer/commit
                         #    /8a426bc8b24f491880c2b3a0204f0ee7bae42193
                         #cc=cc,
-                        recipients=[investigator.mail] + cc,
+                        recipients=[inv_mail] + cc,
                         html=s)
 
             yield record, m
@@ -143,10 +143,9 @@ class DROCNotice(Token):
 
 def render_value(investigator, team, decision, detail, heron_home):
     r'''
-      >>> from admin_lib import medcenter
-      >>> (mc, ) = medcenter.Mock.make([medcenter.MedCenter])
-      >>> v = render_value(mc.peer_badge('john.smith'),
-      ...                  [mc.peer_badge('some.one')], '1',
+      >>> from admin_lib.noticelog import Ref
+      >>> v = render_value(Ref('john.smith', 'John Smith'),
+      ...                  [Ref('some.one', 'Some One')], '1',
       ...                  dict(full_name='John Smith',
       ...                       project_title='Study Warts',
       ...                       name_etc_1='Some One\netc.'),
@@ -170,8 +169,8 @@ def render_value(investigator, team, decision, detail, heron_home):
     return dict(detail,
                 heron_home=heron_home,
                 approved=decision == DecisionRecords.YES,
-                sponsor_full_name=detail['full_name'],
-                team=['%s %s' % (b.givenname, b.sn) for b in team])
+                sponsor_full_name=investigator.full_name(),
+                team=[mem.full_name() for mem in team])
 
 
 class Setup(injector.Module):

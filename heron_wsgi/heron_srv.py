@@ -1,5 +1,5 @@
-'''heron_srv.py -- HERON administrative web interface
------------------------------------------------------
+'''heron_srv -- HERON administrative web interface
+--------------------------------------------------
 
 See also: `HERON training materials`__
 
@@ -26,6 +26,7 @@ import cas_auth
 import genshi_render
 import drocnotice
 import stats
+import edit_projects
 from admin_lib import medcenter
 from admin_lib import heron_policy
 from admin_lib import redcap_connect
@@ -426,12 +427,13 @@ class HeronAdminConfig(Configurator):
             rcv=REDCapLink,
             repo=RepositoryLogin,
             tb=TeamBuilder,
+            mpv=edit_projects.MyProjectsView,
             mc=medcenter.MedCenter,
             hr=heron_policy.HeronRecords,
             dn=drocnotice.DROCNotice,
             report=stats.Reports)
     def __init__(self, guard, casopts, conf, clv, rcv,
-                 repo, tb, mc, hr, dn, report):
+                 repo, tb, mpv, mc, hr, dn, report):
         log.debug('HeronAdminConfig settings: %s', conf)
 
         Configurator.__init__(self, settings=conf)
@@ -472,6 +474,9 @@ class HeronAdminConfig(Configurator):
         # Usage reports
         report.configure(self, 'reports/')
 
+        # Investigator Projects Editor
+        mpv.configure(self, 'tools/')
+
         # for testing
         self.add_route('err', 'err')
         self.add_view(_make_internal_error, route_name='err',
@@ -494,11 +499,6 @@ class RunTime(injector.Module):  # pragma: nocover
         i2b2_settings = RuntimeOptions(['cas_login']).load(
             self._webapp_ini, 'i2b2')
         binder.bind(KI2B2Address, to=i2b2_settings.cas_login)
-
-    @provides(medcenter.KTestingFaculty)
-    @inject(rt=(Options, cas_auth.CONFIG_SECTION))
-    def cas_app_secret(self, rt):
-        return rt.app_secret
 
     @provides(drocnotice.KMailSettings)
     def settings(self):

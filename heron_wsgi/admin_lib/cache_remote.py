@@ -7,9 +7,14 @@ log = logging.getLogger(__name__)
 
 
 class Cache(object):
+    ix = 0
+
     def __init__(self, now):
         self.__now = now
         self._cache = {}
+        self.__class__.ix += 1
+        log.info('%s@%s cache initialized',
+                 self.__class__.__name__, self.ix)
 
     def _query(self, k, thunk, label=None):
         tnow = self.__now()

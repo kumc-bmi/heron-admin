@@ -22,6 +22,8 @@ __ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
 
   >>> hp, mc, oc = Mock.make((HeronRecords, medcenter.MedCenter,
   ...                         OversightCommittee))
+  INFO:cache_remote:OversightCommittee@1 cache initialized
+  INFO:cache_remote:HeronRecords@1 cache initialized
 
 Recalling the login protocol from :mod:`heron_wsgi.cas_auth`::
 
@@ -37,9 +39,9 @@ investigator requests::
 
   >>> facreq = _login('john.smith', mc, hp, PERM_STATUS)
   INFO:cache_remote:system access query for ('SAA', 'john.smith@js.example')
-  INFO:cache_remote:... cached until 2011-09-02 00:00:15
+  INFO:cache_remote:... cached until 2011-09-02 00:00:15.500000
   INFO:cache_remote:in DROC? query for john.smith
-  INFO:cache_remote:... cached until 2011-09-02 00:01:00
+  INFO:cache_remote:... cached until 2011-09-02 00:01:00.500000
   >>> facreq.context.status  # doctest: +NORMALIZE_WHITESPACE
   Status(current_training='2012-01-01', droc=None, executive=False,
          expired_training=None, faculty=True, sponsored=None,
@@ -63,6 +65,8 @@ Once he acknowledges it, he can access the repository:
              current=1)
   >>> facreq.context.disclaimers.ack_disclaimer(facreq.context.badge)
   >>> facreq.context.start_i2b2()
+  INFO:i2b2pm:Finding I2B2 project for REDCap pids: []
+  INFO:i2b2pm:User REDCap projects are not in HERON
   Access(John Smith <john.smith@js.example>)
 
 Unforgeable System Access Agreement
@@ -76,7 +80,7 @@ survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
   >>> facreq.context.sign_saa.ensure_saa_survey().split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
   INFO:cache_remote:SAA link query for ('SAA', 'john.smith')
-  INFO:cache_remote:... cached until 2011-09-02 00:00:15
+  INFO:cache_remote:... cached until 2011-09-02 00:00:16.500000
   ['http://bmidev1/redcap-host/surveys/',
    's=f1f9&full_name=Smith%2C+John&user_id=john.smith']
 
@@ -89,12 +93,12 @@ faculty not sponsored, nor has he completed human subjects training::
   >>> stureq = _login('bill.student', mc, hp, PERM_STATUS)
   INFO:cache_remote:Sponsorship query for ('sponsorship', 'bill.student')
   INFO:heron_policy:not sponsored: bill.student
-  INFO:cache_remote:... cached until 2011-09-03 00:00:00
+  INFO:cache_remote:... cached until 2011-09-03 00:00:02
   INFO:heron_policy:no training on file for: bill.student (Bill Student)
   INFO:cache_remote:system access query for ('SAA', 'bill.student@js.example')
-  INFO:cache_remote:... cached until 2011-09-02 00:00:15
+  INFO:cache_remote:... cached until 2011-09-02 00:00:17.500000
   INFO:cache_remote:in DROC? query for bill.student
-  INFO:cache_remote:... cached until 2011-09-02 00:01:00
+  INFO:cache_remote:... cached until 2011-09-02 00:01:01.500000
   >>> stureq.context.status  #doctest: +NORMALIZE_WHITESPACE
   Status(current_training=None, droc=None, executive=False,
          expired_training=None, faculty=False,
@@ -148,9 +152,9 @@ Executives don't need sponsorship::
 
   >>> exreq = _login('big.wig', mc, hp, PERM_START_I2B2)
   INFO:cache_remote:system access query for ('SAA', 'big.wig@js.example')
-  INFO:cache_remote:... cached until 2011-09-02 00:00:15
+  INFO:cache_remote:... cached until 2011-09-02 00:00:21
   INFO:cache_remote:in DROC? query for big.wig
-  INFO:cache_remote:... cached until 2011-09-02 00:01:00
+  INFO:cache_remote:... cached until 2011-09-02 00:01:03.500000
 
 
 Investigator Requests
@@ -224,9 +228,9 @@ import redcapdb
 import noticelog
 from noticelog import OVERSIGHT_CONFIG_SECTION
 import disclaimer
-from disclaimer import KTimeSource
 from audit_usage import I2B2AggregateUsage, I2B2SensitiveUsage
 from cache_remote import Cache
+import project_editor
 
 SAA_CONFIG_SECTION = 'saa_survey'
 
@@ -237,27 +241,30 @@ PERM_START_I2B2 = __name__ + '.start_i2b2'
 PERM_DROC_AUDIT = __name__ + '.droc_audit'
 PERM_STATS_REPORTER = __name__ + '.stats_reporter'
 PERM_START_I2B2 = 'start_i2b2'
-
+PERM_PROJECT_EDITOR = __name__ + '.project_editor'
 
 log = logging.getLogger(__name__)
 
 
+@singleton
 class OversightCommittee(Token, Cache):
     @inject(redcap_sessionmaker=(orm.session.Session,
                                  redcapdb.CONFIG_SECTION),
             oversight_rc=(redcap_connect.SurveySetup,
                           OVERSIGHT_CONFIG_SECTION),
             mc=medcenter.MedCenter,
-            timesrc=KTimeSource,
-            auditor=I2B2SensitiveUsage)
+            timesrc=rtconfig.Clock,
+            auditor=I2B2SensitiveUsage,
+            dr=noticelog.DecisionRecords)
     def __init__(self, redcap_sessionmaker, oversight_rc, mc,
-                 timesrc, auditor):
+                 timesrc, auditor, dr):
         Cache.__init__(self, timesrc.now)
         self.__rcsm = redcap_sessionmaker
         self.project_id = oversight_rc.project_id
         self.__mc = mc
         self.inspector = mc.getInspector()
         self.__auditor = auditor
+        self.__dr = dr
 
     @classmethod
     def _memberq(cls, pid, who):
@@ -289,7 +296,7 @@ class OversightCommittee(Token, Cache):
         if not in_droc:
             raise NotDROC
 
-        return self.__auditor
+        return (self.__auditor, self.__dr)
 
 
 Status = namedtuple('Status',
@@ -312,8 +319,8 @@ class HeronRecords(Token, Cache):
     stored in fields with names like approve_%, with a distinct
     approve_% field for each participating institution.
 
-    >>> from noticelog import _DataDict
-    >>> ddict = _DataDict('oversight')
+    >>> from ddict import DataDict
+    >>> ddict = DataDict('oversight')
     >>> dd_orgs = [n[len('approve_'):] for (n, etc) in ddict.fields()
     ...            if n.startswith('approve_')]
     >>> set(dd_orgs) == set(noticelog.DecisionRecords.institutions)
@@ -347,7 +354,7 @@ class HeronRecords(Token, Cache):
             dg=disclaimer.DisclaimerGuard,
             smaker=(orm.session.Session,
                     redcapdb.CONFIG_SECTION),
-            timesrc=KTimeSource)
+            timesrc=rtconfig.Clock)
     def __init__(self, mc, pm, dr, stats, saa_rc, oversight_rc, oc,
                  dg, smaker, timesrc):
         Cache.__init__(self, timesrc.now)
@@ -366,7 +373,9 @@ class HeronRecords(Token, Cache):
         self.__dg = dg
 
         def repository_authz(badge):
-            return pm.account_for(badge)
+            rc_pids = self._redcap_rights(badge.cn)
+            project_id, _ = pm.i2b2_project(rc_pids)
+            return pm.account_for(badge, project_id)
         self.__redeem = dg.make_redeem(repository_authz)
 
     def authenticated(self, uid, req):
@@ -385,7 +394,9 @@ class HeronRecords(Token, Cache):
         elif p is PERM_INVESTIGATOR_REQUEST:
             context.investigator_request = self._investigator_request(badge)
         elif p is PERM_DROC_AUDIT:
-            context.droc_audit = self.__oc._droc_auditor(badge)
+            audit, dr = self.__oc._droc_auditor(badge)
+            context.droc_audit = audit
+            context.decision_records = dr
         elif p is PERM_STATS_REPORTER:
             context.stats_reporter = self.__stats
             context.browser = self._mc._browser
@@ -395,6 +406,13 @@ class HeronRecords(Token, Cache):
                 raise NoPermission(st)
             context.start_i2b2 = lambda: self.__redeem(badge)
             context.disclaimers = self.__dg
+        elif p is PERM_PROJECT_EDITOR:
+            if not (badge.is_investigator()):
+                raise medcenter.NotFaculty
+            context.project_editor = project_editor.ProjectEditor(
+                self.__dr, badge)
+        else:
+            raise TypeError
 
     def _status(self, badge):
         sponsored = (None if badge.is_investigator()
@@ -422,9 +440,12 @@ class HeronRecords(Token, Cache):
                      ttl=timedelta(seconds=600)):
         def do_q():
             for ans in self.__dr.sponsorships(uid):
-                # hmm... why not do this date comparison in the database?
-                if (ans.dt_exp <= ''
-                    or self._t.today().isoformat() <= ans.dt_exp):
+                try:
+                    self._mc._browser.lookup(ans.sponsor)
+                except KeyError:
+                    log.warn('Sponsor %s not at med center anymore.',
+                             ans.sponsor)
+                else:
                     log.info('sponsorship OK: %s', ans)
                     return ttl, ans
 
@@ -448,7 +469,7 @@ class HeronRecords(Token, Cache):
         current = when >= self._t.today().isoformat()
         if not current:
             log.info('training expired %s for: %s (%s)',
-                     when, self.cn, self.full_name())
+                     when, badge.cn, badge.full_name())
 
         return (when, None) if current else (None, when)
 
@@ -473,6 +494,12 @@ class HeronRecords(Token, Cache):
         return InvestigatorRequest(badge, self._mc._browser,
                                    self._oversight_rc)
 
+    def _redcap_rights(self, uid):
+        r = redcapdb.redcap_user_rights
+        return [row.project_id for row in self._smaker().\
+                execute(r.select(r.c.project_id).\
+                where(r.c.username == uid))]
+
 
 def _saa_query(mail, survey_id):
     '''
@@ -495,7 +522,7 @@ def _saa_query(mail, survey_id):
             and_(p.c.participant_email == mail, p.c.survey_id == survey_id))
 
 
-class NoPermission(Exception):
+class NoPermission(TypeError):
     def __init__(self, whynot):
         self.whynot = whynot
 
@@ -503,7 +530,7 @@ class NoPermission(Exception):
         return '%s(%s)' % (self.__class__.__name__, self.whynot)
 
 
-class NotDROC(Exception):
+class NotDROC(TypeError):
     pass
 
 
@@ -612,10 +639,21 @@ class Mock(injector.Module, rtconfig.MockMixin):
                  for im in m.Mock.mods()] + [cls()])
 
 
+def mock_context(who, depgraph=None):
+    from pyramid.testing import DummyRequest
+    context = medcenter.AttrDict()
+    req = DummyRequest(context=context)
+    if not depgraph:
+        depgraph, = Mock.make([None])
+    (mc, hp) = depgraph.get(medcenter.MedCenter), depgraph.get(HeronRecords)
+    mc.authenticated(who, req)
+    return hp, context, req
+
+
 class RunTime(rtconfig.IniModule):  # pragma nocover
     @singleton
-    @provides(KTimeSource)
-    def _timesrc(self):
+    @provides(rtconfig.Clock)
+    def _real_time(self):
         import datetime
         return datetime.datetime
 

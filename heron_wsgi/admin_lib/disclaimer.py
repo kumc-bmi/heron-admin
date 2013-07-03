@@ -108,7 +108,6 @@ import redcap_connect
 DISCLAIMERS_SECTION = 'disclaimers'
 ACKNOWLEGEMENTS_SECTION = 'disclaimer_acknowledgements'
 
-KTimeSource = injector.Key('TimeSource')
 KNotary = injector.Key('Notary')
 KBadgeInspector = injector.Key('BadgeInspector')
 
@@ -160,6 +159,13 @@ class _MockTracBlog(object):
 
 
 class Acknowledgement(redcapdb.REDCapRecord):
+    '''
+    >>> from ddict import DataDict
+    >>> fn = [n for (n, r) in DataDict('acknowledgement').fields()]
+    >>> [fn[i] for i in range(len(Acknowledgement.fields))
+    ...  if Acknowledgement.fields[i] != fn[i]]
+    []
+    '''
     fields = ('ack', 'timestamp', 'user_id', 'disclaimer_address')
 
 
@@ -168,7 +174,7 @@ class AcknowledgementsProject(object):
     Acknowledgement records.
     '''
     @inject(proxy=(redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION),
-            timesrc=KTimeSource)
+            timesrc=rtconfig.Clock)
     def __init__(self, proxy, timesrc):
         self._proxy = proxy
         self._timesrc = timesrc
@@ -312,9 +318,9 @@ class Mock(redcapdb.SetUp, rtconfig.MockMixin):
         webcap = _MockREDCapAPI2(smaker)
         return redcap_connect.EndPoint(webcap, '12345token')
 
-    @provides(KTimeSource)
+    @provides(rtconfig.Clock)
     def time_source(self):
-        return _TestTimeSource()
+        return rtconfig.MockClock()
 
     @provides(KBadgeInspector)
     def badge_inspector(self):
@@ -350,16 +356,6 @@ class TestSetUp(redcapdb.SetUp):
         return smaker
 
 
-class _TestTimeSource(object):
-    def now(self):
-        import datetime
-        return datetime.datetime(2011, 9, 2)
-
-    def today(self):
-        import datetime
-        return datetime.date(2011, 9, 2)
-
-
 class RunTime(rtconfig.IniModule):  # pragma: nocover
     def configure(self, binder):
         drt = self.get_options(['project_id'], DISCLAIMERS_SECTION)
@@ -377,7 +373,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         from urllib2 import build_opener, Request
         return WebReadable(site, build_opener(), Request)
 
-    @provides(KTimeSource)
+    @provides(rtconfig.Clock)
     def real_time(self):
         import datetime
 

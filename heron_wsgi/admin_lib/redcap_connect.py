@@ -45,6 +45,7 @@ import logging
 import pprint
 from urllib import urlencode
 from urlparse import urljoin, parse_qs
+from urllib2 import HTTPError
 
 import rtconfig
 from ocap_file import edef, WebPostable
@@ -69,8 +70,12 @@ def EndPoint(webcap, token):
     '{}'
     '''
     def accept_json(content, **args):
-        ans = json.loads(_request(content, format='json', **args))
-        log.debug('REDCap API JSON answer: %s', ans)
+        body = _request(content, format='json', **args)
+        try:
+            ans = json.loads(body)
+        except ValueError as ex:
+            log.error('REDCap API answer not JSON: %s', body, exc_info=ex)
+            raise
         return ans
 
     def post_json(content, data, **args):
@@ -81,7 +86,12 @@ def EndPoint(webcap, token):
 
     def _request(content, format, **args):
         params = dict(args, token=token, content=content, format=format)
-        return webcap.post(urlencode(params)).read()
+        try:
+            res = webcap.post(urlencode(params))
+        except HTTPError as ex:
+            log.error('REDCap error body: %s', ex.read())
+            raise
+        return res.read()
 
     def __repr__():
         return 'redcap_connect.EndPoint(%s)' % webcap.fullPath()

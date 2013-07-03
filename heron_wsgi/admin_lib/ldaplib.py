@@ -5,11 +5,12 @@ Caching:
 
   >>> import sys
   >>> logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-  >>> ts = mock_directory.MockTimeSource()
+  >>> ts = rtconfig.MockClock()
   >>> ds = MockLDAP(ts, ttl=2)
+  INFO:cache_remote:MockLDAP@1 cache initialized
   >>> ds.search("(cn=john.smith)", ['sn'])
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('sn',))
-  INFO:cache_remote:... cached until 2012-02-25 11:00:02.500000
+  INFO:cache_remote:... cached until 2011-09-02 00:00:02.500000
   [('(cn=john.smith)', {'sn': ['Smith']})]
 
   >>> ds.search("(cn=john.smith)", ['sn'])
@@ -18,7 +19,7 @@ Caching:
   >>> ts.wait(5)
   >>> ds.search("(cn=john.smith)", ['sn'])
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('sn',))
-  INFO:cache_remote:... cached until 2012-02-25 11:00:08.500000
+  INFO:cache_remote:... cached until 2011-09-02 00:00:08.500000
   [('(cn=john.smith)', {'sn': ['Smith']})]
 
 Sample configuration::
@@ -117,7 +118,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     @provides((rtconfig.Options, CONFIG_SECTION))
     def opts(self):
         rt = rtconfig.RuntimeOptions(
-            'url userdn base password executives'.split())
+            'url userdn base password executives testing_faculty'.split())
         rt.load(self._ini, CONFIG_SECTION)
         return rt
 
