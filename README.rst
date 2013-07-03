@@ -9,14 +9,10 @@ i2b2__; this code is the regulatory enforcement web interface.
 __ https://www.i2b2.org/
 
 
-heron_wsgi - the python approach
-
-.. todo:: administrative interface: POST to re-read config files
-
-.hgignore - stuff to ignore from version control (e.g. maven's target/)
+**todo** administrative interface: POST to re-read config files
 
 Development dependencies
-------------
+------------------------
 
 See setup.py for details.
 
@@ -40,26 +36,3 @@ __ http://misko.hevery.com/2011/02/14/video-recording-slides-psychology-of-testi
    of non-determinism seems to be a source of authority) as a constructor arg.
 
 __ http://wiki.erights.org/wiki/Walnut/Ordinary_Programming#Security_of_emakers
-
-
-Java Approach
--------------
-
-This repository is a mixure of a java approach and a python approach.
-
-following Java/eclipse norms, we have:
-
- - src
- - .classpath
- - .pmd
- - .project
- - .settings
- - .wtpmodules
- - pom.xml - maven package object model (build file)
-
-We also have:
-
-apache-conf - proxy configuration for the Java approach
-
-apache-conf-raven - mod_wsgi configuration for the python approach
-
