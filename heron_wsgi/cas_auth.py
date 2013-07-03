@@ -12,15 +12,6 @@ Setup: Pyramid Configuration, Paste TestApp
   >>> from pyramid.config import Configurator
   >>> config = Configurator()
 
-A Simple Protected View
-=======================
-
-  >>> from pyramid.response import Response
-  >>> def protected_view(context, req):
-  ...     log.debug('protected view: %s', ['I am: ', req.remote_user])
-  ...     return Response(app_iter=['I am: ', req.remote_user])
-
-
 Building a pyramid authorization policy using the cas_auth.Validator
 ====================================================================
 
@@ -30,31 +21,20 @@ with a Validator and a mock Issuer and config::
   >>> guard, guide, rt = Mock.make([Validator,
   ...                               Issuer, (Options, CONFIG_SECTION)])
 
+
+  >>> CapabilityStyle.setup(config, rt.app_secret, 'logout', 'logout',
+  ...                       guide.authenticated, [guide], guard)
+
 Note the CAS base URI from the configuration options::
 
   >>> rt.base
   'http://example/cas/'
 
-The guard supplies a logout view, attached to the route we specify::
-
-  >>> config.add_route('logout', 'logout')
-  >>> guard.configure(config, 'logout')
-
-We must introduce the guide (Issuer) to the guard (Validator)
-so that the guard will accept capabilities from the guide::
-
-  >>> guard.add_issuer(guide)
-
-Now we can set the authorization policy to use capabilities
-from the guide::
-
-  >>> config.set_authorization_policy(CapabilityStyle([guide]))
-
-And finally, we can add our view, using the guide's permission::
+And finally, we can add a view, using the guide's permission::
 
   >>> config.add_route('root', '')
-  >>> config.add_view(protected_view, route_name='root',
-  ...                 permission=guide.permissions[0])
+  >>> config.add_view(MockIssuer.protected_view, route_name='root',
+  ...                 permission=guide.permission)
 
 
 Now we can make a WSGI application from our configuration::
@@ -81,14 +61,20 @@ The the CAS service redirects back with a ticket::
   >>> _loc(r3.headers)
   'http://localhost/'
 
+TODO: detect clients that refused the cookie.
+
 Now, our protected app runs inside an `auth_tkt` session::
 
   >>> r4 = r3.follow(status=200)
   >>> r4
-  <Response 200 OK 'I am: john.smith'>
+  <Response 200 OK 'john.smith found: se'>
   >>> [v.split('=', 1)[0] for (n, v) in r3.headers
   ...  if n.lower() == 'set-cookie']
   ['auth_tkt', 'auth_tkt']
+
+
+Session Expiration
+==================
 
 Then, more than 10 minutes later, the session has timed out,
 so we should get a challenge on the next request::
@@ -116,8 +102,7 @@ Finally, log in again and log out, and then get a challenge::
 # python stdlib 1st, per PEP8
 import itertools
 import logging
-import urllib
-import urllib2
+from urllib import urlencode
 
 # from pypi
 import injector
@@ -127,72 +112,100 @@ import pyramid
 from pyramid import security
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPSeeOther
 from pyramid.authentication import AuthTktAuthenticationPolicy
+from pyramid.session import UnencryptedCookieSessionFactoryConfig
 
-from admin_lib.rtconfig import Options, TestTimeOptions, RuntimeOptions
+from admin_lib.rtconfig import (Options, TestTimeOptions, RuntimeOptions,
+                                IniModule)
 from admin_lib.rtconfig import MockMixin
-from admin_lib import sealing
+from admin_lib.ocap_file import edef, Token
+from admin_lib.ocap_file import WebReadable
 
 log = logging.getLogger(__name__)
 
 CONFIG_SECTION = 'cas'
 
 
-class Issuer(object):
+class Issuer(Token):
     '''Issuer of capabilities based on CAS login credentials.
 
     See MockIssuer for an example.
     '''
     permissions = ()
 
-    def issue(self, req):
-        '''Issue capabilities based on CAS login.
+    def __repr__(self):
+        return self.__class__.__name__ + '()'
 
-        @param req: request, bearing CAS userid in remote_user,
-                    which you may add capability attributes to
-        @return: a sequence of authorizations for this capabilities
-                 added to this request, which will later be passed to
-                 audit in case this issuer's permission is required.
+    def authenticated(self, uid, req):
+        '''Mark a request's context as authenticated.
+
+        @param req: request, whose context you should add a `remote_user`
+                    capability to, for use in grant().
+        @return: a sequence of pyramid principals, which should be empty,
+                 since this is not ACL style.
         '''
-        raise NotImplemented
+        raise NotImplementedError  # pragma: nocover
 
-    def audit(self, cap, permission):
-        '''Test whether cap authorizes permission.
+    def grant(self, context, permission):
+        '''Grant capabilities relevant to a permission.
 
-        @param cap: any object, which should be tested to see if it is
-                    an authorization we issued.
-        @param permission: one of this issuer's permissions
-        @raises: TypeError if cap is not one we issued for permission.
+        @param context: request context, which should be
+                        tested to ensure that it is authenticated as above.
+        @param permission: permission desired by a view
+        @raises: TypeError if permission is not permitted in this context.
         '''
-        raise NotImplemented
+        raise NotImplementedError  # pragma: nocover
 
 
-class Validator(object):
-    def __init__(self, cas_addr, app_secret, ua=None):
-        if ua is None:
-            ua = urllib2.build_opener()
-        self._ua = ua
-        self._a = cas_addr
-        # When this thing is missing from the config file,
-        # the stacktrace is really obscure.
-        assert app_secret
-        self._secret = app_secret
-        self._issuers = []
+class Validator(Token):
+    @inject(cascap=(WebReadable, CONFIG_SECTION))
+    def __init__(self, cascap):
+        '''
+        :param cas_rd: capability to read `/validate`, `/logout` etc.
+                       For the examples in the `CAS protocol spec`__,
+                       `cas_rd.fullPath()` would be `https://server/cas/'.
+        __ http://www.jasig.org/cas/protocol
 
-    def __str__(self):
-        return 'Validator(cas_addr=%s)' % self._a
+        '''
+        self.__cascap = cascap
+        self.__authenticated = None
 
-    def configure(self, config, logout_route):
+    def __repr__(self):
+        return 'Validator(cas_addr=%s)' % self.__cascap.fullPath()
+
+    def introduce(self, authenticated):
+        '''Introduce Validator to authentication callback.
+
+        :param authenticated: a callable with (uid, request)
+                              args. This is called when a request
+                              bears an authentic session cookie that
+                              was created on presentation of a valid
+                              CAS ticket.
+
+        '''
+        self.__ok = authenticated
+
+    def configure(self, config, logout_route, secret,
+                  timeout=10 * 60,
+                  reissue_time=1 * 60):
         '''Apply configuration hooks:
 
-        1. an authentication policy that consults each issuer
+        1. an authentication policy
         2. checkTicket NewRequest event handler
         3. redirect-to-CAS-service view
         4. logout view
+        5. session factory
+
+        >>> raise NotImplementedError('encrypted session factory for CSRF')
         '''
+        clearsigned = UnencryptedCookieSessionFactoryConfig(secret)
+        config.set_session_factory(clearsigned)
+
+        assert self.__ok
+
         config.set_authentication_policy(AuthTktAuthenticationPolicy(
-                self._secret, callback=self.issue_caps,
-                timeout=10 * 60,
-                reissue_time=1 * 60,
+                secret, callback=self.__ok,
+                timeout=timeout,
+                reissue_time=reissue_time,
                 wild_domain=False))
 
         config.add_subscriber(self.checkTicket, pyramid.events.NewRequest)
@@ -203,9 +216,6 @@ class Validator(object):
 
         config.add_view(self.logout, route_name=logout_route,
                         request_method='POST')
-
-    def add_issuer(self, issuer):
-        self._issuers.append(issuer)
 
     def checkTicket(self, event):
         '''Check ticket of new request.
@@ -231,12 +241,12 @@ class Validator(object):
             log.info('checkTicket at %s: no ticket to check.', req.url)
             return None
 
-        a = self._a + 'validate?' + urllib.urlencode(dict(service=req.path_url,
-                                                          ticket=t))
+        valcap = self.__cascap.subRdFile('validate?' + urlencode(
+            dict(service=req.path_url, ticket=t)))
 
         log.info('checkTicket for <%s>: cas validation request: %s',
-                 req.url, a)
-        lines = self._ua.open(a).read().split('\n')
+                 req.url, valcap.fullPath())
+        lines = valcap.getBytes().split('\n')
 
         if not(lines and lines[0] == 'yes'):
             log.info('cas validation failed: %s', lines)
@@ -263,93 +273,92 @@ class Validator(object):
             # already been here before
             return HTTPForbidden()
 
-        there = (urllib.basejoin(self._a, 'login') + '?' +
-                 urllib.urlencode(dict(service=request.url)))
+        there = self.__cascap.subRdFile(
+            'login?' + urlencode(dict(service=request.url)))
         log.info('Validator.redirect to %s (service=%s)',
-                 there, request.url)
-        return HTTPSeeOther(there)
-
-    def issue_caps(self, uid, req):
-        '''AuthTktAuthenticationPolicy callback that allows each issuer
-        to add capabilities to the request.
-        '''
-        log.debug('issuing CAS login capabilities for: %s', uid)
-        # 1st capability is the user id itself
-        req.remote_user = uid
-        return _flatten([issuer.issue(req)
-                         for issuer in self._issuers])
+                 there.fullPath(), request.url)
+        return HTTPSeeOther(there.fullPath())
 
     def logout(self, context, req):
-        there = urllib.basejoin(self._a, 'logout')
-        response = HTTPSeeOther(there)
+        req.session.invalidate()
+        there = self.__cascap.subRdFile('logout')
+        response = HTTPSeeOther(there.fullPath())
         response.headers.extend(security.forget(req))
-        log.info('dropping session cooking and redirecting to %s', there)
+        log.info('dropping session cookie and redirecting to %s', there)
         raise response
 
 
-def _flatten(listoflists):
-    return list(itertools.chain(*listoflists))
-
-
 class CapabilityStyle(object):
-    '''An object-capability style  pyramid authorization policy.
+    '''An object-capability style pyramid authorization policy.
 
-    Given a list of auditors, when asked if a set of principals
-    are permitted some permission, we ask each of the auditors
-    to audit each principal for the given permission.
+    Given a list of issuers, when asked to grant a permission in a
+    context, we ask each of the issuers to grant capabilities for the
+    given permission in that context.
+
     '''
-    def __init__(self, auditors):
-        self._auditors = auditors
+
+    @classmethod
+    def setup(cls, config, secret, logout_route, logout_path,
+              authenticated, issuers, validator):
+        '''Set up capability style authorization policy.
+
+        1. Introduce the validator to the authenticated callback.
+        so that the guard will delegate authentic requests to the guide.
+
+        2. Set up logout view
+
+        3. Configure the validator.
+
+        4. Set config authorization policy based on issuers.
+        '''
+        validator.introduce(authenticated)
+        config.add_route(logout_route, logout_path)
+        validator.configure(config, logout_route, secret)
+        config.set_authorization_policy(cls(issuers))
+
+    def __init__(self, issuers):
+        self.__issuers = issuers
 
     def permits(self, context, principals, permission):
-        '''Ask each auditor to audit the principals for the permission.
+        '''Ask each issuer to grant capabilities for this permission.
 
         @return: True iff an audit raised no exception.
         '''
-        for auditor in self._auditors:
-            if permission in auditor.permissions:
-                for cap in principals:
-                    try:
-                        # maybe pass all principals to audit in one go?
-                        auditor.audit(cap, permission)
-                        log.info('CapabilityStyle.permits: %s %s',
-                                 cap, permission)
-
-                        return True
-                    except TypeError:
-                        pass
+        for issuer in self.__issuers:
+            try:
+                issuer.grant(context, permission)
+                log.info('%s permits %s', issuer, permission)
+                return True
+            except TypeError:
+                pass
 
         log.info('CapabilityStyle.permits: %s do not have %s permission.',
                  principals, permission)
         return False
 
     def principals_allowed_by_permission(self, context, permission):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: nocover
 
 
-class SetUp(injector.Module):
-    @provides(Validator)
-    @inject(rt=(Options, CONFIG_SECTION),
-            ua=urllib.URLopener)
-    def validator(self, rt, ua):
-        return Validator(rt.base, rt.app_secret, ua)
-
-
-class RunTime(injector.Module):
+class RunTime(IniModule):  # pragma: nocover
     def __init__(self, ini):
         self._ini = ini
 
-    def configure(self, binder):
-        binder.bind((Options, CONFIG_SECTION),
-                    RuntimeOptions(['base',
-                                    'app_secret']).load(self._ini, 'cas'))
+    @provides((WebReadable, CONFIG_SECTION))
+    @inject(rt=(Options, CONFIG_SECTION))
+    def cas_server(self, rt):
+        from urllib2 import build_opener, Request
 
-        binder.bind(urllib.URLopener,
-                    to=injector.InstanceProvider(urllib2.build_opener()))
+        return WebReadable(rt.base, build_opener(), Request)
+
+    @provides((Options, CONFIG_SECTION))
+    def opts(self):
+        return RuntimeOptions(['base', 'app_secret']).load(
+            self._ini, CONFIG_SECTION)
 
     @classmethod
     def mods(cls, ini):
-        return [SetUp(), RunTime(ini)]
+        return [RunTime(ini)]
 
     @classmethod
     def depgraph(cls, ini):
@@ -379,71 +388,94 @@ class Mock(injector.Module, MockMixin):
         binder.bind((Options, CONFIG_SECTION),
                     to=TestTimeOptions({'base': 'http://example/cas/',
                                         'app_secret': 'sekrit'}))
-        binder.bind(urllib.URLopener,
-                    to=injector.InstanceProvider(LinesUrlOpener(
-                    ['yes', 'john.smith'])))
-
         binder.bind(Issuer, MockIssuer)
+
+    @provides((WebReadable, CONFIG_SECTION))
+    @inject(rt=(Options, CONFIG_SECTION))
+    def cas_server(self, rt):
+        from urllib2 import Request
+        ua = LinesUrlOpener(['yes', 'john.smith'])
+
+        return WebReadable(rt.base, ua, Request)
 
     @classmethod
     def mods(cls):
-        return [SetUp(), Mock()]
+        return [Mock()]
 
 
-class MockIssuer(object):
-    permissions = ('treasure',)
+class MockIssuer(Issuer):  # pragma: nocover
+    permission = 'treasure_map'
 
     def __init__(self):
-        self.sealer, self._unsealer = sealing.makeBrandPair('treasure map')
+        from admin_lib import sealing
+        self.__sealer, self.__unsealer = sealing.makeBrandPair(
+            self.__class__.__name__)
 
-    def issue(self, req):
-        cap = 'Canary Islands'
-        req.treasure_location = cap
-        log.debug('issuing caps for: %s', self.permissions)
-        return [self.sealer.seal(cap)]
+    def authenticated(self, uid, req):
+        cred = self.__sealer.seal(uid)
+        req.context.remote_user = cred
+        return []
 
-    def audit(self, cap, permission):
-        try:
-            self._unsealer.unseal(cap)
-        except AttributeError:  # e.g. in case of string principals
+    def grant(self, context, permission):
+        log.debug('MockIssuer.grant(%s, %s)', context, permission)
+        if permission is not self.permission:
             raise TypeError
 
+        try:
+            box = context.remote_user
+        except AttributeError:
+            raise TypeError
+        else:
+            who = self.__unsealer.unseal(box)  # raises TypeError
+            context.treasure_map = TreasureMap(who, 'sekret place')
 
-def _integration_test(ini, host='127.0.0.1', port=8123):
+    @classmethod
+    def protected_view(cls, context, req):
+        from pyramid.response import Response
+        m = req.context.treasure_map
+        log.debug('protected view: %s', [m.hunter(), ' found: ',
+                                         m.location()])
+        return Response(app_iter=[m.hunter(),
+                                  ' found: ', m.location()])
+
+
+def TreasureMap(who, sekret):  # pragma: nocover
+    def hunter():
+        return who
+
+    def location():
+        return sekret
+
+    def __repr__(self):
+        return 'TreasureMap()'
+
+    return edef(hunter, location, __repr__)
+
+
+def _integration_test(ini, host='127.0.0.1', port=8123):  # pragma: nocover
     from pyramid.config import Configurator
-    from pyramid.response import Response
     from paste import httpserver
 
     #logging.basicConfig(level=logging.DEBUG)
     logging.basicConfig(level=logging.INFO)
 
-    def protected_view(req):
-        log.info('protected_view for: %s', req.remote_user)
-        return Response(app_iter=['I am: ', req.remote_user,
-                                  ' and the location of the treasure is: ',
-                                  req.treasure_location])
-
     config = Configurator(settings={'pyramid.debug_routematch': True})
 
-    depgraph = RunTime.depgraph(ini)
-    guide = MockIssuer()
-    guard = depgraph.get(Validator)
-    guard.add_issuer(guide)
-    config.add_route('logout', 'logout')
-    guard.configure(config, 'logout')
+    guide, guard, rt = RunTime.make(
+        ini, [MockIssuer, Validator, (Options, CONFIG_SECTION)])
 
-    pwhat = CapabilityStyle([guide])
-    config.set_authorization_policy(pwhat)
+    CapabilityStyle.setup(config, rt.app_secret, 'logout', 'logout',
+                          guide.authenticated, [guide], guard)
 
     config.add_route('root', '')
-    config.add_view(protected_view, route_name='root',
-                    permission=guide.permissions[0])
+    config.add_view(MockIssuer.protected_view, route_name='root',
+                    permission=guide.permission)
 
     app = config.make_wsgi_app()
     httpserver.serve(app, host, port)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: nocover
     import sys
     ini = sys.argv[1]
     _integration_test(ini)

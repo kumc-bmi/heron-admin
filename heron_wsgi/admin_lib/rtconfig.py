@@ -95,12 +95,21 @@ class MockMixin(object):
         '''
         if what is None:
             what = cls.stuff
-        depgraph = injector.Injector(cls.mods())
-        return [depgraph.get(it) if it else depgraph
-                for it in what]
+        modules = cls.mods()
+        try:
+            depgraph = injector.Injector(modules)
+        except TypeError:
+            raise TypeError('failed to instantiate dep. graph w.r.t. \n%s' % (
+                '\n'.join([str(m) for m in modules])))
+        try:
+            return [depgraph.get(it) if it else depgraph
+                    for it in what]
+        except TypeError:
+            raise TypeError('failed to instantiate: %s w.r.t. \n%s' % (
+                it, '\n'.join([str(m) for m in modules])))
 
 
-class IniModule(injector.Module):
+class IniModule(injector.Module):  # pragma: nocover
     '''Provide runtime configuration in dependency injection graph.
     '''
     def __init__(self, ini):
@@ -116,6 +125,11 @@ class IniModule(injector.Module):
             if ini is None:
                 ini = 'integration-test.ini'
         self._ini = ini
+
+    def get_options(self, names, section):
+        rt = RuntimeOptions(names)
+        rt.load(self._ini, section)
+        return rt
 
     def bind_options(self, binder, names, section):
         rt = RuntimeOptions(names)
@@ -147,6 +161,11 @@ class IniModule(injector.Module):
         from classes (or other keys) to objects, create an `injector.Injector`
         and use it to instantiate each of the classes in `what`.
         '''
-        depgraph = injector.Injector(cls.mods(ini))
-        return [depgraph.get(it) if it else depgraph
-                for it in what]
+        modules = cls.mods(ini)
+        depgraph = injector.Injector(modules)
+        try:
+            return [depgraph.get(it) if it else depgraph
+                    for it in what]
+        except TypeError:
+            raise TypeError('failed to instantiate: %s w.r.t. \n%s' % (
+                it, '\n'.join([str(m) for m in modules])))

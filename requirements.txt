@@ -1,0 +1,29 @@
+# see README.rst, setup.py
+Chameleon==2.11
+Genshi==0.6
+Mako==0.7.3
+MarkupSafe==0.15
+MySQL-python==1.2.4
+Paste==1.7.5.1
+PasteDeploy==1.5.0
+PasteScript==1.7.5
+SQLAlchemy==0.7.2
+WebOb==1.2.3
+argparse==1.2.1
+cx-Oracle==5.1.2
+-e hg+http://informatics.kumc.edu/changes/raven-j@32c0752401ea506a0b4e36fa94fe23d02ad740d5#egg=heron_wsgi-dev
+injector==0.5.2
+py-dom-xpath==0.1
+pyramid==1.2.1
+pyramid-mailer==0.10
+python-ldap==2.4.10
+repoze.lru==0.6
+repoze.sendmail==4.0b1
+transaction==1.4.0
+translationstring==1.1
+venusian==1.0a7
+wsgiref==0.1.2
+zope.component==4.0.2
+zope.deprecation==4.0.2
+zope.event==4.0.2
+zope.interface==4.0.3

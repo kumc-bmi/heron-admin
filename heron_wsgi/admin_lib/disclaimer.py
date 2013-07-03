@@ -1,5 +1,55 @@
-'''disclaimer -- access disclaimers and acknowledgements from REDCap EAV DB
+r'''disclaimer -- access disclaimers and acknowledgements from REDCap EAV DB
 ---------------------------------------------------------------------------
+
+  >>> logging.basicConfig(level=logging.INFO)
+  ... logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
+A DisclaimerGuard provides a power only to those who have acknowledged
+a disclaimer:
+
+  >>> dg, notary = Mock.make((DisclaimerGuard, KNotary))
+  >>> dg
+  DisclaimerGuard()
+  >>> notary
+  Notary(disclaimer)
+  >>> notary.getInspector()
+  Inspector(disclaimer)
+
+You can't acknowledge a disclaimer without a notarized badge:
+
+  >>> import medcenter
+  >>> x = medcenter.Badge(cn='john.smith',
+  ...                     givenname='John', sn='Smith')
+  >>> dg.ack_disclaimer(x)
+  Traceback (most recent call last):
+    ...
+  NotVouchable
+
+  >>> who = medcenter.IDBadge(notary, cn='john.smith',
+  ...                         givenname='John', sn='Smith',
+  ...                         mail='john.smith@js.example')
+  >>> who
+  John Smith <john.smith@js.example>
+  >>> notary.getInspector().vouch(who)
+  John Smith <john.smith@js.example>
+
+  >>> def use_i2b2(badge):
+  ...     return '%s authorized to use i2b2' % badge.cn
+  >>> redeem = dg.make_redeem(use_i2b2)
+
+Smith can't redeem his acknowledgement yet because he hasn't done one::
+
+  >>> redeem(who)
+  Traceback (most recent call last):
+    ...
+  KeyError: 'john.smith'
+
+  >>> dg.ack_disclaimer(who)
+  >>> redeem(who)
+  'john.smith authorized to use i2b2'
+
+Database Access
+---------------
 
 :class:`Disclaimer` and :class:`Acknowledgement` provide read-only
 access via SQL queries.
@@ -9,48 +59,58 @@ access via SQL queries.
 Let's get a sessionmaker and an AcknowledgementsProject, which causes
 the database to get set up::
 
-  >>> smaker, acksproj = Mock.make((
+  >>> smaker, acksproj, blog = Mock.make((
   ...       (sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
-  ...        AcknowledgementsProject))
+  ...        AcknowledgementsProject, (WebReadable, DISCLAIMERS_SECTION)))
   >>> s = smaker()
-  >>> for row in s.execute(redcapdb.redcap_data.select()).fetchall():
+  >>> for row in s.execute(redcapdb.redcap_data.select().where(
+  ...  redcapdb.redcap_data.c.project_id == Mock.disclaimer_pid)).fetchall():
   ...     print row
+  (123, 1, u'1', u'current', u'1')
   (123, 1, u'1', u'disclaimer_id', u'1')
   (123, 1, u'1', u'url', u'http://example/blog/item/heron-release-xyz')
-  (123, 1, u'1', u'current', u'1')
 
 Now note the mapping to the Disclaimer class::
 
-  >>> s.query(Disclaimer).all()
-  ... # doctest: +NORMALIZE_WHITESPACE
+  >>> dall = s.query(Disclaimer).all()
+  >>> dall # doctest: +NORMALIZE_WHITESPACE
   [Disclaimer(disclaimer_id=1,
               url=http://example/blog/item/heron-release-xyz, current=1)]
+  >>> dall[0].content(blog)[0][:30]
+  u'<div id="blog-main">\n<h1 class'
+
+  .>> acksproj.add_record('bob', 'http://informatics.kumc.edu/blog/2012/x')
+  .>> for ack in s.query(Acknowledgement):
+  ...     print ack
+  '@@'
 
 '''
 
 # python stdlib http://docs.python.org/library/
+import json
 import StringIO
-import datetime
 import logging
-import urllib
-import urllib2
 from xml.dom.minidom import parse
 
 # from pypi
 import injector
 from injector import inject, provides, singleton
 import sqlalchemy
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import session, sessionmaker, exc
 import xpath
 
 # from this package
+from ocap_file import WebReadable, Token
 import rtconfig
 import redcapdb
 import redcap_connect
 
 DISCLAIMERS_SECTION = 'disclaimers'
 ACKNOWLEGEMENTS_SECTION = 'disclaimer_acknowledgements'
+
 KTimeSource = injector.Key('TimeSource')
+KNotary = injector.Key('Notary')
+KBadgeInspector = injector.Key('BadgeInspector')
 
 log = logging.getLogger(__name__)
 
@@ -58,15 +118,15 @@ log = logging.getLogger(__name__)
 class Disclaimer(redcapdb.REDCapRecord):
     fields = ('disclaimer_id', 'url', 'current')
 
-    def content(self, ua):
+    def content(self, rdcap):
         r'''
            >>> d = Disclaimer()
            >>> d.url = 'http://example/'
-           >>> d.content(_TestUrlOpener())
+           >>> d.content(_MockTracBlog())
            ... # doctest: +ELLIPSIS
            (u'<div id="blog-main">\n<h1 class="blog-title">...', u'headline')
         '''
-        body = ua.open(self.url).read()  # pylint: disable=E1101
+        body = rdcap.subRdFile(self.url).getBytes()
         kludge = StringIO.StringIO(body.replace('&larr;', '').\
                                        replace('&rarr;', ''))  # KLUDGE
         elt = xpath.findnode('//*[@id="blog-main"]', parse(kludge))
@@ -88,9 +148,15 @@ _test_doc = '''
 '''
 
 
-class _TestUrlOpener(object):
-    def open(self, _):  # pylint: disable=R0201
+class _MockTracBlog(object):
+    def inChannel(self):
         return StringIO.StringIO(_test_doc)
+
+    def getBytes(self):
+        return self.inChannel().read()
+
+    def subRdFile(self, path):
+        return self
 
 
 class Acknowledgement(redcapdb.REDCapRecord):
@@ -101,14 +167,10 @@ class AcknowledgementsProject(object):
     '''AcknowledgementsProject serves as a REDCap API proxy for adding
     Acknowledgement records.
     '''
-    @inject(rt=(rtconfig.Options, ACKNOWLEGEMENTS_SECTION),
-            ua=urllib.URLopener,
+    @inject(proxy=(redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION),
             timesrc=KTimeSource)
-    def __init__(self, rt, ua, timesrc):
-        '''
-        .. todo:: take proxy as arg rather than ua, rt
-        '''
-        self._proxy = redcap_connect.endPoint(ua, rt.api_url, rt.token)
+    def __init__(self, proxy, timesrc):
+        self._proxy = proxy
         self._timesrc = timesrc
 
     def add_records(self, disclaimer_address, whowhen):
@@ -145,44 +207,132 @@ def last_seg(addr):
     return addr[addr.rfind('/'):]
 
 
+class DisclaimerGuard(Token):
+    @inject(smaker=(session.Session,
+                    redcapdb.CONFIG_SECTION),
+            badge_inspector=KBadgeInspector,
+            acks=AcknowledgementsProject)
+    def __init__(self, smaker, acks, badge_inspector):
+        self.__smaker = smaker
+        self.__badge_inspector = badge_inspector
+        self.__acks = acks
+
+    def __repr__(self):
+        return '%s()' % self.__class__.__name__
+
+    def current_disclaimer(self):
+        s = self.__smaker()
+        return s.query(Disclaimer).filter(Disclaimer.current == 1).one()
+
+    def ack_disclaimer(self, alleged_badge):
+        '''
+        TODO: split object between read-only and read/write
+        '''
+        badge = self.__badge_inspector.vouch(alleged_badge)
+
+        d = self.current_disclaimer()
+        self.__acks.add_record(badge.cn, d.url)
+
+    def make_redeem(self, guarded_power):
+        def redeem(alleged_badge):
+            badge = self.__badge_inspector.vouch(alleged_badge)
+
+            s = self.__smaker()
+            d = self.current_disclaimer()
+            log.debug('disclaimer: %s', d)
+
+            try:
+                a = s.query(Acknowledgement).\
+                    filter(Acknowledgement.disclaimer_address == d.url).\
+                    filter(Acknowledgement.user_id == badge.cn).one()
+            except exc.NoResultFound:
+                raise KeyError(badge.cn)
+
+                log.info('disclaimer ack: %s', a)
+
+            return guarded_power(badge)
+
+        return redeem
+
+
+class _MockREDCapAPI2(redcap_connect._MockREDCapAPI):
+    project_id = redcap_connect._test_settings.project_id
+
+    def __init__(self, smaker):
+        self.__smaker = smaker
+
+    def dispatch(self, params):
+        if 'import' in params['action']:
+            return self.service_import(params)
+        else:
+            return super(_MockREDCapAPI2, self).dispatch(params)
+
+    def service_import(self, params):
+        from redcapdb import add_test_eav
+
+        rows = json.loads(params['data'][0])
+        schema = rows[0].keys()
+        if sorted(schema) == sorted([u'ack', u'timestamp',
+                                     u'disclaimer_address',
+                                     u'user_id', u'acknowledgement_complete']):
+            values = rows[0]
+            record = hash(values['user_id'])
+            s = self.__smaker()
+            add_test_eav(s, self.project_id, 1,
+                         record, values.items())
+            return StringIO.StringIO('')
+        else:
+            raise IOError('bad request: bad acknowledgement schema: '
+                          + str(schema))
+
+
 class Mock(redcapdb.SetUp, rtconfig.MockMixin):
+    disclaimer_pid = '123'
+    ack_pid = redcap_connect._test_settings.project_id
+
     def __init__(self):
+        from notary import makeNotary
         sqlalchemy.orm.clear_mappers()
+        self._notary = makeNotary(__name__)
+
+        Disclaimer.eav_map(self.disclaimer_pid)
+        Acknowledgement.eav_map(self.ack_pid)
 
     @classmethod
     def mods(cls):
-        return redcapdb.Mock.mods() + [cls(), TestSetUp()]
+        return redcapdb.Mock.mods() + [cls()]
 
-    @provides((rtconfig.Options, DISCLAIMERS_SECTION))
-    def disclaimer_options(self):
-        return rtconfig.TestTimeOptions(dict(project_id='123'))
+    @provides((WebReadable, DISCLAIMERS_SECTION))
+    def rdblog(self):
+        return _MockTracBlog()
 
-    @provides((rtconfig.Options, ACKNOWLEGEMENTS_SECTION))
-    def acknowledgements_options(self):
-        return rtconfig.TestTimeOptions(dict(project_id='1234',
-                                           api_url='http://example/recap/API',
-                                           token='12345token'))
-
-    @provides(urllib.URLopener)
-    def web_ua(self):
-        return _TestURLopener()
+    @provides((redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION))
+    @inject(smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
+    def redcap_api_endpoint(self, smaker):
+        webcap = _MockREDCapAPI2(smaker)
+        return redcap_connect.EndPoint(webcap, '12345token')
 
     @provides(KTimeSource)
     def time_source(self):
         return _TestTimeSource()
 
+    @provides(KBadgeInspector)
+    def badge_inspector(self):
+        return self._notary.getInspector()
+
+    @provides(KNotary)
+    def notary(self):
+        return self._notary
+
 
 class TestSetUp(redcapdb.SetUp):
+
     @singleton
     @provides((sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
     @inject(engine=(sqlalchemy.engine.base.Connectable,
-                    redcapdb.CONFIG_SECTION),
-            drt=(rtconfig.Options, DISCLAIMERS_SECTION),
-            art=(rtconfig.Options, ACKNOWLEGEMENTS_SECTION))
-    def redcap_sessionmaker(self, engine, drt, art):
+                    redcapdb.CONFIG_SECTION))
+    def redcap_sessionmaker(self, engine):
         smaker = super(TestSetUp, self).redcap_sessionmaker(engine=engine)
-        Disclaimer.eav_map(drt.project_id)
-        Acknowledgement.eav_map(art.project_id)
         s = smaker()
         insert_data = redcapdb.redcap_data.insert()
         for field_name, value in (
@@ -190,7 +340,8 @@ class TestSetUp(redcapdb.SetUp):
              ('url', 'http://example/blog/item/heron-release-xyz'),
              ('current', 1)):
             s.execute(insert_data.values(event_id=1,
-                                         project_id=drt.project_id, record=1,
+                                         project_id=self.disclaimer_pid,
+                                         record=1,
                                          field_name=field_name, value=value))
 
             log.debug('inserted: %s, %s', field_name, value)
@@ -201,48 +352,54 @@ class TestSetUp(redcapdb.SetUp):
 
 class _TestTimeSource(object):
     def now(self):
+        import datetime
         return datetime.datetime(2011, 9, 2)
 
     def today(self):
+        import datetime
         return datetime.date(2011, 9, 2)
 
 
-class _TestURLopener(object):
-    def open(self, addr, data=None):
-        if addr.startswith('http://example/recap/API'):
-            # todo: verify contents?
-            return StringIO.StringIO('')
-        else:
-            raise IOError('404 not found')
-
-
-class RunTime(rtconfig.IniModule):
+class RunTime(rtconfig.IniModule):  # pragma: nocover
     def configure(self, binder):
-        drt = self.bind_options(binder, ['project_id'], DISCLAIMERS_SECTION)
+        drt = self.get_options(['project_id'], DISCLAIMERS_SECTION)
         Disclaimer.eav_map(drt.project_id)
 
-        art = self.bind_options(binder,
-                                'project_id api_url token'.split(),
-                                ACKNOWLEGEMENTS_SECTION)
+        art, api = redcap_connect.RunTime.endpoint(
+            self, ACKNOWLEGEMENTS_SECTION, extra=('project_id',))
         Acknowledgement.eav_map(art.project_id)
 
-        binder.bind(KTimeSource, injector.InstanceProvider(datetime.datetime))
-        binder.bind(urllib.URLopener, urllib2.build_opener)
+        binder.bind((redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION),
+                    injector.InstanceProvider(api))
+
+    @provides((WebReadable, DISCLAIMERS_SECTION))
+    def rdblog(self, site='http://informatics.kumc.edu/'):
+        from urllib2 import build_opener, Request
+        return WebReadable(site, build_opener(), Request)
+
+    @provides(KTimeSource)
+    def real_time(self):
+        import datetime
+
+        return datetime.datetime
 
     @classmethod
     def mods(cls, ini):
         return redcapdb.RunTime.mods(ini) + [cls(ini)]
 
 
-def _test_main():
+def _integration_test():  # pragma: nocover
     import sys
+
     logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
     user_id = sys.argv[1]
 
-    engine, acks = RunTime.make(None, [(sqlalchemy.engine.base.Connectable,
-                                        redcapdb.CONFIG_SECTION),
-                                       AcknowledgementsProject])
+    engine, acks, webrd = RunTime.make(None,
+                                       [(sqlalchemy.engine.base.Connectable,
+                                         redcapdb.CONFIG_SECTION),
+                                        AcknowledgementsProject,
+                                        (WebReadable, DISCLAIMERS_SECTION)])
     redcapdb.Base.metadata.bind = engine
     sm = sessionmaker(engine)
 
@@ -269,14 +426,36 @@ def _test_main():
         for ack in s.query(Acknowledgement):
             print ack
 
+    if '--release-info' in sys.argv:
+        for start, count, url in _release_info(s):
+            print "%s,%s,%s" % (start, count, url)
+
     if '--current' in sys.argv:
         print "current disclaimer and content:"
         for d in s.query(Disclaimer).filter(Disclaimer.current == 1):
             print d
-            c, h = d.content(urllib2.build_opener())
+            c, h = d.content(webrd)
             print h
             print c[:100]
 
 
-if __name__ == '__main__':
-    _test_main()
+def _release_info(s):
+    '''Look for 1st ack for each release
+    '''
+    from operator import attrgetter
+    from itertools import groupby
+    acks = s.query(Acknowledgement).all()
+    per_release = dict([(addr, list(acks)) for addr, acks in
+                        groupby(acks, attrgetter('disclaimer_address'))])
+    users_per_release = dict([(addr, len(list(acks))) for addr, acks in
+                              per_release.iteritems()])
+    start_release = dict([(addr, min([a.timestamp for a in acks]))
+                          for addr, acks in
+                          per_release.iteritems()])
+    return [(start_release[release],
+             users_per_release[release], release)
+            for release in sorted(per_release.keys(),
+                                  key=lambda r: start_release[r])]
+
+if __name__ == '__main__':  # pragma: nocover
+    _integration_test()

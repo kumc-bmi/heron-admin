@@ -11,13 +11,16 @@
   <div id="menu">
   <div class="header png"><h3>i2b2 Query and Analysis Tool</h3>
   <ul>
-    <li py:if="'disabled' not in accessDisabled">
+    <li py:if="'checked' in repositoryAccess">
       <a href="${i2b2_login_path}"
 	 >Start Query Tool</a>
     </li>
-    <li py:if="'disabled' in accessDisabled">
+    <li py:if="'checked' not in repositoryAccess">
       <button disabled="disabled"
 	 >Start Query Tool</button>
+    </li>
+    <li>
+      <a href="reports/usage">Who's Using HERON?</a>
     </li>
   </ul>
   </div>
@@ -25,9 +28,11 @@
   <div class="header png"><h3>Training Materials</h3>
   <ul>
     <li><a href=
-	"http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials"
-	>HERON Access</a>
+	"http://frontiersresearch.org/frontiers/HERON-Introduction"
+	>HERON Help</a>
     </li>
+	<li><a href="http://frontiersresearch.org/frontiers/informatics-training-videos">Training Videos</a>
+	</li>
   </ul>
   </div>
 
@@ -39,12 +44,15 @@
     <li><a href="${data_use_path}">HERON
     Data Usage Request</a>
     </li>
+	<li><a href="https://redcap.kumc.edu/surveys/?s=wEkGLU">Frontiers Participant Registry Request</a>
+	</li>
   </ul>
   </div>
 
-  <div class="header png"><h3>Oversight</h3>
+  <div py:if="droc" class="header png"><h3>Oversight</h3>
   <ul>
-    <li><a href="https://redcap.kumc.edu/redcap_v4.7.0/index.php?pid=238">DROC Oversight Tools</a></li>
+    <li><a href="https://redcap.kumc.edu/redcap_v4.7.0/index.php?pid=238">DROC Review Forms</a></li>
+    <li><a href="reports/usage_small">Usage Audit Report</a></li>
   </ul>
   </div>
   </div>
@@ -64,8 +72,8 @@
   <!-- TODO: why does this para turn blue? -->
   <p>HERON (Healthcare Enterprise Repository for Ontological Narration)
   allows you to explore de-identified data from Epic/O2 (the
-  hospital electronic medical records) and IDX (the clinical billing
-  system).
+  hospital electronic medical records), IDX (the clinical billing
+  system), KU Hospital Cancer Registry, KU Biospecimen Repository, REDCap (selected projects), Social Security Death Index, and University HealthSystem Consortium (Quality Measure Data).
   </p>
 
   <p>The HERON i2b2 Query and Analysis Tool
@@ -78,17 +86,17 @@
   <em>view-only</em> access to do patient count queries, executing
   a system access agreement is the only requirement.</p>
 
-  <p>The <a href=
-	"http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials"
-	>HERON Access guide</a> explains the process in detail.
+  <p>Visit the <a href=
+	"http://frontiersresearch.org/frontiers/HERON-Introduction"
+	>help page</a> or view <a href="http://frontiersresearch.org/frontiers/informatics-training-videos">training videos</a> for more information on accessing and searching HERON.
   </p>
 
   <p>A Data Request Oversight Committee (DROC) oversees requests to:</p>
   <ul>
-    <li><a href="http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials/SponsoringUsers">sponsor
+    <li><a href="http://frontiersresearch.org/frontiers/heron-sponsorship">sponsor
     collaborators and research team members</a></li>
 
-    <li><a href="http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials/DataAccess">extract
+    <li><a href="http://frontiersresearch.org/frontiers/data-set-instructions">extract
     data sets</a></li>
   </ul>
 
@@ -102,13 +110,12 @@
   The clinic is a brainstorming session and an education forum for
   investigators and informatics to share knowledge, provide feedback,
   and optimize the use of systems.  <em>See the <a
-  href="http://www2.kumc.edu/webevent/scripts/webevent.plx?userid=guest;cmd=list2week;token=guest.ee19ab01eb2b074dd595327c2d334d04"
-  >KUMC Calendar</a> for the date of the next clinic.</em>
+  href="http://www.kumc.edu/events-calendar.html">KUMC Calendar</a> for the date of the next clinic.</em>
 </p>
 
   <p>To set up consultation regarding your project, complete an
-  <a href="http://biostat-pts.kumc.edu/eres/jsp/kumcpr.jsp"
-     >Informatics Project Request</a>.
+  <a href="http://frontiersresearch.org/reqroute/services/request_type/2"
+     >Informatics Project Request</a> (check Informatics project).
   </p>
   </div>
   

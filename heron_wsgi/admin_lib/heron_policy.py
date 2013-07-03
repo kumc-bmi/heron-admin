@@ -7,6 +7,7 @@ __ http://informatics.kumc.edu/work/wiki/HERON#governance
 
 .. For debugging, change .. to >>>.
 .. logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
+  >>> import sys; logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 View-only access for Qualified Faculty
 ======================================
@@ -19,88 +20,125 @@ Excerpting from `HERON training materials`__:
 
 __ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
 
-  >>> hp, mc, dr = Mock.make((HeronRecords, medcenter.MedCenter,
-  ...                         DecisionRecords))
+  >>> hp, mc, oc = Mock.make((HeronRecords, medcenter.MedCenter,
+  ...                         OversightCommittee))
 
-Recalling the login protocol from :mod:`heron_wsgi.admin_lib.medcenter`::
+Recalling the login protocol from :mod:`heron_wsgi.cas_auth`::
 
-  >>> def _login(uid):
+  >>> def _login(uid, mc, hp, perm):
   ...     req = medcenter.MockRequest()
-  ...     req.remote_user = uid
-  ...     mc.issue(req)
+  ...     mc.authenticated(uid, req)
+  ...     hp.grant(req.context, perm)
   ...     return req
 
-When a qualified faculty member from our mock directory logs in
-:meth:`HeronRecords.issue` adds a :class:`Faculty` capability to the
-request::
+Dr. Smith has signed the system access agreement and is current on his
+human subjects training, so he can access the repository and make
+investigator requests::
 
-  >>> facreq = _login('john.smith')
-  >>> hp.issue(facreq)
-  [Faculty(John Smith <john.smith@js.example>)]
-  >>> facreq.faculty
-  Faculty(John Smith <john.smith@js.example>)
+  >>> facreq = _login('john.smith', mc, hp, PERM_STATUS)
+  INFO:cache_remote:system access query for ('SAA', 'john.smith@js.example')
+  INFO:cache_remote:... cached until 2011-09-02 00:00:15
+  INFO:cache_remote:in DROC? query for john.smith
+  INFO:cache_remote:... cached until 2011-09-02 00:01:00
+  >>> facreq.context.status  # doctest: +NORMALIZE_WHITESPACE
+  Status(current_training='2012-01-01', droc=None, executive=False,
+         expired_training=None, faculty=True, sponsored=None,
+         system_access_signed=[datetime.datetime(2011, 8, 26, 0, 0)])
 
-John has signed the system access agreement and is current on his
-human subjects training, so he can access the repository::
+He can follow the "start i2b2" link:
+  >>> facreq = _login('john.smith', mc, hp, PERM_START_I2B2)
 
-  >>> facreq.user.repository_authz()
-  Access(Faculty(John Smith <john.smith@js.example>))
+But he has yet to acknowledge the disclaimer:
 
+  >>> authz = facreq.context.start_i2b2()
+  Traceback (most recent call last):
+    ...
+  KeyError: 'john.smith'
+
+Once he acknowledges it, he can access the repository:
+
+  >>> facreq.context.disclaimers.current_disclaimer()
+  ... # doctest: +NORMALIZE_WHITESPACE
+  Disclaimer(disclaimer_id=1, url=http://example/blog/item/heron-release-xyz,
+             current=1)
+  >>> facreq.context.disclaimers.ack_disclaimer(facreq.context.badge)
+  >>> facreq.context.start_i2b2()
+  Access(John Smith <john.smith@js.example>)
 
 Unforgeable System Access Agreement
 ***********************************
 
-:meth:`HeronRecords.issue` also issues an :class:`Affiliate` user
+:meth:`HeronRecords.grant` also issues an :class:`Affiliate` user
 capability, which provides a link to an authenticated system access
 survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
 
-  >>> facreq.user.ensure_saa_survey().split('?')
+  >>> facreq = _login('john.smith', mc, hp, PERM_SIGN_SAA)
+  >>> facreq.context.sign_saa.ensure_saa_survey().split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
+  INFO:cache_remote:SAA link query for ('SAA', 'john.smith')
+  INFO:cache_remote:... cached until 2011-09-02 00:00:15
   ['http://bmidev1/redcap-host/surveys/',
-   's=8074&full_name=Smith%2C+John&user_id=john.smith']
+   's=f1f9&full_name=Smith%2C+John&user_id=john.smith']
 
 Sponsored Users
 ===============
 
 Bill cannot access the HERON repository because he is neither
-faculty not sponsored::
+faculty not sponsored, nor has he completed human subjects training::
 
-  >>> stureq = _login('bill.student')
-  >>> hp.issue(stureq)
-  [Affiliate(Bill Student <bill.student@js.example>)]
-  >>> stureq.faculty is None
-  True
-  >>> stureq.user.repository_authz()
+  >>> stureq = _login('bill.student', mc, hp, PERM_STATUS)
+  INFO:cache_remote:Sponsorship query for ('sponsorship', 'bill.student')
+  INFO:heron_policy:not sponsored: bill.student
+  INFO:cache_remote:... cached until 2011-09-03 00:00:00
+  INFO:heron_policy:no training on file for: bill.student (Bill Student)
+  INFO:cache_remote:system access query for ('SAA', 'bill.student@js.example')
+  INFO:cache_remote:... cached until 2011-09-02 00:00:15
+  INFO:cache_remote:in DROC? query for bill.student
+  INFO:cache_remote:... cached until 2011-09-02 00:01:00
+  >>> stureq.context.status  #doctest: +NORMALIZE_WHITESPACE
+  Status(current_training=None, droc=None, executive=False,
+         expired_training=None, faculty=False,
+         sponsored=False, system_access_signed=[])
+
+  >>> stureq = _login('bill.student', mc, hp, PERM_START_I2B2)
+  ... # doctest: +NORMALIZE_WHITESPACE
   Traceback (most recent call last):
     ...
-  NotSponsored
+  NoPermission: NoPermission(Status(current_training=None, droc=None,
+                                    executive=False, expired_training=None,
+                                    faculty=False, sponsored=False,
+                                    system_access_signed=[]))
+
+Verify that remote accesses are cached:
+
+  >>> stureq = _login('bill.student', mc, hp, PERM_START_I2B2)
+  ... # doctest: +ELLIPSIS
+  Traceback (most recent call last):
+    ...
+  NoPermission: ...
 
 .. note:: We count on sqlalchemy to recover from errors in the connection
    to the database of sponsorship records.
 
-Nor has he completed human subjects training::
-
-  >>> stureq.user.training()
-  Traceback (most recent call last):
-  ...
-  NoTraining
-
 Another student has been sponsored and is current on training, but has
 not yet executed the system access agreement::
 
-  >>> stu2req = _login('some.one')
-  >>> hp.issue(stu2req)
-  [Affiliate(Some One <some.one@js.example>)]
-  >>> stu2req.user.sponsor()
-  True
-  >>> stu2req.user.training()
-  '2012-01-01'
-  >>> stu2req.user.repository_authz()
+  >>> stu2req = _login('some.one', mc, hp, PERM_START_I2B2)
+  ... #doctest: +NORMALIZE_WHITESPACE
   Traceback (most recent call last):
-  ...
-  NoAgreement
+    ...
+  NoPermission: NoPermission(Status(current_training='2012-01-01',
+            droc=None, executive=False,
+            expired_training=None, faculty=False, sponsored=True,
+            system_access_signed=[]))
 
-.. todo:: secure represention of sponsor rather than True/False?
+This student does have authorization to sign the SAA:
+
+  >>> stu2req = _login('some.one', mc, hp, PERM_SIGN_SAA)
+  WARNING:medcenter:missing LDAP attribute ou for some.one
+  WARNING:medcenter:missing LDAP attribute title for some.one
+  >>> stu2req.context.sign_saa
+  Affiliate(some.one)
 
 
 Exception for executives from participating instituions
@@ -108,23 +146,29 @@ Exception for executives from participating instituions
 
 Executives don't need sponsorship::
 
-  >>> exreq = _login('big.wig')
-  >>> hp.issue(exreq)
-  [Executive(Big Wig <big.wig@js.example>)]
-  >>> exreq.user.repository_authz()
-  Access(Executive(Big Wig <big.wig@js.example>))
+  >>> exreq = _login('big.wig', mc, hp, PERM_START_I2B2)
+  INFO:cache_remote:system access query for ('SAA', 'big.wig@js.example')
+  INFO:cache_remote:... cached until 2011-09-02 00:00:15
+  INFO:cache_remote:in DROC? query for big.wig
+  INFO:cache_remote:... cached until 2011-09-02 00:01:00
 
 
-Sponsorship and data usage requests to the oversight committee
-==============================================================
+Investigator Requests
+=====================
 
-Faculty can make sponsorship and data usage requests to the oversight
-committee::
+Faculty and executives can make sponsorship and data usage requests to
+the oversight committee::
 
-  >>> facreq.faculty.ensure_oversight_survey(
+  >>> facreq = _login('john.smith', mc, hp, PERM_INVESTIGATOR_REQUEST)
+  >>> facreq.context.investigator_request
+  InvestigatorRequest(from=john.smith)
+
+  >>> facreq.context.investigator_request.ensure_oversight_survey(
   ...        ['some.one'], what_for=HeronRecords.DATA_USE).split('&')
   ... # doctest: +NORMALIZE_WHITESPACE
-  ['http://bmidev1/redcap-host/surveys/?s=8074',
+  WARNING:medcenter:missing LDAP attribute ou for some.one
+  WARNING:medcenter:missing LDAP attribute title for some.one
+  ['http://bmidev1/redcap-host/surveys/?s=f1f9',
    'full_name=Smith%2C+John',
    'multi=yes',
    'name_etc_1=One%2C+Some%0A%0A',
@@ -132,101 +176,135 @@ committee::
    'user_id_1=some.one',
    'what_for=2']
 
-Directory Search for Team Members
-*********************************
 
-Part of making oversight requests is nominating team members::
-
-  >>> facreq.user.browser.lookup('some.one')
-  Some One <some.one@js.example>
-  >>> facreq.user.browser.search(5, 'john.smith', '', '')
-  [John Smith <john.smith@js.example>]
+  >>> exreq = _login('big.wig', mc, hp, PERM_INVESTIGATOR_REQUEST)
+  >>> ok = exreq.context.investigator_request.ensure_oversight_survey(
+  ...        ['some.one'], what_for=HeronRecords.DATA_USE).split('&')
+  WARNING:medcenter:missing LDAP attribute ou for some.one
+  WARNING:medcenter:missing LDAP attribute title for some.one
 
 
-Notification of Oversight Decisions
-***********************************
+Overight Auditing
+=================
 
-What decision notifications are pending?
+Oversight committee members can get sensitive audit info::
 
-  >>> ds = dr.oversight_decisions()
-  >>> ds  # doctest: +NORMALIZE_WHITESPACE
-  [(34, u'-565402122873664774', u'2', 3),
-   (34, u'23180811818680005', u'1', 3),
-   (34, u'6373469799195807417', u'1', 3)]
+  >>> exreq = _login('big.wig', mc, hp, PERM_DROC_AUDIT)
 
-Get details that we might want to use in composing the notification::
+Ordinary users cannot, though they can get aggregate usage info::
 
-  >>> from pprint import pprint
-  >>> for pid, record, decision, qty in ds:
-  ...    pprint(dr.decision_detail(record))
-  (John Smith <john.smith@js.example>,
-   [Bill Student <bill.student@js.example>],
-   {u'approve_kuh': u'2',
-    u'approve_kumc': u'2',
-    u'approve_kupi': u'2',
-    u'date_of_expiration': u'',
-    u'full_name': u'John Smith',
-    u'project_title': u'Cart Blanche',
-    u'user_id': u'john.smith',
-    u'user_id_1': u'bill.student'})
-  (John Smith <john.smith@js.example>,
-   [Bill Student <bill.student@js.example>],
-   {u'approve_kuh': u'1',
-    u'approve_kumc': u'1',
-    u'approve_kupi': u'1',
-    u'date_of_expiration': u'1950-02-27',
-    u'full_name': u'John Smith',
-    u'project_title': u'Cure Polio',
-    u'user_id': u'john.smith',
-    u'user_id_1': u'bill.student'})
-  (John Smith <john.smith@js.example>,
-   [Some One <some.one@js.example>, Carol Student <carol.student@js.example>],
-   {u'approve_kuh': u'1',
-    u'approve_kumc': u'1',
-    u'approve_kupi': u'1',
-    u'date_of_expiration': u'',
-    u'full_name': u'John Smith',
-    u'project_title': u'Cure Warts',
-    u'user_id': u'john.smith',
-    u'user_id_1': u'some.one',
-    u'user_id_2': u'carol.student'})
+  >>> stureq = _login('bill.student', mc, hp, PERM_STATS_REPORTER)
+  >>> stureq.context.stats_reporter
+  I2B2AggregateUsage()
 
-.. todo:: consider factoring out low level details to make
-          the policy more clear as code.
+  >>> stureq = _login('bill.student', mc, hp, PERM_DROC_AUDIT)
+  Traceback (most recent call last):
+    ...
+  NotDROC
+
 
 '''
 
-import datetime
+from datetime import timedelta
 import itertools
 import logging
-import urllib
-import csv  # csv, os only used _DataDict, i.e. testing
-import os
-import urllib2
+from collections import namedtuple
 
 import injector
 from injector import inject, provides, singleton
-import sqlalchemy
-from sqlalchemy.sql import select, and_, func
+from sqlalchemy import orm
+from sqlalchemy.sql import and_
 
+from ocap_file import Token
 import rtconfig
 import i2b2pm
 import medcenter
 import redcap_connect
 import redcapdb
 import noticelog
+from noticelog import OVERSIGHT_CONFIG_SECTION
 import disclaimer
-from disclaimer import Disclaimer, Acknowledgement, KTimeSource
+from disclaimer import KTimeSource
+from audit_usage import I2B2AggregateUsage, I2B2SensitiveUsage
+from cache_remote import Cache
 
 SAA_CONFIG_SECTION = 'saa_survey'
-OVERSIGHT_CONFIG_SECTION = 'oversight_survey'
-PERM_USER = __name__ + '.user'
-PERM_FACULTY = __name__ + '.faculty'
+
+PERM_STATUS = __name__ + '.status'
+PERM_SIGN_SAA = __name__ + '.sign_saa'
+PERM_INVESTIGATOR_REQUEST = __name__ + 'investigator_request'
+PERM_START_I2B2 = __name__ + '.start_i2b2'
+PERM_DROC_AUDIT = __name__ + '.droc_audit'
+PERM_STATS_REPORTER = __name__ + '.stats_reporter'
+PERM_START_I2B2 = 'start_i2b2'
+
 
 log = logging.getLogger(__name__)
 
 
-class HeronRecords(object):
+class OversightCommittee(Token, Cache):
+    @inject(redcap_sessionmaker=(orm.session.Session,
+                                 redcapdb.CONFIG_SECTION),
+            oversight_rc=(redcap_connect.SurveySetup,
+                          OVERSIGHT_CONFIG_SECTION),
+            mc=medcenter.MedCenter,
+            timesrc=KTimeSource,
+            auditor=I2B2SensitiveUsage)
+    def __init__(self, redcap_sessionmaker, oversight_rc, mc,
+                 timesrc, auditor):
+        Cache.__init__(self, timesrc.now)
+        self.__rcsm = redcap_sessionmaker
+        self.project_id = oversight_rc.project_id
+        self.__mc = mc
+        self.inspector = mc.getInspector()
+        self.__auditor = auditor
+
+    @classmethod
+    def _memberq(cls, pid, who):
+        '''
+        >>> print OversightCommittee._memberq(238, 'big.wig')
+        ... #doctest: +NORMALIZE_WHITESPACE
+        SELECT redcap_user_rights.project_id, redcap_user_rights.username
+        FROM redcap_user_rights
+        WHERE redcap_user_rights.project_id = :project_id_1
+        AND redcap_user_rights.username = :username_1
+        '''
+        t = redcapdb.redcap_user_rights
+        return t.select().\
+            where(t.c.project_id == pid).\
+            where(t.c.username == who)
+
+    def _droc_auditor(self, alleged_badge,
+                     ttl=timedelta(seconds=60)):
+        badge = self.inspector.vouch(alleged_badge)
+
+        def db_q():
+            s = self.__rcsm()
+            ans = s.execute(self._memberq(self.project_id, badge.cn))
+
+            in_droc = len(ans.fetchall()) == 1
+            return ttl, in_droc
+
+        in_droc = self._query(badge.cn, db_q, 'in DROC?')
+        if not in_droc:
+            raise NotDROC
+
+        return self.__auditor
+
+
+Status = namedtuple('Status',
+                    sorted(dict(faculty=0, executive=0, sponsored=0,
+                                droc=0,
+                                current_training=0, expired_training=0,
+                                system_access_signed=0).keys()))
+
+
+def sufficient(s):
+    return ((s.faculty or s.executive or s.sponsored) and s.current_training
+            and s.system_access_signed)
+
+
+class HeronRecords(Token, Cache):
     '''
 
     In the oversight_project, userid of sponsored users are stored in
@@ -234,10 +312,11 @@ class HeronRecords(object):
     stored in fields with names like approve_%, with a distinct
     approve_% field for each participating institution.
 
+    >>> from noticelog import _DataDict
     >>> ddict = _DataDict('oversight')
     >>> dd_orgs = [n[len('approve_'):] for (n, etc) in ddict.fields()
     ...            if n.startswith('approve_')]
-    >>> set(dd_orgs) == set(HeronRecords.institutions)
+    >>> set(dd_orgs) == set(noticelog.DecisionRecords.institutions)
     True
 
     >>> len([n for (n, etc) in ddict.fields() if n.startswith('user_id_')]) > 3
@@ -250,11 +329,7 @@ class HeronRecords(object):
     True
 
     .. todo:: check expiration date
-
-    .. todo:: reduce privilege from an arbitrary urlopener to what's needed.
     '''
-    permissions = (PERM_USER, PERM_FACULTY)
-    institutions = ('kuh', 'kupi', 'kumc')
 
     SPONSORSHIP = '1'
     DATA_USE = '2'
@@ -262,178 +337,141 @@ class HeronRecords(object):
 
     @inject(mc=medcenter.MedCenter,
             pm=i2b2pm.I2B2PM,
-            saa_opts=(rtconfig.Options, SAA_CONFIG_SECTION),
-            oversight_opts=(rtconfig.Options, OVERSIGHT_CONFIG_SECTION),
-            engine=(sqlalchemy.engine.base.Connectable,
+            dr=noticelog.DecisionRecords,
+            stats=I2B2AggregateUsage,
+            saa_rc=(redcap_connect.SurveySetup,
+                    SAA_CONFIG_SECTION),
+            oversight_rc=(redcap_connect.SurveySetup,
+                          OVERSIGHT_CONFIG_SECTION),
+            oc=OversightCommittee,
+            dg=disclaimer.DisclaimerGuard,
+            smaker=(orm.session.Session,
                     redcapdb.CONFIG_SECTION),
-            smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
-            timesrc=KTimeSource,
-            urlopener=urllib.URLopener)
-    def __init__(self, mc, pm, saa_opts, oversight_opts,
-                 engine, smaker, timesrc, urlopener):
+            timesrc=KTimeSource)
+    def __init__(self, mc, pm, dr, stats, saa_rc, oversight_rc, oc,
+                 dg, smaker, timesrc):
+        Cache.__init__(self, timesrc.now)
         log.debug('HeronRecords.__init__ again?')
-        self._engine = engine
         self._smaker = smaker
         self._mc = mc
         self._pm = pm
+        self.__dr = dr
+        self.__stats = stats
         self._t = timesrc
-        self._saa_survey_id = saa_opts.survey_id
-        ## refactor so these two are passed in rather than opts/urlopener?
-        self._saa_rc = redcap_connect.survey_setup(saa_opts, urlopener)
-        self._oversight_rc = redcap_connect.survey_setup(oversight_opts,
-                                                         urlopener)
-        self._oversight_project_id = oversight_opts.project_id
-        self._executives = oversight_opts.executives.split()
+        self._saa_survey_id = saa_rc.survey_id
+        self._saa_rc = saa_rc
+        self._oversight_rc = oversight_rc
+        self.__oc = oc
+        self._oversight_project_id = oversight_rc.project_id
+        self.__dg = dg
 
-    def issue(self, req):
-        mc = self._mc
+        def repository_authz(badge):
+            return pm.account_for(badge)
+        self.__redeem = dg.make_redeem(repository_authz)
 
-        hr = self
-        badge = req.badge
+    def authenticated(self, uid, req):
+        return []
 
-        # limit capabilities of self to one user
-        class I2B2Account(object):
-            def __init__(self, agent):
-                assert(agent.badge is badge)
-                self.agent = agent
+    def grant(self, context, p):
+        log.debug('HeronRecords.grant(%s, %s)' % (context, p))
 
-            def __repr__(self):
-                return 'Access(%s)' % self.agent
+        badge = self._mc.idbadge(context)
+        context.badge = badge
 
-            def creds(self):
-                key, u = hr._pm.authz(badge.cn, badge.full_name())
-                return (badge.cn, key)
+        if p is PERM_STATUS:
+            context.status = self._status(badge)
+        elif p is PERM_SIGN_SAA:
+            context.sign_saa = Affiliate(badge, self._query, self._saa_rc)
+        elif p is PERM_INVESTIGATOR_REQUEST:
+            context.investigator_request = self._investigator_request(badge)
+        elif p is PERM_DROC_AUDIT:
+            context.droc_audit = self.__oc._droc_auditor(badge)
+        elif p is PERM_STATS_REPORTER:
+            context.stats_reporter = self.__stats
+            context.browser = self._mc._browser
+        elif p is PERM_START_I2B2:
+            st = self._status(badge)
+            if not sufficient(st):
+                raise NoPermission(st)
+            context.start_i2b2 = lambda: self.__redeem(badge)
+            context.disclaimers = self.__dg
 
-        class Browser(object):
-            ''''Users get to do LDAP searches,
-            but they don't get to exercise the rights of
-            the users they find.
-            '''
-            def lookup(self, uid):
-                return mc.lookup(uid)
+    def _status(self, badge):
+        sponsored = (None if badge.is_investigator()
+                     else
+                     (self._sponsorship(badge.cn) is not None))
 
-            def search(self, max, cn, sn, givenname):
-                return mc.search(max, cn, sn, givenname)
+        current_training, expired_training = self._training_current(badge)
+        system_access_sigs = [sig.completion_time
+                              for sig in self._signatures(badge.mail)]
 
-        class Record(object):
-            def ensure_saa(self, params):
-                return hr._saa_rc(badge.cn, params)
+        try:
+            droc_audit = self.__oc._droc_auditor(badge)
+        except NotDROC:
+            droc_audit = None
 
-            def get_sig(self):
-                return hr._check_saa_signed(badge.mail)
+        return Status(faculty=badge.is_faculty(),
+                      executive=badge.is_executive(),
+                      sponsored=sponsored,
+                      droc=droc_audit,
+                      current_training=current_training,
+                      expired_training=expired_training,
+                      system_access_signed=system_access_sigs)
 
-            def ensure_oversight(self, params):
-                return hr._oversight_rc(badge.cn, params, multi=True)
+    def _sponsorship(self, uid,
+                     ttl=timedelta(seconds=600)):
+        def do_q():
+            for ans in self.__dr.sponsorships(uid):
+                # hmm... why not do this date comparison in the database?
+                if (ans.dt_exp <= ''
+                    or self._t.today().isoformat() <= ans.dt_exp):
+                    log.info('sponsorship OK: %s', ans)
+                    return ttl, ans
 
-            def get_training(self):
-                try:
-                    when = mc.training(req.idvault_entry)
-                except (KeyError):
-                    log.info('no training on file for: %s (%s)',
-                             badge.cn, badge.full_name())
-                    raise NoTraining
-                except (IOError):
-                    log.warn('failed to look up training due to IOError')
-                    log.debug('training error detail', exc_info=True)
-                    raise NoTraining
-                current = when >= hr._t.today().isoformat()
-                if not current:
-                    log.info('training expried %s for: %s (%s)',
-                             when, badge.cn, badge.full_name())
-                    raise NoTraining(when)
-                return when
+            log.info('not sponsored: %s', uid)
+            return timedelta(1), None
 
-            def get_sponsor(self):
-                return hr._sponsored(badge.cn)
+        return self._query(('sponsorship', uid), do_q, 'Sponsorship')
 
-            def repository_authz(self, user):
-                # TODO: move sponsor checking from Affiliate to Record
-                # to follow ocap discipline.
-                user.sponsor()
-                self.get_sig()
-                self.get_training()
-                return I2B2Account(user)
+    def _training_current(self, badge):
+        try:
+            when = self._mc.trained_thru(badge)
+        except (IOError):
+            log.warn('failed to look up training due to IOError')
+            log.debug('training error detail', exc_info=True)
+            return None, None
+        except LookupError:
+            log.info('no training on file for: %s (%s)',
+                     badge.cn, badge.full_name())
+            return None, None
 
-            def disclaimer_ack(self):
-                return hr._disclaimer_acknowledgement(badge.cn)
+        current = when >= self._t.today().isoformat()
+        if not current:
+            log.info('training expired %s for: %s (%s)',
+                     when, self.cn, self.full_name())
 
-        ex = fac = user = None
+        return (when, None) if current else (None, when)
 
-        if badge.cn in self._executives:
-            ex = Executive(badge,
-                           req.idvault_entry,
-                           Record(), Browser())
-            user = ex
-        else:
-            try:
-                fac = Faculty(mc.faculty_badge(req.idvault_entry),
-                               req.idvault_entry,
-                               Record(), Browser())
-                user = fac
-            except medcenter.NotFaculty:
-                user = Affiliate(badge, req.idvault_entry,
-                                 Record(), Browser())
-
-        req.executive = ex
-        req.faculty = fac
-        req.user = user
-
-        log.info('issue executive: %s faculty: %s user: %s', ex, fac, user)
-
-        return [user]
-
-    def audit(self, cap, p=PERM_USER):
-        log.debug('HeronRecords.audit(%s, %s)' % (cap, p))
-        if not isinstance(cap, Faculty if p is PERM_FACULTY else Affiliate):
-            raise TypeError
-        self._mc.read_badge(cap.idcap)
-
-    def _disclaimer_acknowledgement(self, user_id):
+    def _signatures(self, mail,
+                   ttl=timedelta(seconds=15)):
+        '''Look up SAA survey response by email address.
         '''
-        @returns: (current disclaimer, acknowledgement of user_id);
-                  ack is None if not found.
-        '''
-        s = self._smaker()
 
-        d = s.query(Disclaimer).filter(Disclaimer.current == 1).first()
+        def q():
+            return ttl, self._smaker().execute(
+                _saa_query(mail, self._saa_survey_id)).fetchall()
 
-        if d:
-            log.debug('disclaimer: %s', d)
-            a = s.query(Acknowledgement).\
-                filter(Acknowledgement.disclaimer_address == d.url).\
-                filter(Acknowledgement.user_id == user_id).first()
-        else:
-            log.warn('no current disclaimer!')
-            log.debug('session engine: %s', s.bind)
-            a = None
+        return self._query(('SAA', mail), q, 'system access')
 
-        log.info('disclaimer ack: %s', a)
-        return d, a
+    def _investigator_request(self, badge):
+        log.debug('investigator_request: %s faculty? %s executive? %s',
+                  badge, badge.is_faculty(), badge.is_executive())
 
-    def _check_saa_signed(self, mail):
-        '''Test for an authenticated SAA survey response.
-        '''
-        if not self._engine.execute(_saa_query(mail, self._saa_survey_id)).\
-                fetchall():
-            log.info('no SAA: %s', mail)
-            raise NoAgreement()
+        if not (badge.is_investigator()):
+            raise medcenter.NotFaculty
 
-    def _sponsored(self, uid):
-        decision, candidate, dc = _sponsor_queries(self._oversight_project_id)
-
-        # mysql work-around for
-        # 1248, 'Every derived table must have its own alias'
-        dc = dc.alias('mw')
-        q = dc.select(and_(dc.c.candidate == uid,
-                           dc.c.decision == DecisionRecords.YES))
-
-        for ans in self._engine.execute(q).fetchall():
-            if ans.dt_exp <= '' or self._t.today().isoformat() <= ans.dt_exp:
-                log.info('sponsorship OK: %s', ans)
-                return True
-
-        log.info('not sponsored: %s', uid)
-        raise NotSponsored()
+        return InvestigatorRequest(badge, self._mc._browser,
+                                   self._oversight_rc)
 
 
 def _saa_query(mail, survey_id):
@@ -443,7 +481,7 @@ def _saa_query(mail, survey_id):
       ... # doctest: +NORMALIZE_WHITESPACE
       SELECT r.response_id, r.participant_id, r.record,
       r.first_submit_time, r.completion_time, r.return_code,
-      p.participant_id, p.survey_id, p.arm_id, p.hash, p.legacy_hash,
+      p.participant_id, p.survey_id, p.event_id, p.hash, p.legacy_hash,
       p.participant_email, p.participant_identifier FROM
       redcap_surveys_response AS r JOIN redcap_surveys_participants AS
       p ON r.participant_id = p.participant_id WHERE
@@ -457,448 +495,161 @@ def _saa_query(mail, survey_id):
             and_(p.c.participant_email == mail, p.c.survey_id == survey_id))
 
 
-def _sponsor_queries(oversight_project_id):
-    '''
-      >>> from pprint import pprint
-      >>> decision, candidate, cdwho = _sponsor_queries(123)
-
-      >>> print str(decision)
-      ...  # doctest: +NORMALIZE_WHITESPACE
-      SELECT redcap_data.project_id, redcap_data.record,
-      redcap_data.value AS decision, count(*) AS count_1 FROM
-      redcap_data WHERE redcap_data.field_name LIKE :field_name_1 AND
-      redcap_data.project_id = :project_id_1 GROUP BY
-      redcap_data.project_id, redcap_data.record, redcap_data.value
-      HAVING count(*) = :count_2
-
-      >>> pprint(decision.compile().params)
-      {u'count_2': 3, u'field_name_1': 'approve_%', u'project_id_1': 123}
-
-
-      >>> print str(candidate)
-      ...  # doctest: +NORMALIZE_WHITESPACE
-      SELECT redcap_data.project_id, redcap_data.record,
-      redcap_data.value AS userid FROM redcap_data WHERE
-      redcap_data.field_name LIKE :field_name_1
-
-      >>> pprint(candidate.compile().params)
-      {u'field_name_1': 'user_id_%'}
-
-      >>> print str(cdwho) # doctest: +NORMALIZE_WHITESPACE
-      SELECT cd_record AS record,
-             cd_decision AS decision,
-             who_userid AS candidate,
-             expire_dt_exp AS dt_exp
-      FROM
-        (SELECT cd.project_id AS cd_project_id,
-                cd.record AS cd_record,
-                cd.decision AS cd_decision,
-                cd.count_1 AS cd_count_1,
-                who.project_id AS who_project_id,
-                who.record AS who_record,
-                who.userid AS who_userid,
-                expire.project_id AS expire_project_id,
-                expire.record AS expire_record,
-                expire.dt_exp AS expire_dt_exp
-         FROM
-           (SELECT redcap_data.project_id AS project_id,
-                   redcap_data.record AS record,
-                   redcap_data.value AS decision, count(*) AS count_1
-            FROM redcap_data
-            WHERE redcap_data.field_name LIKE :field_name_1
-              AND redcap_data.project_id = :project_id_1
-            GROUP BY redcap_data.project_id, redcap_data.record,
-                     redcap_data.value
-            HAVING count(*) = :count_2) AS cd
-           JOIN
-             (SELECT redcap_data.project_id AS project_id,
-                     redcap_data.record AS record,
-                     redcap_data.value AS userid
-              FROM redcap_data
-              WHERE redcap_data.field_name LIKE :field_name_2) AS who
-           ON who.record = cd.record
-           AND who.project_id = cd.project_id
-           LEFT OUTER JOIN (SELECT redcap_data.project_id AS project_id,
-                                   redcap_data.record AS record,
-                                   redcap_data.value AS dt_exp
-                            FROM redcap_data
-                            WHERE redcap_data.field_name = :field_name_3)
-                             AS expire
-           ON expire.record = cd.record AND expire.project_id = cd.project_id)
-              AS cdwho
-
-      >>> pprint(cdwho.compile().params)
-      {u'count_2': 3,
-       u'field_name_1': 'approve_%',
-       u'field_name_2': 'user_id_%',
-       u'field_name_3': 'date_of_expiration',
-       u'project_id_1': 123}
-
-    '''
-    # grumble... sql in python clothing
-    # but for this price, we can run it on sqlite for testing as well as mysql
-    # and sqlalchemy will take care of the bind parameter syntax
-    rd = redcapdb.redcap_data
-
-    # committee decisions
-    decision = select((rd.c.project_id, rd.c.record,
-                       rd.c.value.label('decision'),
-                       func.count())).where(
-        and_(rd.c.field_name.like('approve_%'),
-             rd.c.project_id == oversight_project_id)).\
-             group_by(rd.c.project_id,
-                      rd.c.record,
-                      rd.c.value).having(
-                 func.count() == len(HeronRecords.institutions)).alias('cd')
-
-    # todo: consider combining record, event, project_id into one attr
-    candidate = select((rd.c.project_id, rd.c.record,
-                        rd.c.value.label('userid'))).where(
-        rd.c.field_name.like('user_id_%')).alias('who')
-
-    dt_exp = select((rd.c.project_id, rd.c.record,
-                    rd.c.value.label('dt_exp'))).where(
-        rd.c.field_name == 'date_of_expiration').alias('expire')
-
-    j = decision.join(candidate,
-                      and_(candidate.c.record == decision.c.record,
-                           candidate.c.project_id == decision.c.project_id)).\
-                           outerjoin(dt_exp, and_(
-            dt_exp.c.record == decision.c.record,
-            dt_exp.c.project_id == decision.c.project_id)).\
-            alias('cdwho').select()
-
-    cdwho = j.with_only_columns((j.c.cd_record.label('record'),
-                                 j.c.cd_decision.label('decision'),
-                                 j.c.who_userid.label('candidate'),
-                                 j.c.expire_dt_exp.label('dt_exp')))
-
-    return decision, candidate, cdwho
-
-
 class NoPermission(Exception):
+    def __init__(self, whynot):
+        self.whynot = whynot
+
+    def __str__(self):
+        return '%s(%s)' % (self.__class__.__name__, self.whynot)
+
+
+class NotDROC(Exception):
     pass
 
 
-class NotSponsored(NoPermission):
-    pass
-
-
-class NoTraining(NoPermission):
-    def __init__(self, when=None):
-        self.when = when
-
-
-class NotExecutive(NoPermission):
-    pass
-
-
-class NoAgreement(NoPermission):
-    pass
-
-
-class Affiliate(object):
-    def __init__(self, badge, idcap, record, browser):
+class Affiliate(Token):
+    def __init__(self, badge, query, saa_rc):
         self.badge = badge
-        self.idcap = idcap
-        self.record = record
-        self.browser = browser
-        self._sponsor = None
+        self.__saa_rc = saa_rc
+        self.__query = query
 
     def __repr__(self):
-        return 'Affiliate(%s)' % (self.badge)
+        return 'Affiliate(%s)' % (self.badge.cn)
 
-    def sort_name(self):
-        # law of demeter says move this to Badge()...
-        return "%s, %s" % (self.badge.sn, self.badge.givenname)
+    def ensure_saa_survey(self, ttl=timedelta(seconds=15)):
+        # TODO: redcap_connect should use notarized badges rather
+        # than raw cn
+        badge = self.badge
 
-    def ensure_saa_survey(self):
-        return self.record.ensure_saa(dict(user_id=self.badge.cn,
-                                           full_name=self.sort_name()))
+        def _ensure():
+            fields = dict(user_id=badge.cn,
+                          full_name=badge.sort_name())
+            return (ttl, self.__saa_rc(badge.cn, fields))
 
-    def signature(self):
-        return self.record.get_sig()
-
-    def training(self):
-        return self.record.get_training()
-
-    def sponsor(self):
-        '''Since Affiliate objects are only used for the lifetime of a
-        request, we figure it's OK to cache the sponsor.
-        '''
-        if not self._sponsor:
-            self._sponsor = self.record.get_sponsor()
-        return self._sponsor
-
-    def repository_authz(self):
-        return self.record.repository_authz(self)
-
-    def disclaimer_ack(self):
-        return self.record.disclaimer_ack()
+        return self.__query(('SAA', badge.cn), _ensure, 'SAA link')
 
 
-class Executive(Affiliate):
+class InvestigatorRequest(Token):
+    '''Power to file authenticated oversight requests.
+    '''
+    def __init__(self, badge, browser, orc):
+        self.__badge = badge
+        self.__orc = orc
+        self.__browser = browser
+
     def __repr__(self):
-        return 'Executive(%s)' % (self.badge)
-
-    def sponsor(self):
-        return self
-
-
-class Faculty(Affiliate):
-    def __repr__(self):
-        return 'Faculty(%s)' % (self.badge)
-
-    def sponsor(self):
-        return self
+        return '%s(from=%s)' % (self.__class__.__name__, self.__badge.cn)
 
     def ensure_oversight_survey(self, uids, what_for):
         if what_for not in HeronRecords.oversight_request_purposes:
             raise TypeError(what_for)
 
-        tp = team_params(self.browser.lookup, uids)
-        return self.record.ensure_oversight(dict(tp,
-                                                 user_id=self.badge.cn,
-                                                 full_name=self.sort_name(),
-                                                 what_for=what_for,
-                                                 multi='yes'))
+        tp = team_params(self.__browser.lookup, uids)
+
+        return self.__orc(
+            self.__badge.cn, dict(tp,
+                                  user_id=self.__badge.cn,
+                                  full_name=self.__badge.sort_name(),
+                                  what_for=what_for,
+                                  multi='yes'), multi=True)
 
 
 def team_params(lookup, uids):
     r'''
     >>> import pprint
     >>> (mc, ) = medcenter.Mock.make([medcenter.MedCenter])
-    >>> pprint.pprint(list(team_params(mc.lookup,
+    >>> pprint.pprint(list(team_params(mc.peer_badge,
     ...                                ['john.smith', 'bill.student'])))
+    ... # doctest: +ELLIPSIS
     [('user_id_1', 'john.smith'),
-     ('name_etc_1', 'Smith, John\nChair of Department of Neurology\n'),
+     ('name_etc_1', 'Smith, John\nChair of Department of Neur...'),
      ('user_id_2', 'bill.student'),
-     ('name_etc_2', 'Student, Bill\n\n')]
+     ('name_etc_2', 'Student, Bill\nStudent\nUndergrad')]
 
     '''
     nested = [[('user_id_%d' % (i + 1), uid),
                ('name_etc_%d' % (i + 1), '%s, %s\n%s\n%s' % (
-                    a.sn, a.givenname, a.title, a.ou))]
+                    a.sn, a.givenname, a.title or '', a.ou or ''))]
               for (i, uid, a) in
               [(i, uids[i], lookup(uids[i]))
                for i in range(0, len(uids))]]
     return itertools.chain.from_iterable(nested)
 
 
-class DecisionRecords(object):
-    '''
-
-    .. note:: At test time, let's check consistency with the data
-              dictionary.
-
-    >>> choices = dict(_DataDict('oversight').radio('approve_kuh'))
-    >>> choices[DecisionRecords.YES]
-    'Yes'
-    >>> choices[DecisionRecords.NO]
-    'No'
-    >>> len(choices)
-    3
-
-    '''
-
-    YES = '1'
-    NO = '2'
-
-    @inject(rt=(rtconfig.Options, OVERSIGHT_CONFIG_SECTION),
-            engine=(sqlalchemy.engine.base.Connectable,
-                    redcapdb.CONFIG_SECTION),
-            smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
-            mc=medcenter.MedCenter)
-    def __init__(self, rt, engine, mc, smaker):
-        self._oversight_project_id = rt.project_id
-        self._engine = engine
-        self._mc = mc
-        #smaker is just to pull in dependencies. hm.
-
-    def oversight_decisions(self):
-        '''In order to facilitate email notification of committee
-        decisions, find decisions where notification has not been sent.
-        '''
-        cd, who, cdwho = _sponsor_queries(self._oversight_project_id)
-
-        # decisions without notifications
-        nl = noticelog.notice_log
-        dwn = cd.outerjoin(nl).select() \
-            .with_only_columns(cd.columns).where(nl.c.record == None)
-        return self._engine.execute(dwn).fetchall()
-
-    def decision_detail(self, record):
-        avl = list(redcapdb.allfields(self._engine,
-                                      self._oversight_project_id,
-                                      record))
-        mc = self._mc
-        team = [mc.lookup(user_id)
-                for user_id in
-                [v for a, v in avl if v and a.startswith('user_id_')]]
-
-        d = dict(avl)
-        investigator = mc.lookup(d['user_id'])
-        return investigator, team, d
-
-
-class _DataDict(object):
-    def __init__(self, name,
-                 base=os.path.join(os.path.dirname(__file__),
-                                   '..', 'redcap_dd')):
-        def open_it():
-            return open(os.path.join(base, name + '.csv'))
-        self._open = open_it
-
-    def fields(self):
-        rows = csv.DictReader(self._open())
-        for row in rows:
-            yield row["Variable / Field Name"], row
-
-    def radio(self, field_name):
-        for n, row in self.fields():
-            if n == field_name:
-                choicetxt = row["Choices, Calculations, OR Slider Labels"]
-                break
-        else:
-            raise KeyError
-        return [tuple(choice.strip().split(", ", 1))
-                for choice in choicetxt.split('|')]
-
-
-class TestSetUp(disclaimer.TestSetUp):
-    @singleton
-    @provides((sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
-    @inject(engine=(sqlalchemy.engine.base.Connectable,
-                    redcapdb.CONFIG_SECTION),
-            timesrc=KTimeSource,
-            srt=(rtconfig.Options, SAA_CONFIG_SECTION),
-            ort=(rtconfig.Options, OVERSIGHT_CONFIG_SECTION))
-    def redcap_sessionmaker(self, engine, timesrc, srt, ort):
-        smaker = super(TestSetUp, self).redcap_sessionmaker(engine=engine)
-        s = smaker()
-
-        def add_oversight_request(user_id, full_name, project_title,
-                                  candidates, reviews,
-                                  date_of_expiration=''):
-            # e/a/v = entity/attribute/value
-            e = hash((user_id, project_title))
-            add_test_eav(s, ort.project_id, 1, e,
-                         (('user_id', user_id),
-                          ('full_name', full_name),
-                          ('project_title', project_title),
-                          ('date_of_expiration', date_of_expiration)))
-            add_test_eav(s, ort.project_id, 1, e,
-                         [('user_id_%d' % n, userid)
-                          for n, userid in candidates])
-            add_test_eav(s, ort.project_id, 1, e,
-                         [('approve_%s' % org, decision)
-                          for org, decision in reviews])
-
-        # approve 2 users in 1 request
-        add_oversight_request('john.smith', 'John Smith', 'Cure Warts',
-                              ((1, 'some.one'), (2, 'carol.student')),
-                              [(org, DecisionRecords.YES)
-                               for org in HeronRecords.institutions])
-
-        # A request to sponsor bill.student is only reviewed by 2 of 3 orgs:
-        add_oversight_request('john.smith', 'John Smith', 'Cure Hair Loss',
-                              ((1, 'bill.student'),),
-                              [(org, DecisionRecords.YES)
-                               for org in HeronRecords.institutions[:2]])
-
-        # Another request to sponsor bill.student was rejected:
-        add_oversight_request('john.smith', 'John Smith', 'Cart Blanche',
-                              ((1, 'bill.student'),),
-                              [(org, DecisionRecords.NO)
-                               for org in HeronRecords.institutions])
-
-        # Another request has expired:
-        add_oversight_request('john.smith', 'John Smith', 'Cure Polio',
-                              ((1, 'bill.student'),),
-                              [(org, DecisionRecords.YES)
-                               for org in HeronRecords.institutions],
-                              '1950-02-27')
-
-        log.debug('add SAA records')
-        redcapdb.redcap_surveys_participants.create(s.bind)
-        s.commit()
-        redcapdb.redcap_surveys_response.create(s.bind)
-        noticelog.notice_log.schema = None  # sqlite doesn't grok schemas
-        noticelog.notice_log.create(s.bind)
-        for email in ['john.smith@js.example', 'big.wig@js.example']:
-            s.execute(redcapdb.redcap_surveys_participants.insert().values(
-                    participant_id=abs(hash(email)),
-                    survey_id=srt.survey_id, participant_email=email))
-            s.execute(redcapdb.redcap_surveys_response.insert().values(
-                    response_id=abs(hash(email)), record=abs(hash(email)),
-                    completion_time=timesrc.today() + \
-                        datetime.timedelta(days=-7),
-                    participant_id=abs(hash(email))))
-
-        s.commit()
-        return smaker
-
-
-def add_test_eav(s, project_id, event_id, e, avs):
-    log.debug('add_test_eav: %s', (project_id, event_id, e, avs))
-    for a, v in avs:
-        s.execute(redcapdb.redcap_data.insert().values(
-                project_id=project_id, event_id=event_id,
-                record=e, field_name=a, value=v))
-
-
 class Mock(injector.Module, rtconfig.MockMixin):
+    def __init__(self):
+        injector.Module.__init__(self)
+        token = redcap_connect._test_settings.token
+        webcap = redcap_connect._MockREDCapAPI()
+        self.__redcapapi = redcap_connect.EndPoint(webcap, token)
 
-    @provides((rtconfig.Options, SAA_CONFIG_SECTION))
-    def saa_settions(self):
-        return redcap_connect._test_settings
+    @singleton
+    @provides((redcap_connect.SurveySetup, SAA_CONFIG_SECTION))
+    def _rc_saa(self):
+        opts = redcap_connect._test_settings
+        return redcap_connect.SurveySetup(opts, self.__redcapapi,
+                                          survey_id=opts.survey_id)
 
-    @provides((rtconfig.Options, OVERSIGHT_CONFIG_SECTION))
-    def oversight_settings(self):
-        return redcap_connect._test_settings
+    @singleton
+    @provides((redcap_connect.SurveySetup, OVERSIGHT_CONFIG_SECTION))
+    def _rc_oversight(self):
+        opts = redcap_connect._test_settings
+        return redcap_connect.SurveySetup(opts, self.__redcapapi,
+                                          project_id=opts.project_id,
+                                          executives=['big.wig'])
 
-    @provides(urllib.URLopener)
-    def redcap_connect_web_ua(self):
-        return redcap_connect._TestUrlOpener()
+    @provides(disclaimer.KBadgeInspector)
+    @inject(mc=medcenter.MedCenter)
+    def notary(self, mc):
+        return mc.getInspector()
 
     @classmethod
     def mods(cls):
         log.debug('heron_policy.Mock.mods')
-        return (medcenter.Mock.mods() + i2b2pm.Mock.mods()
-                + disclaimer.Mock.mods() + [TestSetUp(), Mock()])
-
-    @classmethod
-    def login_sim(cls, mc, hr):
-        def mkrole(uid):
-            req = medcenter.Mock.login_info(uid)
-            mc.issue(req)
-            hr.issue(req)
-            return req.user, req.faculty, req.executive
-        return mkrole
+        return ([im
+                 for m in (medcenter, i2b2pm, disclaimer,
+                           redcapdb, noticelog)
+                 for im in m.Mock.mods()] + [cls()])
 
 
 class RunTime(rtconfig.IniModule):  # pragma nocover
-    def configure(self, binder):
-        binder.bind(KTimeSource,
-                    injector.InstanceProvider(datetime.datetime))
+    @singleton
+    @provides(KTimeSource)
+    def _timesrc(self):
+        import datetime
+        return datetime.datetime
 
-        self.bind_options(binder, redcap_connect.OPTIONS,
-                          SAA_CONFIG_SECTION)
-        self.bind_options(binder, redcap_connect.OPTIONS + ('executives',
-                                                            'project_id'),
-                          OVERSIGHT_CONFIG_SECTION)
+    @singleton
+    @provides((redcap_connect.SurveySetup, SAA_CONFIG_SECTION))
+    def _rc_saa(self):
+        opts, api = redcap_connect.RunTime.endpoint(self, SAA_CONFIG_SECTION)
+        return redcap_connect.SurveySetup(opts, api, survey_id=opts.survey_id)
 
-        binder.bind(urllib.URLopener, urllib2.build_opener)
+    @singleton
+    @provides((redcap_connect.SurveySetup, OVERSIGHT_CONFIG_SECTION))
+    def _rc_oversight(self):
+        opts, api = redcap_connect.RunTime.endpoint(
+            self, OVERSIGHT_CONFIG_SECTION, extra=('project_id',))
+        return redcap_connect.SurveySetup(
+            opts, api,
+            project_id=opts.project_id)
+
+    @provides(disclaimer.KBadgeInspector)
+    @inject(mc=medcenter.MedCenter)
+    def notary(self, mc):
+        return mc.getInspector()
 
     @classmethod
     def mods(cls, ini):
-        return (medcenter.RunTime.mods(ini) +
-                i2b2pm.RunTime.mods(ini) +
-                disclaimer.RunTime.mods(ini) +
-                [cls(ini)])
+        return ([im for m in
+                 (medcenter,
+                  i2b2pm,
+                  disclaimer,
+                  noticelog)
+                 for im in m.RunTime.mods(ini)] + [cls(ini)])
 
 
-def _test_main():  # pragma nocover
+def _integration_test():  # pragma nocover
     import sys
 
     if '--doctest' in sys.argv:
@@ -908,13 +659,15 @@ def _test_main():  # pragma nocover
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
     userid = sys.argv[1]
-    req = medcenter.Mock.login_info(userid)
-    hr, ds = RunTime.make(None, [HeronRecords, DecisionRecords])
-    hr._mc.issue(req)  # umm... peeking
-    hr.issue(req)
-    print req.user.repository_authz()
+    req = medcenter.MockRequest()
+    req.remote_user = userid
+    mc, hr = RunTime.make(None, [medcenter.MedCenter, HeronRecords])
+    mc.authenticated(userid, req)
+    hr.grant(req.context, PERM_STATUS)
+    print req.context.status
 
-    print "pending notifications:", ds.oversight_decisions()
+    hr.grant(req.context, PERM_START_I2B2)
+    print req.context.start_i2b2()
 
 if __name__ == '__main__':  # pragma nocover
-    _test_main()
+    _integration_test()

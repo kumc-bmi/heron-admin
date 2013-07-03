@@ -6,39 +6,16 @@
 __ http://readthedocs.org/docs/nose/en/latest/
 
 '''
-import doctest
+
+import os
+import subprocess
 
 
 def main():
-    import hcard_mock
-    doctest.testmod(hcard_mock)
-
-    import rtconfig
-    doctest.testmod(rtconfig)
-
-    import i2b2pm
-    doctest.testmod(i2b2pm)
-
-    import ldaplib
-    doctest.testmod(ldaplib)
-
-    import medcenter
-    doctest.testmod(medcenter)
-
-    import redcap_connect
-    doctest.testmod(redcap_connect)
-
-    import heron_policy
-    doctest.testmod(heron_policy)
-
-    import checklist
-    doctest.testmod(checklist)
-
-    import redcapdb
-    doctest.testmod(redcapdb)
-
-    import disclaimer
-    doctest.testmod(disclaimer)
+    pyfiles = [f for f in os.listdir('.')
+               if f.endswith('.py')]
+    for pf in pyfiles:
+        subprocess.call(('python', '-m', 'doctest', pf))
 
 
 if __name__ == '__main__':

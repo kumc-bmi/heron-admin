@@ -24,6 +24,7 @@ The password field in the `User` record is hashed::
   >>> js.password
   u'da67296336429545fe63f61644e420'
 
+
 The effect is a `pm_user_data` record::
 
   >>> import pprint
@@ -59,7 +60,7 @@ This updates the `password` column of the `pm_user_data` record::
 '''
 
 import logging
-import uuid
+import uuid  # @@code review: push into TCB
 import hashlib
 
 import injector
@@ -68,9 +69,10 @@ from sqlalchemy import Column, ForeignKey
 from sqlalchemy import func, orm
 from sqlalchemy.types import String, Date, Enum
 from sqlalchemy.ext.declarative import declarative_base
-import sqlalchemy
 
 import rtconfig
+import jndi_util
+import ocap_file
 
 CONFIG_SECTION = 'i2b2pm'
 KUUIDGen = injector.Key('UUIDGen')
@@ -79,7 +81,7 @@ Base = declarative_base()
 log = logging.getLogger(__name__)
 
 
-class I2B2PM(object):
+class I2B2PM(ocap_file.Token):
     @inject(datasrc=(orm.session.Session, CONFIG_SECTION),
             uuidgen=KUUIDGen)
     def __init__(self, datasrc, uuidgen):
@@ -88,6 +90,9 @@ class I2B2PM(object):
         '''
         self._datasrc = datasrc
         self._uuidgen = uuidgen
+
+    def account_for(self, agent):
+        return I2B2Account(self, agent)
 
     def authz(self, uid, full_name,
               project_id='BlueHeron',
@@ -153,6 +158,21 @@ def revoke_expired_auths(ds):
         from i2b2pm.pm_user_session ipus
         where ipus.user_id = ipud.user_id) < sysdate
     ''')
+    ds.commit()
+
+
+class I2B2Account(ocap_file.Token):
+    def __init__(self, pm, agent):
+        self.__pm = pm
+        self.__agent = agent
+
+    def __repr__(self):
+        return 'Access(%s)' % self.__agent
+
+    def creds(self):
+        agent = self.__agent
+        key, u = self.__pm.authz(agent.cn, agent.full_name())
+        return (agent.cn, key)
 
 
 class Audited(object):
@@ -188,29 +208,33 @@ class UserRole(Base, Audited):
                           primary_key=True)
 
     def __repr__(self):
-        return "<UserRule(%s, %s, %s)>" % (self.project_id,
+        return "<UserRole(%s, %s, %s)>" % (self.project_id,
                                            self.user_id,
                                            self.user_role_cd)
 
 
-class RunTime(rtconfig.IniModule):
-    @provides((rtconfig.Options, CONFIG_SECTION))
-    def settings(self):
-        rt = rtconfig.RuntimeOptions(['url'])
-        rt.load(self._ini, CONFIG_SECTION)
-        return rt
+class RunTime(rtconfig.IniModule):  # pragma: nocover
+    jndi_name = 'PMBootStrapDS'
 
     # abusing Session a bit; this really provides a subclass, not an
     # instance, of Session
     @singleton
     @provides((orm.session.Session, CONFIG_SECTION))
-    @inject(rt=(rtconfig.Options, CONFIG_SECTION))
-    def pm_sessionmaker(self, rt):
-        engine = sqlalchemy.engine_from_config(rt.settings(), 'sqlalchemy.')
-        sm = orm.session.sessionmaker(engine)
+    def pm_sessionmaker(self):
+        import os
+        from sqlalchemy import create_engine
+
+        rt = rtconfig.RuntimeOptions(['jboss_deploy'])
+        rt.load(self._ini, CONFIG_SECTION)
+
+        jdir = ocap_file.Readable(rt.jboss_deploy, os.path, os.listdir, open)
+        ctx = jndi_util.JBossContext(jdir, create_engine)
+
+        sm = orm.session.sessionmaker()
 
         def make_session_and_revoke():
-            ds = sm()
+            engine = ctx.lookup(self.jndi_name)
+            ds = sm(bind=engine)
             revoke_expired_auths(ds)
             return ds
 
@@ -227,7 +251,9 @@ class Mock(injector.Module, rtconfig.MockMixin):
     @singleton
     @provides((orm.session.Session, CONFIG_SECTION))
     def pm_sessionmaker(self):
-        engine = sqlalchemy.create_engine('sqlite://')
+        from sqlalchemy import create_engine
+
+        engine = create_engine('sqlite://')
         Base.metadata.create_all(engine)
         return orm.session.sessionmaker(engine)
 
@@ -248,7 +274,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
         return G()
 
 
-def _test_main():
+def _integration_test():  # pragma: nocover
     import sys
 
     logging.basicConfig(level=logging.DEBUG)
@@ -266,10 +292,10 @@ def _test_main():
     print pm.authz(user_id, full_name)
 
 
-def _list_users():
+def _list_users():  # pragma: nocover
     import csv, sys
     (sm, ) = RunTime.make(None,
-                          [(sqlalchemy.orm.session.Session, CONFIG_SECTION)])
+                          [(orm.session.Session, CONFIG_SECTION)])
     s = sm()
     # get column names
     #ans = s.execute("select * from pm_user_session "
@@ -288,5 +314,5 @@ def _list_users():
                    for when, qty, uid in ans.fetchall()])
 
 
-if __name__ == '__main__':
-    _test_main()
+if __name__ == '__main__':  # pragma: nocover
+    _integration_test()

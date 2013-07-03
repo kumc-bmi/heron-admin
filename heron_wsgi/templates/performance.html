@@ -19,6 +19,8 @@
    margin: 1px;
    color: white;
 }
+
+.choices li { list-style-type: none; }
   </style>
 
 </head>
@@ -29,9 +31,21 @@
 <div id="main">
 
 <div id="all_queries"><h2>Queries in the last @@ days</h2>
+
+<form id='constraints'>
 <p><strong>To-do:</strong> interactive choice of dates, users... perhaps tooltip like..., show result set size. show whether patient set (using colored circle?). select by result set size.
 draw line-per-session. show logins/logouts. show number of users at a given time.
 </p>
+<ul class="choices">
+<li><label><input type="checkbox" name="status" value="COMPLETED"
+                   checked='checked'/>Complete</label></li>
+<li><label><input type="checkbox" name="status" value="INCOMPLETE"/>Incomplete</label></li>
+<li><label><input type="checkbox" name="status" value="ERROR"/>Error</label></li>
+</ul>
+
+<p><button id="update">Update</button></p>
+</form>
+
 </div>
 
 <div id="this_month"><h2>This Month</h2>
@@ -50,10 +64,36 @@ draw line-per-session. show logins/logouts. show number of users at a given time
   <script src="../av/d3.v2.js" type="text/javascript"></script>
   <script src="../av/perf_chart.js" type="text/javascript"></script>
 <script type="text/javascript">
-d3.json('query_data', function(data) {
-  draw(d3.select('#all_queries'), data.queries, 'start_date');
-  //draw(data['this_month'], 'start_month');
-});
+window.onerror = function myErrorHandler(errorMsg, url, lineNumber) {
+    console.log('window.onerror: ' + errorMsg + ' @ ' + url + '  line: ' + lineNumber);
+    return false;
+}
+
+
+function redraw(container, form) {
+  var constraints = form.serializeArray();
+
+  var addr = 'query_data?' + $.param(constraints);
+
+  console.log('calling d3.json at: ' + addr);
+  d3.json(addr, function(data) {
+    console.log('got d3.json callback');
+    console.log('d3.json data: ' + data);
+    if (data) {
+        draw(container, data.queries, 'start_date');
+    } else {
+        console.log('huh?');
+    }
+  });
+}
+
+function update() {
+  redraw(d3.select('#all_queries'), $('#constraints'));
+}
+
+$('#update').click(update);
+update();
+
 </script>
 
 <p>Acks:</p>

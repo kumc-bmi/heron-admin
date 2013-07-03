@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:py="http://genshi.edgewall.org/"
+  xmlns:xi="http://www.w3.org/2001/XInclude">
+<xi:include href="kumc_layout.xml" />
+<head>
+<title>HERON Usage: Small Result Sets
+</title></head>
+<body>
+
+<h1>HERON Usage: Small Result Sets</h1>
+
+<div id="main">
+
+<h2>Summary</h2>
+
+<p><em>In the past 45 days, the following queries
+for patient sets had small (&lt;= 15) result sets:</em></p>
+<table>
+<thead>
+ <tr>
+  <th>User</th>
+  <th>Date</th>
+  <th>Query</th>
+  <th>Size</th>
+ </tr>
+</thead>
+<tbody>
+  <tr py:for="row in summary">
+    <td>${row.full_name}</td>
+    <td>${row.create_date}</td>
+    <td>
+      <a href="#qm_${row.query_master_id}">#${row.query_master_id}
+      ${row.name}</a></td>
+    <td>${row.set_size}</td>
+  </tr>
+</tbody>
+</table>
+
+<div class="detail">
+
+<h2>Detail</h2>
+<p><em>See <a href="https://redcap.kumc.edu/redcap_v4.7.0/Reports/report.php?pid=238&amp;query_id=4">Sponsor Report</a> for list of sponsored individuals and their research areas.  Hover over term names for more context.  </em></p>
+<div py:for="qid, gen in detail">
+  <div py:with="rows = list(gen)" py:strip="True">
+    <h3 id="qm_${qid}">
+     #${qid} ${rows[0].query_name}</h3>
+
+    <ul>
+      <li py:for="c in rows">
+        <abbr title="${c.tooltip}">${c.item_name}</abbr>
+      </li>
+    </ul>
+  </div>
+</div>
+
+</div>
+
+</div>
+
+
+</body>
+</html>

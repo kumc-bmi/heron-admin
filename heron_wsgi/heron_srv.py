@@ -1,8 +1,6 @@
 '''heron_srv.py -- HERON administrative web interface
 -----------------------------------------------------
 
-.. todo:: DROC oversight reports
-
 See also: `HERON training materials`__
 
 __ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
@@ -12,16 +10,13 @@ __ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
 '''
 
 import sys
-from urllib import URLopener, urlencode
-import urllib2
+from urllib import urlencode
 import logging
-import urlparse
 
 # see setup.py and http://pypi.python.org/pypi
 import injector  # http://pypi.python.org/pypi/injector/
                  # 0.3.1 7deba485e5b966300ef733c3393c98c6
 from injector import inject, provides
-import sqlalchemy  # leaky; factor out test foo?
 import pyramid
 from pyramid.config import Configurator
 from pyramid.httpexceptions import HTTPFound, HTTPSeeOther, HTTPForbidden
@@ -31,14 +26,13 @@ import cas_auth
 import genshi_render
 import drocnotice
 import stats
-import powerbox
 from admin_lib import medcenter
 from admin_lib import heron_policy
-from admin_lib.checklist import Checklist
 from admin_lib import redcap_connect
 from admin_lib import rtconfig
 from admin_lib.rtconfig import Options, TestTimeOptions, RuntimeOptions
-from admin_lib import disclaimer, redcapdb
+from admin_lib import disclaimer
+from admin_lib.ocap_file import WebReadable, Token
 
 KAppSettings = injector.Key('AppSettings')
 KI2B2Address = injector.Key('I2B2Address')
@@ -77,25 +71,19 @@ def test_grant_access_with_valid_cas_ticket(t=None, r2=None):
     return t, r4
 
 
-class CheckListView(object):
-    @inject(checklist=Checklist,
-            rt=(Options, heron_policy.SAA_CONFIG_SECTION))
-    def __init__(self, checklist, rt):
-        self._checklist = checklist
+class CheckListView(Token):
+    @inject(saa=(redcap_connect.SurveySetup, heron_policy.SAA_CONFIG_SECTION))
+    def __init__(self, saa):
         self._next_route = None
-        self._rt = rt
-
-    def issue(self, uidbox, req):
-        uid = self._unsealer.unseal(uidbox)
-        req.checklist_parts = self._checklist.parts_for(uid)
+        self._saa = saa
 
     def configure(self, config, route_name, next_route):
         config.add_view(self.get, route_name=route_name, request_method='GET',
                         renderer='index.html',
-                        permission=heron_policy.PERM_USER)
+                        permission=heron_policy.PERM_STATUS)
         self._next_route = next_route
 
-    def get(self, req):
+    def get(self, ctx, req):
         '''
         >>> from pyramid import testing
         >>> from pyramid.testing import DummyRequest
@@ -106,53 +94,66 @@ class CheckListView(object):
         ...                          heron_policy.HeronRecords,
         ...                          CheckListView))
         >>> clv.configure(config, 'home', 'oversight')
-        >>> facreq = DummyRequest()
-        >>> facreq.remote_user = 'john.smith'
-        >>> mc.issue(facreq) and None
-        >>> hp.issue(facreq) and None
+        >>> facreq = DummyRequest(context=medcenter.AttrDict())
+        >>> mc.authenticated('john.smith', facreq) and None
+        >>> hp.grant(facreq.context, heron_policy.PERM_STATUS)
         >>> from pprint import pprint
-        >>> pprint(clv.get(facreq))
-        {'accessDisabled': {'name': 'login'},
-         'affiliate': John Smith <john.smith@js.example>,
+        >>> pprint(clv.get(facreq.context, facreq))
+        {'affiliate': John Smith <john.smith@js.example>,
          'data_use_path': 'http://example.com/oversight',
+         'droc': {},
          'executive': {},
          'faculty': {'checked': 'checked'},
          'i2b2_login_path': 'http://example.com/i2b2_login',
          'logout_path': 'http://example.com/logout',
+         'repositoryAccess': {'checked': 'checked'},
          'saa_path': 'http://example.com/saa',
          'saa_public': 'http://bmidev1/redcap-host/surveys/?s=43',
          'signatureOnFile': {'checked': 'checked'},
-         'sponsored': {'checked': 'checked'},
+         'sponsored': {},
          'sponsorship_path': 'http://example.com/oversight',
          'trainingCurrent': {'checked': 'checked'},
          'trainingExpiration': '2012-01-01'}
 
         '''
-        value = dict(self._checklist.screen(req.user, req.faculty,
-                                            req.executive),
-                     # req.route_url('i2b2_login')
+        status = ctx.status
+
+        def yn(x):  # genshi attrs
+            return {'checked': 'checked'} if x else {}
+
+        parts = dict(affiliate=ctx.badge,
+                     trainingCurrent=yn(status.current_training),
+                     trainingExpiration=(status.current_training
+                                         or status.expired_training),
+                     signatureOnFile=yn(status.system_access_signed),
+                     repositoryAccess=yn(heron_policy.sufficient(status)),
+                     faculty=yn(status.faculty),
+                     executive=yn(status.executive),
+                     droc=yn(status.droc),
+                     sponsored=yn(status.sponsored),
+                     i2b2_login_path=req.route_url('i2b2_login'),
                      logout_path=req.route_url('logout'),
                      saa_path=req.route_url('saa'),
-                     saa_public=self._rt.survey_url,
-                     i2b2_login_path=req.route_url('i2b2_login'))
-        if req.faculty:
+                     saa_public=self._saa.base)
+
+        if parts['faculty']:
             sp = req.route_url(self._next_route,
                                what_for=REDCapLink.for_sponsorship)
             dup = req.route_url(self._next_route,
                                 what_for=REDCapLink.for_data_use)
-            value = dict(value,
+            parts = dict(parts,
                          sponsorship_path=sp,
                          data_use_path=dup)
 
         log.info('GET %s: %s', req.url,
-                 [(k, value.get(k, None)) for k in ('affiliate',
+                 [(k, parts.get(k, None)) for k in ('affiliate',
                                                     'trainingExpiration',
                                                     'sponsorship_path',
                                                     'executive')])
-        return value
+        return parts
 
 
-class REDCapLink(object):
+class REDCapLink(Token):
     # no longer needs to be a class?
 
     for_sponsorship = 'sponsorship'
@@ -161,43 +162,44 @@ class REDCapLink(object):
     def configure(self, config, rsaa, rtd):
         config.add_view(self.saa_redir, route_name=rsaa,
                         request_method='GET',
-                        permission=heron_policy.PERM_USER)
+                        permission=heron_policy.PERM_SIGN_SAA)
         config.add_view(self.oversight_redir, route_name=rtd,
                         request_method='GET',
-                        permission=heron_policy.PERM_FACULTY)
+                        permission=heron_policy.PERM_INVESTIGATOR_REQUEST)
 
-    def saa_redir(self, req):
+    def saa_redir(self, context, req):
         '''Redirect to a per-user System Access Agreement REDCap survey.
 
           >>> t, r4 = test_grant_access_with_valid_cas_ticket()
           >>> r5 = t.get('/saa_survey', status=302)
           >>> dict(r5.headers)['Location'].split('&')
           ... # doctest: +NORMALIZE_WHITESPACE
-          ['http://bmidev1/redcap-host/surveys/?s=8074',
+          ['http://bmidev1/redcap-host/surveys/?s=f1f9',
            'full_name=Smith%2C+John', 'user_id=john.smith']
 
         Hmm... we're doing a POST to the REDCap API inside a GET.
         Kinda iffy, w.r.t. safety and such.
         '''
-        there = req.user.ensure_saa_survey()
+        sign_saa = context.sign_saa
+        there = sign_saa.ensure_saa_survey()
         log.info('GET SAA at %s: -> %s', req.url, there)
         return HTTPFound(there)
 
-    def oversight_redir(self, req):
+    def oversight_redir(self, context, req):
         '''Redirect to a per-user sponsorship/data-use REDCap survey.
 
           >>> t, r4 = test_grant_access_with_valid_cas_ticket()
           >>> r5 = t.get('/team_done/sponsorship', status=302)
           >>> dict(r5.headers)['Location'].split('&')
           ... # doctest: +NORMALIZE_WHITESPACE
-          ['http://bmidev1/redcap-host/surveys/?s=8074',
+          ['http://bmidev1/redcap-host/surveys/?s=f1f9',
            'full_name=Smith%2C+John', 'multi=yes', 'user_id=john.smith',
            'what_for=1']
 
           >>> r6 = t.get('/team_done/data_use', status=302)
           >>> dict(r6.headers)['Location'].split('&')
           ... # doctest: +NORMALIZE_WHITESPACE
-          ['http://bmidev1/redcap-host/surveys/?s=8074',
+          ['http://bmidev1/redcap-host/surveys/?s=f1f9',
            'full_name=Smith%2C+John', 'multi=yes', 'user_id=john.smith',
            'what_for=2']
 
@@ -205,6 +207,7 @@ class REDCapLink(object):
         Kinda iffy, w.r.t. safety and such.
         '''
 
+        investigator_request = context.investigator_request
         uids = _request_uids(req.GET)
 
         what_for = (heron_policy.HeronRecords.DATA_USE
@@ -212,13 +215,14 @@ class REDCapLink(object):
                         == REDCapLink.for_data_use)
                     else heron_policy.HeronRecords.SPONSORSHIP)
 
-        there = req.faculty.ensure_oversight_survey(uids, what_for)
+        there = investigator_request.ensure_oversight_survey(
+          uids, what_for)
         log.info('GET oversight at %s: -> %s', req.url, there)
 
         return HTTPFound(there)
 
 
-class RepositoryLogin(object):
+class RepositoryLogin(Token):
     '''
       # logging.basicConfig(level=logging.DEBUG)
       >>> log.debug ('RepositoryLogin test of disclaimer')
@@ -236,36 +240,39 @@ class RepositoryLogin(object):
       .>> r3 = t.get('/i2b2', status=303)
       .>> dict(r3.headers)['Location']
       'http://example/i2b2-webclient'
+
+    >>> raise NotImplementedError('CSRF tokens')
+
     '''
     @inject(i2b2_tool_addr=KI2B2Address,
-            ua=URLopener,
+            rdblog=(WebReadable, disclaimer.DISCLAIMERS_SECTION),
             acks=disclaimer.AcknowledgementsProject)
-    def __init__(self, i2b2_tool_addr, ua, acks):
+    def __init__(self, i2b2_tool_addr, rdblog, acks):
         self._i2b2_tool_addr = i2b2_tool_addr
         self._disclaimer_route = None
-        self._ua = ua
+        self._rdblog = rdblog
         self._acks = acks
         self._login_route = None
 
     def configure(self, config, route, disclaimer_route):
         config.add_view(self.i2b2_login, route_name=route,
-                        permission=heron_policy.PERM_USER)
+                        permission=heron_policy.PERM_START_I2B2)
         config.add_view(self.disclaimer, route_name=disclaimer_route,
-                        permission=heron_policy.PERM_USER,
+                        permission=heron_policy.PERM_START_I2B2,
                         renderer='disclaimer.html')
         self._disclaimer_route = disclaimer_route  # mutable state. I'm lazy.
         self._login_route = route
 
-    def i2b2_login(self, req):
+    def i2b2_login(self, ctx, req):
         '''Log in to i2b2, provided credentials and current disclaimer.
         '''
-
-        if not req.user.disclaimer_ack()[1]:
-            log.info('i2b2_login: redirect to disclaimer')
-            return HTTPSeeOther(req.route_url(self._disclaimer_route))
+        start_i2b2 = ctx.start_i2b2
 
         try:
-            authz = req.user.repository_authz()
+            authz = start_i2b2()
+        except KeyError:
+            log.info('i2b2_login: redirect to disclaimer')
+            return HTTPSeeOther(req.route_url(self._disclaimer_route))
         except heron_policy.NoPermission, np:
             log.error('i2b2_login: NoPermission')
             return HTTPForbidden(detail=np.message)
@@ -277,28 +284,34 @@ class RepositoryLogin(object):
                                           password=password)))
         return HTTPSeeOther(there)
 
-    def disclaimer(self, req):
-        disclaimer, ack = req.user.disclaimer_ack()
+    def disclaimer(self, context, req):
+        '''
+        >>> raise NotImplementedError('check CSRF token')
+        '''
+        disclaimers = context.disclaimers
+
+        disclaimer = disclaimers.current_disclaimer()
         if req.method == 'GET':
-            content, headline = disclaimer.content(self._ua)
             log.info('GET disclaimer: %s', disclaimer.url)
+            content, headline = disclaimer.content(self._rdblog)
             return {'url': disclaimer.url,
                     'headline': headline,
                     'content': content}
         else:
-            self._acks.add_record(req.user.badge.cn, disclaimer.url)
+            badge = context.badge
+            self._acks.add_record(badge.cn, disclaimer.url)
             log.info('POST disclaimer: added %s %s; redirecting to login',
-                     req.user.badge.cn, disclaimer.url)
+                     badge.cn, disclaimer.url)
             return HTTPSeeOther(req.route_url(self._login_route))
 
 
-class TeamBuilder(object):
+class TeamBuilder(Token):
     def configure(self, config, route_name):
         config.add_view(self.get, route_name=route_name,
                         request_method='GET', renderer='build_team.html',
-                        permission=heron_policy.PERM_USER)
+                        permission=medcenter.PERM_BROWSER)
 
-    def get(self, res, req, max_search_hits=15):
+    def get(self, context, req, max_search_hits=15):
         r'''
           >>> t, r1 = test_grant_access_with_valid_cas_ticket()
           >>> t.get('/build_team/sponsorship', status=200)
@@ -311,21 +324,23 @@ class TeamBuilder(object):
           ...              '&uids=john.smith',
           ...              status=302)
           >>> dict(done.headers)['Location'].split('&')
-          ... # doctest: +NORMALIZE_WHITESPACE
-          ['http://bmidev1/redcap-host/surveys/?s=8074',
+          ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+          ['http://bmidev1/redcap-host/surveys/?s=f1f9',
            'full_name=Smith%2C+John', 'multi=yes',
-           'name_etc_1=Smith%2C+John%0AChair+of+Department+of+Neurology%0A',
+           'name_etc_1=Smith%2C+John%0AChair+...+Neurology%0ANeurology',
            'user_id=john.smith', 'user_id_1=john.smith', 'what_for=1']
         '''
+        browser = context.browser
+
         params = req.GET
         uids, goal = edit_team(params)
 
         if goal == 'Search':
             log.debug('cn: %s', params.get('cn', ''))
-            candidates = req.user.browser.search(max_search_hits,
-                                                 params.get('cn', ''),
-                                                 params.get('sn', ''),
-                                                 params.get('givenname', ''))
+            candidates = browser.search(max_search_hits,
+                                        params.get('cn', ''),
+                                        params.get('sn', ''),
+                                        params.get('givenname', ''))
             log.debug('candidates: %s', candidates)
             candidates.sort(key=lambda(a): (a.sn, a.givenname))
         else:
@@ -333,7 +348,7 @@ class TeamBuilder(object):
 
         # Since we're the only supposed to supply these names,
         # it seems OK to throw KeyError if we hit a bad one.
-        team = [req.user.browser.lookup(n) for n in uids]
+        team = [browser.lookup(n) for n in uids]
         team.sort(key=lambda(a): (a.sn, a.givenname))
 
         what_for = req.matchdict['what_for']
@@ -378,7 +393,7 @@ def _request_uids(params):
     return v.split(' ') if v else []
 
 
-def make_internal_error(req):
+def _make_internal_error(req):
     return 1 / 0
 
 
@@ -405,8 +420,8 @@ class HeronAdminConfig(Configurator):
 
     '''
     @inject(guard=cas_auth.Validator,
+            casopts=(Options, cas_auth.CONFIG_SECTION),
             conf=KAppSettings,
-            cas_rt=(Options, cas_auth.CONFIG_SECTION),
             clv=CheckListView,
             rcv=REDCapLink,
             repo=RepositoryLogin,
@@ -415,16 +430,17 @@ class HeronAdminConfig(Configurator):
             hr=heron_policy.HeronRecords,
             dn=drocnotice.DROCNotice,
             report=stats.Reports)
-    def __init__(self, guard, conf, cas_rt, clv, rcv,
+    def __init__(self, guard, casopts, conf, clv, rcv,
                  repo, tb, mc, hr, dn, report):
         log.debug('HeronAdminConfig settings: %s', conf)
+
         Configurator.__init__(self, settings=conf)
 
-        guard.add_issuer(mc)
-        guard.add_issuer(hr)
+        cas_auth.CapabilityStyle.setup(self, casopts.app_secret,
+                                       'logout', 'logout',
+                                       mc.authenticated,
+                                       [mc, hr], guard)
 
-        cap_style = cas_auth.CapabilityStyle([mc, hr])
-        self.set_authorization_policy(cap_style)
         self.add_static_view('av', 'heron_wsgi:templates/av/',
                              cache_max_age=3600)
 
@@ -448,9 +464,6 @@ class HeronAdminConfig(Configurator):
         self.add_route('disclaimer', 'disclaimer')
         repo.configure(self, 'i2b2_login', 'disclaimer')
 
-        self.add_route('logout', 'logout')
-        guard.configure(self, 'logout')
-
         # Decision notifications
         self.add_route('notifier', 'decision_notifier')
         dn.configure(self, 'notifier',
@@ -461,11 +474,11 @@ class HeronAdminConfig(Configurator):
 
         # for testing
         self.add_route('err', 'err')
-        self.add_view(make_internal_error, route_name='err',
+        self.add_view(_make_internal_error, route_name='err',
                       permission=pyramid.security.NO_PERMISSION_REQUIRED)
 
 
-class RunTime(injector.Module):
+class RunTime(injector.Module):  # pragma: nocover
     def __init__(self, settings):
         log.debug('RunTime settings: %s', settings)
         self._settings = settings
@@ -473,18 +486,16 @@ class RunTime(injector.Module):
         self._admin_ini = settings['admin_ini']
 
     def configure(self, binder):
+        '''
+        .. todo:: consider least-authority access to app settings
+        '''
         binder.bind(KAppSettings, self._settings)
 
         i2b2_settings = RuntimeOptions(['cas_login']).load(
             self._webapp_ini, 'i2b2')
         binder.bind(KI2B2Address, to=i2b2_settings.cas_login)
 
-        binder.bind(URLopener,
-                    injector.InstanceProvider(urllib2.build_opener()))
-        binder.bind(stats.Machine, powerbox.LinuxMachine)
-
-
-    @provides(medcenter.KAppSecret)
+    @provides(medcenter.KTestingFaculty)
     @inject(rt=(Options, cas_auth.CONFIG_SECTION))
     def cas_app_secret(self, rt):
         return rt.app_secret
@@ -516,11 +527,27 @@ class Mock(injector.Module, rtconfig.MockMixin):
 
     # logging.basicConfig(level=logging.DEBUG)
 
+    Test precursors to HeronAdminConfig
+
+    >>> Mock.make([cas_auth.Validator, KAppSettings, CheckListView])
+    [Validator(cas_addr=https://example/cas/), {}, CheckListView()]
+
+    >>> Mock.make([REDCapLink, RepositoryLogin, TeamBuilder])
+    [REDCapLink(), RepositoryLogin(), TeamBuilder()]
+
+    >>> Mock.make([medcenter.MedCenter, heron_policy.HeronRecords])
+    [MedCenter(directory_service, training), HeronRecords()]
+
+    >>> Mock.make([drocnotice.DROCNotice, stats.Reports])
+    [DROCNotice(), Reports()]
+
     Use this module and a couple others to mock up a HeronAdminConfig::
-      >>> (c, srt, ort) = Mock.make(
+      >>> (c, src, orc) = Mock.make(
       ...        [HeronAdminConfig,
-      ...        (Options, heron_policy.SAA_CONFIG_SECTION),
-      ...        (Options, heron_policy.OVERSIGHT_CONFIG_SECTION)])
+      ...        (redcap_connect.SurveySetup,
+      ...         heron_policy.SAA_CONFIG_SECTION),
+      ...        (redcap_connect.SurveySetup,
+      ...         heron_policy.OVERSIGHT_CONFIG_SECTION)])
       >>> type(c)
       <class 'heron_srv.HeronAdminConfig'>
 
@@ -528,12 +555,12 @@ class Mock(injector.Module, rtconfig.MockMixin):
       >>> tapp = c.make_wsgi_app()
 
     Make sure we override the saa opts so that they have what
-    redcap_connect needs, and not just what heron_polic needs::
+    redcap_connect needs, and not just what heron_policy needs::
 
-      >>> srt.domain
+      >>> src.domain
       'example.edu'
 
-      >>> ort.project_id
+      >>> orc.project_id
       34
 
     '''
@@ -551,66 +578,12 @@ class Mock(injector.Module, rtconfig.MockMixin):
         binder.bind(KAppSettings,
                     injector.InstanceProvider({}))
 
-        binder.bind((Options, heron_policy.SAA_CONFIG_SECTION),
-                    redcap_connect._test_settings)
-        binder.bind((Options, heron_policy.OVERSIGHT_CONFIG_SECTION),
-                    redcap_connect._test_settings)
-
         binder.bind(KI2B2Address, to='http://example/i2b2-webclient')
 
         binder.bind((Options, cas_auth.CONFIG_SECTION),
                     TestTimeOptions(
                         {'base': 'https://example/cas/',
                          'app_secret': 'sekrit'}))
-
-    @provides(URLopener)
-    @inject(smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
-            art=(Options, disclaimer.ACKNOWLEGEMENTS_SECTION))
-    def web_ua(self, smaker, art):
-        return _TestUrlOpener(['yes', 'john.smith'], smaker, art)
-
-
-class _TestUrlOpener(object):
-    '''An URL opener to help with CAS testing
-    '''
-    def __init__(self, lines, smaker, art):
-        self._ua1 = cas_auth.LinesUrlOpener(lines)
-        self._ua2 = redcap_connect._TestUrlOpener()
-        self._smaker = smaker
-        self._art = art
-
-    def open(self, addr, body=None):
-        if not body:
-            return self._ua1.open(addr)
-
-        params = urlparse.parse_qs(body)
-        if 'content' in params:
-            if params['content'] == ['survey']:
-                return self._ua2.open(addr, body)
-            elif params['content'] == ['record']:
-                return self.post_record(params)
-            else:
-                raise IOError("unknown content param: " + str(params))
-        else:
-            raise IOError("no content param: " + str(params))
-
-    def post_record(self, params):
-        import json, StringIO
-
-        rows = json.loads(params['data'][0])
-        schema = rows[0].keys()
-        if sorted(schema) == sorted([u'ack', u'timestamp',
-                                     u'disclaimer_address',
-                                     u'user_id', u'acknowledgement_complete']):
-            values = rows[0]
-            record = hash(values['user_id'])
-            s = self._smaker()
-            heron_policy.add_test_eav(s, self._art.project_id, 1,
-                                      record, values.items())
-            return StringIO.StringIO('')
-        else:
-            raise IOError('bad request: bad acknowledgement schema: '
-                          + str(schema))
 
 
 def app_factory(global_config, **settings):
