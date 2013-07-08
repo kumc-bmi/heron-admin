@@ -242,7 +242,6 @@ from noticelog import OVERSIGHT_CONFIG_SECTION
 import disclaimer
 from audit_usage import I2B2AggregateUsage, I2B2SensitiveUsage
 from cache_remote import Cache
-import project_editor
 
 SAA_CONFIG_SECTION = 'saa_survey'
 
@@ -253,7 +252,6 @@ PERM_START_I2B2 = __name__ + '.start_i2b2'
 PERM_DROC_AUDIT = __name__ + '.droc_audit'
 PERM_STATS_REPORTER = __name__ + '.stats_reporter'
 PERM_START_I2B2 = 'start_i2b2'
-PERM_PROJECT_EDITOR = __name__ + '.project_editor'
 
 log = logging.getLogger(__name__)
 
@@ -418,11 +416,6 @@ class HeronRecords(Token, Cache):
                 raise NoPermission(st)
             context.start_i2b2 = lambda: self.__redeem(badge)
             context.disclaimers = self.__dg
-        elif p is PERM_PROJECT_EDITOR:
-            if not (badge.is_investigator()):
-                raise medcenter.NotFaculty
-            context.project_editor = project_editor.ProjectEditor(
-                self.__dr, badge)
         else:
             raise TypeError
 
