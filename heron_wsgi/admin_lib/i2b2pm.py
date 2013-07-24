@@ -126,13 +126,13 @@ is referred to the default project:
 
 
 Suppose John Smith logs in to one HERON project; he'll be
-given roles in that project:
+given roles to that project & the default project - BlueHeron:
 
   >>> s = dbsrc()
   >>> auth, js3 = pm.authz('john.smith', 'John Smith', 'REDCap_1')
   >>> js = s.query(User).filter_by(user_id = 'john.smith').one()
   >>> set([role.project_id for role in js.roles])
-  set([u'REDCap_1'])
+  set([u'BlueHeron', u'REDCap_1'])
 
 If his REDCap rights are changed, he'll get access to a different
 I2B2 project; his roles in the above project go away:
@@ -141,7 +141,7 @@ I2B2 project; his roles in the above project go away:
   >>> auth, js3 = pm.authz('john.smith', 'John Smith', 'REDCap_4')
   >>> js = s.query(User).filter_by(user_id = 'john.smith').one()
   >>> set([role.project_id for role in js.roles])
-  set([u'REDCap_4'])
+  set([u'REDCap_4', u'BlueHeron'])
 
 If he has an ADMIN role when he logs in, the Admin role should not be deleted.
 The ADMIN role is not project specific:
@@ -153,6 +153,8 @@ The ADMIN role is not project specific:
   >>> js = s.query(User).filter_by(user_id = 'john.smith').one()
   >>> set([role.user_role_cd for role in js.roles])
   set(['ADMIN', u'DATA_OBFSC', u'USER', u'DATA_LDS', u'DATA_AGG'])
+  >>> set([role.project_id for role in js.roles])
+  set(['@', u'REDCap_4', u'BlueHeron'])
 
 """
 
@@ -175,6 +177,8 @@ import i2b2metadata
 CONFIG_SECTION = 'i2b2pm'
 
 KUUIDGen = injector.Key('UUIDGen')
+
+DEFAULT_PID = 'BlueHeron'
 
 Base = declarative_base()
 log = logging.getLogger(__name__)
@@ -201,11 +205,12 @@ class I2B2PM(ocap_file.Token):
         '''
         return I2B2Account(self, agent, project_id)
 
-    def i2b2_project(self, rc_pids, default_pid='BlueHeron'):
+    def i2b2_project(self, rc_pids):
         '''select project based on redcap projects user has access to.
 
         :return: (project_id, project_desc)
         '''
+        default_pid = DEFAULT_PID
         pms = self._datasrc()
         log.info('Finding I2B2 project for REDCap pids: %s', rc_pids)
         rc_pids = self._md.rc_in_i2b2(rc_pids)
@@ -291,8 +296,16 @@ class I2B2PM(ocap_file.Token):
             myrole = UserRole(user_id=uid, project_id=project_id,
                               user_role_cd=r,
                               entry_date=t, change_date=t, status_cd='A')
+            if project_id != DEFAULT_PID:
+                #If a user has permissions to REDCap i2b2 project,
+                # also grant permissions to default project #2111
+                defrole = UserRole(user_id=uid, project_id=DEFAULT_PID,
+                              user_role_cd=r,
+                              entry_date=t, change_date=t, status_cd='A')
+                me.roles.append(defrole)
             log.info('I2B2PM: adding: %s', myrole)
             me.roles.append(myrole)
+
 
         ds.commit()
         return auth, me
