@@ -292,19 +292,15 @@ class I2B2PM(ocap_file.Token):
             UserRole.user_role_cd.in_(list(roles)))).\
             delete(synchronize_session='fetch')
 
-        for r in roles:
-            myrole = UserRole(user_id=uid, project_id=project_id,
-                              user_role_cd=r,
-                              entry_date=t, change_date=t, status_cd='A')
-            if project_id != DEFAULT_PID:
-                #If a user has permissions to REDCap i2b2 project,
-                # also grant permissions to default project #2111
-                defrole = UserRole(user_id=uid, project_id=DEFAULT_PID,
-                              user_role_cd=r,
-                              entry_date=t, change_date=t, status_cd='A')
-                me.roles.append(defrole)
-            log.info('I2B2PM: adding: %s', myrole)
-            me.roles.append(myrole)
+        #If a user has permissions to REDCap i2b2 project,
+        # also grant permissions to default project #2111
+        for project in set([project_id, DEFAULT_PID]):
+            for r in roles:
+                myrole = UserRole(user_id=uid, project_id=project,
+                                  user_role_cd=r,
+                                  entry_date=t, change_date=t, status_cd='A')
+                log.info('I2B2PM: adding: %s', myrole)
+                me.roles.append(myrole)
 
         ds.commit()
         return auth, me
