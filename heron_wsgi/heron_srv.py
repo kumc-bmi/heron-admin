@@ -26,6 +26,7 @@ import cas_auth
 import genshi_render
 import drocnotice
 import stats
+import perf_reports
 import edit_projects
 from admin_lib import medcenter
 from admin_lib import heron_policy
@@ -431,9 +432,10 @@ class HeronAdminConfig(Configurator):
             mc=medcenter.MedCenter,
             hr=heron_policy.HeronRecords,
             dn=drocnotice.DROCNotice,
-            report=stats.Reports)
+            report=stats.Reports,
+            perf=perf_reports.PerformanceReports)
     def __init__(self, guard, casopts, conf, clv, rcv,
-                 repo, tb, mpv, mc, hr, dn, report):
+                 repo, tb, mpv, mc, hr, dn, report, perf):
         log.debug('HeronAdminConfig settings: %s', conf)
 
         Configurator.__init__(self, settings=conf)
@@ -473,6 +475,9 @@ class HeronAdminConfig(Configurator):
 
         # Usage reports
         report.configure(self, 'reports/')
+
+        # Performance reports
+        perf.configure(self, 'reports/')
 
         # Investigator Projects Editor
         mpv.configure(self, 'tools/')

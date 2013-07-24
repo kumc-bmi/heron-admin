@@ -8,15 +8,13 @@ from sqlalchemy import orm, case, select, func, between
 from admin_lib import heron_policy
 from admin_lib import i2b2pm
 from admin_lib.audit_usage import qi, qm, rt, qri, qt
-from stats import UsageReports
 
 log = logging.getLogger(__name__)
 
 
-class PerformanceReports(UsageReports):
+class PerformanceReports(object):
     @inject(datasrc=(orm.session.Session, i2b2pm.CONFIG_SECTION))
     def __init__(self, datasrc, cal=datetime.date.today):
-        UsageReports.__init__(self, datasrc=datasrc)
         self._datasrc = datasrc
         self._cal = cal
 
@@ -27,22 +25,19 @@ class PerformanceReports(UsageReports):
 
         .. todo:: consider allowing anonymous access to performance report.
         '''
-        UsageReports.configure(self, config, mount_point)
 
         config.add_route('performance', mount_point + 'performance')
         config.add_view(self.show_performance, route_name='performance',
-                        request_method='GET', renderer='performance.html',
-                        permission=heron_policy.PERM_USER)
+                        request_method='GET', renderer='performance.html')
+                        # permission=heron_policy.PERM_STATS_REPORTER?
 
         config.add_route('performance_data', mount_point + 'performance_data')
         config.add_view(self.performance_data, route_name='performance_data',
-                        request_method='GET', renderer='json',
-                        permission=heron_policy.PERM_USER)
+                        request_method='GET', renderer='json')
 
         config.add_route('query_data', mount_point + 'query_data')
         config.add_view(self.query_data, route_name='query_data',
-                        request_method='GET', renderer='json',
-                        permission=heron_policy.PERM_USER)
+                        request_method='GET', renderer='json')
 
     def show_performance(self, res, req):
         return {}
@@ -115,6 +110,46 @@ class PerformanceReports(UsageReports):
         model = dict(queries=to_json(qt))
 
         return model
+
+    def performance_data(self, res, req):
+        session = self._datasrc()
+        this_month = session.execute('''
+select * from (
+select trunc(qi.start_date) start_day
+     , qt.status_type_id, qi.batch_mode, qt.description
+     , count(*) n
+     , round(avg(qi.end_date - qi.start_date) * 24 * 60 * 60, 2) avg_seconds
+     , numtodsinterval(avg(qi.end_date - qi.start_date) * 24 * 60 * 60, 'second') avg_dur
+from BlueHeronData.qt_query_master qm
+join blueherondata.qt_query_instance qi
+ on qi.query_master_id = qm.query_master_id
+join BlueHeronData.qt_query_status_type qt
+ on qt.status_type_id = qi.status_type_id
+ /* current month/release */
+where qi.start_date >= sysdate - 30
+group by trunc(qi.start_date), qt.status_type_id, qi.batch_mode, qt.description
+) order by start_day desc, status_type_id desc
+        ''')
+
+        all_months = session.execute('''
+select * from (
+select to_char(qi.start_date, 'yyyy-mm') start_month
+     , qt.status_type_id, qi.batch_mode, qt.description
+     , count(*) n
+     , round(avg(qi.end_date - qi.start_date) * 24 * 60 * 60, 2) avg_seconds
+     , numtodsinterval(avg(qi.end_date - qi.start_date) * 24 * 60 * 60, 'second') avg_dur
+from BlueHeronData.qt_query_master qm
+join blueherondata.qt_query_instance qi
+ on qi.query_master_id = qm.query_master_id
+join BlueHeronData.qt_query_status_type qt
+ on qt.status_type_id = qi.status_type_id
+group by to_char(qi.start_date, 'yyyy-mm'), qt.status_type_id, qi.batch_mode, qt.description
+) order by start_month desc, status_type_id desc
+'''
+                                )
+
+        return dict(this_month=to_json(this_month),
+                    all_months=to_json(all_months))
 
 
 def _json_val(x):
