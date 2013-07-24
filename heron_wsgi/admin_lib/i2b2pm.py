@@ -287,7 +287,7 @@ class I2B2PM(ocap_file.Token):
         else:
             log.info('found: %s', me)
             me.password, me.status_cd, me.change_date = pw_hash, 'A', t
-        #http://docs.sqlalchemy.org/en/rel_0_8/orm/query.html?highlight=query.update#sqlalchemy.orm.query.Query.update
+        # http://docs.sqlalchemy.org/en/rel_0_8/orm/query.html?highlight=query.update#sqlalchemy.orm.query.Query.update # noqa
         ds.query(UserRole).filter(and_(UserRole.user_id == uid,
             UserRole.user_role_cd.in_(list(roles)))).\
             delete(synchronize_session='fetch')
@@ -305,7 +305,6 @@ class I2B2PM(ocap_file.Token):
                 me.roles.append(defrole)
             log.info('I2B2PM: adding: %s', myrole)
             me.roles.append(myrole)
-
 
         ds.commit()
         return auth, me
