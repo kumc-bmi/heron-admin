@@ -62,7 +62,10 @@ class PerformanceReports(object):
         '''Show recent I2B2 queries.'''
         return self._datasrc().execute('''
 select qm.query_master_id, qm.name, qm.user_id, qt.name as status,
-  nvl(cast(qi.end_date as timestamp), current_timestamp) - cast(qm.create_date as timestamp) elapsed,
+  nvl(cast(qi.end_date as timestamp),
+      -- round to nearest second by converting to date and back
+      cast(cast(current_timestamp as date) as timestamp))
+  - cast(qm.create_date as timestamp) elapsed,
   qm.create_date, qi.end_date, qi.batch_mode, qm.request_xml,
   rt.result_type_id, rt.description result_type_description
 FROM (
