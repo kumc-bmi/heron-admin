@@ -1,6 +1,7 @@
 import datetime
 import decimal
 import logging
+import math
 
 from injector import inject
 from sqlalchemy import orm, case, select, func, between
@@ -40,7 +41,53 @@ class PerformanceReports(object):
                         request_method='GET', renderer='json')
 
     def show_performance(self, res, req):
-        return {}
+        return dict(current_release=self.current_release(),
+                    recent_query_performance=self.recent_query_performance(),
+                    log=math.log)
+
+    def current_release(self):
+        return self._datasrc().execute('''
+            select project_name from I2B2PM.PM_PROJECT_DATA
+            where project_id = 'BlueHeron' ''').fetchone().project_name
+
+    def recent_query_performance(self):
+        '''Show recent I2B2 queries.'''
+        return self._datasrc().execute('''
+select qm.query_master_id, qm.name, qm.user_id, qt.name as status,
+  nvl(cast(qi.end_date as timestamp), current_timestamp) - cast(qm.create_date as timestamp) elapsed,
+  qm.create_date, qi.end_date, qi.batch_mode
+FROM (
+  select * from (
+   select * from blueherondata.qt_query_master qm
+   where qm.delete_flag != 'Y'
+   order by qm.query_master_id desc
+   ) where rownum < 40) qm
+JOIN blueherondata.qt_query_instance qi
+ON qm.query_master_id = qi.query_master_id
+
+left JOIN blueherondata.qt_query_result_instance qri
+ON qi.query_instance_id = qri.query_instance_id
+
+left JOIN blueherondata.qt_query_result_type rt
+ON rt.result_type_id = qri.result_type_id
+left JOIN blueherondata.qt_query_status_type qt
+ON qt.status_type_id = qi.status_type_id
+
+order by start_date desc
+''')
+
+    def active_sql_stats(self):
+        '''
+        Bummer. I2B2 users don't have privileges to see these data.
+        '''
+        session = self._datasrc()
+        return session.execute('''
+ select b.last_load_time start_time, (b.elapsed_time / 1000000) elapsed, b.sql_id, b.sql_text --, a.*, b.*
+ from v$session a
+ join v$sqlarea b on a.sql_address=b.address
+ where a.status = 'ACTIVE'
+ and type != 'BACKGROUND'
+''')
 
     @classmethod
     def query_data_select(cls, statuses):
@@ -126,12 +173,13 @@ join blueherondata.qt_query_instance qi
 join BlueHeronData.qt_query_status_type qt
  on qt.status_type_id = qi.status_type_id
  /* current month/release */
-where qi.start_date >= sysdate - 30
+where qi.start_date >= sysdate - 10
 group by trunc(qi.start_date), qt.status_type_id, qi.batch_mode, qt.description
 ) order by start_day desc, status_type_id desc
         ''')
 
-        all_months = session.execute('''
+        if 0:  #@@
+            all_months = session.execute('''
 select * from (
 select to_char(qi.start_date, 'yyyy-mm') start_month
      , qt.status_type_id, qi.batch_mode, qt.description
