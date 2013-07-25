@@ -27,7 +27,6 @@ import genshi_render
 import drocnotice
 import stats
 import perf_reports
-import edit_projects
 from admin_lib import medcenter
 from admin_lib import heron_policy
 from admin_lib import redcap_connect
@@ -428,14 +427,13 @@ class HeronAdminConfig(Configurator):
             rcv=REDCapLink,
             repo=RepositoryLogin,
             tb=TeamBuilder,
-            mpv=edit_projects.MyProjectsView,
             mc=medcenter.MedCenter,
             hr=heron_policy.HeronRecords,
             dn=drocnotice.DROCNotice,
             report=stats.Reports,
             perf=perf_reports.PerformanceReports)
     def __init__(self, guard, casopts, conf, clv, rcv,
-                 repo, tb, mpv, mc, hr, dn, report, perf):
+                 repo, tb, mc, hr, dn, report, perf):
         log.debug('HeronAdminConfig settings: %s', conf)
 
         Configurator.__init__(self, settings=conf)
@@ -479,8 +477,6 @@ class HeronAdminConfig(Configurator):
         # Performance reports
         perf.configure(self, 'reports/')
 
-        # Investigator Projects Editor
-        mpv.configure(self, 'tools/')
 
         # for testing
         self.add_route('err', 'err')

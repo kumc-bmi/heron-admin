@@ -50,7 +50,11 @@ class I2B2Metadata(ocap_file.Token):
         :return: subset of rc_pids that have corresponding terms
                  in blueheronmetadata.
         """
-        mds = self._mdsm()
+        try:
+            mds = self._mdsm()
+        except Exception as ex:
+            log.error('rc_in_i2b2 failed to connect', exc_info=ex)
+            return []
 
         terms = mds.execute(text(r"""select c_fullname
         from blueheronmetadata.REDCAP_TERMS_ENHANCED

@@ -50,6 +50,14 @@ INSERT INTO "redcap_data" VALUES(34,1,'23180811818680005','user_id_1','bill.stud
 INSERT INTO "redcap_data" VALUES(34,1,'23180811818680005','approve_kuh','1');
 INSERT INTO "redcap_data" VALUES(34,1,'23180811818680005','approve_kupi','1');
 INSERT INTO "redcap_data" VALUES(34,1,'23180811818680005','approve_kumc','1');
+INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','user_id','prof.fickle');
+INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','full_name','Prof Fickle');
+INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','project_title','Change how diabetes is treated');
+INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','date_of_expiration','2050-02-27');
+INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','user_id_1','jill.student');
+INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','approve_kuh','1');
+INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','approve_kupi','1');
+INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','approve_kumc','1');
 CREATE TABLE redcap_surveys_participants (
 	participant_id INTEGER NOT NULL, 
 	survey_id INTEGER, 
@@ -62,6 +70,7 @@ CREATE TABLE redcap_surveys_participants (
 );
 INSERT INTO "redcap_surveys_participants" VALUES(3253004250825796194,11,NULL,NULL,NULL,'big.wig@js.example',NULL);
 INSERT INTO "redcap_surveys_participants" VALUES(7868139340274461544,11,NULL,NULL,NULL,'john.smith@js.example',NULL);
+INSERT INTO "redcap_surveys_participants" VALUES(7868139340274461590,11,NULL,NULL,NULL,'prof.fickle@js.example',NULL);
 CREATE TABLE redcap_surveys_response (
 	response_id INTEGER NOT NULL, 
 	participant_id INTEGER, 
@@ -73,6 +82,7 @@ CREATE TABLE redcap_surveys_response (
 );
 INSERT INTO "redcap_surveys_response" VALUES(3253004250825796194,3253004250825796194,'3253004250825796194',NULL,'2011-08-26 00:00:00.000000',NULL);
 INSERT INTO "redcap_surveys_response" VALUES(7868139340274461544,7868139340274461544,'7868139340274461544',NULL,'2011-08-26 00:00:00.000000',NULL);
+INSERT INTO "redcap_surveys_response" VALUES(7868139340274461590,7868139340274461590,'7868139340274461590',NULL,'2011-08-26 00:00:00.000000',NULL);
 CREATE TABLE redcap_user_rights (
 	project_id INTEGER, 
 	username VARCHAR
