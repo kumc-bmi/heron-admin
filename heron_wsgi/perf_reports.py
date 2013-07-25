@@ -1,5 +1,6 @@
 import datetime
 import decimal
+import itertools
 import logging
 import math
 
@@ -41,9 +42,16 @@ class PerformanceReports(object):
                         request_method='GET', renderer='json')
 
     def show_performance(self, res, req):
+        order = dict(INCOMPLETE=1,
+                     COMPLETED=2,
+                     ERROR=3)
+        perf = sorted(self.recent_query_performance(),
+                      key=lambda q: order.get(q.status, 0))
+
         return dict(current_release=self.current_release(),
-                    recent_query_performance=self.recent_query_performance(),
-                    log=math.log)
+                    recent_query_performance=perf,
+                    log=math.log,
+                    cycle=itertools.cycle)
 
     def current_release(self):
         return self._datasrc().execute('''
@@ -55,7 +63,8 @@ class PerformanceReports(object):
         return self._datasrc().execute('''
 select qm.query_master_id, qm.name, qm.user_id, qt.name as status,
   nvl(cast(qi.end_date as timestamp), current_timestamp) - cast(qm.create_date as timestamp) elapsed,
-  qm.create_date, qi.end_date, qi.batch_mode
+  qm.create_date, qi.end_date, qi.batch_mode, qm.request_xml,
+  rt.result_type_id, rt.description result_type_description
 FROM (
   select * from (
    select * from blueherondata.qt_query_master qm

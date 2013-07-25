@@ -11,6 +11,18 @@
 <!-- due to technique for integration with KUMC templates,
      style in the head gets ignored, so... -->
   <style type="text/css">
+.COMPLETED { color: grey }
+.ERROR { color: red }
+
+table th { padding-right: 1em }
+.number { text-align: right }
+
+table.report { width: 100% }
+
+.report th, td { padding: 0 0.5em;
+  border-bottom: 1px solid #DDD;}
+.report .odd * {background: #EEE;}
+
 .chart div {
    font: 10px sans-serif;
    background-color: steelblue;
@@ -30,37 +42,47 @@
 
 <div id="main">
 
-<p>Current release: <strong>${current_release}</strong></p>
-
 <div id="recent_queries"><h2>Performance of Recent Queries</h2>
 
-<table>
+<p>Current release: <strong>${current_release}</strong></p>
+
+<table class="report" py:with="parity=cycle(('odd', 'even'))">
   <thead>
   <tr>
     <th>ID</th>
-    <th>Name</th>
-    <th>User</th>
+    <th>Created</th>
     <th>Status</th>
-    <th>Create Date</th>
-    <th>Elapsed</th>
+    <!-- this is gross, but I can't figure out how to do it with CSS -->
+    <th>Name<py:for each="i in range(1, 50)">&nbsp;</py:for></th>
+    <th>User</th>
+    <th>Groups</th><th>Terms</th>
+    <th colspan="2">Elapsed</th>
   </tr>
   </thead>
   <tbody>
-  <tr py:for="q in recent_query_performance">
+  <tr py:for="q in recent_query_performance"
+      class="${q.status} ${parity.next()}">
     <td>${q.query_master_id}</td>
-    <td>${q.name}</td>
-    <td>${q.user_id}</td>
+    <td>${q.create_date.strftime('%B %d %I:%M:%S%P')}</td>
     <td>${q.status}
-        ${q.batch_mode}</td>
-    <td>${q.create_date}</td>
+        ${q.batch_mode}
+        <b py:if="q.result_type_id != 4">${q.result_type_description}</b>
+    </td>
+    <td style="width: 40em">${q.name}</td>
+    <td>${q.user_id}</td>
+    <td class="number">${len(q.request_xml.split('&lt;panel>')) - 1}</td>
+    <td class="number">${len(q.request_xml.split('&lt;item>')) - 1}</td>
     <td>${q.elapsed}</td>
-    <td>${'*' * int(1 + log(1 + q.elapsed.seconds))}</td>
+    <td>${'*' * int(1 + log(1 + q.elapsed.seconds, 2))}</td>
   </tr>
   </tbody>
 </table>
 </div>
 
-<div id="all_queries"><h2>Queries in the last @@ days</h2>
+<!--
+<div id="all_queries">
+
+<h2>Queries in the last @@ days</h2>
 
 <form id='constraints'>
 <p><strong>To-do:</strong> interactive choice of dates, users... perhaps tooltip like..., show result set size. show whether patient set (using colored circle?). select by result set size.
@@ -133,7 +155,7 @@ $('#update').click(update);
 </li>
 </ul>
 
-
+-->
 </div>
 
 </body>
