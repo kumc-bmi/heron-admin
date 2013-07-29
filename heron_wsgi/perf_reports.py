@@ -4,35 +4,45 @@ import itertools
 import logging
 import math
 
-from injector import inject
-from sqlalchemy import orm, case, select, func, between
+from sqlalchemy import case, select, func, between
 
 from admin_lib import heron_policy
-from admin_lib import i2b2pm
 from admin_lib.audit_usage import qi, qm, rt, qri, qt
 
 log = logging.getLogger(__name__)
 
 
 class PerformanceReports(object):
-    @inject(datasrc=(orm.session.Session, i2b2pm.CONFIG_SECTION))
-    def __init__(self, datasrc, cal=datetime.date.today):
-        self._datasrc = datasrc
-        self._cal = cal
 
     def configure(self, config, mount_point):
         '''Connect this view to the rest of the application
 
-        :param config: a pyramid config thingy@@@
-
-        .. todo:: consider allowing anonymous access to performance report.
+        :param config: a pyramid config
         '''
 
         config.add_route('performance', mount_point + 'performance')
         config.add_view(self.show_performance, route_name='performance',
-                        request_method='GET', renderer='performance.html')
-                        # permission=heron_policy.PERM_STATS_REPORTER?
+                        request_method='GET', renderer='performance.html',
+                        permission=heron_policy.PERM_STATS_REPORTER)
 
+    def show_performance(self, context, req):
+        order = dict(INCOMPLETE=1,
+                     COMPLETED=2,
+                     ERROR=3)
+
+        usage = context.stats_reporter
+
+        perf = sorted(usage.recent_query_performance(),
+                      key=lambda q: order.get(q.status, 0))
+
+        return dict(current_release=usage.current_release(),
+                    recent_query_performance=perf,
+                    log=math.log,
+                    cycle=itertools.cycle)
+
+
+class _WorkInProgress(object):
+    def _configure_todo(self, config, mount_point):
         config.add_route('performance_data', mount_point + 'performance_data')
         config.add_view(self.performance_data, route_name='performance_data',
                         request_method='GET', renderer='json')
@@ -41,60 +51,14 @@ class PerformanceReports(object):
         config.add_view(self.query_data, route_name='query_data',
                         request_method='GET', renderer='json')
 
-    def show_performance(self, res, req):
-        order = dict(INCOMPLETE=1,
-                     COMPLETED=2,
-                     ERROR=3)
-        perf = sorted(self.recent_query_performance(),
-                      key=lambda q: order.get(q.status, 0))
-
-        return dict(current_release=self.current_release(),
-                    recent_query_performance=perf,
-                    log=math.log,
-                    cycle=itertools.cycle)
-
-    def current_release(self):
-        return self._datasrc().execute('''
-            select project_name from I2B2PM.PM_PROJECT_DATA
-            where project_id = 'BlueHeron' ''').fetchone().project_name
-
-    def recent_query_performance(self):
-        '''Show recent I2B2 queries.'''
-        return self._datasrc().execute('''
-select qm.query_master_id, qm.name, qm.user_id, qt.name as status,
-  nvl(cast(qi.end_date as timestamp),
-      -- round to nearest second by converting to date and back
-      cast(cast(current_timestamp as date) as timestamp))
-  - cast(qm.create_date as timestamp) elapsed,
-  qm.create_date, qi.end_date, qi.batch_mode, qm.request_xml,
-  rt.result_type_id, rt.description result_type_description
-FROM (
-  select * from (
-   select * from blueherondata.qt_query_master qm
-   where qm.delete_flag != 'Y'
-   order by qm.query_master_id desc
-   ) where rownum < 40) qm
-JOIN blueherondata.qt_query_instance qi
-ON qm.query_master_id = qi.query_master_id
-
-left JOIN blueherondata.qt_query_result_instance qri
-ON qi.query_instance_id = qri.query_instance_id
-
-left JOIN blueherondata.qt_query_result_type rt
-ON rt.result_type_id = qri.result_type_id
-left JOIN blueherondata.qt_query_status_type qt
-ON qt.status_type_id = qi.status_type_id
-
-order by start_date desc
-''')
-
     def active_sql_stats(self):
         '''
         Bummer. I2B2 users don't have privileges to see these data.
         '''
         session = self._datasrc()
         return session.execute('''
- select b.last_load_time start_time, (b.elapsed_time / 1000000) elapsed, b.sql_id, b.sql_text --, a.*, b.*
+ select b.last_load_time start_time, (b.elapsed_time / 1000000) elapsed,
+        b.sql_id, b.sql_text --, a.*, b.*
  from v$session a
  join v$sqlarea b on a.sql_address=b.address
  where a.status = 'ACTIVE'
@@ -178,7 +142,8 @@ select trunc(qi.start_date) start_day
      , qt.status_type_id, qi.batch_mode, qt.description
      , count(*) n
      , round(avg(qi.end_date - qi.start_date) * 24 * 60 * 60, 2) avg_seconds
-     , numtodsinterval(avg(qi.end_date - qi.start_date) * 24 * 60 * 60, 'second') avg_dur
+     , numtodsinterval(avg(qi.end_date - qi.start_date) * 24 * 60 * 60,
+                       'second') avg_dur
 from BlueHeronData.qt_query_master qm
 join blueherondata.qt_query_instance qi
  on qi.query_master_id = qm.query_master_id
@@ -197,13 +162,15 @@ select to_char(qi.start_date, 'yyyy-mm') start_month
      , qt.status_type_id, qi.batch_mode, qt.description
      , count(*) n
      , round(avg(qi.end_date - qi.start_date) * 24 * 60 * 60, 2) avg_seconds
-     , numtodsinterval(avg(qi.end_date - qi.start_date) * 24 * 60 * 60, 'second') avg_dur
+     , numtodsinterval(avg(qi.end_date - qi.start_date) * 24 * 60 * 60,
+                       'second') avg_dur
 from BlueHeronData.qt_query_master qm
 join blueherondata.qt_query_instance qi
  on qi.query_master_id = qm.query_master_id
 join BlueHeronData.qt_query_status_type qt
  on qt.status_type_id = qi.status_type_id
-group by to_char(qi.start_date, 'yyyy-mm'), qt.status_type_id, qi.batch_mode, qt.description
+group by to_char(qi.start_date, 'yyyy-mm'),
+         qt.status_type_id, qi.batch_mode, qt.description
 ) order by start_month desc, status_type_id desc
 '''
                                 )

@@ -25,6 +25,11 @@ class I2B2AggregateUsage(I2B2Usage):
     def __repr__(self):
         return 'I2B2AggregateUsage()'
 
+    def current_release(self):
+        return self.q('''
+            select project_name from I2B2PM.PM_PROJECT_DATA
+            where project_id = 'BlueHeron' ''').fetchone().project_name
+
     def total_number_of_queries(self):
         data = self.q('''
             select count(*) as total_number_of_queries
@@ -109,6 +114,36 @@ on last_year.user_id = all_time.user_id
 
 order by nvl(two_weeks.qty, -1) desc, nvl(all_time.qty, -1) desc
                       ''')
+
+    def recent_query_performance(self):
+        '''Show recent I2B2 queries.'''
+        return self.q('''
+select qm.query_master_id, qm.name, qm.user_id, qt.name as status,
+  nvl(cast(qi.end_date as timestamp),
+      -- round to nearest second by converting to date and back
+      cast(cast(current_timestamp as date) as timestamp))
+  - cast(qm.create_date as timestamp) elapsed,
+  qm.create_date, qi.end_date, qi.batch_mode, qm.request_xml,
+  rt.result_type_id, rt.description result_type_description
+FROM (
+  select * from (
+   select * from blueherondata.qt_query_master qm
+   where qm.delete_flag != 'Y'
+   order by qm.query_master_id desc
+   ) where rownum < 40) qm
+JOIN blueherondata.qt_query_instance qi
+ON qm.query_master_id = qi.query_master_id
+
+left JOIN blueherondata.qt_query_result_instance qri
+ON qi.query_instance_id = qri.query_instance_id
+
+left JOIN blueherondata.qt_query_result_type rt
+ON rt.result_type_id = qri.result_type_id
+left JOIN blueherondata.qt_query_status_type qt
+ON qt.status_type_id = qi.status_type_id
+
+order by start_date desc
+''')
 
 
 class I2B2SensitiveUsage(I2B2Usage):
