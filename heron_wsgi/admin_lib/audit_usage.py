@@ -30,6 +30,14 @@ class I2B2AggregateUsage(I2B2Usage):
             select project_name from I2B2PM.PM_PROJECT_DATA
             where project_id = 'BlueHeron' ''')[0].project_name
 
+    def current_sessions(self):
+        return self.q('''
+select full_name, user_id, entry_date
+from I2B2PM.pm_user_session
+where user_id not like '%SERVICE_ACCOUNT'
+and expired_date > sysdate
+''')
+
     def total_number_of_queries(self):
         data = self.q('''
             select count(*) as total_number_of_queries

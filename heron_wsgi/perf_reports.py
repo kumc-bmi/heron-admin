@@ -37,6 +37,7 @@ class PerformanceReports(object):
 
         return dict(current_release=usage.current_release(),
                     recent_query_performance=perf,
+                    current_sessions=usage.current_sessions(),
                     log=math.log,
                     cycle=itertools.cycle)
 
