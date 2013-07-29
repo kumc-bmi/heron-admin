@@ -42,6 +42,24 @@ table.report { width: 100% }
 
 <div id="main">
 
+<div id="current_sessions"><h2>Current Sessions</h2>
+<table class="report">
+ <thead><tr>
+  <th>Started</th>
+  <th>Name</th>
+  <th>User ID</th>
+ </tr></thead>
+ <tbody>
+   <tr py:for="s in current_sessions">
+    <td>${s.entry_date}</td>
+    <td>${s.full_name}</td>
+    <td>${s.user_id}</td>
+   </tr>
+ </tbody>
+</table>
+
+</div>
+
 <div id="recent_queries"><h2>Performance of Recent Queries</h2>
 
 <p>Current release: <strong>${current_release}</strong></p>
