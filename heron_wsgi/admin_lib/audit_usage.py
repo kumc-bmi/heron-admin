@@ -32,10 +32,12 @@ class I2B2AggregateUsage(I2B2Usage):
 
     def current_sessions(self):
         return self.q('''
-select full_name, user_id, entry_date
-from I2B2PM.pm_user_session
-where user_id not like '%SERVICE_ACCOUNT'
-and expired_date > sysdate
+select pud.full_name, s.user_id, s.entry_date
+from I2B2PM.pm_user_session s
+join i2b2pm.pm_user_data pud
+  on s.user_id = pud.user_id
+where s.user_id not like '%SERVICE_ACCOUNT'
+and s.expired_date > sysdate
 ''')
 
     def total_number_of_queries(self):
