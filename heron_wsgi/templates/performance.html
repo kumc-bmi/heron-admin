@@ -83,7 +83,6 @@ table.report { width: 100% }
     <td>${q.query_master_id}</td>
     <td>${q.create_date.strftime('%B %d %I:%M:%S%P')}</td>
     <td>${q.status}
-        ${q.batch_mode}
         <b py:if="q.result_type_id != 4">${q.result_type_description}</b>
     </td>
     <td style="width: 40em">${q.name}</td>
