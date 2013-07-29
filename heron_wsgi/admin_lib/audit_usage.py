@@ -28,7 +28,7 @@ class I2B2AggregateUsage(I2B2Usage):
     def current_release(self):
         return self.q('''
             select project_name from I2B2PM.PM_PROJECT_DATA
-            where project_id = 'BlueHeron' ''').fetchone().project_name
+            where project_id = 'BlueHeron' ''')[0].project_name
 
     def total_number_of_queries(self):
         data = self.q('''
