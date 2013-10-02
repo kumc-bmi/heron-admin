@@ -152,7 +152,7 @@ ON rt.result_type_id = qri.result_type_id
 left JOIN blueherondata.qt_query_status_type qt
 ON qt.status_type_id = qi.status_type_id
 
-order by start_date desc
+order by qi.start_date desc
 ''')
 
 
