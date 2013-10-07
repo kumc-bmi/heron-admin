@@ -109,7 +109,7 @@ class CheckListView(Token):
          'logout_path': 'http://example.com/logout',
          'repositoryAccess': {'checked': 'checked'},
          'saa_path': 'http://example.com/saa',
-         'saa_public': 'http://bmidev1/redcap-host/surveys/?s=43',
+         'saa_public': 'http://testhost/redcap-host/surveys/?s=43',
          'signatureOnFile': {'checked': 'checked'},
          'sponsored': {},
          'sponsorship_path': 'http://example.com/oversight',
@@ -175,7 +175,7 @@ class REDCapLink(Token):
           >>> r5 = t.get('/saa_survey', status=302)
           >>> dict(r5.headers)['Location'].split('&')
           ... # doctest: +NORMALIZE_WHITESPACE
-          ['http://bmidev1/redcap-host/surveys/?s=f1f9',
+          ['http://testhost/redcap-host/surveys/?s=f1f9',
            'full_name=Smith%2C+John', 'user_id=john.smith']
 
         Hmm... we're doing a POST to the REDCap API inside a GET.
@@ -193,14 +193,14 @@ class REDCapLink(Token):
           >>> r5 = t.get('/team_done/sponsorship', status=302)
           >>> dict(r5.headers)['Location'].split('&')
           ... # doctest: +NORMALIZE_WHITESPACE
-          ['http://bmidev1/redcap-host/surveys/?s=f1f9',
+          ['http://testhost/redcap-host/surveys/?s=f1f9',
            'full_name=Smith%2C+John', 'multi=yes', 'user_id=john.smith',
            'what_for=1']
 
           >>> r6 = t.get('/team_done/data_use', status=302)
           >>> dict(r6.headers)['Location'].split('&')
           ... # doctest: +NORMALIZE_WHITESPACE
-          ['http://bmidev1/redcap-host/surveys/?s=f1f9',
+          ['http://testhost/redcap-host/surveys/?s=f1f9',
            'full_name=Smith%2C+John', 'multi=yes', 'user_id=john.smith',
            'what_for=2']
 
@@ -326,7 +326,7 @@ class TeamBuilder(Token):
           ...              status=302)
           >>> dict(done.headers)['Location'].split('&')
           ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
-          ['http://bmidev1/redcap-host/surveys/?s=f1f9',
+          ['http://testhost/redcap-host/surveys/?s=f1f9',
            'full_name=Smith%2C+John', 'multi=yes',
            'name_etc_1=Smith%2C+John%0AChair+...+Neurology%0ANeurology',
            'user_id=john.smith', 'user_id_1=john.smith', 'what_for=1']
