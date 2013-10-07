@@ -4,20 +4,17 @@
 '''
 
 from xml.etree import cElementTree as xml
+import pkg_resources as pkg
 
 from ocap_file import Readable
 
 
 class JBossContext(object):
     '''
-    >>> import pkg_resources as pkg
-    >>> here = Readable('/example/',
-    ...                 _MockPath,
-    ...                 lambda path: ['test-ds.xml'],
-    ...                 lambda n: pkg.resource_stream(__name__, 'test-ds.xml'))
+    >>> here = _MockDeployDir.make()
 
     >>> JBossContext(here, lambda url: url).lookup('QueryToolBLUEHERONDS')
-    'oracle://BLUEHERONdata:xyzpdq@bmidev1:1521/bmid'
+    'oracle://BLUEHERONdata:xyzpdq@testhost:1521/DB1'
     '''
     def __init__(self, jboss_deploy, create_engine):
         self.__d = jboss_deploy
@@ -28,7 +25,23 @@ class JBossContext(object):
         return self.__create_engine(url)
 
 
-class _MockPath(object):
+class _MockDeployDir(object):
+    ds = 'test-ds.xml'
+
+    @classmethod
+    def make(cls):
+        return Readable('/example',
+                        _MockDeployDir,
+                        lambda path: [cls.ds],
+                        cls.open)
+
+    @classmethod
+    def open(cls, path):
+        if path != '/example/' + cls.ds:
+            raise OSError(2, 'No such file or directory: %s' % path)
+
+        return pkg.resource_stream(__name__, cls.ds)
+
     @staticmethod
     def abspath(p):
         return p
@@ -43,12 +56,10 @@ def ds_access(jboss_deploy, jndi_name):
 
     :param jboss_deploy: a read-capability to a jboss deploy directory.
 
-    >>> import os
-    >>> here_path = os.path.dirname(__file__)
-    >>> here = Readable(here_path, os.path, os.listdir, open)
+    >>> here = _MockDeployDir.make()
 
     >>> ds_access(here, 'QueryToolBLUEHERONDS')
-    ('BLUEHERONdata', 'xyzpdq', 'bmidev1', '1521', 'bmid')
+    ('BLUEHERONdata', 'xyzpdq', 'testhost', '1521', 'DB1')
 
     Note case sensitivity:
 
