@@ -100,7 +100,7 @@ class DROCNotice(Token):
 
         for record, msg in self.build_notices(req):
             s = self._smaker()
-            log.debug('sending to: %s cc: %s', msg.recipients, msg.cc)
+            log.info('sending to: %s cc: %s', msg.recipients, msg.cc)
             mailer.send_immediately(msg)
             s.execute(ins.values(record=record, timestamp=func.now()))
             s.commit()
@@ -124,6 +124,7 @@ class DROCNotice(Token):
 
             inv_mail, team_mail = dr.team_email(investigator.cn,
                                                 [mem.cn for mem in team])
+            # yuck... if NO, looks up team in LDAP only to throw it away
             cc = (team_mail
                   if decision == DecisionRecords.YES
                   else [])
