@@ -144,8 +144,8 @@ class DROCNotice(Token):
 def render_value(investigator, team, decision, detail, heron_home):
     r'''
       >>> from admin_lib.noticelog import Ref
-      >>> v = render_value(Ref('john.smith', 'John Smith'),
-      ...                  [Ref('some.one', 'Some One')], '1',
+      >>> v = render_value(Ref('john.smith', 'John Smith', 'js...'),
+      ...                  [Ref('some.one', 'Some One', 'so...')], '1',
       ...                  dict(full_name='John Smith',
       ...                       project_title='Study Warts',
       ...                       name_etc_1='Some One\netc.'),

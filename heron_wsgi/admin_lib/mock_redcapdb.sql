@@ -6,6 +6,7 @@ CREATE TABLE notice_log (
 	PRIMARY KEY (id), 
 	FOREIGN KEY(record) REFERENCES redcap_data (record)
 );
+INSERT INTO "notice_log" VALUES(1, '93180811818667777', '2011-08-26 00:00:00.000000');
 CREATE TABLE redcap_data (
 	project_id INTEGER NOT NULL, 
 	event_id INTEGER NOT NULL, 
