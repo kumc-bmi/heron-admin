@@ -10,9 +10,11 @@ from ocap_file import Readable
 
 class JBossContext(object):
     '''
-    >>> import os
-    >>> here_path = os.path.dirname(__file__)
-    >>> here = Readable(here_path, os.path, os.listdir, open)
+    >>> import pkg_resources as pkg
+    >>> here = Readable('/example/',
+    ...                 _MockPath,
+    ...                 lambda path: ['test-ds.xml'],
+    ...                 lambda n: pkg.resource_stream(__name__, 'test-ds.xml'))
 
     >>> JBossContext(here, lambda url: url).lookup('QueryToolBLUEHERONDS')
     'oracle://BLUEHERONdata:xyzpdq@bmidev1:1521/bmid'
@@ -24,6 +26,16 @@ class JBossContext(object):
     def lookup(self, n):
         url = 'oracle://%s:%s@%s:%s/%s' % ds_access(self.__d, n)
         return self.__create_engine(url)
+
+
+class _MockPath(object):
+    @staticmethod
+    def abspath(p):
+        return p
+
+    @staticmethod
+    def join(*pn):
+        return '/'.join(pn)
 
 
 def ds_access(jboss_deploy, jndi_name):
