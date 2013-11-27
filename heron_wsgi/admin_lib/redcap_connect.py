@@ -10,7 +10,7 @@ Configuration gives us access to the REDCap API::
   executives=big.wig
   project_id=34
   survey_id=11
-  survey_url=http://bmidev1/redcap-host/surveys/?s=43
+  survey_url=http://testhost/redcap-host/surveys/?s=43
   token=sekret
 
   >>> set(OPTIONS) < set(_test_settings.settings().keys())
@@ -24,7 +24,7 @@ Set up a link to survey associated with John Smith's email address::
   >>> setup('john.smith',
   ...       {'user_id': 'john.smith', 'full_name': 'John Smith'}).split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
-  ['http://bmidev1/redcap-host/surveys/',
+  ['http://testhost/redcap-host/surveys/',
    's=f1f9&full_name=John+Smith&user_id=john.smith']
 
 Fill in some of the fields in the survey, such as `full_name` and `what_for`::
@@ -34,7 +34,7 @@ Fill in some of the fields in the survey, such as `full_name` and `what_for`::
   ...        'what_for': '2', 'full_name': 'Smith, John'},
   ...       multi=True).split('&')
   ... # doctest: +NORMALIZE_WHITESPACE
-  ['http://bmidev1/redcap-host/surveys/?s=f1f9',
+  ['http://testhost/redcap-host/surveys/?s=f1f9',
    'full_name=Smith%2C+John',
    'multi=yes', 'user_id=john.smith', 'what_for=2']
 '''
@@ -128,7 +128,7 @@ class SurveySetup(object):
 _test_settings = rtconfig.TestTimeOptions(dict(
     token='sekret',
     api_url='http://redcap-host/redcap/api/',
-    survey_url='http://bmidev1/redcap-host/surveys/?s=43',
+    survey_url='http://testhost/redcap-host/surveys/?s=43',
     domain='example.edu',
     executives='big.wig',
     survey_id=11,

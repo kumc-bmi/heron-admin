@@ -81,7 +81,7 @@ survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
   ... # doctest: +NORMALIZE_WHITESPACE
   INFO:cache_remote:SAA link query for ('SAA', 'john.smith')
   INFO:cache_remote:... cached until 2011-09-02 00:00:16.500000
-  ['http://bmidev1/redcap-host/surveys/',
+  ['http://testhost/redcap-host/surveys/',
    's=f1f9&full_name=Smith%2C+John&user_id=john.smith']
 
 Sponsored Users
@@ -184,7 +184,7 @@ the oversight committee::
   ... # doctest: +NORMALIZE_WHITESPACE
   WARNING:medcenter:missing LDAP attribute ou for some.one
   WARNING:medcenter:missing LDAP attribute title for some.one
-  ['http://bmidev1/redcap-host/surveys/?s=f1f9',
+  ['http://testhost/redcap-host/surveys/?s=f1f9',
    'full_name=Smith%2C+John',
    'multi=yes',
    'name_etc_1=One%2C+Some%0A%0A',

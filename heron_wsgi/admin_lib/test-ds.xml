@@ -3,7 +3,7 @@
 <local-tx-datasource>
   <jndi-name>QueryToolBLUEHERONDS</jndi-name>
   <driver-class>oracle.jdbc.driver.OracleDriver</driver-class>
-  <connection-url>jdbc:oracle:thin:@bmidev1:1521:bmid</connection-url>
+  <connection-url>jdbc:oracle:thin:@testhost:1521:DB1</connection-url>
   <user-name>BLUEHERONdata</user-name>
   <password>xyzpdq</password>
 
