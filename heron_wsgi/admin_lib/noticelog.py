@@ -38,8 +38,7 @@ What decision notifications are pending?
   >>> ds  # doctest: +NORMALIZE_WHITESPACE
   [(u'-565402122873664774', u'2', 3),
    (u'23180811818680005', u'1', 3),
-   (u'6373469799195807417', u'1', 3),
-   (u'93180811818667777', u'1', 3)]
+   (u'6373469799195807417', u'1', 3)]
 
 Get oversight details that we might want to use in composing the notification::
 
@@ -69,7 +68,7 @@ Get oversight details that we might want to use in composing the notification::
     u'user_id_1': u'bill.student'})
   >>> pprint(dr.decision_detail(ds[2][0]))
   (John Smith <john.smith>,
-   [Some One <some.one>, ? <carol.student>],
+   [Some One <some.one>, ? <carol.student>, ? <koam.rin>],
    {u'approve_kuh': u'1',
     u'approve_kumc': u'1',
     u'approve_kupi': u'1',
@@ -79,7 +78,8 @@ Get oversight details that we might want to use in composing the notification::
     u'project_title': u'Cure Warts',
     u'user_id': u'john.smith',
     u'user_id_1': u'some.one',
-    u'user_id_2': u'carol.student'})
+    u'user_id_2': u'carol.student',
+    u'user_id_3': u'koam.rin'})
 
 Get current email addresses of the team:
 
