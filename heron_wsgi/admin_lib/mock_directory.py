@@ -11,7 +11,8 @@ The mock directory has a handful of students and faculty::
    ('', 'carol.student'),
    ('N', 'some.one'),
    ('N', 'big.wig'),
-   ('N', 'jill.student')]
+   ('N', 'jill.student'),
+   ('N', 'koam.rin')]
 
 It implements the LDAP search API in a few cases::
 

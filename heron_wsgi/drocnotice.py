@@ -124,6 +124,7 @@ class DROCNotice(Token):
 
             inv_mail, team_mail = dr.team_email(investigator.cn,
                                                 [mem.cn for mem in team])
+
             # yuck... if NO, looks up team in LDAP only to throw it away
             cc = (team_mail
                   if decision == DecisionRecords.YES

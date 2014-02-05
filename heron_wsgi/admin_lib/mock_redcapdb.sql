@@ -25,6 +25,7 @@ INSERT INTO "redcap_data" VALUES(34,1,'6373469799195807417','date_of_expiration'
 INSERT INTO "redcap_data" VALUES(34,1,'6373469799195807417','user_id_1','some.one');
 INSERT INTO "redcap_data" VALUES(34,1,'6373469799195807417','name_etc_1','Some One');
 INSERT INTO "redcap_data" VALUES(34,1,'6373469799195807417','user_id_2','carol.student');
+INSERT INTO "redcap_data" VALUES(34,1,'6373469799195807417','user_id_3','koam.rin');
 INSERT INTO "redcap_data" VALUES(34,1,'6373469799195807417','approve_kuh','1');
 INSERT INTO "redcap_data" VALUES(34,1,'6373469799195807417','approve_kupi','1');
 INSERT INTO "redcap_data" VALUES(34,1,'6373469799195807417','approve_kumc','1');
