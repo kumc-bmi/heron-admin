@@ -88,6 +88,11 @@ Get current email addresses of the team:
   >>> dr.team_email(inv.cn, [mem.cn for mem in team])
   ('john.smith@js.example', ['bill.student@js.example'])
 
+  >>> record_2 = ds[2][0]
+  >>> inv, team, _ = dr.decision_detail(record_2)
+  >>> dr.team_email(inv.cn, [mem.cn for mem in team])
+  ('john.smith@js.example', ['some.one@js.example', 'carol.student@js.example'])
+
 The following table is used to log notices::
 
   >>> from sqlalchemy import create_engine
@@ -249,7 +254,7 @@ class DecisionRecords(Token):
         return (browser.lookup(inv_uid).mail,
                 [entry.mail
                  for entry in [try_lookup(uid) for uid in team_uids]
-                 if entry and hasattr(entry, 'mail')])
+                 if entry and hasattr(entry, 'mail') and entry.mail])
 
 
 def project_description(detail):

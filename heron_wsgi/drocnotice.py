@@ -124,10 +124,6 @@ class DROCNotice(Token):
 
             inv_mail, team_mail = dr.team_email(investigator.cn,
                                                 [mem.cn for mem in team])
-            
-            if team_mail.count(None):
-                team_mail = [tm for tm in team_mail if tm is not None]
-                log.error('Team member missing email: %s', str(detail))
 
             # yuck... if NO, looks up team in LDAP only to throw it away
             cc = (team_mail
