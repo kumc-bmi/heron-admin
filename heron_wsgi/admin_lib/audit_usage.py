@@ -128,13 +128,17 @@ order by nvl(two_weeks.qty, -1) desc, nvl(all_time.qty, -1) desc
     def recent_query_performance(self):
         '''Show recent I2B2 queries.'''
         return self.q('''
-select qm.query_master_id, qm.name, qm.user_id, qt.name as status,
+select * from (select qm.query_master_id, qm.name, qm.user_id, qt.name as status,
   nvl(cast(qi.end_date as timestamp),
       -- round to nearest second by converting to date and back
       cast(cast(current_timestamp as date) as timestamp))
   - cast(qm.create_date as timestamp) elapsed,
-  qm.create_date, qi.end_date, qi.batch_mode, qm.request_xml,
-  rt.result_type_id, rt.description result_type_description
+  qm.create_date,
+  qi.end_date,
+  qi.batch_mode,
+  qm.request_xml  ,
+  rt.result_type_id,
+  rt.description result_type_description
 FROM (
   select * from (
    select * from blueherondata.qt_query_master qm
@@ -152,7 +156,36 @@ ON rt.result_type_id = qri.result_type_id
 left JOIN blueherondata.qt_query_status_type qt
 ON qt.status_type_id = qi.status_type_id
 
-order by qi.start_date desc
+UNION ALL
+
+
+select 
+ qm.query_master_id
+,(select qri.description from blueherondata.qt_query_result_instance qri
+ where qri.result_instance_id= 
+ cast(regexp_replace(
+dbms_lob.substr(qm.request_xml,
+abs(INSTR(qm.request_xml,'<patient_set_coll_id>',1,1) +21
+-INSTR(qm.request_xml,'</patient_set_coll_id>',1,1))
+,instr(qm.request_xml,'<patient_set_coll_id>',1,1)+21
+) 
+, '[^0-9]+', '') as number))  as name
+,qm.user_id
+,'' as status
+,cast(cast(qm.create_date as date) as timestamp)
+  - cast(qm.create_date as timestamp)   elapsed
+,qm.create_date
+,qm.create_date as end_date
+,'' as batch_mode
+,qm.request_xml
+,9 as result_type_id
+,'Timeline' as result_type_description
+
+ from BlueHeronData.qt_pdo_query_master qm
+join I2B2PM.pm_user_data ud on qm.user_id=ud.user_id 
+)
+
+order by create_date desc
 ''')
 
 
@@ -344,6 +377,7 @@ def _integration_test():  # pragma: nocover
              pprint.pformat(detail.small_set_concepts()))
     log.info('Current sessions: %s', pprint.pformat(detail.current_sessions()))
     log.info('Current queries: %s', pprint.pformat(detail.current_queries()))
+    log.info('Recent queries: %s', pprint.pformat(agg.recent_query_performance()))
 
 
 def _report_with_roles(argv, stdout):  # pragma: nocover
