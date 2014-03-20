@@ -128,7 +128,7 @@ order by nvl(two_weeks.qty, -1) desc, nvl(all_time.qty, -1) desc
     def recent_query_performance(self):
         '''Show recent I2B2 queries.'''
         return self.q('''
-select * from (select qm.query_master_id, qm.name, qm.user_id, qt.name as status,
+select * from(select * from (select qm.query_master_id, qm.name, qm.user_id, qt.name as status,
   nvl(cast(qi.end_date as timestamp),
       -- round to nearest second by converting to date and back
       cast(cast(current_timestamp as date) as timestamp))
@@ -142,8 +142,8 @@ select * from (select qm.query_master_id, qm.name, qm.user_id, qt.name as status
 FROM (
   select * from (
    select * from blueherondata.qt_query_master qm
-   where qm.delete_flag != 'Y'
-   ) where qm.create_date >= sysdate - 14) qm
+   where qm.delete_flag != 'Y' order by qm.create_date desc 
+   ) ) qm
 JOIN blueherondata.qt_query_instance qi
 ON qm.query_master_id = qi.query_master_id
 
@@ -154,9 +154,9 @@ left JOIN blueherondata.qt_query_result_type rt
 ON rt.result_type_id = qri.result_type_id
 left JOIN blueherondata.qt_query_status_type qt
 ON qt.status_type_id = qi.status_type_id
+where qm.create_date>sysdate-14
 
 UNION ALL
-
 
 select 
  qm.query_master_id
@@ -182,10 +182,10 @@ abs(INSTR(qm.request_xml,'<patient_set_coll_id>',1,1) +21
 
  from BlueHeronData.qt_pdo_query_master qm
 join I2B2PM.pm_user_data ud on qm.user_id=ud.user_id
-where qm.create_date >= sysdate - 14
-) rqp
+where qm.create_date>sysdate-14
+) rqp order by rqp.create_date desc)rqp
 
-where rownum<40
+where rownum<=40
 order by rqp.create_date desc
 ''')
 
