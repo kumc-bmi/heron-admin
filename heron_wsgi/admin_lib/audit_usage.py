@@ -182,10 +182,12 @@ abs(INSTR(qm.request_xml,'<patient_set_coll_id>',1,1) +21
 ,'Timeline' as result_type_description
 
  from BlueHeronData.qt_pdo_query_master qm
-join I2B2PM.pm_user_data ud on qm.user_id=ud.user_id 
-)
+join I2B2PM.pm_user_data ud on qm.user_id=ud.user_id
+where qm.create_date >= sysdate - 14
+) rqp
 
-order by create_date desc
+where rownum<40
+order by rqp.create_date desc
 ''')
 
 
