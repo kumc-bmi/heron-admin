@@ -170,7 +170,7 @@ abs(INSTR(qm.request_xml,'<patient_set_coll_id>',1,1) +21
 ) 
 , '[^0-9]+', '') as number))  as name
 ,qm.user_id
-,'' as status
+,'COMPLETED' as status
 ,cast(cast(qm.create_date as date) as timestamp)
   - cast(qm.create_date as timestamp)   elapsed
 ,qm.create_date
@@ -189,6 +189,7 @@ where rownum<=40
 order by rqp.create_date desc
 ''')
 
+# Query status for Timeline Queries has been changed to COMPLETED as per the show_performance() in perf_reports.py
 
 class I2B2SensitiveUsage(I2B2Usage):
     def __repr__(self):
