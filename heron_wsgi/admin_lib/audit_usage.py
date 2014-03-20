@@ -143,8 +143,7 @@ FROM (
   select * from (
    select * from blueherondata.qt_query_master qm
    where qm.delete_flag != 'Y'
-   order by qm.query_master_id desc
-   ) where rownum < 40) qm
+   ) where qm.create_date >= sysdate - 14) qm
 JOIN blueherondata.qt_query_instance qi
 ON qm.query_master_id = qi.query_master_id
 
