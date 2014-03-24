@@ -126,9 +126,16 @@ order by nvl(two_weeks.qty, -1) desc, nvl(all_time.qty, -1) desc
                       ''')
 
     def recent_query_performance(self):
-        '''Show recent I2B2 queries.'''
+        '''Show recent I2B2 queries.
+
+        .. note: Query status for Timeline Queries has been changed to
+                 COMPLETED as per the show_performance() in
+                 perf_reports.py
+        '''
         return self.q('''
-select * from(select * from (select qm.query_master_id, qm.name, qm.user_id, qt.name as status,
+select * from(
+  select * from (
+  select qm.query_master_id, qm.name, qm.user_id, qt.name as status,
   nvl(cast(qi.end_date as timestamp),
       -- round to nearest second by converting to date and back
       cast(cast(current_timestamp as date) as timestamp))
@@ -142,7 +149,7 @@ select * from(select * from (select qm.query_master_id, qm.name, qm.user_id, qt.
 FROM (
   select * from (
    select * from blueherondata.qt_query_master qm
-   where qm.delete_flag != 'Y' order by qm.create_date desc 
+   where qm.delete_flag != 'Y' order by qm.create_date desc
    ) ) qm
 JOIN blueherondata.qt_query_instance qi
 ON qm.query_master_id = qi.query_master_id
@@ -158,16 +165,16 @@ where qm.create_date>sysdate-14
 
 UNION ALL
 
-select 
+select
  qm.query_master_id
 ,(select qri.description from blueherondata.qt_query_result_instance qri
- where qri.result_instance_id= 
+ where qri.result_instance_id=
  cast(regexp_replace(
 dbms_lob.substr(qm.request_xml,
 abs(INSTR(qm.request_xml,'<patient_set_coll_id>',1,1) +21
 -INSTR(qm.request_xml,'</patient_set_coll_id>',1,1))
 ,instr(qm.request_xml,'<patient_set_coll_id>',1,1)+21
-) 
+)
 , '[^0-9]+', '') as number))  as name
 ,qm.user_id
 ,'COMPLETED' as status
@@ -189,7 +196,6 @@ where rownum<=40
 order by rqp.create_date desc
 ''')
 
-# Query status for Timeline Queries has been changed to COMPLETED as per the show_performance() in perf_reports.py
 
 class I2B2SensitiveUsage(I2B2Usage):
     def __repr__(self):
@@ -379,7 +385,8 @@ def _integration_test():  # pragma: nocover
              pprint.pformat(detail.small_set_concepts()))
     log.info('Current sessions: %s', pprint.pformat(detail.current_sessions()))
     log.info('Current queries: %s', pprint.pformat(detail.current_queries()))
-    log.info('Recent queries: %s', pprint.pformat(agg.recent_query_performance()))
+    log.info('Recent queries: %s',
+             pprint.pformat(agg.recent_query_performance()))
 
 
 def _report_with_roles(argv, stdout):  # pragma: nocover
