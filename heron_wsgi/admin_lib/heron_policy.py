@@ -632,8 +632,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
     def _rc_oversight(self):
         opts = redcap_connect._test_settings
         return redcap_connect.SurveySetup(opts, self.__redcapapi,
-                                          project_id=opts.project_id,
-                                          executives=['big.wig'])
+                                          project_id=opts.project_id)
 
     @provides(disclaimer.KBadgeInspector)
     @inject(mc=medcenter.MedCenter)
