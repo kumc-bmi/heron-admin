@@ -7,7 +7,6 @@ Configuration gives us access to the REDCap API::
   [survey_xyz]
   api_url=http://redcap-host/redcap/api/
   domain=example.edu
-  executives=big.wig
   project_id=34
   survey_id=11
   survey_url=http://testhost/redcap-host/surveys/?s=43
@@ -105,14 +104,12 @@ def EndPoint(webcap, token):
 
 
 class SurveySetup(object):
-    def __init__(self, rt, endpoint, project_id=None, survey_id=None,
-                 executives=None):
+    def __init__(self, rt, endpoint, project_id=None, survey_id=None):
         self.__endpoint = endpoint
         self.domain = rt.domain
         self.base = rt.survey_url
         self.survey_id = survey_id
         self.project_id = project_id
-        self.executives = executives
 
     def __call__(self, userid, params, multi=False):
         redcap = self.__endpoint
@@ -130,7 +127,6 @@ _test_settings = rtconfig.TestTimeOptions(dict(
     api_url='http://redcap-host/redcap/api/',
     survey_url='http://testhost/redcap-host/surveys/?s=43',
     domain='example.edu',
-    executives='big.wig',
     survey_id=11,
     project_id=34))
 
