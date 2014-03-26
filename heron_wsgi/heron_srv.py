@@ -95,6 +95,14 @@ class CheckListView(Token):
         ...                          heron_policy.HeronRecords,
         ...                          CheckListView))
         >>> clv.configure(config, 'home', 'oversight')
+
+        >>> stureq = DummyRequest(context=medcenter.AttrDict())
+        >>> mc.authenticated('some.one', stureq) and None
+        >>> hp.grant(stureq.context, heron_policy.PERM_STATUS)
+        >>> stuparts = clv.get(stureq.context, stureq)
+        >>> stuparts['affiliate'].is_investigator()
+        False
+
         >>> facreq = DummyRequest(context=medcenter.AttrDict())
         >>> mc.authenticated('john.smith', facreq) and None
         >>> hp.grant(facreq.context, heron_policy.PERM_STATUS)
