@@ -65,6 +65,11 @@ Once he acknowledges it, he can access the repository:
              current=1)
   >>> facreq.context.disclaimers.ack_disclaimer(facreq.context.badge)
   >>> facreq.context.start_i2b2()
+  ... # doctest: +NORMALIZE_WHITESPACE
+  INFO:disclaimer:disclaimer ack:
+  Acknowledgement(ack=2011-09-02 john.smith /heron-release-xyz,
+    timestamp=2011-09-02 00:00:00, user_id=john.smith,
+    disclaimer_address=http://example/blog/item/heron-release-xyz)
   INFO:i2b2pm:Finding I2B2 project for REDCap pids: []
   INFO:i2b2pm:User REDCap projects are not in HERON
   Access(John Smith <john.smith@js.example>)
