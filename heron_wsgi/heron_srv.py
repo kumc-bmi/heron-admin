@@ -116,6 +116,14 @@ class CheckListView(Token):
          'trainingCurrent': {'checked': 'checked'},
          'trainingExpiration': '2012-01-01'}
 
+        >>> execreq = DummyRequest(context=medcenter.AttrDict())
+        >>> mc.authenticated('big.wig', execreq) and None
+        >>> hp.grant(execreq.context, heron_policy.PERM_STATUS)
+        >>> execparts = clv.get(execreq.context, execreq)
+        >>> execparts['sponsorship_path']
+        'http://example.com/oversight'
+        >>> execparts['data_use_path']
+        'http://example.com/oversight'
         '''
         status = ctx.status
 
@@ -137,7 +145,7 @@ class CheckListView(Token):
                      saa_path=req.route_url('saa'),
                      saa_public=self._saa.base)
 
-        if parts['faculty']:
+        if ctx.badge.is_investigator():
             sp = req.route_url(self._next_route,
                                what_for=REDCapLink.for_sponsorship)
             dup = req.route_url(self._next_route,
