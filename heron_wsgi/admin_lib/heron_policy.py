@@ -292,7 +292,7 @@ class OversightCommittee(Token, Cache):
             where(t.c.username == who)
 
     def _droc_auditor(self, alleged_badge,
-                     ttl=timedelta(seconds=60)):
+                      ttl=timedelta(seconds=60)):
         badge = self.inspector.vouch(alleged_badge)
 
         def db_q():
@@ -479,7 +479,7 @@ class HeronRecords(Token, Cache):
         return (when, None) if current else (None, when)
 
     def _signatures(self, mail,
-                   ttl=timedelta(seconds=15)):
+                    ttl=timedelta(seconds=15)):
         '''Look up SAA survey response by email address.
         '''
 
@@ -501,9 +501,9 @@ class HeronRecords(Token, Cache):
 
     def _redcap_rights(self, uid):
         r = redcapdb.redcap_user_rights
-        return [row.project_id for row in self._smaker().\
-                execute(r.select(r.c.project_id).\
-                where(r.c.username == uid))]
+        return [row.project_id for row in self._smaker().
+                execute(r.select(r.c.project_id).
+                        where(r.c.username == uid))]
 
 
 def _saa_query(mail, survey_id):
@@ -524,7 +524,7 @@ def _saa_query(mail, survey_id):
     r = redcapdb.redcap_surveys_response.alias('r')
     p = redcapdb.redcap_surveys_participants.alias('p')
     return r.join(p, r.c.participant_id == p.c.participant_id).select().where(
-            and_(p.c.participant_email == mail, p.c.survey_id == survey_id))
+        and_(p.c.participant_email == mail, p.c.survey_id == survey_id))
 
 
 class NoPermission(TypeError):
@@ -601,7 +601,7 @@ def team_params(lookup, uids):
     '''
     nested = [[('user_id_%d' % (i + 1), uid),
                ('name_etc_%d' % (i + 1), '%s, %s\n%s\n%s' % (
-                    a.sn, a.givenname, a.title or '', a.ou or ''))]
+                   a.sn, a.givenname, a.title or '', a.ou or ''))]
               for (i, uid, a) in
               [(i, uids[i], lookup(uids[i]))
                for i in range(0, len(uids))]]
