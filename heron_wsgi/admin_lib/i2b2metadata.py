@@ -93,8 +93,8 @@ def insert_for(pid, schema, rc_pids, cols):
             WHERE C_FULLNAME LIKE ('\i2b2\redcap\' || :pid2 || '\%')
     """
     assert rc_pids
-    params = dict([('pid%d' % ix, pid)
-                   for (ix, pid) in enumerate(rc_pids)])
+    params = dict([('pid%d' % ix, p)
+                   for (ix, p) in enumerate(rc_pids)])
     cv = ','.join(cols)
     clauses = [
         r"""SELECT %s FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
