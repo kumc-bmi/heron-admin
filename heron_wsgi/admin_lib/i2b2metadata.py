@@ -105,7 +105,7 @@ def insert_for(pid, schema, rc_pids, cols):
            ' UNION ALL\n'.join([
                r"""SELECT %s FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
                where C_FULLNAME='\i2b2\redcap\' """ % ','.join(cols)] +
-        clauses))
+                               clauses))
 
     return sql, params
 
@@ -131,7 +131,7 @@ class MockMetadata():
     def rc_in_i2b2(self, pids):
         '''Every other REDCap project is loaded in i2b2
         '''
-        return  pids[::2]
+        return pids[::2]
 
     def project_terms(self, i2b2_pid, rc_pids):
         pass
