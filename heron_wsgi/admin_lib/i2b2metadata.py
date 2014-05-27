@@ -3,7 +3,7 @@
 '''
 
 import logging
-from sqlalchemy import text, orm
+from sqlalchemy import text, orm, Table, MetaData
 from injector import inject, provides, singleton
 
 import rtconfig
@@ -23,7 +23,7 @@ class I2B2Metadata(ocap_file.Token):
         '''
         self._mdsm = metadatasm
 
-    def project_terms(self, i2b2_pid, rc_pids):
+    def project_terms(self, i2b2_pid, rc_pids, rct_table='REDCAP_TERMS'):
         '''Create heron_terms view in the chosen i2b2 project.
         '''
         mds = self._mdsm()
@@ -36,9 +36,14 @@ class I2B2Metadata(ocap_file.Token):
 
         #TODO: Separate redcap_terms from heron_terms
         #... and insert only redcap_terms
-        mds.execute('''DELETE FROM %s.REDCAP_TERMS''' % schema)
+        mds.execute('''DELETE FROM %s.%s''' % (schema, rct_table))
 
-        insert_cmd, params = insert_for(pid, schema, rc_pids)
+        rct = Table(rct_table, MetaData(), schema=schema, autoload=True,
+                    autoload_with=mds.bind)
+
+        insert_cmd, params = insert_for(pid, schema, rc_pids,
+                                        [c.name for c in rct.columns])
+
         log.debug('insert_cmd: %s', insert_cmd)
         mds.execute(text(insert_cmd), params=params)
 
@@ -70,33 +75,37 @@ class I2B2Metadata(ocap_file.Token):
                 if pid in term_ids]
 
 
-def insert_for(pid, schema, rc_pids):
+def insert_for(pid, schema, rc_pids, cols):
     r"""
-    >>> sql, params = insert_for('24', 'REDCAPMETADATA24', [10, 20, 30])
+    >>> sql, params = insert_for('24', 'REDCAPMETADATA24', [10, 20, 30],
+    ... ['c1', 'c2'])
     >>> sorted(params.items())
     [('pid0', 10), ('pid1', 20), ('pid2', 30)]
     >>> print sql  # doctest: +NORMALIZE_WHITESPACE
-    INSERT INTO REDCAPMETADATA24.REDCAP_TERMS
-    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
-        where C_FULLNAME='\i2b2\redcap\'  UNION ALL
-    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
+    INSERT INTO REDCAPMETADATA24.REDCAP_TERMS (c1,c2)
+    SELECT c1,c2 FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
+                   where C_FULLNAME='\i2b2\redcap\'  UNION ALL
+    SELECT c1,c2 FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
             WHERE C_FULLNAME LIKE ('\i2b2\redcap\' || :pid0 || '\%')  UNION ALL
-    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
+    SELECT c1,c2 FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
             WHERE C_FULLNAME LIKE ('\i2b2\redcap\' || :pid1 || '\%')  UNION ALL
-    SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
+    SELECT c1,c2 FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
             WHERE C_FULLNAME LIKE ('\i2b2\redcap\' || :pid2 || '\%')
     """
     assert rc_pids
-    params = dict([('pid%d' % ix, pid)
-                   for (ix, pid) in enumerate(rc_pids)])
+    params = dict([('pid%d' % ix, p)
+                   for (ix, p) in enumerate(rc_pids)])
+    cv = ','.join(cols)
     clauses = [
-        r"""SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
-        WHERE C_FULLNAME LIKE ('\i2b2\redcap\' || :%s || '\%%') """ % pname
-        for pname in sorted(params.keys())]
+        r"""SELECT %s FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
+        WHERE C_FULLNAME LIKE ('\i2b2\redcap\' || :%s || '\%%') """ %
+        (cv, pname) for pname in sorted(params.keys())]
 
-    sql = ("INSERT INTO %s.REDCAP_TERMS\n" % schema) + ' UNION ALL\n'.join([
-    r"""SELECT * FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
-    where C_FULLNAME='\i2b2\redcap\' """] + clauses)
+    sql = ("INSERT INTO %s.REDCAP_TERMS (%s)\n" % (schema, cv) +
+           ' UNION ALL\n'.join([
+               r"""SELECT %s FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
+               where C_FULLNAME='\i2b2\redcap\' """ % ','.join(cols)] +
+                               clauses))
 
     return sql, params
 
@@ -122,7 +131,7 @@ class MockMetadata():
     def rc_in_i2b2(self, pids):
         '''Every other REDCap project is loaded in i2b2
         '''
-        return  pids[::2]
+        return pids[::2]
 
     def project_terms(self, i2b2_pid, rc_pids):
         pass
