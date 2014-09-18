@@ -13,7 +13,7 @@ class JBossContext(object):
     '''
     >>> here = _MockDeployDir.make()
 
-    >>> JBossContext(here, lambda url: url).lookup('QueryToolBLUEHERONDS')
+    >>> JBossContext(here, lambda url: url).lookup('java:/QueryToolBLUEHERONDS')
     'oracle://BLUEHERONdata:xyzpdq@testhost:1521/DB1'
     '''
     def __init__(self, jboss_deploy, create_engine):
@@ -51,22 +51,23 @@ class _MockDeployDir(object):
         return '/'.join(pn)
 
 
-def ds_access(jboss_deploy, jndi_name):
+def ds_access(jboss_deploy, jndi_name,
+              ns='{http://www.jboss.org/ironjacamar/schema}'):
     '''Parse connection details of a jboss datasource by jndi-name.
 
     :param jboss_deploy: a read-capability to a jboss deploy directory.
 
     >>> here = _MockDeployDir.make()
 
-    >>> ds_access(here, 'QueryToolBLUEHERONDS')
+    >>> ds_access(here, 'java:/QueryToolBLUEHERONDS')
     ('BLUEHERONdata', 'xyzpdq', 'testhost', '1521', 'DB1')
 
     Note case sensitivity:
 
-    >>> ds_access(here, 'QueryToolBlueHeronDS')
+    >>> ds_access(here, 'java:/QueryToolBlueHeronDS')
     Traceback (most recent call last):
       ...
-    KeyError: 'QueryToolBlueHeronDS'
+    KeyError: 'java:/QueryToolBlueHeronDS'
 
     >>> ds_access(here.subRdFile('does_not_exist'), 'BLUEHERONdata')
     ... # doctest: +ELLIPSIS
@@ -80,16 +81,17 @@ def ds_access(jboss_deploy, jndi_name):
         if not f.fullPath().endswith('-ds.xml'):
             continue
         doc = xml.parse(f.inChannel())
-        srcs = doc.getroot().findall('local-tx-datasource')
+        srcs = doc.getroot().findall(ns + 'datasource')
         try:
-            src = [src for src in srcs
-             if src.find('jndi-name').text == jndi_name][0]
-            un = src.find('user-name').text
-            pw = src.find('password').text
-            url = src.find('connection-url').text
+            pw, url, un = ((cred.find(ns + 'password').text,
+                            src.find(ns + 'connection-url').text,
+                            cred.find(ns + 'user-name').text)
+                           for src in srcs
+                           if src.attrib['jndi-name'] == jndi_name
+                           for cred in src.findall(ns + 'security')).next()
             host, port, sid = url.split('@', 1)[1].split(':', 2)
             return un, pw, host, port, sid
-        except IndexError:
+        except StopIteration:
             pass
 
     raise KeyError(jndi_name)
