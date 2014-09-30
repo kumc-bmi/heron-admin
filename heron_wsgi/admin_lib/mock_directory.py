@@ -36,7 +36,7 @@ It also supplies HSC training info::
   '2012-01-01'
 '''
 
-import pkg_resources
+import pkg_resources as pkg
 import csv
 import re
 import logging
@@ -45,9 +45,11 @@ log = logging.getLogger(__name__)
 
 
 class MockDirectory(object):
-    def __init__(self, resource='mockDirectory.csv'):
-        self.records = records = list(self._records(resource))
-        self._d = dict([(r['cn'], r) for r in records])
+    def __init__(self):
+        self._d = dict([(r['cn'], r) for r in self.records])
+
+    records = list(csv.DictReader(
+        pkg.resource_stream(__name__, 'mockDirectory.csv')))
 
     def search(self, q, attrs):
         log.debug('network fetch for %s', q)  # TODO: caching, .info()
@@ -60,12 +62,6 @@ class MockDirectory(object):
 
     def trainedThru(self, cn):
         return self._d[cn]['trainedThru']
-
-    @classmethod
-    def _records(cls, resource):
-        s = pkg_resources.resource_stream(__name__, resource)
-        for r in csv.DictReader(s):
-            yield r
 
     @classmethod
     def _qid(cls, q):
