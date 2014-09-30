@@ -136,27 +136,76 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         __ http://www.python-ldap.org/doc/html/ldap.html
 
         '''
-        import datetime
-
         if rt.url.startswith('mock:'):
             res = rt.url[len('mock:'):]
             import mock_directory
             return mock_directory.MockDirectory(res)
 
+        import datetime
         import ldap
+
         return NativeLDAPService(rt, native=ldap,
                                  now=datetime.datetime.now, ttl=ttl)
 
 
-def _integration_test():  # pragma nocover
-    import logging
-    import sys, pprint
-    ldap_query = sys.argv[1]
-    attrs = sys.argv[2].split(",") if sys.argv[2:] else []
+def _ldap_tls_test(argv, argv_env, ldap_search):
+    r'''
+    e.g.
+      % python ldaplib.py slapd.pem ldaps://slapd.example binddn bindpw \
+        base '(cn=me)' 'mail'
+    '''
 
-    logging.basicConfig(level=logging.INFO)
-    (ls, ) = RunTime.make(None, [LDAPService])
-    pprint.pprint(ls.search(ldap_query, attrs))
+    from pprint import pformat
+
+    [cert, url, userdn, password_env, base, ldap_query, attrs] = argv[1:8]
+    creds = (userdn, argv_env(password_env))
+
+    attrs = attrs.split(",")
+
+    log.info('query: %s attrs: %s', ldap_query, attrs)
+    ans = ldap_search(cert, url, creds, base, ldap_query, attrs)
+
+    log.info('results: %s', pformat(ans))
+
+
+def _mk_ldap_search(ldap):
+    def ldap_search(certfile, url, creds, base, query, attrs):
+        #ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
+        ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_DEMAND)
+        ldap.set_option(ldap.OPT_X_TLS_CACERTFILE, certfile)
+        l = ldap.initialize(url)
+        userdn, password = creds
+        l.simple_bind_s(userdn, password)
+        return l.search_s(base, ldap.SCOPE_SUBTREE, query, attrs)
+    return ldap_search
+
+
+def _integration_test(argv, ls):  # pragma nocover
+    from pprint import pformat
+
+    ldap_query = argv[1]
+    attrs = argv[2].split(",") if argv[2:] else []
+
+    log.info('query: %s attrs: %s results: %s',
+             ldap_query, attrs, pformat(ls.search(ldap_query, attrs)))
+
 
 if __name__ == '__main__':  # pragma nocover
-    _integration_test()
+    def _trusted_main():
+        from os import environ
+        from sys import argv
+        import ldap
+
+        logging.basicConfig(level=logging.INFO)
+        (ls, ) = RunTime.make(None, [LDAPService])
+
+        def argv_env(n):
+            if n not in argv: raise IOError
+            return environ[n]
+
+        _ldap_tls_test(argv, argv_env, _mk_ldap_search(ldap))
+        #_integration_test(argv, ls)
+
+        pass
+
+    _trusted_main()
