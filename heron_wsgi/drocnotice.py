@@ -116,20 +116,28 @@ class DROCNotice(Token):
             if decision not in self.FINAL_DECISIONS:
                 continue
 
+            action = ('approved' if decision == DecisionRecords.YES
+                      else 'rejected')
             investigator, team, detail = dr.decision_detail(record)
-            log.debug('build_notices team: %s', team)
+            log.info('Notify %s and team that request %s is %s',
+                     investigator, record, action)
+
+            try:
+                log.debug('build_notices team: %s', team)
+                inv_mail, team_mail = dr.team_email(
+                    investigator.cn,
+                    [mem.cn for mem in team]
+                    if decision == DecisionRecords.YES else [])
+            except KeyError as ke:
+                log.warn('notification re %s failed; cannot get team_email',
+                         record, exc_info=ke)
+                continue
+
             body = self._rf(render_value(investigator, team, decision, detail,
                                          req.route_url(self.home)),
                             dict(renderer_name='drocnotice.html'))
 
-            inv_mail, team_mail = dr.team_email(
-                investigator.cn,
-                [mem.cn for mem in team]
-                if decision == DecisionRecords.YES else [])
-
-            m = Message(subject='HERON access request ' + (
-                    'approved' if decision == DecisionRecords.YES
-                    else 'rejected'),
+            m = Message(subject='HERON access request ' + action,
                         # Due to bug in pyramid_mailer, we don't use cc.
                         # https://github.com/Pylons/pyramid_mailer/issues/3
                         # https://github.com/dckc/pyramid_mailer/commit
