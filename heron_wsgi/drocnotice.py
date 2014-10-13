@@ -122,13 +122,11 @@ class DROCNotice(Token):
                                          req.route_url(self.home)),
                             dict(renderer_name='drocnotice.html'))
 
-            inv_mail, team_mail = dr.team_email(investigator.cn,
-                                                [mem.cn for mem in team])
+            inv_mail, team_mail = dr.team_email(
+                investigator.cn,
+                [mem.cn for mem in team]
+                if decision == DecisionRecords.YES else [])
 
-            # yuck... if NO, looks up team in LDAP only to throw it away
-            cc = (team_mail
-                  if decision == DecisionRecords.YES
-                  else [])
             m = Message(subject='HERON access request ' + (
                     'approved' if decision == DecisionRecords.YES
                     else 'rejected'),
@@ -137,7 +135,7 @@ class DROCNotice(Token):
                         # https://github.com/dckc/pyramid_mailer/commit
                         #    /8a426bc8b24f491880c2b3a0204f0ee7bae42193
                         #cc=cc,
-                        recipients=[inv_mail] + cc,
+                        recipients=[inv_mail] + team_mail,
                         html=body)
 
             yield record, m
