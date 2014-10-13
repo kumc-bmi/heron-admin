@@ -88,10 +88,10 @@ Get current email addresses of the team:
   >>> dr.team_email(inv.cn, [mem.cn for mem in team])
   ('john.smith@js.example', ['bill.student@js.example'])
 
-  >>> record_2 = ds[2][0]
-  >>> inv, team, _ = dr.decision_detail(record_2)
-  >>> dr.team_email(inv.cn, [mem.cn for mem in team])
-  ('john.smith@js.example', ['some.one@js.example', 'carol.student@js.example'])
+ >>> record_2 = ds[2][0]
+ >>> inv, team, _ = dr.decision_detail(record_2)
+ >>> dr.team_email(inv.cn, [mem.cn for mem in team])
+ ('john.smith@js.example', ['some.one@js.example', 'carol.student@js.example'])
 
 The following table is used to log notices::
 
@@ -191,13 +191,17 @@ class DecisionRecords(Token):
                 if (ans.dt_exp <= ''
                     or min_exp.isoformat() <= ans.dt_exp)]
 
-    def about_sponsorships(self, who, inv=False):
+    def about_sponsorships(self, who, inv_role=False):
+        '''
+        :param String who: user_id of sponsoree (or, if inv_role, sponsor)
+        :param Boolean inv_role: look up sponsorships where who is the sponsor
+        '''
         return [(record, inv, detail.get('project_title', ''),
                  project_description(detail))
                 for record, (inv, team, detail) in [
                         (sponsorship.record,
                          self.decision_detail(sponsorship.record))
-                        for sponsorship in self.sponsorships(who, inv)]]
+                        for sponsorship in self.sponsorships(who, inv_role)]]
 
     def oversight_decisions(self, pending=True):
         '''In order to facilitate email notification of committee
@@ -211,7 +215,8 @@ class DecisionRecords(Token):
             nl = notice_log
             dwn = cd.outerjoin(nl).select() \
                                   .with_only_columns(cd.columns)\
-                                  .where(nl.c.record == None)
+                                  .where(nl.c.record == None)  # noqa
+                                  # pyflakes doesn't like this SQLAlchemy idiom
         else:
             dwn = cd
 
