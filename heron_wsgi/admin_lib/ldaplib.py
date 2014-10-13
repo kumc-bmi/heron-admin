@@ -148,7 +148,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
                                  now=datetime.datetime.now, ttl=ttl)
 
 
-def _ldap_tls_test(argv, argv_env, ldap_search):
+def _ldap_tls_test(argv, argv_env, ldap_service):
     r'''
     e.g.
       % python ldaplib.py slapd.pem ldaps://slapd.example binddn bindpw \
@@ -159,25 +159,29 @@ def _ldap_tls_test(argv, argv_env, ldap_search):
 
     [cert, url, userdn, password_env, base, ldap_query, attrs] = argv[1:8]
     creds = (userdn, argv_env(password_env))
+    search = ldap_service(cert, url, creds, base)
+    log.info('service: %s base: %s', url, base)
 
     attrs = attrs.split(",")
 
     log.info('query: %s attrs: %s', ldap_query, attrs)
-    ans = ldap_search(cert, url, creds, base, ldap_query, attrs)
+    ans = search(ldap_query, attrs)
 
     log.info('results: %s', pformat(ans))
 
 
-def _mk_ldap_search(ldap):
-    def ldap_search(certfile, url, creds, base, query, attrs):
-        #ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
-        ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_DEMAND)
-        ldap.set_option(ldap.OPT_X_TLS_CACERTFILE, certfile)
-        l = ldap.initialize(url)
-        userdn, password = creds
-        l.simple_bind_s(userdn, password)
-        return l.search_s(base, ldap.SCOPE_SUBTREE, query, attrs)
-    return ldap_search
+def mk_ldap_service(ldap):
+    def ldap_service(certfile, url, creds, base):
+        def ldap_search(query, attrs):
+            #ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
+            ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_DEMAND)
+            ldap.set_option(ldap.OPT_X_TLS_CACERTFILE, certfile)
+            l = ldap.initialize(url)
+            userdn, password = creds
+            l.simple_bind_s(userdn, password)
+            return l.search_s(base, ldap.SCOPE_SUBTREE, query, attrs)
+        return ldap_search
+    return ldap_service
 
 
 def _integration_test(argv, ls):  # pragma nocover
@@ -203,7 +207,7 @@ if __name__ == '__main__':  # pragma nocover
             if n not in argv: raise IOError
             return environ[n]
 
-        _ldap_tls_test(argv, argv_env, _mk_ldap_search(ldap))
+        _ldap_tls_test(argv, argv_env, mk_ldap_service(ldap))
         #_integration_test(argv, ls)
 
         pass
