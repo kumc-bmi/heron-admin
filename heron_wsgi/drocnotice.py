@@ -118,9 +118,9 @@ class DROCNotice(Token):
 
             investigator, team, detail = dr.decision_detail(record)
             log.debug('build_notices team: %s', team)
-            s = self._rf(render_value(investigator, team, decision, detail,
-                              req.route_url(self.home)),
-                         dict(renderer_name='drocnotice.html'))
+            body = self._rf(render_value(investigator, team, decision, detail,
+                                         req.route_url(self.home)),
+                            dict(renderer_name='drocnotice.html'))
 
             inv_mail, team_mail = dr.team_email(investigator.cn,
                                                 [mem.cn for mem in team])
@@ -138,7 +138,7 @@ class DROCNotice(Token):
                         #    /8a426bc8b24f491880c2b3a0204f0ee7bae42193
                         #cc=cc,
                         recipients=[inv_mail] + cc,
-                        html=s)
+                        html=body)
 
             yield record, m
 
