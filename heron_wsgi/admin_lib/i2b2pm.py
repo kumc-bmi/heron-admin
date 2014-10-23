@@ -422,7 +422,6 @@ class Project(Base, Audited):
 
 class RunTime(rtconfig.IniModule):  # pragma: nocover
     jndi_name = 'PMBootStrapDS'
-    jndi_name_md = 'REDCapMDDS'
 
     # abusing Session a bit; this really provides a subclass, not an
     # instance, of Session
