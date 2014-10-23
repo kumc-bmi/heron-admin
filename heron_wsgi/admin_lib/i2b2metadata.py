@@ -139,7 +139,7 @@ class MockMetadata():
 
 class RunTime(rtconfig.IniModule):
     #From i2b2pm.py
-    jndi_name_md = 'i2b2REDCapMgrDS'
+    jndi_name_md = 'java:/i2b2REDCapMgrDS'
 
     def sessionmaker(self, jndi, CONFIG):
         import os
