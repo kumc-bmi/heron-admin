@@ -1,11 +1,20 @@
-<datasources>
-
-<local-tx-datasource>
-  <jndi-name>QueryToolBLUEHERONDS</jndi-name>
-  <driver-class>oracle.jdbc.driver.OracleDriver</driver-class>
-  <connection-url>jdbc:oracle:thin:@testhost:1521:DB1</connection-url>
-  <user-name>BLUEHERONdata</user-name>
-  <password>xyzpdq</password>
-
-</local-tx-datasource>
+<?xml version="1.0" encoding="UTF-8"?>
+<datasources xmlns="http://www.jboss.org/ironjacamar/schema">
+  <datasource jta="false" jndi-name="java:/QueryToolBLUEHERONDS"
+	      pool-name="QueryToolBLUEHERONDS" enabled="true" use-ccm="false">
+    <connection-url>jdbc:oracle:thin:@testhost:1521:DB1</connection-url>
+    <driver-class>oracle.jdbc.OracleDriver</driver-class>
+    <driver>ojdbc6.jar</driver>
+    <security>
+      <user-name>BLUEHERONdata</user-name>
+      <password>xyzpdq</password>
+    </security>
+    <validation>
+      <validate-on-match>false</validate-on-match>
+      <background-validation>false</background-validation>
+    </validation>
+    <statement>
+      <share-prepared-statements>false</share-prepared-statements>
+    </statement>
+  </datasource>
 </datasources>
