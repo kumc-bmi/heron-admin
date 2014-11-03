@@ -321,10 +321,8 @@ Status = namedtuple('Status',
                                 system_access_signed=0).keys()))
 
 
-def sufficient(s, identified=False):
-    # TODO: consider s.heron_study_team
-    return (s.executive if identified else (s.faculty or s.executive or s.sponsored)
-            and s.current_training
+def sufficient(s):
+    return ((s.faculty or s.executive or s.sponsored) and s.current_training
             and s.system_access_signed)
 
 
@@ -388,7 +386,6 @@ class HeronRecords(Token, Cache):
         self.__oc = oc
         self._oversight_project_id = oversight_rc.project_id
         self.__dg = dg
-        self._identified = True # @@ Make this a parameter
 
         def repository_authz(badge):
             rc_pids = self._redcap_rights(badge.cn)
@@ -420,7 +417,7 @@ class HeronRecords(Token, Cache):
             context.browser = self._mc._browser
         elif p is PERM_START_I2B2:
             st = self._status(badge)
-            if not sufficient(st, self._identified):
+            if not sufficient(st):
                 raise NoPermission(st)
             context.start_i2b2 = lambda: self.__redeem(badge)
             context.disclaimers = self.__dg
@@ -428,8 +425,7 @@ class HeronRecords(Token, Cache):
             raise TypeError
 
     def _status(self, badge):
-        sponsored = (None if self._identified
-                     else None if badge.is_investigator()
+        sponsored = (None if badge.is_investigator()
                      else
                      (self._sponsorship(badge.cn) is not None))
 
@@ -453,9 +449,6 @@ class HeronRecords(Token, Cache):
     def _sponsorship(self, uid,
                      ttl=timedelta(seconds=600)):
         def do_q():
-            if self._identified:
-                log.info('Not checking sponsorship - identified i2b2')
-                return timedelta(1), None
             for ans in self.__dr.sponsorships(uid):
                 try:
                     self._mc._browser.lookup(ans.sponsor)
