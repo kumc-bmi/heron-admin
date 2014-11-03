@@ -493,7 +493,6 @@ class HeronAdminConfig(Configurator):
         # Performance reports
         perf.configure(self, 'reports/')
 
-
         # for testing
         self.add_route('err', 'err')
         self.add_view(_make_internal_error, route_name='err',
