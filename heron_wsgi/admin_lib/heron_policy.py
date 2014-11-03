@@ -205,8 +205,8 @@ the oversight committee::
   WARNING:medcenter:missing LDAP attribute title for some.one
 
 
-Overight Auditing
-=================
+Oversight Auditing
+==================
 
 Oversight committee members can get sensitive audit info::
 
