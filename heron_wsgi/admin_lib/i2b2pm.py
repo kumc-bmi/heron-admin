@@ -159,7 +159,6 @@ The ADMIN role is not project specific:
 """
 
 import logging
-import uuid  # @@code review: push into TCB
 import hashlib
 
 import injector
@@ -459,6 +458,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
 
     @provides(KUUIDGen)
     def uuid_maker(self):
+        import uuid
         return uuid
 
     @classmethod
