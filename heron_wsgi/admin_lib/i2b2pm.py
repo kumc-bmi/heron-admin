@@ -467,7 +467,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     @provides(KIdentifiedData)
     def identified_data(self):
         rt = rtconfig.RuntimeOptions(['identified_data'])
-        mode = rt.identified_data.lower() not in ('1', 'true')
+        mode = rt.identified_data.lower() in ('1', 'true')
         return mode
 
     @classmethod

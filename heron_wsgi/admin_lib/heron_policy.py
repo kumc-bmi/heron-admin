@@ -451,7 +451,7 @@ class HeronRecords(Token, Cache):
                       current_training=current_training,
                       expired_training=expired_training,
                       system_access_signed=system_access_sigs,
-                      complete=not not complete)
+                      complete=bool(complete))
 
     def _sponsorship(self, uid,
                      ttl=timedelta(seconds=600)):
