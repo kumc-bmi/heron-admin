@@ -43,7 +43,8 @@ investigator requests::
   INFO:cache_remote:in DROC? query for john.smith
   INFO:cache_remote:... cached until 2011-09-02 00:01:00.500000
   >>> facreq.context.status  # doctest: +NORMALIZE_WHITESPACE
-  Status(current_training='2012-01-01', droc=None, executive=False,
+  Status(complete=True,
+         current_training='2012-01-01', droc=None, executive=False,
          expired_training=None, faculty=True, sponsored=None,
          system_access_signed=[datetime.datetime(2011, 8, 26, 0, 0)])
 
@@ -105,7 +106,8 @@ faculty not sponsored, nor has he completed human subjects training::
   INFO:cache_remote:in DROC? query for bill.student
   INFO:cache_remote:... cached until 2011-09-02 00:01:01.500000
   >>> stureq.context.status  #doctest: +NORMALIZE_WHITESPACE
-  Status(current_training=None, droc=None, executive=False,
+  Status(complete=False,
+         current_training=None, droc=None, executive=False,
          expired_training=None, faculty=False,
          sponsored=False, system_access_signed=[])
 
@@ -113,7 +115,8 @@ faculty not sponsored, nor has he completed human subjects training::
   ... # doctest: +NORMALIZE_WHITESPACE
   Traceback (most recent call last):
     ...
-  NoPermission: NoPermission(Status(current_training=None, droc=None,
+  NoPermission: NoPermission(Status(complete=False,
+                                    current_training=None, droc=None,
                                     executive=False, expired_training=None,
                                     faculty=False, sponsored=False,
                                     system_access_signed=[]))
@@ -136,7 +139,8 @@ not yet executed the system access agreement::
   ... #doctest: +NORMALIZE_WHITESPACE
   Traceback (most recent call last):
     ...
-  NoPermission: NoPermission(Status(current_training='2012-01-01',
+  NoPermission: NoPermission(Status(complete=False,
+            current_training='2012-01-01',
             droc=None, executive=False,
             expired_training=None, faculty=False, sponsored=True,
             system_access_signed=[]))
@@ -205,8 +209,8 @@ the oversight committee::
   WARNING:medcenter:missing LDAP attribute title for some.one
 
 
-Overight Auditing
-=================
+Oversight Auditing
+==================
 
 Oversight committee members can get sensitive audit info::
 
@@ -316,14 +320,10 @@ class OversightCommittee(Token, Cache):
 
 Status = namedtuple('Status',
                     sorted(dict(faculty=0, executive=0, sponsored=0,
+                                complete=0,
                                 droc=0,
                                 current_training=0, expired_training=0,
                                 system_access_signed=0).keys()))
-
-
-def sufficient(s):
-    return ((s.faculty or s.executive or s.sponsored) and s.current_training
-            and s.system_access_signed)
 
 
 class HeronRecords(Token, Cache):
@@ -417,7 +417,7 @@ class HeronRecords(Token, Cache):
             context.browser = self._mc._browser
         elif p is PERM_START_I2B2:
             st = self._status(badge)
-            if not sufficient(st):
+            if not st.complete:
                 raise NoPermission(st)
             context.start_i2b2 = lambda: self.__redeem(badge)
             context.disclaimers = self.__dg
@@ -438,16 +438,25 @@ class HeronRecords(Token, Cache):
         except NotDROC:
             droc_audit = None
 
+        complete = (
+            current_training and system_access_sigs and (
+                badge.is_executive() if self._pm.identified_data
+                else
+                (badge.is_faculty() or badge.is_executive() or sponsored)))
+
         return Status(faculty=badge.is_faculty(),
                       executive=badge.is_executive(),
                       sponsored=sponsored,
                       droc=droc_audit,
                       current_training=current_training,
                       expired_training=expired_training,
-                      system_access_signed=system_access_sigs)
+                      system_access_signed=system_access_sigs,
+                      complete=bool(complete))
 
     def _sponsorship(self, uid,
                      ttl=timedelta(seconds=600)):
+        not_sponsored = timedelta(1), None
+
         def do_q():
             for ans in self.__dr.sponsorships(uid):
                 try:
@@ -460,9 +469,13 @@ class HeronRecords(Token, Cache):
                     return ttl, ans
 
             log.info('not sponsored: %s', uid)
-            return timedelta(1), None
+            return not_sponsored
 
-        return self._query(('sponsorship', uid), do_q, 'Sponsorship')
+        return (
+            # Noone is sponsored for identified data
+            not_sponsored if self._pm.identified_data
+            else
+            self._query(('sponsorship', uid), do_q, 'Sponsorship'))
 
     def _training_current(self, badge):
         try:

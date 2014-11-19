@@ -176,6 +176,7 @@ import i2b2metadata
 CONFIG_SECTION = 'i2b2pm'
 
 KUUIDGen = injector.Key('UUIDGen')
+KIdentifiedData = injector.Key('IdentifiedData')
 
 DEFAULT_PID = 'BlueHeron'
 
@@ -186,14 +187,16 @@ log = logging.getLogger(__name__)
 class I2B2PM(ocap_file.Token):
     @inject(datasrc=(orm.session.Session, CONFIG_SECTION),
             i2b2md=i2b2metadata.I2B2Metadata,
+            identified_data=KIdentifiedData,
             uuidgen=KUUIDGen)
-    def __init__(self, datasrc, i2b2md, uuidgen):
+    def __init__(self, datasrc, i2b2md, identified_data, uuidgen):
         '''
         :param datasrc: a function that returns a sqlalchemy session
         '''
         self._datasrc = datasrc
         self._md = i2b2md
         self._uuidgen = uuidgen
+        self.identified_data = identified_data
 
     def account_for(self, agent, project_id):
         '''Build a facet with authority reduced to one user and one project.
@@ -461,6 +464,13 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         import uuid
         return uuid
 
+    @provides(KIdentifiedData)
+    def identified_data(self):
+        rt = rtconfig.RuntimeOptions(['identified_data'])
+        rt.load(self._ini, CONFIG_SECTION)
+        mode = rt.identified_data.lower() in ('1', 'true')
+        return mode
+
     @classmethod
     def mods(cls, ini):
         return [i2b2metadata.RunTime(ini), cls(ini)]
@@ -499,6 +509,10 @@ class Mock(injector.Module, rtconfig.MockMixin):
                 return self._d.next()
 
         return G()
+
+    @provides(KIdentifiedData)
+    def identified_data(self):
+        return False
 
 
 def _mock_i2b2_projects(ds, id_descs):
