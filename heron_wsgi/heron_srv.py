@@ -143,7 +143,7 @@ class CheckListView(Token):
                      trainingExpiration=(status.current_training
                                          or status.expired_training),
                      signatureOnFile=yn(status.system_access_signed),
-                     repositoryAccess=yn(heron_policy.sufficient(status)),
+                     repositoryAccess=yn(status.complete),
                      faculty=yn(status.faculty),
                      executive=yn(status.executive),
                      droc=yn(status.droc),
