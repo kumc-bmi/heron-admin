@@ -53,3 +53,59 @@ And when we try `GetCompletionReports`, we get an exception parsing the result::
     File ".../pysimplesoap/simplexml.py", line 475, in unmarshall
       raise TypeError("Tag: %s invalid (type not found)" % (name,))
   TypeError: Tag: schema invalid (type not found)
+
+Java Tools Look Promising
++++++++++++++++++++++++++
+
+see Makefile for somewhat cleaned up version
+
+Generate JAX-WS artifacts from the WSDL
+http://stackoverflow.com/questions/4172118/web-service-client-given-wsdl
+
+
+dconnolly@bid-bse02:~/projects/chalk-checker$ wsimport -d generated -extension -keep -p com.gatewayedi.ws -XadditionalHeaders 'https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL'
+parsing WSDL...
+
+
+[WARNING] src-resolve.4.2: Error resolving component 's:schema'. It was detected that 's:schema' is in namespace 'http://www.w3.org/2001/XMLSchema', but components from this namespace are not referenceable from schema document 'https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL#types?schema1'. If this is the incorrect namespace, perhaps the prefix of 's:schema' needs to be changed. If this is the correct namespace, then an appropriate 'import' tag should be added to 'https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL#types?schema1'.
+  line 44 of https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL#types?schema1
+
+[WARNING] src-resolve: Cannot resolve the name 's:schema' to a(n) 'element declaration' component.
+  line 44 of https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL#types?schema1
+
+[ERROR] undefined element declaration 's:schema'
+  line 44 of https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL
+
+[ERROR] undefined element declaration 's:schema'
+  line 66 of https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL
+
+[ERROR] undefined element declaration 's:schema'
+  line 164 of https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL
+
+[ERROR] undefined element declaration 's:schema'
+  line 188 of https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL
+
+
+wsimport -b http://www.w3.org/2001/XMLSchema.xsd -b customization.xjb
+
+http://stackoverflow.com/questions/18898261/undefined-element-declaration-xsschema
+
+dconnolly@bid-bse02:~/projects/chalk-checker$ wsimport -b http://www.w3.org/2001/XMLSchema.xsd -b customization.xjb -d generated -extension -keep -p com.gatewayedi.ws -XadditionalHeaders 'https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL'
+parsing WSDL...
+
+
+[WARNING] src-resolve.4.2: Error resolving component 's:schema'. It was detected that 's:schema' is in namespace 'http://www.w3.org/2001/XMLSchema', but components from this namespace are not referenceable from schema document 'https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL#types?schema1'. If this is the incorrect namespace, perhaps the prefix of 's:schema' needs to be changed. If this is the correct namespace, then an appropriate 'import' tag should be added to 'https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL#types?schema1'.
+  line 44 of https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL#types?schema1
+
+[WARNING] src-resolve: Cannot resolve the name 's:schema' to a(n) 'element declaration' component.
+  line 44 of https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL#types?schema1
+
+[WARNING] SOAP port "CITISOAPServiceSoap12": uses a non-standard SOAP 1.2 binding.
+  line 442 of https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL
+
+
+Generating code...
+
+
+Compiling code...
+
