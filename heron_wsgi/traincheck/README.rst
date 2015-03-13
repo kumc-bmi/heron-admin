@@ -109,3 +109,12 @@ Generating code...
 
 Compiling code...
 
+Invoking Works
+++++++++++++++
+
+~/projects/chalk-checker$ javac simpleclient/Client.java generated/org/citiprogram/webservices/*.java
+~/projects/chalk-checker$ java -cp generated:. simpleclient.Client
+what did we win, bob?org.citiprogram.webservices.CITISOAPService@481e5c05
+Retrieving the port from the following service: org.citiprogram.webservices.CITISOAPService@481e5c05
+Invoking the helloWorld operation on the port.
+Hello World
