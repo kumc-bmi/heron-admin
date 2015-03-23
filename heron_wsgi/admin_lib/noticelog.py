@@ -191,17 +191,17 @@ class DecisionRecords(Token):
                 if (ans.dt_exp <= ''
                     or min_exp.isoformat() <= ans.dt_exp)]
 
-    def about_sponsorships(self, who, inv_role=False):
+    def about_sponsorships(self, who, inv=False):
         '''
         :param String who: user_id of sponsoree (or, if inv_role, sponsor)
-        :param Boolean inv_role: look up sponsorships where who is the sponsor
+        :param Boolean inv: look up sponsorships where who is the sponsor
         '''
-        return [(record, inv, detail.get('project_title', ''),
+        return [(record, inv_ref, detail.get('project_title', ''),
                  project_description(detail))
-                for record, (inv, team, detail) in [
+                for record, (inv_ref, team, detail) in [
                         (sponsorship.record,
                          self.decision_detail(sponsorship.record))
-                        for sponsorship in self.sponsorships(who, inv_role)]]
+                        for sponsorship in self.sponsorships(who, inv)]]
 
     def oversight_decisions(self, pending=True):
         '''In order to facilitate email notification of committee
