@@ -249,9 +249,11 @@ from audit_usage import I2B2AggregateUsage, I2B2SensitiveUsage
 from cache_remote import Cache
 
 SAA_CONFIG_SECTION = 'saa_survey'
+DUA_CONFIG_SECTION = 'dua_survey'
 
 PERM_STATUS = __name__ + '.status'
 PERM_SIGN_SAA = __name__ + '.sign_saa'
+PERM_SIGN_DUA = __name__ + '.sign_dua'
 PERM_INVESTIGATOR_REQUEST = __name__ + 'investigator_request'
 PERM_START_I2B2 = __name__ + '.start_i2b2'
 PERM_DROC_AUDIT = __name__ + '.droc_audit'
@@ -363,6 +365,8 @@ class HeronRecords(Token, Cache):
             stats=I2B2AggregateUsage,
             saa_rc=(redcap_connect.SurveySetup,
                     SAA_CONFIG_SECTION),
+            dua_rc=(redcap_connect.SurveySetup,
+                    DUA_CONFIG_SECTION),
             oversight_rc=(redcap_connect.SurveySetup,
                           OVERSIGHT_CONFIG_SECTION),
             oc=OversightCommittee,
@@ -370,7 +374,7 @@ class HeronRecords(Token, Cache):
             smaker=(orm.session.Session,
                     redcapdb.CONFIG_SECTION),
             timesrc=rtconfig.Clock)
-    def __init__(self, mc, pm, dr, stats, saa_rc, oversight_rc, oc,
+    def __init__(self, mc, pm, dr, stats, saa_rc, dua_rc, oversight_rc, oc,
                  dg, smaker, timesrc):
         Cache.__init__(self, timesrc.now)
         log.debug('HeronRecords.__init__ again?')
@@ -382,6 +386,8 @@ class HeronRecords(Token, Cache):
         self._t = timesrc
         self._saa_survey_id = saa_rc.survey_id
         self._saa_rc = saa_rc
+        self._dua_survey_id = dua_rc.survey_id
+        self._dua_rc = dua_rc
         self._oversight_rc = oversight_rc
         self.__oc = oc
         self._oversight_project_id = oversight_rc.project_id
@@ -406,6 +412,8 @@ class HeronRecords(Token, Cache):
             context.status = self._status(badge)
         elif p is PERM_SIGN_SAA:
             context.sign_saa = Affiliate(badge, self._query, self._saa_rc)
+        elif p is PERM_SIGN_DUA:
+            context.sign_dua = Affiliate(badge, self._query, self._dua_rc)
         elif p is PERM_INVESTIGATOR_REQUEST:
             context.investigator_request = self._investigator_request(badge)
         elif p is PERM_DROC_AUDIT:
@@ -565,6 +573,18 @@ class Affiliate(Token):
 
         return self.__query(('SAA', badge.cn), _ensure, 'SAA link')
 
+    def ensure_dua_survey(self, ttl=timedelta(seconds=15)):
+        # TODO: redcap_connect should use notarized badges rather
+        # than raw cn (copied from ensure_saa_survey())
+        badge = self.badge
+
+        def _ensure():
+            fields = dict(user_id=badge.cn,
+                          full_name=badge.sort_name())
+            return (ttl, self.__saa_rc(badge.cn, fields))
+
+        return self.__query(('DUA', badge.cn), _ensure, 'DUA link')
+
 
 class InvestigatorRequest(Token):
     '''Power to file authenticated oversight requests.
@@ -670,6 +690,12 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
     @provides((redcap_connect.SurveySetup, SAA_CONFIG_SECTION))
     def _rc_saa(self):
         opts, api = redcap_connect.RunTime.endpoint(self, SAA_CONFIG_SECTION)
+        return redcap_connect.SurveySetup(opts, api, survey_id=opts.survey_id)
+
+    @singleton
+    @provides((redcap_connect.SurveySetup, DUA_CONFIG_SECTION))
+    def _rc_dua(self):
+        opts, api = redcap_connect.RunTime.endpoint(self, DUA_CONFIG_SECTION)
         return redcap_connect.SurveySetup(opts, api, survey_id=opts.survey_id)
 
     @singleton
