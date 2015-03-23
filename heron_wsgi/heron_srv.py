@@ -119,6 +119,7 @@ class CheckListView(Token):
          'saa_path': 'http://example.com/saa',
          'saa_public': 'http://testhost/redcap-host/surveys/?s=43',
          'signatureOnFile': {'checked': 'checked'},
+         'dua_path': 'http://example.com/dua',
          'sponsored': {},
          'sponsorship_path': 'http://example.com/oversight',
          'trainingCurrent': {'checked': 'checked'},
@@ -176,13 +177,16 @@ class REDCapLink(Token):
     for_sponsorship = 'sponsorship'
     for_data_use = 'data_use'
 
-    def configure(self, config, rsaa, rtd):
+    def configure(self, config, rsaa, rtd, dua):
         config.add_view(self.saa_redir, route_name=rsaa,
                         request_method='GET',
                         permission=heron_policy.PERM_SIGN_SAA)
         config.add_view(self.oversight_redir, route_name=rtd,
                         request_method='GET',
                         permission=heron_policy.PERM_INVESTIGATOR_REQUEST)
+        config.add_view(self.dua_redir, route_name=dua,
+                        request_method='GET',
+                        permission=pyramid.security.NO_PERMISSION_REQUIRED)
 
     def saa_redir(self, context, req):
         '''Redirect to a per-user System Access Agreement REDCap survey.
@@ -200,6 +204,15 @@ class REDCapLink(Token):
         sign_saa = context.sign_saa
         there = sign_saa.ensure_saa_survey()
         log.info('GET SAA at %s: -> %s', req.url, there)
+        return HTTPFound(there)
+
+    def dua_redir(self, context, req):
+        '''TODO: Write test...
+        '''
+
+        sign_dua = context.sign_dua
+        there = sign_dua.ensure_dua_survey()
+        log.info('GET DUA at %s: -> %s', req.url, there)
         return HTTPFound(there)
 
     def oversight_redir(self, context, req):
@@ -471,7 +484,9 @@ class HeronAdminConfig(Configurator):
         self.add_route('team_done', 'team_done/{what_for:%s|%s}' % (
                 REDCapLink.for_sponsorship,
                 REDCapLink.for_data_use))
-        rcv.configure(self, 'saa', 'team_done')
+        self.add_route('dua', 'dua_survey')
+        rcv.configure(self, 'saa', 'team_done', 'dua')
+
 
         self.add_route('oversight', 'build_team/{what_for:%s|%s}' % (
                 REDCapLink.for_sponsorship,
