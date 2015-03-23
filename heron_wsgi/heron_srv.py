@@ -181,12 +181,12 @@ class REDCapLink(Token):
         config.add_view(self.saa_redir, route_name=rsaa,
                         request_method='GET',
                         permission=heron_policy.PERM_SIGN_SAA)
+        config.add_view(self.dua_redir, route_name=dua,
+                        request_method='GET',
+                        permission=heron_policy.PERM_SIGN_DUA)
         config.add_view(self.oversight_redir, route_name=rtd,
                         request_method='GET',
                         permission=heron_policy.PERM_INVESTIGATOR_REQUEST)
-        config.add_view(self.dua_redir, route_name=dua,
-                        request_method='GET',
-                        permission=pyramid.security.NO_PERMISSION_REQUIRED)
 
     def saa_redir(self, context, req):
         '''Redirect to a per-user System Access Agreement REDCap survey.
@@ -481,10 +481,10 @@ class HeronAdminConfig(Configurator):
         clv.configure(self, 'heron_home', 'oversight')
 
         self.add_route('saa', 'saa_survey')
+        self.add_route('dua', 'dua_survey')
         self.add_route('team_done', 'team_done/{what_for:%s|%s}' % (
                 REDCapLink.for_sponsorship,
                 REDCapLink.for_data_use))
-        self.add_route('dua', 'dua_survey')
         rcv.configure(self, 'saa', 'team_done', 'dua')
 
 
