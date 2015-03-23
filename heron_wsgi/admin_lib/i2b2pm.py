@@ -260,7 +260,8 @@ class I2B2PM(ocap_file.Token):
 
     def authz(self, uid, full_name,
               project_id,
-              roles=('USER', 'DATA_LDS', 'DATA_OBFSC', 'DATA_AGG')):
+              roles=('USER', 'DATA_LDS', 'DATA_OBFSC', 'DATA_AGG',
+                     'DATA_DEID')):
         '''Generate authorization to use an i2b2 project.
         '''
         log.debug('generate authorization for: %s', (uid, full_name))
