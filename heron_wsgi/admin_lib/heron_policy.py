@@ -89,6 +89,21 @@ survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
   ['http://testhost/redcap-host/surveys/',
    's=f1f9&full_name=Smith%2C+John&user_id=john.smith']
 
+Unforgeable Data Usage Agreement
+***********************************
+
+:meth:`HeronRecords.grant` also issues an :class:`Affiliate` user
+capability, which provides a link to an authenticated data usage
+survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
+
+  >>> facreq = _login('john.smith', mc, hp, PERM_SIGN_DUA)
+  >>> facreq.context.sign_dua.ensure_dua_survey().split('?')
+  ... # doctest: +NORMALIZE_WHITESPACE
+  INFO:cache_remote:SAA link query for ('DUA', 'john.smith')
+  INFO:cache_remote:... cached until 2011-09-02 00:00:16.500000
+  ['http://testhost/redcap-host/surveys/',
+   's=f1f9&full_name=Smith%2C+John&user_id=john.smith']
+
 Sponsored Users
 ===============
 

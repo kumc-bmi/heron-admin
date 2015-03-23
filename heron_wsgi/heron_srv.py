@@ -207,7 +207,17 @@ class REDCapLink(Token):
         return HTTPFound(there)
 
     def dua_redir(self, context, req):
-        '''TODO: Write test...
+        '''Redirect to a per-user Data Use Agreement REDCap survey.
+
+          >>> t, r4 = test_grant_access_with_valid_cas_ticket()
+          >>> r5 = t.get('/dua_survey', status=302)
+          >>> dict(r5.headers)['Location'].split('&')
+          ... # doctest: +NORMALIZE_WHITESPACE
+          ['http://testhost/redcap-host/surveys/?s=f1f9',
+           'full_name=Smith%2C+John', 'user_id=john.smith']
+
+        Hmm... we're doing a POST to the REDCap API inside a GET.
+        Kinda iffy, w.r.t. safety and such.
         '''
 
         sign_dua = context.sign_dua
