@@ -143,7 +143,7 @@ class CheckListView(Token):
                      trainingExpiration=(status.current_training
                                          or status.expired_training),
                      signatureOnFile=yn(status.system_access_signed),
-                     repositoryAccess=yn(heron_policy.sufficient(status)),
+                     repositoryAccess=yn(status.complete),
                      faculty=yn(status.faculty),
                      executive=yn(status.executive),
                      droc=yn(status.droc),
@@ -492,7 +492,6 @@ class HeronAdminConfig(Configurator):
 
         # Performance reports
         perf.configure(self, 'reports/')
-
 
         # for testing
         self.add_route('err', 'err')
