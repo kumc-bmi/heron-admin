@@ -174,12 +174,14 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         from urllib2 import build_opener, Request
 
         mod = cls(None)
+        dopts = mod.get_options(OPTIONS, 'dua_survey')
         sopts = mod.get_options(OPTIONS, 'saa_survey')
         oopts = mod.get_options(OPTIONS, 'oversight_survey')
         redcap = WebPostable(sopts.api_url, build_opener(), Request)
+        s0 = SurveySetup(sopts, EndPoint(redcap, dopts.token))
         s1 = SurveySetup(sopts, EndPoint(redcap, sopts.token))
         s2 = SurveySetup(oopts, EndPoint(redcap, oopts.token))
-        return s1, s2
+        return s0, s1, s2
 
     @classmethod
     def endpoint(cls, mod, section, extra=()):
@@ -219,8 +221,10 @@ def _integration_test():  # pragma: nocover
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
     userid, fullName = sys.argv[1:3]
-    c1, c2 = RunTime.integration_test()
+    c0, c1, c2 = RunTime.integration_test()
     try:
+        pprint.pprint(c0(userid, {'email': userid + '@kumc.edu',
+                                  'full_name': fullName}))
         pprint.pprint(c1(userid, {'email': userid + '@kumc.edu',
                                   'full_name': fullName}))
         pprint.pprint(c2(userid, {'email': userid + '@kumc.edu',
