@@ -152,7 +152,8 @@ class CheckListView(Token):
                      i2b2_login_path=req.route_url('i2b2_login'),
                      logout_path=req.route_url('logout'),
                      saa_path=req.route_url('saa'),
-                     saa_public=self._saa.base)
+                     saa_public=self._saa.base,
+                     dua_path=req.route_url('dua'))
 
         if ctx.badge.is_investigator():
             sp = req.route_url(self._next_route,
