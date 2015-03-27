@@ -89,7 +89,8 @@ class CheckListView(Token):
         >>> from pyramid import testing
         >>> from pyramid.testing import DummyRequest
         >>> config = testing.setUp()
-        >>> for route in ('logout', 'saa', 'home', 'oversight', 'i2b2_login'):
+        >>> for route in ('logout', 'saa', 'dua', 'home', 'oversight', 
+        ...               'i2b2_login'):
         ...     config.add_route(route, route)
         >>> mc, hp, clv = Mock.make((medcenter.MedCenter,
         ...                          heron_policy.HeronRecords,
@@ -111,6 +112,7 @@ class CheckListView(Token):
         {'affiliate': John Smith <john.smith@js.example>,
          'data_use_path': 'http://example.com/oversight',
          'droc': {},
+         'dua_path': 'http://example.com/dua',
          'executive': {},
          'faculty': {'checked': 'checked'},
          'i2b2_login_path': 'http://example.com/i2b2_login',
@@ -119,7 +121,6 @@ class CheckListView(Token):
          'saa_path': 'http://example.com/saa',
          'saa_public': 'http://testhost/redcap-host/surveys/?s=43',
          'signatureOnFile': {'checked': 'checked'},
-         'dua_path': 'http://example.com/dua',
          'sponsored': {},
          'sponsorship_path': 'http://example.com/oversight',
          'trainingCurrent': {'checked': 'checked'},

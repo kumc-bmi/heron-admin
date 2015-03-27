@@ -89,8 +89,12 @@ survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
   ['http://testhost/redcap-host/surveys/',
    's=f1f9&full_name=Smith%2C+John&user_id=john.smith']
 
-Unforgeable Data Usage Agreement
-***********************************
+Any CAS authenticated user can sign Data Usage Agreement
+********************************************************
+
+John is a team member on a study which has requested a HERON data extract.
+John authenticates to the site using CAS and is presented with a link to the 
+HERON Data Use Agreement.
 
 :meth:`HeronRecords.grant` also issues an :class:`Affiliate` user
 capability, which provides a link to an authenticated data usage
@@ -99,8 +103,8 @@ survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
   >>> facreq = _login('john.smith', mc, hp, PERM_SIGN_DUA)
   >>> facreq.context.sign_dua.ensure_dua_survey().split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
-  INFO:cache_remote:SAA link query for ('DUA', 'john.smith')
-  INFO:cache_remote:... cached until 2011-09-02 00:00:16.500000
+  INFO:cache_remote:DUA link query for ('DUA', 'john.smith')
+  INFO:cache_remote:... cached until 2011-09-02 00:00:17
   ['http://testhost/redcap-host/surveys/',
    's=f1f9&full_name=Smith%2C+John&user_id=john.smith']
 
@@ -113,10 +117,10 @@ faculty not sponsored, nor has he completed human subjects training::
   >>> stureq = _login('bill.student', mc, hp, PERM_STATUS)
   INFO:cache_remote:Sponsorship query for ('sponsorship', 'bill.student')
   INFO:heron_policy:not sponsored: bill.student
-  INFO:cache_remote:... cached until 2011-09-03 00:00:02
+  INFO:cache_remote:... cached until 2011-09-03 00:00:02.500000
   INFO:heron_policy:no training on file for: bill.student (Bill Student)
   INFO:cache_remote:system access query for ('SAA', 'bill.student@js.example')
-  INFO:cache_remote:... cached until 2011-09-02 00:00:17.500000
+  INFO:cache_remote:... cached until 2011-09-02 00:00:18
   INFO:cache_remote:in DROC? query for bill.student
   INFO:cache_remote:... cached until 2011-09-02 00:01:01.500000
   >>> stureq.context.status  #doctest: +NORMALIZE_WHITESPACE
@@ -171,9 +175,9 @@ This student's sponsor is not with KUMC anymore
   INFO:cache_remote:Sponsorship query for ('sponsorship', 'jill.student')
   WARNING:heron_policy:Sponsor prof.fickle not at med center anymore.
   INFO:heron_policy:not sponsored: jill.student
-  INFO:cache_remote:... cached until 2011-09-03 00:00:06
+  INFO:cache_remote:... cached until 2011-09-03 00:00:06.500000
   INFO:cache_remote:system access query for ('SAA', 'jill.student@js.example')
-  INFO:cache_remote:... cached until 2011-09-02 00:00:21.500000
+  INFO:cache_remote:... cached until 2011-09-02 00:00:22
   INFO:cache_remote:in DROC? query for jill.student
   INFO:cache_remote:... cached until 2011-09-02 00:01:03.500000
 
@@ -184,7 +188,7 @@ Executives don't need sponsorship::
 
   >>> exreq = _login('big.wig', mc, hp, PERM_START_I2B2)
   INFO:cache_remote:system access query for ('SAA', 'big.wig@js.example')
-  INFO:cache_remote:... cached until 2011-09-02 00:00:22
+  INFO:cache_remote:... cached until 2011-09-02 00:00:22.500000
   INFO:cache_remote:in DROC? query for big.wig
   INFO:cache_remote:... cached until 2011-09-02 00:01:04
 
@@ -426,9 +430,11 @@ class HeronRecords(Token, Cache):
         if p is PERM_STATUS:
             context.status = self._status(badge)
         elif p is PERM_SIGN_SAA:
-            context.sign_saa = Affiliate(badge, self._query, self._saa_rc)
+            context.sign_saa = Affiliate(badge, self._query, 
+                                         saa_rc=self._saa_rc)
         elif p is PERM_SIGN_DUA:
-            context.sign_dua = Affiliate(badge, self._query, self._dua_rc)
+            context.sign_dua = Affiliate(badge, self._query, 
+                                         dua_rc=self._dua_rc)
         elif p is PERM_INVESTIGATOR_REQUEST:
             context.investigator_request = self._investigator_request(badge)
         elif p is PERM_DROC_AUDIT:
@@ -568,9 +574,10 @@ class NotDROC(TypeError):
 
 
 class Affiliate(Token):
-    def __init__(self, badge, query, saa_rc):
+    def __init__(self, badge, query, saa_rc=None, dua_rc=None):
         self.badge = badge
         self.__saa_rc = saa_rc
+        self.__dua_rc = dua_rc
         self.__query = query
 
     def __repr__(self):
@@ -596,7 +603,7 @@ class Affiliate(Token):
         def _ensure():
             fields = dict(user_id=badge.cn,
                           full_name=badge.sort_name())
-            return (ttl, self.__saa_rc(badge.cn, fields))
+            return (ttl, self.__dua_rc(badge.cn, fields))
 
         return self.__query(('DUA', badge.cn), _ensure, 'DUA link')
 
@@ -658,6 +665,13 @@ class Mock(injector.Module, rtconfig.MockMixin):
     @singleton
     @provides((redcap_connect.SurveySetup, SAA_CONFIG_SECTION))
     def _rc_saa(self):
+        opts = redcap_connect._test_settings
+        return redcap_connect.SurveySetup(opts, self.__redcapapi,
+                                          survey_id=opts.survey_id)
+
+    @singleton
+    @provides((redcap_connect.SurveySetup, DUA_CONFIG_SECTION))
+    def _rc_dua(self):
         opts = redcap_connect._test_settings
         return redcap_connect.SurveySetup(opts, self.__redcapapi,
                                           survey_id=opts.survey_id)
