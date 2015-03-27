@@ -89,7 +89,8 @@ class CheckListView(Token):
         >>> from pyramid import testing
         >>> from pyramid.testing import DummyRequest
         >>> config = testing.setUp()
-        >>> for route in ('logout', 'saa', 'home', 'oversight', 'i2b2_login'):
+        >>> for route in ('logout', 'saa', 'dua', 'home', 'oversight', 
+        ...               'i2b2_login'):
         ...     config.add_route(route, route)
         >>> mc, hp, clv = Mock.make((medcenter.MedCenter,
         ...                          heron_policy.HeronRecords,
@@ -111,6 +112,7 @@ class CheckListView(Token):
         {'affiliate': John Smith <john.smith@js.example>,
          'data_use_path': 'http://example.com/oversight',
          'droc': {},
+         'dua_path': 'http://example.com/dua',
          'executive': {},
          'faculty': {'checked': 'checked'},
          'i2b2_login_path': 'http://example.com/i2b2_login',
@@ -151,7 +153,8 @@ class CheckListView(Token):
                      i2b2_login_path=req.route_url('i2b2_login'),
                      logout_path=req.route_url('logout'),
                      saa_path=req.route_url('saa'),
-                     saa_public=self._saa.base)
+                     saa_public=self._saa.base,
+                     dua_path=req.route_url('dua'))
 
         if ctx.badge.is_investigator():
             sp = req.route_url(self._next_route,
@@ -176,10 +179,13 @@ class REDCapLink(Token):
     for_sponsorship = 'sponsorship'
     for_data_use = 'data_use'
 
-    def configure(self, config, rsaa, rtd):
+    def configure(self, config, rsaa, rtd, dua):
         config.add_view(self.saa_redir, route_name=rsaa,
                         request_method='GET',
                         permission=heron_policy.PERM_SIGN_SAA)
+        config.add_view(self.dua_redir, route_name=dua,
+                        request_method='GET',
+                        permission=heron_policy.PERM_SIGN_DUA)
         config.add_view(self.oversight_redir, route_name=rtd,
                         request_method='GET',
                         permission=heron_policy.PERM_INVESTIGATOR_REQUEST)
@@ -200,6 +206,25 @@ class REDCapLink(Token):
         sign_saa = context.sign_saa
         there = sign_saa.ensure_saa_survey()
         log.info('GET SAA at %s: -> %s', req.url, there)
+        return HTTPFound(there)
+
+    def dua_redir(self, context, req):
+        '''Redirect to a per-user Data Use Agreement REDCap survey.
+
+          >>> t, r4 = test_grant_access_with_valid_cas_ticket()
+          >>> r5 = t.get('/dua_survey', status=302)
+          >>> dict(r5.headers)['Location'].split('&')
+          ... # doctest: +NORMALIZE_WHITESPACE
+          ['http://testhost/redcap-host/surveys/?s=f1f9',
+           'full_name=Smith%2C+John', 'user_id=john.smith']
+
+        Hmm... we're doing a POST to the REDCap API inside a GET.
+        Kinda iffy, w.r.t. safety and such.
+        '''
+
+        sign_dua = context.sign_dua
+        there = sign_dua.ensure_dua_survey()
+        log.info('GET DUA at %s: -> %s', req.url, there)
         return HTTPFound(there)
 
     def oversight_redir(self, context, req):
@@ -468,10 +493,12 @@ class HeronAdminConfig(Configurator):
         clv.configure(self, 'heron_home', 'oversight')
 
         self.add_route('saa', 'saa_survey')
+        self.add_route('dua', 'dua_survey')
         self.add_route('team_done', 'team_done/{what_for:%s|%s}' % (
                 REDCapLink.for_sponsorship,
                 REDCapLink.for_data_use))
-        rcv.configure(self, 'saa', 'team_done')
+        rcv.configure(self, 'saa', 'team_done', 'dua')
+
 
         self.add_route('oversight', 'build_team/{what_for:%s|%s}' % (
                 REDCapLink.for_sponsorship,

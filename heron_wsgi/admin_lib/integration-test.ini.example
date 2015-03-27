@@ -30,6 +30,14 @@ api_url=https://redcap.kumc.edu/api/
 survey_url=https://redcap.kumc.edu/surveys/?s=npRuTQ
 survey_id=...
 
+[dua_survey]
+domain=kumc.edu
+
+# get an API token from redcap
+token=...
+api_url=https://redcap.kumc.edu/api/
+survey_url=https://redcap.kumc.edu/surveys/?s=...
+
 [oversight_survey]
 domain=kumc.edu
 
