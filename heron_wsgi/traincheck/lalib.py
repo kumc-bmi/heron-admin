@@ -6,9 +6,11 @@
 
 from contextlib import contextmanager
 from posixpath import basename, splitext, join
+from functools import wraps
 
 
 def maker(wrapped):
+    @wraps(wrapped)
     def make(*args, **kwargs):
         methods, properties = wrapped(*args, **kwargs)
         bases = (object,)
