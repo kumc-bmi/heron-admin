@@ -3,7 +3,7 @@
 WORK IN PROGRESS. NOT YET FUNCTIONAL.
 
 Usage:
-  traincheck [options] <username>
+  traincheck [options] IDVAULT_NAME
   traincheck [options] --refresh
 
 Options:
@@ -48,19 +48,36 @@ def main(access):
             log.info('saved length=%d to %s', len(markup), fn)
 
     else:
-        raise NotImplementedError
+        who = cli.IDVAULT_NAME
+        [reportsXML, gradeBooksXML, membersXML] = [
+            cli.getBytes(opt)
+            for opt in ['--reports', '--gradebooks', '--members']]
+        store = TrainingRecordStore(reportsXML, gradeBooksXML, membersXML)
+        when = store[who]
+        log.info('records of %s good thru %s', who, when)
 
 
 @maker
-def TrainingRecordStore(membersXML, gradeBooksXML):
-    raise NotImplementedError
-
+def TrainingRecordStore(reportsXML, gradeBooksXML, membersXML,
+                        course='Human Subjects Research'):
+    reports = ET.fromstring(reportsXML)
     members = ET.fromstring(membersXML)
 
-    def __getitem__(_, who):
-        detail = (mElt for mElt in members.findall('NewDataSet/MEMBERS')
-                  if mElt.find('strInstUsername').text == who).next()
-        memberID = detail.find('intMemberID').text
+    def memberLookup(instUserName):
+        detail = (mElt for mElt in members.findall('MEMBERS')
+                  if mElt.find('strInstUsername').text == instUserName).next()
+        return detail.find('intMemberID').text
+
+    def __getitem__(_, instUserName):
+        memberID = memberLookup(instUserName)
+
+        detail = (cElt for cElt in reports.findall('CRS')
+                  if cElt.find('MemberID').text == memberID
+                  and cElt.find('strCompletionReport').text == course).next()
+
+        return detail.find('dteExpiration').text
+
+    return [__getitem__], {}
 
 
 @maker
@@ -86,9 +103,9 @@ def CLI(argv, environ, openf, SoapClient):
     usr = opts['--user']
     pwd = environ[opts['--pwenv']]
 
-    def get(_, opt):
+    def getBytes(_, opt):
         with openf(opts[opt]) as infp:
-            return infp.read().decode('utf-8')
+            return infp.read()
 
     def put(_, opt, content):
         with openf(opts[opt], 'w') as outfp:
@@ -107,7 +124,7 @@ def CLI(argv, environ, openf, SoapClient):
 
     attrs = dict((name.replace('--', ''), val)
                  for (name, val) in opts.iteritems())
-    return [get, put, auth, soapClient], attrs
+    return [getBytes, put, auth, soapClient], attrs
 
 
 if __name__ == '__main__':
