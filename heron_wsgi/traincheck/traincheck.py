@@ -1,4 +1,4 @@
-'''traincheck -- check human subjects training records via CITI
+r'''traincheck -- check human subjects training records via CITI
 
 Usage:
   traincheck [options] IDVAULT_NAME
@@ -22,9 +22,42 @@ Options:
 
 .. note:: Usage doc stops here.
 
->>> s1 = Mock()
 
->>> main(s1.cli_access('traincheck --refresh'))
+Scenario one::
+
+    >>> from sys import stdout
+    >>> s1 = Mock()
+
+Let's refresh the cache from the CITI service::
+
+    >>> main(stdout, s1.cli_access('traincheck --refresh'))
+
+The cache is stored in the filesystem::
+
+    >>> print '\n'.join(sorted(s1._fs.keys()))
+    completionReports.xml
+    gradebooks.xml
+    members.xml
+    trainingRecords.db
+
+Now let's look up Bob's training::
+
+    >>> main(stdout, s1.cli_access('traincheck bob'))
+    ... # doctest: +NORMALIZE_WHITESPACE
+    CRS(MemberID=u'123', intScore=u'96',
+        strCompletionReport=u'Human Subjects Research',
+        InstitutionUserName=u'bob')
+
+But there's no training on file for Fred::
+
+    >>> main(stdout, s1.cli_access('traincheck fred'))
+    Traceback (most recent call last):
+      ...
+    SystemExit: no training records for fred
+
+
+    >>> 'TODO: check for expired training'
+    ''
 
 '''
 
@@ -41,7 +74,7 @@ log = logging.getLogger(__name__)
 CITI_NAMESPACE = 'https://webservices.citiprogram.org/'
 
 
-def main(access):
+def main(stdout, access):
     cli = access()
 
     if cli.refresh:
@@ -62,10 +95,13 @@ def main(access):
                 raise SystemExit('no records in %s' % fn)
             relation.put(cli.cacheDB(), records)
     else:
-        who = cli.IDVAULT_NAME
         store = TrainingRecordStore(cli.cacheDB())
-        training = store[who]
+        try:
+            training = store[cli.IDVAULT_NAME]
+        except KeyError:
+            raise SystemExit('no training records for %s' % cli.IDVAULT_NAME)
         log.info('training OK: %s', training)
+        stdout.write(str(training))
 
 
 @maker
@@ -155,16 +191,14 @@ class Mock(object):
     environ = dict(PASSWORD='sekret')
 
     def __init__(self):
-        import sqlite3
-        import pkg_resources as pkg
+        import StringIO
 
-        db = sqlite3.connect(':memory:')
-        db.executescript(pkg.resource_string(__name__, 'test_cache.db'))
-
+        self._db = None  # set in cli_access()
         self.argv = []
         self._fs = {}
-        self.connect = lambda path: db
+        self.connect = lambda path: self._db
         self.SoapClient = lambda wsdl: self
+        self.stdout = StringIO.StringIO()
 
     from contextlib import contextmanager
 
@@ -183,7 +217,17 @@ class Mock(object):
             raise IOError(path)
 
     def cli_access(self, cmd):
+        import sqlite3
+        import pkg_resources as pkg
+
         self.argv = cmd.split()
+        opts = docopt(__doc__.split('\n.. ')[0], self.argv[1:])
+        self._fs[opts['--cache']] = None
+
+        # self._db = db = sqlite3.connect('mock.db')
+        self._db = db = sqlite3.connect(':memory:')
+        if not '--refresh' in self.argv:
+            db.executescript(pkg.resource_string(__name__, 'test_cache.db'))
 
         return lambda: CLI(self.argv, self.environ, self.openf,
                            self.connect, self.SoapClient)
@@ -197,6 +241,8 @@ class Mock(object):
       <CRS>
         <MemberID>123</MemberID>
         <intScore>96</intScore>
+        <strCompletionReport>Human Subjects Research</strCompletionReport>
+        <InstitutionUserName>bob</InstitutionUserName>
       </CRS>
       <CRS>
         <MemberID>124</MemberID>
@@ -245,7 +291,7 @@ if __name__ == '__main__':
         from __builtin__ import open as openf
         from os import environ
         from sqlite3 import connect
-        from sys import argv
+        from sys import argv, stdout
 
         def access():
             logging.basicConfig(
@@ -257,6 +303,6 @@ if __name__ == '__main__':
             return CLI(argv, environ, openf,
                        connect, SoapClient=SoapClient)
 
-        main(access)
+        main(stdout, access)
 
     _privileged_main()

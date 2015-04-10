@@ -4,7 +4,7 @@ CREATE TABLE GRADEBOOK ( intCompletionReportID, intInstitutionID, strCompletionR
 INSERT INTO "GRADEBOOK" VALUES('257','12','Basic');
 CREATE TABLE MEMBERS ( intMemberID, strLastII, strFirstII, strInstUsername, strInstEmail );
 INSERT INTO "MEMBERS" VALUES('43704','Able','Laurie','lable','lable@example');
-CREATE TABLE CRS ( MemberID, intScore );
-INSERT INTO "CRS" VALUES('123','96');
-INSERT INTO "CRS" VALUES('124','91');
+CREATE TABLE CRS ( MemberID, intScore, strCompletionReport, InstitutionUserName );
+INSERT INTO "CRS" VALUES('123','96','Human Subjects Research','bob');
+INSERT INTO "CRS" VALUES('124','91',NULL,NULL);
 COMMIT;
