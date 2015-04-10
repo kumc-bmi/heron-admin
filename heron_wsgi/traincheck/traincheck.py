@@ -1,7 +1,5 @@
 '''traincheck -- check human subjects training records via CITI
 
-WORK IN PROGRESS. NOT YET FUNCTIONAL.
-
 Usage:
   traincheck [options] IDVAULT_NAME
   traincheck [options] --refresh
@@ -54,35 +52,40 @@ def main(access):
                                 ET.fromstring(markup.encode('utf-8')))
     else:
         who = cli.IDVAULT_NAME
-        [reportsXML, gradeBooksXML, membersXML] = [
-            cli.getBytes(opt)
-            for opt in ['--reports', '--gradebooks', '--members']]
-        store = TrainingRecordStore(reportsXML, gradeBooksXML, membersXML)
-        when = store[who]
-        log.info('records of %s good thru %s', who, when)
+        store = TrainingRecordStore(cli.cacheDB())
+        training = store[who]
+        log.info('training OK: %s', training)
 
 
 @maker
-def TrainingRecordStore(reportsXML, gradeBooksXML, membersXML,
-                        course='Human Subjects Research'):
-    reports = ET.fromstring(reportsXML)
-    members = ET.fromstring(membersXML)
+def TrainingRecordStore(
+        dbtrx,
+        course='Human Subjects Research',
+        dql="""
+        select CRS.*
+        from CRS
+        where CRS.strCompletionReport = ?
+        and CRS.InstitutionUserName = ?
+        limit 1
+        """):
+    '''
+    >>> inert = TrainingRecordStore(dbtrx=None)
+    >>> inert.course
+    'TODO: double-check course name'
 
-    def memberLookup(instUserName):
-        detail = (mElt for mElt in members.findall('MEMBERS')
-                  if mElt.find('strInstUsername').text == instUserName).next()
-        return detail.find('intMemberID').text
-
+    '''
     def __getitem__(_, instUserName):
-        memberID = memberLookup(instUserName)
+        with dbtrx() as q:
+            q.execute(dql, (course, instUserName))
+            CRS = relation.tableTuple('CRS', q.description)
+            row = q.fetchone()
 
-        detail = (cElt for cElt in reports.findall('CRS')
-                  if cElt.find('MemberID').text == memberID
-                  and cElt.find('strCompletionReport').text == course).next()
+        if not row:
+            raise KeyError(instUserName)
 
-        return detail.find('dteExpiration').text
+        return CRS(*row)
 
-    return [__getitem__], {}
+    return [__getitem__], dict(course=course)
 
 
 @maker
