@@ -126,8 +126,9 @@ def CLI(argv, environ, openf, connect, SoapClient):
         return method
 
     def soapClient(_):
-        client = SoapClient(wsdl=opts['--wsdl'])
-        log.info('client: %s', client)
+        wsdl = opts['--wsdl']
+        log.info('getting SOAP client for %s', wsdl)
+        client = SoapClient(wsdl=wsdl)
         return client
 
     attrs = dict((name.replace('--', ''), val)
