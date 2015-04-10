@@ -13,6 +13,7 @@ Options:
 '''
 
 import logging
+import xml.etree.ElementTree as ET
 
 from docopt import docopt
 
@@ -23,19 +24,26 @@ CITI_NAMESPACE = 'https://webservices.citiprogram.org/'
 
 def main(access, environ):
     # TODO: reduce the scope of environ, i.e. password
-    cli, client = access()
+    cli, training_records = access()
 
-    log.info('client: %s', client)
-    log.info('CITISOAPService.HelloWorld(): %s', client.HelloWorld())
+    log.info('client: %s', training_records)
+    log.info('CITISOAPService.HelloWorld(): %s',
+             training_records.HelloWorld())
 
     usr = cli['--user']
     pwd = environ[cli['--pwenv']]
 
-    x = client.HelloWorldbyUser(usr=usr, pwd=pwd)
+    x = training_records.HelloWorldbyUser(usr=usr, pwd=pwd)
     log.info('byUser: %s', x)
 
-    reports = client.GetCompletionReports(usr=usr, pwd=pwd)
-    log.info('reports: %s', reports)
+    reply = training_records.GetGradeBooksXML(usr=usr, pwd=pwd)
+    markup = reply['GetGradeBooksXMLResult']
+    doc = ET.fromstring(markup)
+
+    import pdb; pdb.set_trace()
+
+    members = training_records.GetMembersXML(usr=usr, pwd=pwd)['GetMembersXMLResult']
+    log.info('members: %s', members)
 
     # import pdb; pdb.set_trace()
     raise NotImplementedError
