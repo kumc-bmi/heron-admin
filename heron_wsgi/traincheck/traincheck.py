@@ -13,6 +13,8 @@ Options:
                      [default: gradebooks.xml]
   --members=FILE     member info cache file
                      [default: members.xml]
+  --cache=FILE       cache DB file
+                     [default: trainingRecords.db]
   --wsdl=URL         Service Description URL
                      [default: https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL]  # noqa
   --user=NAME        [default: KUMC_Citi]
@@ -26,7 +28,8 @@ import xml.etree.ElementTree as ET
 
 from docopt import docopt
 
-from lalib import maker
+from lalib import maker, dbmgr
+import relation
 
 log = logging.getLogger(__name__)
 
@@ -40,13 +43,15 @@ def main(access):
         svc = CitiSOAPService(cli.soapClient(), cli.auth)
 
         for (opt, fn, k) in [
-                ('--reports', cli.reports, svc.GetCompletionReportsXML),
+                # smallest to largest typical payload
                 ('--gradebooks', cli.gradebooks, svc.GetGradeBooksXML),
-                ('--members', cli.members, svc.GetMembersXML)]:
+                ('--members', cli.members, svc.GetMembersXML),
+                ('--reports', cli.reports, svc.GetCompletionReportsXML)]:
             markup = svc.get(k)
             cli.put(opt, markup)
             log.info('saved length=%d to %s', len(markup), fn)
-
+            relation.docToTable(cli.cacheDB(),
+                                ET.fromstring(markup.encode('utf-8')))
     else:
         who = cli.IDVAULT_NAME
         [reportsXML, gradeBooksXML, membersXML] = [
@@ -96,7 +101,7 @@ def CitiSOAPService(client, auth):
 
 
 @maker
-def CLI(argv, environ, openf, SoapClient):
+def CLI(argv, environ, openf, connect, SoapClient):
     opts = docopt(__doc__, argv=argv[1:])
     log.debug('docopt: %s', opts)
 
@@ -111,6 +116,9 @@ def CLI(argv, environ, openf, SoapClient):
         with openf(opts[opt], 'w') as outfp:
             outfp.write(content.encode('utf-8'))
 
+    def cacheDB(_):
+        return dbmgr(lambda: connect(opts['--cache']))
+
     def auth(_, wrapped):
         def method(**kwargs):
             return wrapped(usr=usr, pwd=pwd, **kwargs)
@@ -124,14 +132,15 @@ def CLI(argv, environ, openf, SoapClient):
 
     attrs = dict((name.replace('--', ''), val)
                  for (name, val) in opts.iteritems())
-    return [getBytes, put, auth, soapClient], attrs
+    return [getBytes, put, auth, soapClient, cacheDB], attrs
 
 
 if __name__ == '__main__':
     def _privileged_main():
         from __builtin__ import open as openf
-        from sys import argv
         from os import environ
+        from sqlite3 import connect
+        from sys import argv
 
         def access():
             logging.basicConfig(
@@ -140,7 +149,8 @@ if __name__ == '__main__':
             # ew... after this import, basicConfig doesn't work
             from pysimplesoap.client import SoapClient
 
-            return CLI(argv, environ, openf, SoapClient=SoapClient)
+            return CLI(argv, environ, openf,
+                       connect, SoapClient=SoapClient)
 
         main(access)
 
