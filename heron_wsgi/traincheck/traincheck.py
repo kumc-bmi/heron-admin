@@ -3,15 +3,18 @@
 WORK IN PROGRESS. NOT YET FUNCTIONAL.
 
 Usage:
-  traincheck [options] members
-  traincheck [options] gradebooks
   traincheck [options] <username>
+  traincheck [options] --refresh
 
 Options:
-  --wsdl=URL      Service Description URL
-                  [default: https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL]  # noqa
-  --user=NAME     [default: KUMC_Citi]
-  --pwenv=K       environment variable to look up password [default: PASSWORD]
+  --members=FILE     member info cache file [default: members.xml]
+  --gradebooks=FILE  gradebooks cache file [default: gradebooks.xml]
+  --wsdl=URL         Service Description URL
+                     [default: https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL]  # noqa
+  --user=NAME        [default: KUMC_Citi]
+  --pwenv=K          environment variable to look up password
+                     [default: PASSWORD]
+  --debug            turn on debug logging
 '''
 
 import logging
@@ -30,12 +33,15 @@ def main(stdout, access):
 
     training_records = CitiSOAPService(cli.soapClient(), cli.auth)
 
-    if cli.members:
+    if cli.refresh:
         markup = training_records.membersXML()
-        stdout.write(markup)
-    elif cli.gradebooks:
+        cli.wr('--members').write(markup)
+        log.info('saved length=%d to %s', len(markup), cli.members)
+
         markup = training_records.gradeBooksXML()
-        stdout.write(markup)
+        cli.wr('--gradebooks').write(markup)
+        log.info('saved length=%d to %s', len(markup), cli.gradebooks)
+
     else:
         raise NotImplementedError
 
@@ -57,11 +63,15 @@ def CitiSOAPService(client, auth):
 
 
 @maker
-def CLI(argv, environ, SoapClient):
+def CLI(argv, environ, openwr, SoapClient):
     opts = docopt(__doc__, argv=argv[1:])
+    log.debug('docopt: %s', opts)
 
     usr = opts['--user']
     pwd = environ[opts['--pwenv']]
+
+    def wr(_, opt):
+        return openwr(opts[opt])
 
     def auth(_, wrapped):
         def method(**kwargs):
@@ -74,21 +84,27 @@ def CLI(argv, environ, SoapClient):
         log.info('client: %s', client)
         return client
 
-    return [auth, soapClient], opts
+    attrs = dict((name.replace('--', ''), val)
+                 for (name, val) in opts.iteritems())
+    return [wr, auth, soapClient], attrs
 
 
 if __name__ == '__main__':
     def _privileged_main():
+        from __builtin__ import open as openf
         from sys import argv, stdout
         from os import environ
 
         def access():
-            logging.basicConfig(level=logging.INFO)
+            logging.basicConfig(
+                level=logging.DEBUG if '--debug' in argv else logging.INFO)
 
             # ew... after this import, basicConfig doesn't work
             from pysimplesoap.client import SoapClient
 
-            return CLI(argv, environ, SoapClient)
+            return CLI(argv, environ,
+                       openwr=lambda path: openf(path, 'w'),
+                       SoapClient=SoapClient)
 
         main(stdout, access)
 
