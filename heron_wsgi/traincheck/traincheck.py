@@ -3,6 +3,8 @@
 WORK IN PROGRESS. NOT YET FUNCTIONAL.
 
 Usage:
+  traincheck [options] members
+  traincheck [options] gradebooks
   traincheck [options] <username>
 
 Options:
@@ -13,60 +15,81 @@ Options:
 '''
 
 import logging
-import xml.etree.ElementTree as ET
 
 from docopt import docopt
+
+from lalib import maker
 
 log = logging.getLogger(__name__)
 
 CITI_NAMESPACE = 'https://webservices.citiprogram.org/'
 
 
-def main(access, environ):
-    # TODO: reduce the scope of environ, i.e. password
-    cli, training_records = access()
+def main(stdout, access):
+    cli = access()
 
-    log.info('client: %s', training_records)
-    log.info('CITISOAPService.HelloWorld(): %s',
-             training_records.HelloWorld())
+    training_records = CitiSOAPService(cli.soapClient(), cli.auth)
 
-    usr = cli['--user']
-    pwd = environ[cli['--pwenv']]
+    if cli.members:
+        markup = training_records.membersXML()
+        stdout.write(markup)
+    elif cli.gradebooks:
+        markup = training_records.gradeBooksXML()
+        stdout.write(markup)
+    else:
+        raise NotImplementedError
 
-    x = training_records.HelloWorldbyUser(usr=usr, pwd=pwd)
-    log.info('byUser: %s', x)
 
-    reply = training_records.GetGradeBooksXML(usr=usr, pwd=pwd)
-    markup = reply['GetGradeBooksXMLResult']
-    doc = ET.fromstring(markup)
+@maker
+def CitiSOAPService(client, auth):
+    GetMembersXML = auth(client.GetMembersXML)
+    GetGradeBooksXML = auth(client.GetGradeBooksXML)
 
-    import pdb; pdb.set_trace()
+    def gradeBooksXML(_):
+        reply = GetGradeBooksXML()
+        return reply['GetGradeBooksXMLResult']
 
-    members = training_records.GetMembersXML(usr=usr, pwd=pwd)['GetMembersXMLResult']
-    log.info('members: %s', members)
+    def membersXML(_):
+        reply = GetMembersXML()
+        return reply['GetMembersXMLResult']
 
-    # import pdb; pdb.set_trace()
-    raise NotImplementedError
+    return [gradeBooksXML, membersXML], {}
+
+
+@maker
+def CLI(argv, environ, SoapClient):
+    opts = docopt(__doc__, argv=argv[1:])
+
+    usr = opts['--user']
+    pwd = environ[opts['--pwenv']]
+
+    def auth(_, wrapped):
+        def method(**kwargs):
+            return wrapped(usr=usr, pwd=pwd, **kwargs)
+
+        return method
+
+    def soapClient(_):
+        client = SoapClient(wsdl=opts['--wsdl'])
+        log.info('client: %s', client)
+        return client
+
+    return [auth, soapClient], opts
 
 
 if __name__ == '__main__':
     def _privileged_main():
-        from sys import argv
+        from sys import argv, stdout
         from os import environ
 
-        cliCache = []
-
         def access():
-            cli = docopt(__doc__, argv=argv[1:])
-            cliCache.append(cli)
-
             logging.basicConfig(level=logging.INFO)
 
             # ew... after this import, basicConfig doesn't work
             from pysimplesoap.client import SoapClient
 
-            return cli, SoapClient(wsdl=cli['--wsdl'])
+            return CLI(argv, environ, SoapClient)
 
-        main(access, environ)
+        main(stdout, access)
 
     _privileged_main()
