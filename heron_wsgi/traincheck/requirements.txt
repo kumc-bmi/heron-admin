@@ -17,3 +17,6 @@ PySimpleSOAP==1.10
 # "There are some regressions in v1.14 (development trunk branch). 
 # Please use the more stable v1.10 instead by now."
 # -- https://code.google.com/p/pysimplesoap/issues/detail?id=150
+#
+# but we seem to need unicode unmarshalling:
+# https://github.com/pysimplesoap/pysimplesoap/commit/28f691b34a08499b7395d962b1b130ed4425be56
