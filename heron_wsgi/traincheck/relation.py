@@ -49,6 +49,12 @@ def docToRecords(relation_doc):
     return (record(child) for child in relation_doc)
 
 
+def tableTuple(name, description):
+    cols = [d[0] for d in description]
+
+    return namedtuple(name, cols)
+
+
 @maker
 def ExportTable(dbtrx, name, cols):
     create_stmt, insert_stmt = sql_for(name, cols)
