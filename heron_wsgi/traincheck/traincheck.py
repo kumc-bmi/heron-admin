@@ -19,6 +19,13 @@ Options:
   --pwenv=K          environment variable to look up password
                      [default: PASSWORD]
   --debug            turn on debug logging
+
+.. note:: Usage doc stops here.
+
+>>> s1 = Mock()
+
+>>> main(s1.cli_access('traincheck --refresh'))
+
 '''
 
 import logging
@@ -48,8 +55,12 @@ def main(access):
             markup = svc.get(k)
             cli.put(opt, markup)
             log.info('saved length=%d to %s', len(markup), fn)
-            relation.docToTable(cli.cacheDB(),
-                                ET.fromstring(markup.encode('utf-8')))
+            try:
+                records = relation.docToRecords(
+                    ET.fromstring(markup.encode('utf-8')))
+            except StopIteration:
+                raise SystemExit('no records in %s' % fn)
+            relation.put(cli.cacheDB(), records)
     else:
         who = cli.IDVAULT_NAME
         store = TrainingRecordStore(cli.cacheDB())
@@ -105,7 +116,8 @@ def CitiSOAPService(client, auth):
 
 @maker
 def CLI(argv, environ, openf, connect, SoapClient):
-    opts = docopt(__doc__, argv=argv[1:])
+    usage = __doc__.split('\n..')[0]
+    opts = docopt(usage, argv=argv[1:])
     log.debug('docopt: %s', opts)
 
     usr = opts['--user']
@@ -137,6 +149,95 @@ def CLI(argv, environ, openf, connect, SoapClient):
     attrs = dict((name.replace('--', ''), val)
                  for (name, val) in opts.iteritems())
     return [getBytes, put, auth, soapClient, cacheDB], attrs
+
+
+class Mock(object):
+    environ = dict(PASSWORD='sekret')
+
+    def __init__(self):
+        import sqlite3
+        import pkg_resources as pkg
+
+        db = sqlite3.connect(':memory:')
+        db.executescript(pkg.resource_string(__name__, 'test_cache.db'))
+
+        self.argv = []
+        self._fs = {}
+        self.connect = lambda path: db
+        self.SoapClient = lambda wsdl: self
+
+    from contextlib import contextmanager
+
+    @contextmanager
+    def openf(self, path, mode):
+        import StringIO
+
+        if mode == 'w':
+            buf = StringIO.StringIO()
+            self._fs[path] = (buf, None)
+            try:
+                yield buf
+            finally:
+                self._fs[path] = (None, buf.getvalue())
+        else:
+            raise IOError(path)
+
+    def cli_access(self, cmd):
+        self.argv = cmd.split()
+
+        return lambda: CLI(self.argv, self.environ, self.openf,
+                           self.connect, self.SoapClient)
+
+    def _check(self, pwd):
+        if not pwd == self.environ['PASSWORD']:
+            raise IOError
+
+    CRS = """
+    <NewDataSet>
+      <CRS>
+        <MemberID>123</MemberID>
+        <intScore>96</intScore>
+      </CRS>
+      <CRS>
+        <MemberID>124</MemberID>
+        <intScore>91</intScore>
+      </CRS>
+    </NewDataSet>
+    """
+
+    def GetCompletionReportsXML(self, usr, pwd):
+        self._check(pwd)
+        return dict(GetCompletionReportsXMLResult=self.CRS)
+
+    GRADEBOOK = """
+    <NewDataSet>
+      <GRADEBOOK>
+        <intCompletionReportID>257</intCompletionReportID>
+        <intInstitutionID>12</intInstitutionID>
+        <strCompletionReport>Basic</strCompletionReport>
+      </GRADEBOOK>
+    </NewDataSet>
+    """
+
+    def GetGradeBooksXML(self, usr, pwd):
+        self._check(pwd)
+        return dict(GetGradeBooksXMLResult=self.GRADEBOOK)
+
+    MEMBERS = """
+    <NewDataSet>
+      <MEMBERS>
+        <intMemberID>43704</intMemberID>
+        <strLastII>Able</strLastII>
+        <strFirstII>Laurie</strFirstII>
+        <strInstUsername>lable</strInstUsername>
+        <strInstEmail>lable@example</strInstEmail>
+      </MEMBERS>
+    </NewDataSet>
+    """
+
+    def GetMembersXML(self, usr, pwd):
+        self._check(pwd)
+        return dict(GetMembersXMLResult=self.MEMBERS)
 
 
 if __name__ == '__main__':

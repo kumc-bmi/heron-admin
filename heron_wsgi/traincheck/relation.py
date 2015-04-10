@@ -6,8 +6,7 @@ log = logging.getLogger(__name__)
 from lalib import maker
 
 
-def docToTable(dbtrx, doc):
-    records = docToRecords(doc)
+def put(dbtrx, records):
     exemplar = records.next()
     tuple_type = exemplar.__class__
     et = ExportTable(dbtrx,
@@ -32,9 +31,17 @@ def docToRecords(relation_doc):
     ...   </CRS>
     ... </NewDataSet>
     ... """
+
+    >>> import xml.etree.ElementTree as ET
+
     >>> doc = ET.fromstring(markup)
     >>> list(docToRecords(doc))
     [CRS(MemberID='123', intScore='96'), CRS(MemberID='124', intScore='91')]
+
+    >>> docToRecords(ET.fromstring('<doc/>'))
+    Traceback (most recent call last):
+      ...
+    StopIteration
     '''
     exemplar = iter(relation_doc).next()
     relation_name = exemplar.tag
