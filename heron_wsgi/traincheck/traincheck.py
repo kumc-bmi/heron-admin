@@ -143,7 +143,7 @@ def CitiSOAPService(client, auth):
         GetMembersXML=client.GetMembersXML)
 
     def get(_, which):
-        reply = auth(methods[which])()
+        reply = auth(methods[which])
         return reply[which + 'Result']
 
     attrs = dict((name, name) for name in methods.keys())
@@ -171,10 +171,7 @@ def CLI(argv, environ, openf, connect, SoapClient):
         return dbmgr(lambda: connect(opts['--cache']))
 
     def auth(_, wrapped):
-        def method(**kwargs):
-            return wrapped(usr=usr, pwd=pwd, **kwargs)
-
-        return method
+        return wrapped(usr=usr, pwd=pwd)
 
     def soapClient(_):
         wsdl = opts['--wsdl']
