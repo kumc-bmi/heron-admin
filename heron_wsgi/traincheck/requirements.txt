@@ -20,3 +20,6 @@ PySimpleSOAP==1.10
 #
 # but we seem to need unicode unmarshalling:
 # https://github.com/pysimplesoap/pysimplesoap/commit/28f691b34a08499b7395d962b1b130ed4425be56
+
+sqlalchemy
+PyMySQL

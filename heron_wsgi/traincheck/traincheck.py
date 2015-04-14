@@ -11,8 +11,9 @@ Options:
                      [default: gradebooks.xml]
   --members=FILE     member info cache file
                      [default: members.xml]
-  --cache=FILE       cache DB file
-                     [default: trainingRecords.db]
+  --pii-db=NAME      environment variable with sqlalchemy URL for
+                     database cleared for PII (personally identifiable
+                     information) [default: HSR_TRAIN_CHECK]
   --wsdl=URL         Service Description URL
                      [default: https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL]  # noqa
   --user=NAME        [default: KUMC_Citi]
@@ -65,6 +66,7 @@ import logging
 import xml.etree.ElementTree as ET
 
 from docopt import docopt
+from sqlalchemy import Table, Column, String, MetaData, and_
 
 from lalib import maker, dbmgr
 import relation
@@ -93,9 +95,9 @@ def main(stdout, access):
                     ET.fromstring(markup.encode('utf-8')))
             except StopIteration:
                 raise SystemExit('no records in %s' % fn)
-            relation.put(cli.cacheDB(), records)
+            relation.put(cli.piiDB(), records)
     else:
-        store = TrainingRecordStore(cli.cacheDB())
+        store = TrainingRecordStore(cli.piiDB())
         try:
             training = store[cli.IDVAULT_NAME]
         except KeyError:
@@ -104,17 +106,18 @@ def main(stdout, access):
         stdout.write(str(training))
 
 
+HSR = MetaData()
+
+CRS = Table('CRS', HSR,
+            Column('strCompletionReport', String),
+            Column('InstitutionUserName', String),
+            schema='hsr_cache')
+
+
 @maker
 def TrainingRecordStore(
         dbtrx,
-        course='Human Subjects Research',
-        dql="""
-        select CRS.*
-        from CRS
-        where CRS.strCompletionReport = ?
-        and CRS.InstitutionUserName = ?
-        limit 1
-        """):
+        course='Human Subjects Research'):
     '''
     >>> inert = TrainingRecordStore(dbtrx=None)
     >>> inert.course
@@ -123,14 +126,15 @@ def TrainingRecordStore(
     '''
     def __getitem__(_, instUserName):
         with dbtrx() as q:
-            q.execute(dql, (course, instUserName))
-            CRS = relation.tableTuple('CRS', q.description)
-            row = q.fetchone()
+            q.execute(CRS.select().where(
+                and_(CRS.c.strCompletionReport == course,
+                     CRS.c.InstitutionUserName == instUserName)))
+            record = q.fetchone()
 
-        if not row:
+        if not record:
             raise KeyError(instUserName)
 
-        return CRS(*row)
+        return record
 
     return [__getitem__], dict(course=course)
 
@@ -151,7 +155,7 @@ def CitiSOAPService(client, auth):
 
 
 @maker
-def CLI(argv, environ, openf, connect, SoapClient):
+def CLI(argv, environ, openf, create_engine, SoapClient):
     usage = __doc__.split('\n..')[0]
     opts = docopt(usage, argv=argv[1:])
     log.debug('docopt: %s', opts)
@@ -167,8 +171,9 @@ def CLI(argv, environ, openf, connect, SoapClient):
         with openf(opts[opt], 'w') as outfp:
             outfp.write(content.encode('utf-8'))
 
-    def cacheDB(_):
-        return dbmgr(lambda: connect(opts['--cache']))
+    def piiDB(_):
+        env_key = opts['--pii-db']
+        return lambda: create_engine(environ[env_key]).connect()
 
     def auth(_, wrapped):
         return wrapped(usr=usr, pwd=pwd)
@@ -181,7 +186,7 @@ def CLI(argv, environ, openf, connect, SoapClient):
 
     attrs = dict((name.replace('--', ''), val)
                  for (name, val) in opts.iteritems())
-    return [getBytes, put, auth, soapClient, cacheDB], attrs
+    return [getBytes, put, auth, soapClient, piiDB], attrs
 
 
 class Mock(object):
@@ -227,7 +232,7 @@ class Mock(object):
             db.executescript(pkg.resource_string(__name__, 'test_cache.db'))
 
         return lambda: CLI(self.argv, self.environ, self.openf,
-                           self.connect, self.SoapClient)
+                           create_engine, self.SoapClient)
 
     def _check(self, pwd):
         if not pwd == self.environ['PASSWORD']:
@@ -287,8 +292,9 @@ if __name__ == '__main__':
     def _privileged_main():
         from __builtin__ import open as openf
         from os import environ
-        from sqlite3 import connect
         from sys import argv, stdout
+
+        from sqlalchemy import create_engine
 
         def access():
             logging.basicConfig(
@@ -298,7 +304,7 @@ if __name__ == '__main__':
             from pysimplesoap.client import SoapClient
 
             return CLI(argv, environ, openf,
-                       connect, SoapClient=SoapClient)
+                       create_engine, SoapClient=SoapClient)
 
         main(stdout, access)
 
