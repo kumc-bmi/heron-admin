@@ -45,15 +45,14 @@ The cache is stored in the filesystem::
     completionReports.xml
     gradebooks.xml
     members.xml
-    trainingRecords.db
 
 Now let's look up Bob's training::
 
     >>> main(stdout, s1.cli_access('traincheck bob'))
     ... # doctest: +NORMALIZE_WHITESPACE
-    CRS(MemberID=u'123', intScore=u'96',
-        strCompletionReport=u'Human Subjects Research',
-        InstitutionUserName=u'bob')
+    (None, 123, None, None, u'bob', None, None, None, None,
+     u'Human Subjects Research', None, None, None, None,
+     None, None, None, None, 96, None, None)
 
 But there's no training on file for Fred::
 
@@ -75,8 +74,9 @@ from docopt import docopt
 from sqlalchemy import (MetaData, Table, Column,
                         String, Integer, Date,
                         and_)
+from sqlalchemy.engine.url import make_url
 
-from lalib import maker, dbmgr
+from lalib import maker
 import relation
 
 STRING_SIZE = 120
@@ -118,29 +118,31 @@ class CRS(object):
     # TODO: parse dates to avoid ...
     # Warning: Data truncated for column 'AddedMember' at row 34
     # or suppress the warning
+    # Dates are actually of the form:
+    # 2014-05-06T19:15:48.2-04:00
     markup = '''
       <CRS>
-        <CR_InstitutionID>1</CR_InstitutionID>
-        <MemberID>1</MemberID>
+        <CR_InstitutionID>12345</CR_InstitutionID>
+        <MemberID>12345</MemberID>
         <EmplID />
-        <StudentID>1</StudentID>
+        <StudentID>12345</StudentID>
         <InstitutionUserName>a</InstitutionUserName>
         <FirstName>a</FirstName>
         <LastName>a</LastName>
         <memberEmail>a</memberEmail>
-        <AddedMember>2014-05-06T19:15:48.2-04:00</AddedMember>
+        <AddedMember>2014-05-06</AddedMember>
         <strCompletionReport>a</strCompletionReport>
-        <intGroupID>1</intGroupID>
+        <intGroupID>12345</intGroupID>
         <strGroup>a</strGroup>
-        <intStageID>1</intStageID>
-        <intStageNumber>1</intStageNumber>
+        <intStageID>12345</intStageID>
+        <intStageNumber>12345</intStageNumber>
         <strStage>a</strStage>
-        <intCompletionReportID>1</intCompletionReportID>
-        <intMemberStageID>1</intMemberStageID>
-        <dtePassed>2014-05-06T19:15:48.2-04:00</dtePassed>
-        <intScore>1</intScore>
-        <intPassingScore>1</intPassingScore>
-        <dteExpiration>2014-05-06T19:15:48.2-04:00</dteExpiration>
+        <intCompletionReportID>12345</intCompletionReportID>
+        <intMemberStageID>12345</intMemberStageID>
+        <dtePassed>2014-05-06</dtePassed>
+        <intScore>12345</intScore>
+        <intPassingScore>12345</intPassingScore>
+        <dteExpiration>2014-05-06</dteExpiration>
       </CRS>
     '''
 
@@ -148,12 +150,12 @@ class CRS(object):
 class GRADEBOOK(object):
     markup = '''
       <GRADEBOOK>
-        <intCompletionReportID>1</intCompletionReportID>
-        <intInstitutionID>1</intInstitutionID>
+        <intCompletionReportID>12345</intCompletionReportID>
+        <intInstitutionID>12345</intInstitutionID>
         <strCompletionReport>a</strCompletionReport>
-        <intGroupID>1</intGroupID>
+        <intGroupID>12345</intGroupID>
         <strGroup>a</strGroup>
-        <intStageID>1</intStageID>
+        <intStageID>12345</intStageID>
         <strStage>a</strStage>
       </GRADEBOOK>
     '''
@@ -163,7 +165,7 @@ class MEMBERS(object):
     # TODO: dteXXX fields are actually dates in 09/09/14 format.
     markup = '''
       <MEMBERS>
-        <intMemberID>1</intMemberID>
+        <intMemberID>12345</intMemberID>
         <strLastII>a</strLastII>
         <strFirstII>a</strFirstII>
         <strUsernameII>a</strUsernameII>
@@ -185,36 +187,51 @@ class MEMBERS(object):
 
 
 class HSR(object):
-    db_name = 'hsr_cache'
+    def __init__(self,
+                 db_name='hsr_cache'):
+        self.db_name = db_name
 
-    meta = MetaData()
+        ty = lambda text: (
+            Integer if text == '12345' else
+            # For unit testing, avoid:
+            # SQLite Date type only accepts Python date objects as input.
+            # by just using string.
+            Date() if db_name and text == '2014-05-06' else
+            String(STRING_SIZE))
 
-    columns = lambda markup: [
-        Column(field.tag,
-               Integer if field.text == '1' else
-               Date() if field.text and field.text.startswith('2014-') else
-               String(STRING_SIZE))
-        for field in ET.fromstring(markup)]
+        columns = lambda markup: [
+            Column(field.tag, ty(field.text))
+            for field in ET.fromstring(markup)]
 
-    for cls in [CRS, MEMBERS, GRADEBOOK]:
-        Table(cls.__name__, meta, *columns(cls.markup),
-              schema=db_name)
+        meta = MetaData()
+
+        for cls in [CRS, MEMBERS, GRADEBOOK]:
+            Table(cls.__name__, meta, *columns(cls.markup),
+                  schema=db_name)
+
+        self.tables = meta.tables
+
+    def table(self, name):
+        qname = ('%s.%s' % (self.db_name, name) if self.db_name
+                 else name)
+        return self.tables[qname]
 
 
 @maker
 def TrainingRecordsRd(
-        dbtrx,
+        acct,
         course='Human Subjects Research'):
     '''
-    >>> inert = TrainingRecordsRd(dbtrx=None)
+    >>> inert = TrainingRecordsRd(acct=(None, None))
     >>> inert.course
     'TODO: double-check course name'
 
     '''
 
-    def __getitem__(_, instUserName):
-        crs = HSR.meta.tables['%s.%s' % (HSR.db_name, 'CRS')]
+    dbtrx, db_name = acct
+    crs = HSR(db_name).table('CRS')
 
+    def __getitem__(_, instUserName):
         with dbtrx() as q:
             result = q.execute(crs.select().where(
                 and_(crs.c.strCompletionReport == course,
@@ -230,11 +247,14 @@ def TrainingRecordsRd(
 
 
 @maker
-def TrainingRecordsAdmin(dbtrx,
+def TrainingRecordsAdmin(acct,
                          colSize=120):
+    dbtrx, db_name = acct
+    hsr = HSR(db_name)
+
     def put(_, doc):
         name = iter(doc).next().tag
-        tdef = HSR.meta.tables['%s.%s' % (HSR.db_name, name)]
+        tdef = hsr.table(name)
         records = relation.docToRecords(doc, [c.name for c in tdef.columns])
         records = [t._asdict() for t in records]
         with dbtrx() as dml:
@@ -263,8 +283,7 @@ def CitiSOAPService(client, auth):
 
 
 @maker
-def CLI(argv, environ, openf, create_engine, SoapClient,
-        use_the_db='use hsr_cache'):
+def CLI(argv, environ, openf, create_engine, SoapClient):
     usage = __doc__.split('\n..')[0]
     opts = docopt(usage, argv=argv[1:])
     log.debug('docopt: %s', opts)
@@ -282,14 +301,8 @@ def CLI(argv, environ, openf, create_engine, SoapClient,
 
     def account(_, opt):
         env_key = opts[opt]
-
-        def dbtrx():
-            e = create_engine(environ[env_key])
-            c = e.connect()
-            c.execute(use_the_db)
-            return c
-
-        return dbtrx
+        u = make_url(environ[env_key])
+        return lambda: create_engine(u).connect(), u.database
 
     def auth(_, wrapped):
         return wrapped(usr=usr, pwd=pwd)
@@ -306,7 +319,9 @@ def CLI(argv, environ, openf, create_engine, SoapClient,
 
 
 class Mock(object):
-    environ = dict(PASSWORD='sekret')
+    environ = dict(PASSWORD='sekret',
+                   HSR_TRAIN_CHECK='sqlite://',
+                   HSR_TRAIN_ADMIN='sqlite://')
 
     def __init__(self):
         import StringIO
@@ -314,7 +329,7 @@ class Mock(object):
         self._db = None  # set in cli_access()
         self.argv = []
         self._fs = {}
-        self.connect = lambda path: self._db
+        self.create_engine = lambda path: self._db
         self.SoapClient = lambda wsdl: self
         self.stdout = StringIO.StringIO()
 
@@ -335,73 +350,74 @@ class Mock(object):
             raise IOError(path)
 
     def cli_access(self, cmd):
-        import sqlite3
         import pkg_resources as pkg
+        from sqlalchemy import create_engine  # sqlite in-memory use only
 
         self.argv = cmd.split()
-        opts = docopt(__doc__.split('\n.. ')[0], self.argv[1:])
-        self._fs[opts['--cache']] = None
+        # @@ opts = docopt(__doc__.split('\n.. ')[0], self.argv[1:])
 
-        # self._db = db = sqlite3.connect('mock.db')
-        self._db = db = sqlite3.connect(':memory:')
+        # self._db = db = create_engine('sqlite:///mock.db')
+        self._db = db = create_engine('sqlite://')
         if not '--refresh' in self.argv:
-            db.executescript(pkg.resource_string(__name__, 'test_cache.db'))
+            cn = db.connect().connection
+            cn.executescript(pkg.resource_string(__name__, 'test_cache.sql'))
 
         return lambda: CLI(self.argv, self.environ, self.openf,
-                           create_engine, self.SoapClient)
+                           self.create_engine, self.SoapClient)
 
     def _check(self, pwd):
         if not pwd == self.environ['PASSWORD']:
             raise IOError
 
-    CRS = """
-    <NewDataSet>
-      <CRS>
-        <MemberID>123</MemberID>
-        <intScore>96</intScore>
-        <strCompletionReport>Human Subjects Research</strCompletionReport>
-        <InstitutionUserName>bob</InstitutionUserName>
-      </CRS>
-      <CRS>
-        <MemberID>124</MemberID>
-        <intScore>91</intScore>
-      </CRS>
-    </NewDataSet>
-    """
+    @classmethod
+    def xml_records(self, template, qty):
+        from datetime import date
+
+        n = [10]
+
+        def num():
+            n[0] += 17
+            return n[0]
+
+        def dt():
+            n[0] += 29
+            return date(2000, n[0] % 12 + 1, n[0] * 3 % 27)
+
+        def txt():
+            n[0] += 13
+            return 's' * (n[0] % 5) + 't' * (n[0] % 7)
+
+        def record_markup():
+            record = ET.fromstring(template)
+            for field in record:
+                if field.text == '12345':
+                    field.text = str(num())
+                elif field.text == '2014-05-06':
+                    field.text = str(dt())
+                else:
+                    field.text = txt()
+
+            return ET.tostring(record)
+
+        return ("<NewDataSet>"
+                + '\n'.join(record_markup()
+                            for _ in range(qty))
+                + "</NewDataSet>")
 
     def GetCompletionReportsXML(self, usr, pwd):
         self._check(pwd)
-        return dict(GetCompletionReportsXMLResult=self.CRS)
-
-    GRADEBOOK = """
-    <NewDataSet>
-      <GRADEBOOK>
-        <intCompletionReportID>257</intCompletionReportID>
-        <intInstitutionID>12</intInstitutionID>
-        <strCompletionReport>Basic</strCompletionReport>
-      </GRADEBOOK>
-    </NewDataSet>
-    """
+        xml = self.xml_records(CRS.markup, 5)
+        return dict(GetCompletionReportsXMLResult=xml)
 
     def GetGradeBooksXML(self, usr, pwd):
         self._check(pwd)
-        return dict(GetGradeBooksXMLResult=self.GRADEBOOK)
-
-    MEMBERS = """
-    <NewDataSet>
-      <MEMBERS>
-        <intMemberID>43704</intMemberID>
-        <strLastII>Able</strLastII>
-        <strFirstII>Laurie</strFirstII>
-        <strInstUsername>lable</strInstUsername>
-        <strInstEmail>lable@example</strInstEmail>
-      </MEMBERS>
-    </NewDataSet>
-    """
+        xml = self.xml_records(GRADEBOOK.markup, 3)
+        return dict(GetGradeBooksXMLResult=xml)
 
     def GetMembersXML(self, usr, pwd):
         self._check(pwd)
-        return dict(GetMembersXMLResult=self.MEMBERS)
+        xml = self.xml_records(MEMBERS.markup, 4)
+        return dict(GetMembersXMLResult=xml)
 
 
 if __name__ == '__main__':
