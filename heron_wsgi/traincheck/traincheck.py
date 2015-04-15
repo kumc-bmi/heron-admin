@@ -11,15 +11,21 @@ Options:
                      [default: gradebooks.xml]
   --members=FILE     member info cache file
                      [default: members.xml]
-  --pii-db=NAME      environment variable with sqlalchemy URL for
-                     database cleared for PII (personally identifiable
-                     information) [default: HSR_TRAIN_CHECK]
+  --dbrd=NAME        environment variable with sqlalchemy URL of account
+                     with read access to PII DB
+                     [default: HSR_TRAIN_CHECK]
+  --dbadmin=NAME     environment variable with sqlalchemy URL of account
+                     with admin (create, delete, ...) access to PII DB
+                     [default: HSR_TRAIN_ADMIN]
   --wsdl=URL         Service Description URL
                      [default: https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL]  # noqa
   --user=NAME        [default: KUMC_Citi]
   --pwenv=K          environment variable to look up password
                      [default: PASSWORD]
   --debug            turn on debug logging
+
+
+PII DB is a database suitable for PII (personally identifiable information).
 
 .. note:: Usage doc stops here.
 
@@ -95,9 +101,9 @@ def main(stdout, access):
                     ET.fromstring(markup.encode('utf-8')))
             except StopIteration:
                 raise SystemExit('no records in %s' % fn)
-            relation.put(cli.piiDB(), records)
+            TrainingRecordsAdmin(cli.account('--dbadmin')).put(records)
     else:
-        store = TrainingRecordStore(cli.piiDB())
+        store = TrainingRecordsRd(cli.account('--dbrd'))
         try:
             training = store[cli.IDVAULT_NAME]
         except KeyError:
@@ -106,24 +112,24 @@ def main(stdout, access):
         stdout.write(str(training))
 
 
-HSR = MetaData()
-
-CRS = Table('CRS', HSR,
-            Column('strCompletionReport', String),
-            Column('InstitutionUserName', String),
-            schema='hsr_cache')
-
-
 @maker
-def TrainingRecordStore(
+def TrainingRecordsRd(
         dbtrx,
         course='Human Subjects Research'):
     '''
-    >>> inert = TrainingRecordStore(dbtrx=None)
+    >>> inert = TrainingRecordsRd(dbtrx=None)
     >>> inert.course
     'TODO: double-check course name'
 
     '''
+
+    HSR = MetaData()
+
+    CRS = Table('CRS', HSR,
+                Column('strCompletionReport', String),
+                Column('InstitutionUserName', String),
+                schema='hsr_cache')
+
     def __getitem__(_, instUserName):
         with dbtrx() as q:
             q.execute(CRS.select().where(
@@ -137,6 +143,34 @@ def TrainingRecordStore(
         return record
 
     return [__getitem__], dict(course=course)
+
+
+@maker
+def TrainingRecordsAdmin(dbtrx,
+                         colSize=120):
+    schema = MetaData()
+
+    def recordTable(r):
+        tuple_type = r.__class__
+        name = tuple_type.__name__
+        colnames = tuple_type._fields
+
+        return Table(name, schema,
+                     *[Column(n, String(colSize)) for n in colnames],
+                     schema='hsr_cache')
+
+    def put(_, records):
+        exemplar = records.next()
+        tdef = recordTable(exemplar)
+        records = [t._asdict() for t in [exemplar] + list(records)]
+        with dbtrx() as dml:
+            log.info('(re-)creating %s', tdef.name)
+            tdef.drop(dml, checkfirst=True)
+            tdef.create(dml)
+            dml.execute(tdef.insert(), records)
+            log.info('inserted %d rows into %s', len(records), tdef.name)
+
+    return [put], {}
 
 
 @maker
@@ -155,7 +189,8 @@ def CitiSOAPService(client, auth):
 
 
 @maker
-def CLI(argv, environ, openf, create_engine, SoapClient):
+def CLI(argv, environ, openf, create_engine, SoapClient,
+        use_the_db='use hsr_cache'):
     usage = __doc__.split('\n..')[0]
     opts = docopt(usage, argv=argv[1:])
     log.debug('docopt: %s', opts)
@@ -171,9 +206,16 @@ def CLI(argv, environ, openf, create_engine, SoapClient):
         with openf(opts[opt], 'w') as outfp:
             outfp.write(content.encode('utf-8'))
 
-    def piiDB(_):
-        env_key = opts['--pii-db']
-        return lambda: create_engine(environ[env_key]).connect()
+    def account(_, opt):
+        env_key = opts[opt]
+
+        def dbtrx():
+            e = create_engine(environ[env_key])
+            c = e.connect()
+            c.execute(use_the_db)
+            return c
+
+        return dbtrx
 
     def auth(_, wrapped):
         return wrapped(usr=usr, pwd=pwd)
@@ -186,7 +228,7 @@ def CLI(argv, environ, openf, create_engine, SoapClient):
 
     attrs = dict((name.replace('--', ''), val)
                  for (name, val) in opts.iteritems())
-    return [getBytes, put, auth, soapClient, piiDB], attrs
+    return [getBytes, put, auth, soapClient, account], attrs
 
 
 class Mock(object):
