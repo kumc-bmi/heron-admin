@@ -16,7 +16,8 @@ def put(dbtrx, records):
     return et.insert([exemplar] + list(records)), tuple_type
 
 
-def docToRecords(relation_doc):
+def docToRecords(relation_doc,
+                 cols=None):
     r'''Given a record-oriented XML document, generate namedtuple per record.
 
     >>> markup = """
@@ -45,7 +46,8 @@ def docToRecords(relation_doc):
     '''
     exemplar = iter(relation_doc).next()
     relation_name = exemplar.tag
-    cols = [child.tag for child in exemplar]
+    if not cols:
+        cols = [child.tag for child in exemplar]
     R = namedtuple(relation_name, cols)
     default = R(*[None] * len(cols))
 

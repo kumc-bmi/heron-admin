@@ -72,11 +72,14 @@ import logging
 import xml.etree.ElementTree as ET
 
 from docopt import docopt
-from sqlalchemy import Table, Column, String, MetaData, and_
+from sqlalchemy import (MetaData, Table, Column,
+                        String, Integer, Date,
+                        and_)
 
 from lalib import maker, dbmgr
 import relation
 
+STRING_SIZE = 120
 log = logging.getLogger(__name__)
 
 CITI_NAMESPACE = 'https://webservices.citiprogram.org/'
@@ -96,12 +99,11 @@ def main(stdout, access):
             markup = svc.get(k)
             cli.put(opt, markup)
             log.info('saved length=%d to %s', len(markup), fn)
+            doc = ET.fromstring(markup.encode('utf-8'))
             try:
-                records = relation.docToRecords(
-                    ET.fromstring(markup.encode('utf-8')))
+                TrainingRecordsAdmin(cli.account('--dbadmin')).put(doc)
             except StopIteration:
                 raise SystemExit('no records in %s' % fn)
-            TrainingRecordsAdmin(cli.account('--dbadmin')).put(records)
     else:
         store = TrainingRecordsRd(cli.account('--dbrd'))
         try:
@@ -110,6 +112,93 @@ def main(stdout, access):
             raise SystemExit('no training records for %s' % cli.IDVAULT_NAME)
         log.info('training OK: %s', training)
         stdout.write(str(training))
+
+
+class CRS(object):
+    # TODO: parse dates to avoid ...
+    # Warning: Data truncated for column 'AddedMember' at row 34
+    # or suppress the warning
+    markup = '''
+      <CRS>
+        <CR_InstitutionID>1</CR_InstitutionID>
+        <MemberID>1</MemberID>
+        <EmplID />
+        <StudentID>1</StudentID>
+        <InstitutionUserName>a</InstitutionUserName>
+        <FirstName>a</FirstName>
+        <LastName>a</LastName>
+        <memberEmail>a</memberEmail>
+        <AddedMember>2014-05-06T19:15:48.2-04:00</AddedMember>
+        <strCompletionReport>a</strCompletionReport>
+        <intGroupID>1</intGroupID>
+        <strGroup>a</strGroup>
+        <intStageID>1</intStageID>
+        <intStageNumber>1</intStageNumber>
+        <strStage>a</strStage>
+        <intCompletionReportID>1</intCompletionReportID>
+        <intMemberStageID>1</intMemberStageID>
+        <dtePassed>2014-05-06T19:15:48.2-04:00</dtePassed>
+        <intScore>1</intScore>
+        <intPassingScore>1</intPassingScore>
+        <dteExpiration>2014-05-06T19:15:48.2-04:00</dteExpiration>
+      </CRS>
+    '''
+
+
+class GRADEBOOK(object):
+    markup = '''
+      <GRADEBOOK>
+        <intCompletionReportID>1</intCompletionReportID>
+        <intInstitutionID>1</intInstitutionID>
+        <strCompletionReport>a</strCompletionReport>
+        <intGroupID>1</intGroupID>
+        <strGroup>a</strGroup>
+        <intStageID>1</intStageID>
+        <strStage>a</strStage>
+      </GRADEBOOK>
+    '''
+
+
+class MEMBERS(object):
+    # TODO: dteXXX fields are actually dates in 09/09/14 format.
+    markup = '''
+      <MEMBERS>
+        <intMemberID>1</intMemberID>
+        <strLastII>a</strLastII>
+        <strFirstII>a</strFirstII>
+        <strUsernameII>a</strUsernameII>
+        <strInstUsername>a</strInstUsername>
+        <strInstEmail>a</strInstEmail>
+        <dteAdded>a</dteAdded>
+        <dteAffiliated>a</dteAffiliated>
+        <dteLastLogin>a</dteLastLogin>
+        <strCustom1 />
+        <strCustom2 />
+        <strCustom3 />
+        <strCustom4 />
+        <strCustom5 />
+        <strSSOCustomAttrib1 />
+        <strSSOCustomAttrib2>a</strSSOCustomAttrib2>
+        <strEmployeeNum />
+      </MEMBERS>
+    '''
+
+
+class HSR(object):
+    db_name = 'hsr_cache'
+
+    meta = MetaData()
+
+    columns = lambda markup: [
+        Column(field.tag,
+               Integer if field.text == '1' else
+               Date() if field.text and field.text.startswith('2014-') else
+               String(STRING_SIZE))
+        for field in ET.fromstring(markup)]
+
+    for cls in [CRS, MEMBERS, GRADEBOOK]:
+        Table(cls.__name__, meta, *columns(cls.markup),
+              schema=db_name)
 
 
 @maker
@@ -123,19 +212,14 @@ def TrainingRecordsRd(
 
     '''
 
-    HSR = MetaData()
-
-    CRS = Table('CRS', HSR,
-                Column('strCompletionReport', String),
-                Column('InstitutionUserName', String),
-                schema='hsr_cache')
-
     def __getitem__(_, instUserName):
+        crs = HSR.meta.tables['%s.%s' % (HSR.db_name, 'CRS')]
+
         with dbtrx() as q:
-            q.execute(CRS.select().where(
-                and_(CRS.c.strCompletionReport == course,
-                     CRS.c.InstitutionUserName == instUserName)))
-            record = q.fetchone()
+            result = q.execute(crs.select().where(
+                and_(crs.c.strCompletionReport == course,
+                     crs.c.InstitutionUserName == instUserName)))
+            record = result.fetchone()
 
         if not record:
             raise KeyError(instUserName)
@@ -148,21 +232,11 @@ def TrainingRecordsRd(
 @maker
 def TrainingRecordsAdmin(dbtrx,
                          colSize=120):
-    schema = MetaData()
-
-    def recordTable(r):
-        tuple_type = r.__class__
-        name = tuple_type.__name__
-        colnames = tuple_type._fields
-
-        return Table(name, schema,
-                     *[Column(n, String(colSize)) for n in colnames],
-                     schema='hsr_cache')
-
-    def put(_, records):
-        exemplar = records.next()
-        tdef = recordTable(exemplar)
-        records = [t._asdict() for t in [exemplar] + list(records)]
+    def put(_, doc):
+        name = iter(doc).next().tag
+        tdef = HSR.meta.tables['%s.%s' % (HSR.db_name, name)]
+        records = relation.docToRecords(doc, [c.name for c in tdef.columns])
+        records = [t._asdict() for t in records]
         with dbtrx() as dml:
             log.info('(re-)creating %s', tdef.name)
             tdef.drop(dml, checkfirst=True)
