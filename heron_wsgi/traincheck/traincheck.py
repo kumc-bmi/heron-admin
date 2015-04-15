@@ -354,7 +354,6 @@ class Mock(object):
         from sqlalchemy import create_engine  # sqlite in-memory use only
 
         self.argv = cmd.split()
-        # @@ opts = docopt(__doc__.split('\n.. ')[0], self.argv[1:])
 
         # self._db = db = create_engine('sqlite:///mock.db')
         self._db = db = create_engine('sqlite://')
