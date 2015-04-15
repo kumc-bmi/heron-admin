@@ -39,12 +39,10 @@ Let's refresh the cache from the CITI service::
 
     >>> main(stdout, s1.cli_access('traincheck --refresh'))
 
-The cache is stored in the filesystem::
+The cache is stored in the database::
 
-    >>> print '\n'.join(sorted(s1._fs.keys()))
-    completionReports.xml
-    gradebooks.xml
-    members.xml
+    >>> s1._db.execute('select count(*) from CRS').fetchall()
+    [(5,)]
 
 Now let's look up Bob's training::
 
@@ -97,8 +95,7 @@ def main(stdout, access):
                 ('--members', cli.members, svc.GetMembersXML),
                 ('--reports', cli.reports, svc.GetCompletionReportsXML)]:
             markup = svc.get(k)
-            cli.put(opt, markup)
-            log.info('saved length=%d to %s', len(markup), fn)
+            log.info('got length=%d to %s', len(markup), fn)
             doc = ET.fromstring(markup.encode('utf-8'))
             try:
                 TrainingRecordsAdmin(cli.account('--dbadmin')).put(doc)
@@ -295,10 +292,6 @@ def CLI(argv, environ, openf, create_engine, SoapClient):
         with openf(opts[opt]) as infp:
             return infp.read()
 
-    def put(_, opt, content):
-        with openf(opts[opt], 'w') as outfp:
-            outfp.write(content.encode('utf-8'))
-
     def account(_, opt):
         env_key = opts[opt]
         u = make_url(environ[env_key])
@@ -315,7 +308,7 @@ def CLI(argv, environ, openf, create_engine, SoapClient):
 
     attrs = dict((name.replace('--', ''), val)
                  for (name, val) in opts.iteritems())
-    return [getBytes, put, auth, soapClient, account], attrs
+    return [getBytes, auth, soapClient, account], attrs
 
 
 class Mock(object):
