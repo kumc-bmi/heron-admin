@@ -89,9 +89,7 @@ def main(stdout, access):
                 svc.GetGradeBooksXML,
                 svc.GetMembersXML,
                 svc.GetCompletionReportsXML]:
-            markup = svc.get(k)
-            log.info('got length=%d to %s', len(markup), k)
-            doc = ET.fromstring(markup.encode('utf-8'))
+            doc = svc.get(k)
             try:
                 admin.put(doc)
             except StopIteration:
@@ -268,7 +266,9 @@ def CitiSOAPService(client, auth):
 
     def get(_, which):
         reply = auth(methods[which])
-        return reply[which + 'Result']
+        markup = reply[which + 'Result']
+        log.info('got length=%d from %s', len(markup), which)
+        return ET.fromstring(markup.encode('utf-8'))
 
     attrs = dict((name, name) for name in methods.keys())
     return [get], attrs
