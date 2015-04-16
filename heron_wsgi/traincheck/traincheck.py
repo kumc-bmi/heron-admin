@@ -41,18 +41,19 @@ The cache is stored in the database::
 
 Now let's look up Bob's training::
 
-    >>> main(stdout, s1.cli_access('traincheck bob'))
-    ... # doctest: +NORMALIZE_WHITESPACE
-    (None, 123, None, None, u'bob', None, None, None, None,
-     u'Human Subjects Research', None, None, None, None,
-     None, None, None, None, 96, None, None)
+    >>> rd = TrainingRecordsRd(acct=(lambda: s1._db.connect(), None))
+    >>> rd.course
+    'Basic/Refresher Course - Human Subjects Research'
+
+    >>> rd['sssstttt'].dtePassed
+    u'2000-11-12'
 
 But there's no training on file for Fred::
 
-    >>> main(stdout, s1.cli_access('traincheck fred'))
+    >>> rd['fred']
     Traceback (most recent call last):
       ...
-    SystemExit: no training records for fred
+    KeyError: 'fred'
 
 
     >>> 'TODO: check for expired training'
@@ -277,14 +278,7 @@ class Chalk(object):
 @maker
 def TrainingRecordsRd(
         acct,
-        course='Human Subjects Research'):
-    '''
-    >>> inert = TrainingRecordsRd(acct=(None, None))
-    >>> inert.course
-    'TODO: double-check course name'
-
-    '''
-
+        course='Basic/Refresher Course - Human Subjects Research'):
     dbtrx, db_name = acct
     crs = HSR(db_name).table('CRS')
 
@@ -463,9 +457,12 @@ R3,S,RS3@example,J1,8/4/2013 0:00,rs3
             n[0] += 29
             return date(2000, n[0] % 12 + 1, n[0] * 3 % 27)
 
-        def txt():
+        def txt(tag):
             n[0] += 13
-            return 's' * (n[0] % 5) + 't' * (n[0] % 7)
+            return (
+                'Basic/Refresher Course - Human Subjects Research'
+                if tag == 'strCompletionReport' and n[0] % 3
+                else 's' * (n[0] % 5) + 't' * (n[0] % 7))
 
         def record_markup():
             record = ET.fromstring(template)
@@ -475,7 +472,7 @@ R3,S,RS3@example,J1,8/4/2013 0:00,rs3
                 elif field.text == '2014-05-06':
                     field.text = str(dt())
                 else:
-                    field.text = txt()
+                    field.text = txt(field.tag)
 
             return ET.tostring(record)
 
