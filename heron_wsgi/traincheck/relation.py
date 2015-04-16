@@ -1,9 +1,17 @@
 from collections import namedtuple
+import csv
 import logging
 
 log = logging.getLogger(__name__)
 
 from lalib import maker
+
+
+def readRecords(fp):
+    reader = csv.reader(fp)
+    header = reader.next()
+    R = namedtuple('R', header)
+    return [R(*row) for row in reader]
 
 
 def put(dbtrx, records):
