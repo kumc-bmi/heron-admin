@@ -5,12 +5,6 @@ Usage:
   traincheck [options] --refresh
 
 Options:
-  --reports=FILE     completion reports cache file
-                     [default: completionReports.xml]
-  --gradebooks=FILE  gradebooks cache file
-                     [default: gradebooks.xml]
-  --members=FILE     member info cache file
-                     [default: members.xml]
   --dbrd=NAME        environment variable with sqlalchemy URL of account
                      with read access to PII DB
                      [default: HSR_TRAIN_CHECK]
@@ -89,18 +83,18 @@ def main(stdout, access):
     if cli.refresh:
         svc = CitiSOAPService(cli.soapClient(), cli.auth)
 
-        for (opt, fn, k) in [
+        for k in [
                 # smallest to largest typical payload
-                ('--gradebooks', cli.gradebooks, svc.GetGradeBooksXML),
-                ('--members', cli.members, svc.GetMembersXML),
-                ('--reports', cli.reports, svc.GetCompletionReportsXML)]:
+                svc.GetGradeBooksXML,
+                svc.GetMembersXML,
+                svc.GetCompletionReportsXML]:
             markup = svc.get(k)
-            log.info('got length=%d to %s', len(markup), fn)
+            log.info('got length=%d to %s', len(markup), k)
             doc = ET.fromstring(markup.encode('utf-8'))
             try:
                 TrainingRecordsAdmin(cli.account('--dbadmin')).put(doc)
             except StopIteration:
-                raise SystemExit('no records in %s' % fn)
+                raise SystemExit('no records in %s' % k)
     else:
         store = TrainingRecordsRd(cli.account('--dbrd'))
         try:
