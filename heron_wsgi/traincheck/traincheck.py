@@ -206,8 +206,8 @@ class HSR(object):
             Table(cls.__name__, meta, *columns(cls.markup),
                   schema=db_name)
 
-        for _, tn, _ in Chalk.tables:
-            Table(tn, meta, *Chalk.columns(),
+        for _, tn, date_col in Chalk.tables:
+            Table(tn, meta, *Chalk.columns(date_col),
                   schema=db_name)
 
         self.tables = meta.tables
@@ -222,26 +222,37 @@ class Chalk(object):
     '''Chalk back-fill data
     '''
 
-    _rdc = lambda f: lambda r: r._replace(DateCompleted=f(r.DateCompleted))
-    _rcd = lambda f: lambda r: r._replace(CompleteDate=f(r.CompleteDate))
-
-    tables = [('--full', 'HumanSubjectsFull', _rdc),
-              ('--refresher', 'HumanSubjectsRefresher', _rcd),
-              ('--in-person', 'HumanSubjectsInPerson', _rcd)]
+    tables = [('--full', 'HumanSubjectsFull', 'DateCompleted'),
+              ('--refresher', 'HumanSubjectsRefresher', 'CompleteDate'),
+              ('--in-person', 'HumanSubjectsInPerson', 'CompleteDate')]
 
     @classmethod
-    def columns(cls):
+    def columns(cls, date_col):
         return [Column('FirstName', VARCHAR120),
                 Column('LastName', VARCHAR120),
                 Column('Email', VARCHAR120),
                 Column('EmployeeID', VARCHAR120),
-                Column('DateCompleted', DateTime()),
+                Column(date_col, DateTime()),
                 Column('Username', VARCHAR120)]
 
     @classmethod
-    def parse_dates(cls, records, replace_date_col):
-        mdy = lambda txt: datetime.strptime(txt, '%m/%d/%Y %H:%M')
-        fix = replace_date_col(mdy)
+    def mdy(cls, txt):
+        '''
+        >>> Chalk.mdy('2/4/2010 0:00')
+        datetime.datetime(2010, 2, 4, 0, 0)
+        '''
+        return datetime.strptime(txt, '%m/%d/%Y %H:%M')
+
+    @classmethod
+    def parse_dates(cls, records, date_col):
+        '''
+        >>> records = relation.readRecords(Mock.open_in_person())
+        >>> Chalk.parse_dates(records, 'CompleteDate')
+        ... # doctest: +NORMALIZE_WHITESPACE
+        [R(FirstName='R', LastName='S', Email='RS@example', EmployeeID='J1',
+         CompleteDate=datetime.datetime(2011, 8, 4, 0, 0), Username='rs')]
+        '''
+        fix = lambda r: r._replace(**{date_col: cls.mdy(getattr(r, date_col))})
         return [fix(r) for r in records]
 
 
@@ -454,6 +465,14 @@ class Mock(object):
         self._check(pwd)
         xml = self.xml_records(MEMBERS.markup, 4)
         return dict(GetMembersXMLResult=xml)
+
+    @classmethod
+    def open_in_person(self):
+        from StringIO import StringIO
+        return StringIO('''
+FirstName,LastName,Email,EmployeeID,CompleteDate,Username
+R,S,RS@example,J1,8/4/2011 0:00,rs
+        '''.strip())
 
 
 if __name__ == '__main__':
