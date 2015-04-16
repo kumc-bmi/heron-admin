@@ -2,7 +2,7 @@ r'''traincheck -- check human subjects training records via CITI
 
 Usage:
   traincheck [options] IDVAULT_NAME
-  traincheck [options] --refresh
+  traincheck [options] --refresh --user=NAME
   traincheck [options] backfill --full=FILE --refresher=FILE --in-person=FILE
 
 Options:
