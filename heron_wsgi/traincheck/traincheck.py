@@ -14,9 +14,9 @@ Options:
                      [default: HSR_TRAIN_ADMIN]
   --wsdl=URL         Service Description URL
                      [default: https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL]  # noqa
-  --user=NAME        [default: KUMC_Citi]
+  --user=NAME        username for login to CitiSOAPService
   --pwenv=K          environment variable to look up password
-                     [default: PASSWORD]
+                     [default: CITI_PASSWORD]
   --debug            turn on debug logging
 
 
@@ -353,7 +353,7 @@ def CLI(argv, environ, openf, create_engine, SoapClient):
 
 
 class Mock(object):
-    environ = dict(PASSWORD='sekret',
+    environ = dict(CITI_PASSWORD='sekret',
                    HSR_TRAIN_CHECK='sqlite://',
                    HSR_TRAIN_ADMIN='sqlite://')
 
@@ -399,7 +399,7 @@ class Mock(object):
                            self.create_engine, self.SoapClient)
 
     def _check(self, pwd):
-        if not pwd == self.environ['PASSWORD']:
+        if not pwd == self.environ['CITI_PASSWORD']:
             raise IOError
 
     @classmethod
