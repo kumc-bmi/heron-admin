@@ -83,6 +83,7 @@ def main(stdout, access):
     if cli.refresh:
         svc = CitiSOAPService(cli.soapClient(), cli.auth)
 
+        admin = TrainingRecordsAdmin(cli.account('--dbadmin'))
         for k in [
                 # smallest to largest typical payload
                 svc.GetGradeBooksXML,
@@ -92,7 +93,7 @@ def main(stdout, access):
             log.info('got length=%d to %s', len(markup), k)
             doc = ET.fromstring(markup.encode('utf-8'))
             try:
-                TrainingRecordsAdmin(cli.account('--dbadmin')).put(doc)
+                admin.put(doc)
             except StopIteration:
                 raise SystemExit('no records in %s' % k)
     else:
