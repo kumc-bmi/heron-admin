@@ -3,6 +3,7 @@ r'''traincheck -- check human subjects training records via CITI
 Usage:
   traincheck [options] IDVAULT_NAME
   traincheck [options] --refresh
+  traincheck [options] backfill --full=FILE --refresher=FILE --in-person=FILE
 
 Options:
   --dbrd=NAME        environment variable with sqlalchemy URL of account
@@ -61,17 +62,18 @@ But there's no training on file for Fred::
 
 import logging
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 from docopt import docopt
 from sqlalchemy import (MetaData, Table, Column,
-                        String, Integer, Date,
+                        String, Integer, Date, DateTime,
                         and_)
 from sqlalchemy.engine.url import make_url
 
 from lalib import maker
 import relation
 
-STRING_SIZE = 120
+VARCHAR120 = String(120)
 log = logging.getLogger(__name__)
 
 CITI_NAMESPACE = 'https://webservices.citiprogram.org/'
@@ -91,9 +93,14 @@ def main(stdout, access):
                 svc.GetCompletionReportsXML]:
             doc = svc.get(k)
             try:
-                admin.put(doc)
+                admin.putDoc(doc)
             except StopIteration:
                 raise SystemExit('no records in %s' % k)
+    elif cli.backfill:
+        admin = TrainingRecordsAdmin(cli.account('--dbadmin'))
+        for (opt, table_name, date_style) in Chalk.tables:
+            data = cli.getRecords(opt)
+            admin.put(table_name, Chalk.parse_dates(data, date_style))
     else:
         store = TrainingRecordsRd(cli.account('--dbrd'))
         try:
@@ -180,6 +187,7 @@ class HSR(object):
     def __init__(self,
                  db_name='hsr_cache'):
         self.db_name = db_name
+        log.info('HSR DB name: %s', db_name)
 
         ty = lambda text: (
             Integer if text == '12345' else
@@ -187,7 +195,7 @@ class HSR(object):
             # SQLite Date type only accepts Python date objects as input.
             # by just using string.
             Date() if db_name and text == '2014-05-06' else
-            String(STRING_SIZE))
+            VARCHAR120)
 
         columns = lambda markup: [
             Column(field.tag, ty(field.text))
@@ -199,12 +207,43 @@ class HSR(object):
             Table(cls.__name__, meta, *columns(cls.markup),
                   schema=db_name)
 
+        for _, tn, _ in Chalk.tables:
+            Table(tn, meta, *Chalk.columns(),
+                  schema=db_name)
+
         self.tables = meta.tables
 
     def table(self, name):
         qname = ('%s.%s' % (self.db_name, name) if self.db_name
                  else name)
         return self.tables[qname]
+
+
+class Chalk(object):
+    '''Chalk back-fill data
+    '''
+
+    _rdc = lambda f: lambda r: r._replace(DateCompleted=f(r.DateCompleted))
+    _rcd = lambda f: lambda r: r._replace(CompleteDate=f(r.CompleteDate))
+
+    tables = [('--full', 'HumanSubjectsFull', _rdc),
+              ('--refresher', 'HumanSubjectsRefresher', _rcd),
+              ('--in-person', 'HumanSubjectsInPerson', _rcd)]
+
+    @classmethod
+    def columns(cls):
+        return [Column('FirstName', VARCHAR120),
+                Column('LastName', VARCHAR120),
+                Column('Email', VARCHAR120),
+                Column('EmployeeID', VARCHAR120),
+                Column('DateCompleted', DateTime()),
+                Column('Username', VARCHAR120)]
+
+    @classmethod
+    def parse_dates(cls, records, replace_date_col):
+        mdy = lambda txt: datetime.strptime(txt, '%m/%d/%Y %H:%M')
+        fix = replace_date_col(mdy)
+        return [fix(r) for r in records]
 
 
 @maker
@@ -242,10 +281,14 @@ def TrainingRecordsAdmin(acct,
     dbtrx, db_name = acct
     hsr = HSR(db_name)
 
-    def put(_, doc):
+    def putDoc(_, doc):
         name = iter(doc).next().tag
         tdef = hsr.table(name)
         records = relation.docToRecords(doc, [c.name for c in tdef.columns])
+        put(name, records)
+
+    def put(_, name, records):
+        tdef = hsr.table(name)
         records = [t._asdict() for t in records]
         with dbtrx() as dml:
             log.info('(re-)creating %s', tdef.name)
@@ -254,7 +297,7 @@ def TrainingRecordsAdmin(acct,
             dml.execute(tdef.insert(), records)
             log.info('inserted %d rows into %s', len(records), tdef.name)
 
-    return [put], {}
+    return [put, putDoc], {}
 
 
 @maker
@@ -287,6 +330,10 @@ def CLI(argv, environ, openf, create_engine, SoapClient):
         with openf(opts[opt]) as infp:
             return infp.read()
 
+    def getRecords(_, opt):
+        with openf(opts[opt]) as infp:
+            return relation.readRecords(infp)
+
     def account(_, opt):
         env_key = opts[opt]
         u = make_url(environ[env_key])
@@ -303,7 +350,7 @@ def CLI(argv, environ, openf, create_engine, SoapClient):
 
     attrs = dict((name.replace('--', ''), val)
                  for (name, val) in opts.iteritems())
-    return [getBytes, auth, soapClient, account], attrs
+    return [getBytes, getRecords, auth, soapClient, account], attrs
 
 
 class Mock(object):
