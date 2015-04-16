@@ -46,7 +46,7 @@ Now let's look up Bob's training::
     'Basic/Refresher Course - Human Subjects Research'
 
     >>> rd['sssstttt'].dtePassed
-    u'2000-11-12'
+    datetime.date(2000, 11, 23)
 
 But there's no training on file for Fred::
 
@@ -103,21 +103,22 @@ def main(stdout, access):
         svc = CitiSOAPService(cli.soapClient(), cli.auth)
 
         admin = TrainingRecordsAdmin(cli.account('--dbadmin'))
-        for k in [
+        for cls, k in [
                 # smallest to largest typical payload
-                svc.GetGradeBooksXML,
-                svc.GetMembersXML,
-                svc.GetCompletionReportsXML]:
+                (GRADEBOOK, svc.GetGradeBooksXML),
+                (MEMBERS, svc.GetMembersXML),
+                (CRS, svc.GetCompletionReportsXML)]:
             doc = svc.get(k)
             try:
-                admin.putDoc(doc)
+                name, data = admin.docRecords(doc)
+                admin.put(name, cls.parse_dates(data))
             except StopIteration:
                 raise SystemExit('no records in %s' % k)
     elif cli.backfill:
         admin = TrainingRecordsAdmin(cli.account('--dbadmin'))
-        for (opt, table_name, date_style) in Chalk.tables:
+        for (opt, table_name, date_col) in Chalk.tables:
             data = cli.getRecords(opt)
-            admin.put(table_name, Chalk.parse_dates(data, date_style))
+            admin.put(table_name, Chalk.parse_dates(data, [date_col]))
     else:
         store = TrainingRecordsRd(cli.account('--dbrd'))
         try:
@@ -128,12 +129,54 @@ def main(stdout, access):
         stdout.write(str(training))
 
 
-class CRS(object):
-    # TODO: parse dates to avoid ...
-    # Warning: Data truncated for column 'AddedMember' at row 34
-    # or suppress the warning
-    # Dates are actually of the form:
+class TableDesign(object):
+    date_format = '%Y/%m/%d'
+    maxlen = 100
+
+    @classmethod
+    def _parse(cls, txt):
+        return datetime.strptime((txt or '')[:cls.maxlen], cls.date_format)
+
+    @classmethod
+    def parse_dates(cls, records, date_columns=None):
+        if date_columns is None:
+            date_columns = [c.name for c in cls.columns()
+                            if isinstance(c.type, Date)
+                            or isinstance(c.type, DateTime)]
+
+        fix = lambda r: r._replace(**dict((col, cls._parse(getattr(r, col)))
+                                          for col in date_columns))
+        return [fix(r) for r in records]
+
+    @classmethod
+    def columns(cls):
+        ty = lambda text: (
+            Integer if text == '12345' else
+            Date() if text in ['2014-05-06', '09/09/14'] else
+            VARCHAR120)
+
+        return [Column(field.tag, ty(field.text))
+                for field in ET.fromstring(cls.markup)]
+
+    @classmethod
+    def xml_table(cls, meta, db_name):
+        return Table(cls.__name__, meta,
+                     *cls.columns(),
+                     schema=db_name)
+
+
+class CRS(TableDesign):
+    '''
+    >>> CRS._parse('2014-05-06T19:15:48.2-04:00')
+    datetime.datetime(2014, 5, 6, 19, 15, 48)
+    '''
+
+    date_format = '%Y-%m-%dT%H:%M:%S'
+
+    # strip sub-second, timezone of data such as
     # 2014-05-06T19:15:48.2-04:00
+    maxlen = len('2014-05-06T19:15:48')
+
     markup = '''
       <CRS>
         <CR_InstitutionID>12345</CR_InstitutionID>
@@ -161,7 +204,9 @@ class CRS(object):
     '''
 
 
-class GRADEBOOK(object):
+class GRADEBOOK(TableDesign):
+    date_format = None
+
     markup = '''
       <GRADEBOOK>
         <intCompletionReportID>12345</intCompletionReportID>
@@ -175,8 +220,9 @@ class GRADEBOOK(object):
     '''
 
 
-class MEMBERS(object):
-    # TODO: dteXXX fields are actually dates in 09/09/14 format.
+class MEMBERS(TableDesign):
+    date_format = '%m/%d/%y %H:%M'
+
     markup = '''
       <MEMBERS>
         <intMemberID>12345</intMemberID>
@@ -185,9 +231,9 @@ class MEMBERS(object):
         <strUsernameII>a</strUsernameII>
         <strInstUsername>a</strInstUsername>
         <strInstEmail>a</strInstEmail>
-        <dteAdded>a</dteAdded>
-        <dteAffiliated>a</dteAffiliated>
-        <dteLastLogin>a</dteLastLogin>
+        <dteAdded>09/09/14</dteAdded>
+        <dteAffiliated>09/09/14</dteAffiliated>
+        <dteLastLogin>09/09/14</dteLastLogin>
         <strCustom1 />
         <strCustom2 />
         <strCustom3 />
@@ -205,23 +251,10 @@ class HSR(object):
         self.db_name = db_name
         log.info('HSR DB name: %s', db_name)
 
-        ty = lambda text: (
-            Integer if text == '12345' else
-            # For unit testing, avoid:
-            # SQLite Date type only accepts Python date objects as input.
-            # by just using string.
-            Date() if db_name and text == '2014-05-06' else
-            VARCHAR120)
-
-        columns = lambda markup: [
-            Column(field.tag, ty(field.text))
-            for field in ET.fromstring(markup)]
-
         meta = MetaData()
 
         for cls in [CRS, MEMBERS, GRADEBOOK]:
-            Table(cls.__name__, meta, *columns(cls.markup),
-                  schema=db_name)
+            cls.xml_table(meta, db_name)
 
         for _, name, date_col in Chalk.tables:
             Chalk.table(meta, db_name, name, date_col)
@@ -234,9 +267,17 @@ class HSR(object):
         return self.tables[qname]
 
 
-class Chalk(object):
+class Chalk(TableDesign):
     '''Chalk back-fill data
+
+        >>> with Mock().openf('i.csv') as infp:
+        ...     records = relation.readRecords(infp)
+        >>> Chalk.parse_dates(records, ['CompleteDate'])
+        ... # doctest: +NORMALIZE_WHITESPACE
+        [R(FirstName='R2', LastName='S', Email='RS2@example', EmployeeID='J1',
+         CompleteDate=datetime.datetime(2012, 8, 4, 0, 0), Username='rs2')]
     '''
+    date_format = '%m/%d/%Y %H:%M'
 
     tables = [('--full', 'HumanSubjectsFull', 'DateCompleted'),
               ('--refresher', 'HumanSubjectsRefresher', 'CompleteDate'),
@@ -252,27 +293,6 @@ class Chalk(object):
                      Column(date_col, DateTime()),
                      Column('Username', VARCHAR120),
                      schema=db_name)
-
-    @classmethod
-    def mdy(cls, txt):
-        '''
-        >>> Chalk.mdy('2/4/2010 0:00')
-        datetime.datetime(2010, 2, 4, 0, 0)
-        '''
-        return datetime.strptime(txt, '%m/%d/%Y %H:%M')
-
-    @classmethod
-    def parse_dates(cls, records, date_col):
-        '''
-        >>> with Mock().openf('i.csv') as infp:
-        ...     records = relation.readRecords(infp)
-        >>> Chalk.parse_dates(records, 'CompleteDate')
-        ... # doctest: +NORMALIZE_WHITESPACE
-        [R(FirstName='R2', LastName='S', Email='RS2@example', EmployeeID='J1',
-         CompleteDate=datetime.datetime(2012, 8, 4, 0, 0), Username='rs2')]
-        '''
-        fix = lambda r: r._replace(**{date_col: cls.mdy(getattr(r, date_col))})
-        return [fix(r) for r in records]
 
 
 @maker
@@ -303,11 +323,11 @@ def TrainingRecordsAdmin(acct,
     dbtrx, db_name = acct
     hsr = HSR(db_name)
 
-    def putDoc(_, doc):
+    def docRecords(_, doc):
         name = iter(doc).next().tag
         tdef = hsr.table(name)
         records = relation.docToRecords(doc, [c.name for c in tdef.columns])
-        put(_, name, records)
+        return name, records
 
     def put(_, name, records):
         tdef = hsr.table(name)
@@ -319,7 +339,7 @@ def TrainingRecordsAdmin(acct,
             dml.execute(tdef.insert(), records)
             log.info('inserted %d rows into %s', len(records), tdef.name)
 
-    return [put, putDoc], {}
+    return [put, docRecords], {}
 
 
 @maker
@@ -445,17 +465,21 @@ R3,S,RS3@example,J1,8/4/2013 0:00,rs3
 
     @classmethod
     def xml_records(self, template, qty):
-        from datetime import date
-
         n = [10]
 
         def num():
             n[0] += 17
             return n[0]
 
-        def dt():
+        def ymd():
             n[0] += 29
-            return date(2000, n[0] % 12 + 1, n[0] * 3 % 27)
+            return '%04d-%02d-%02dT12:34:56' % (
+                2000, n[0] % 12 + 1, (n[0] * 3) % 26 + 1)
+
+        def mdy():
+            n[0] += 29
+            return '%02d/%02d/%02d 00:00' % (
+                n[0] % 12 + 1, (n[0] * 3) % 26 + 1, 11)
 
         def txt(tag):
             n[0] += 13
@@ -470,7 +494,9 @@ R3,S,RS3@example,J1,8/4/2013 0:00,rs3
                 if field.text == '12345':
                     field.text = str(num())
                 elif field.text == '2014-05-06':
-                    field.text = str(dt())
+                    field.text = ymd()
+                elif field.text == '09/09/14':
+                    field.text = mdy()
                 else:
                     field.text = txt(field.tag)
 
