@@ -32,7 +32,7 @@ Scenario one::
 
 Let's refresh the cache from the CITI service::
 
-    >>> main(stdout, s1.cli_access('traincheck --refresh'))
+    >>> main(stdout, s1.cli_access('traincheck --refresh --user=MySchool'))
 
 The cache is stored in the database::
 
