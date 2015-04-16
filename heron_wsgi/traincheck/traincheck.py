@@ -46,7 +46,7 @@ Now let's look up Bob's training::
     'Basic/Refresher Course - Human Subjects Research'
 
     >>> rd['sssstttt'].dtePassed
-    datetime.date(2000, 11, 23)
+    datetime.datetime(2000, 11, 23, 12, 34, 56)
 
 But there's no training on file for Fred::
 
@@ -135,7 +135,8 @@ class TableDesign(object):
 
     @classmethod
     def _parse(cls, txt):
-        return datetime.strptime((txt or '')[:cls.maxlen], cls.date_format)
+        return (None if not txt else
+                datetime.strptime(txt[:cls.maxlen], cls.date_format))
 
     @classmethod
     def parse_dates(cls, records, date_columns=None):
@@ -152,7 +153,8 @@ class TableDesign(object):
     def columns(cls):
         ty = lambda text: (
             Integer if text == '12345' else
-            Date() if text in ['2014-05-06', '09/09/14'] else
+            DateTime() if text == '2014-05-06T19:15:48' else
+            Date() if text == '09/09/14' else
             VARCHAR120)
 
         return [Column(field.tag, ty(field.text))
@@ -169,6 +171,10 @@ class CRS(TableDesign):
     '''
     >>> CRS._parse('2014-05-06T19:15:48.2-04:00')
     datetime.datetime(2014, 5, 6, 19, 15, 48)
+
+    >>> CRS._parse('')
+    >>> CRS._parse(None)
+
     '''
 
     date_format = '%Y-%m-%dT%H:%M:%S'
@@ -187,7 +193,7 @@ class CRS(TableDesign):
         <FirstName>a</FirstName>
         <LastName>a</LastName>
         <memberEmail>a</memberEmail>
-        <AddedMember>2014-05-06</AddedMember>
+        <AddedMember>2014-05-06T19:15:48</AddedMember>
         <strCompletionReport>a</strCompletionReport>
         <intGroupID>12345</intGroupID>
         <strGroup>a</strGroup>
@@ -196,10 +202,10 @@ class CRS(TableDesign):
         <strStage>a</strStage>
         <intCompletionReportID>12345</intCompletionReportID>
         <intMemberStageID>12345</intMemberStageID>
-        <dtePassed>2014-05-06</dtePassed>
+        <dtePassed>2014-05-06T19:15:48</dtePassed>
         <intScore>12345</intScore>
         <intPassingScore>12345</intPassingScore>
-        <dteExpiration>2014-05-06</dteExpiration>
+        <dteExpiration>2014-05-06T19:15:48</dteExpiration>
       </CRS>
     '''
 
@@ -221,7 +227,7 @@ class GRADEBOOK(TableDesign):
 
 
 class MEMBERS(TableDesign):
-    date_format = '%m/%d/%y %H:%M'
+    date_format = '%m/%d/%y'
 
     markup = '''
       <MEMBERS>
@@ -331,12 +337,11 @@ def TrainingRecordsAdmin(acct,
 
     def put(_, name, records):
         tdef = hsr.table(name)
-        records = [t._asdict() for t in records]
         with dbtrx() as dml:
             log.info('(re-)creating %s', tdef.name)
             tdef.drop(dml, checkfirst=True)
             tdef.create(dml)
-            dml.execute(tdef.insert(), records)
+            dml.execute(tdef.insert(), [t._asdict() for t in records])
             log.info('inserted %d rows into %s', len(records), tdef.name)
 
     return [put, docRecords], {}
@@ -478,7 +483,7 @@ R3,S,RS3@example,J1,8/4/2013 0:00,rs3
 
         def mdy():
             n[0] += 29
-            return '%02d/%02d/%02d 00:00' % (
+            return '%02d/%02d/%02d' % (
                 n[0] % 12 + 1, (n[0] * 3) % 26 + 1, 11)
 
         def txt(tag):
@@ -493,7 +498,7 @@ R3,S,RS3@example,J1,8/4/2013 0:00,rs3
             for field in record:
                 if field.text == '12345':
                     field.text = str(num())
-                elif field.text == '2014-05-06':
+                elif field.text == '2014-05-06T19:15:48':
                     field.text = ymd()
                 elif field.text == '09/09/14':
                     field.text = mdy()
