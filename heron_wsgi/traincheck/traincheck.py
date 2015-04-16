@@ -58,6 +58,22 @@ But there's no training on file for Fred::
     >>> 'TODO: check for expired training'
     ''
 
+
+Scenario two: backfill chalk records.
+
+    >>> s2 = Mock()
+    >>> main(stdout, s2.cli_access(
+    ...     'traincheck backfill '
+    ...          '--full=f.csv --refresher=r.csv --in-person=i.csv'))
+
+    >>> a = s2._db.execute('select * from HumanSubjectsRefresher')
+    >>> [zip(a.keys(), r) for r in a.fetchall()]
+    ... # doctest: +NORMALIZE_WHITESPACE
+    [[(u'FirstName', u'R3'), (u'LastName', u'S'),
+      (u'Email', u'RS3@example'), (u'EmployeeID', u'J1'),
+      (u'CompleteDate', u'2013-08-04 00:00:00.000000'),
+      (u'Username', u'rs3')]]
+
 '''
 
 import logging
@@ -206,9 +222,8 @@ class HSR(object):
             Table(cls.__name__, meta, *columns(cls.markup),
                   schema=db_name)
 
-        for _, tn, date_col in Chalk.tables:
-            Table(tn, meta, *Chalk.columns(date_col),
-                  schema=db_name)
+        for _, name, date_col in Chalk.tables:
+            Chalk.table(meta, db_name, name, date_col)
 
         self.tables = meta.tables
 
@@ -227,13 +242,15 @@ class Chalk(object):
               ('--in-person', 'HumanSubjectsInPerson', 'CompleteDate')]
 
     @classmethod
-    def columns(cls, date_col):
-        return [Column('FirstName', VARCHAR120),
-                Column('LastName', VARCHAR120),
-                Column('Email', VARCHAR120),
-                Column('EmployeeID', VARCHAR120),
-                Column(date_col, DateTime()),
-                Column('Username', VARCHAR120)]
+    def table(cls, meta, db_name, name, date_col):
+        return Table(name, meta,
+                     Column('FirstName', VARCHAR120),
+                     Column('LastName', VARCHAR120),
+                     Column('Email', VARCHAR120),
+                     Column('EmployeeID', VARCHAR120),
+                     Column(date_col, DateTime()),
+                     Column('Username', VARCHAR120),
+                     schema=db_name)
 
     @classmethod
     def mdy(cls, txt):
@@ -246,11 +263,12 @@ class Chalk(object):
     @classmethod
     def parse_dates(cls, records, date_col):
         '''
-        >>> records = relation.readRecords(Mock.open_in_person())
+        >>> with Mock().openf('i.csv') as infp:
+        ...     records = relation.readRecords(infp)
         >>> Chalk.parse_dates(records, 'CompleteDate')
         ... # doctest: +NORMALIZE_WHITESPACE
-        [R(FirstName='R', LastName='S', Email='RS@example', EmployeeID='J1',
-         CompleteDate=datetime.datetime(2011, 8, 4, 0, 0), Username='rs')]
+        [R(FirstName='R2', LastName='S', Email='RS2@example', EmployeeID='J1',
+         CompleteDate=datetime.datetime(2012, 8, 4, 0, 0), Username='rs2')]
         '''
         fix = lambda r: r._replace(**{date_col: cls.mdy(getattr(r, date_col))})
         return [fix(r) for r in records]
@@ -371,12 +389,26 @@ class Mock(object):
                    HSR_TRAIN_CHECK='sqlite://',
                    HSR_TRAIN_ADMIN='sqlite://')
 
+    files = {
+        'f.csv': (None, '''
+FirstName,LastName,Email,EmployeeID,DateCompleted,Username
+R,S,RS@example,J1,8/4/2011 0:00,rs
+        '''.strip()),
+        'i.csv': (None, '''
+FirstName,LastName,Email,EmployeeID,CompleteDate,Username
+R2,S,RS2@example,J1,8/4/2012 0:00,rs2
+        '''.strip()),
+        'r.csv': (None, '''
+FirstName,LastName,Email,EmployeeID,CompleteDate,Username
+R3,S,RS3@example,J1,8/4/2013 0:00,rs3
+        '''.strip())}
+
     def __init__(self):
         import StringIO
 
         self._db = None  # set in cli_access()
         self.argv = []
-        self._fs = {}
+        self._fs = dict(self.files)
         self.create_engine = lambda path: self._db
         self.SoapClient = lambda wsdl: self
         self.stdout = StringIO.StringIO()
@@ -384,7 +416,7 @@ class Mock(object):
     from contextlib import contextmanager
 
     @contextmanager
-    def openf(self, path, mode):
+    def openf(self, path, mode='r'):
         import StringIO
 
         if mode == 'w':
@@ -395,7 +427,8 @@ class Mock(object):
             finally:
                 self._fs[path] = (None, buf.getvalue())
         else:
-            raise IOError(path)
+            _buf, content = self._fs[path]
+            yield StringIO.StringIO(content)
 
     def cli_access(self, cmd):
         import pkg_resources as pkg
@@ -465,14 +498,6 @@ class Mock(object):
         self._check(pwd)
         xml = self.xml_records(MEMBERS.markup, 4)
         return dict(GetMembersXMLResult=xml)
-
-    @classmethod
-    def open_in_person(self):
-        from StringIO import StringIO
-        return StringIO('''
-FirstName,LastName,Email,EmployeeID,CompleteDate,Username
-R,S,RS@example,J1,8/4/2011 0:00,rs
-        '''.strip())
 
 
 if __name__ == '__main__':
