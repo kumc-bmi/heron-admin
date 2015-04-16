@@ -284,7 +284,7 @@ def TrainingRecordsAdmin(acct,
         name = iter(doc).next().tag
         tdef = hsr.table(name)
         records = relation.docToRecords(doc, [c.name for c in tdef.columns])
-        put(name, records)
+        put(_, name, records)
 
     def put(_, name, records):
         tdef = hsr.table(name)
