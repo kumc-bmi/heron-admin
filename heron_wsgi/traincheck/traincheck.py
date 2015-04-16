@@ -184,8 +184,7 @@ class MEMBERS(object):
 
 
 class HSR(object):
-    def __init__(self,
-                 db_name='hsr_cache'):
+    def __init__(self, db_name):
         self.db_name = db_name
         log.info('HSR DB name: %s', db_name)
 
