@@ -301,6 +301,10 @@ def TrainingRecordsAdmin(acct,
 
 @maker
 def CitiSOAPService(client, auth):
+    '''CitiSOAPService
+
+    ref https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx
+    '''
     methods = dict(
         GetCompletionReportsXML=client.GetCompletionReportsXML,
         GetGradeBooksXML=client.GetGradeBooksXML,
