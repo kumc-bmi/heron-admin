@@ -326,9 +326,6 @@ def CLI(argv, environ, openf, create_engine, SoapClient):
     opts = docopt(usage, argv=argv[1:])
     log.debug('docopt: %s', opts)
 
-    usr = opts['--user']
-    pwd = environ[opts['--pwenv']]
-
     def getBytes(_, opt):
         with openf(opts[opt]) as infp:
             return infp.read()
@@ -343,6 +340,8 @@ def CLI(argv, environ, openf, create_engine, SoapClient):
         return lambda: create_engine(u).connect(), u.database
 
     def auth(_, wrapped):
+        usr = opts['--user']
+        pwd = environ[opts['--pwenv']]
         return wrapped(usr=usr, pwd=pwd)
 
     def soapClient(_):
