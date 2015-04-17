@@ -24,19 +24,31 @@ PII DB is a database suitable for PII (personally identifiable information).
 .. note:: Usage doc stops here.
 
 
-Scenario one::
+Make Local Copy of CITI Data
+----------------------------
 
-    >>> from sys import stdout
-    >>> s1 = Mock()
+Our human subjects training is provided by the Collaborative
+Institutional Training Initiative (CITI__). In order to facilitate
+verifying that a HERON user's human subjects training is current, we
+regularly refresh a copy of the CITI Data via their Web Service, using
+authorization from the command line and environment as noted above::
 
-Let's refresh the cache from the CITI service::
-
+    >>> s1 = Mock()  # scenario 1
+    >>> stdout = s1.stdout
     >>> main(stdout, s1.cli_access('traincheck --refresh --user=MySchool'))
 
-The cache is stored in the database::
+__ https://www.citiprogram.org/
 
-    >>> s1._db.execute('select count(*) from CRS').fetchall()
-    [(5,)]
+The course completion reports are now stored in the database::
+
+    >>> for exp, name, course in s1._db.execute("""
+    ...     select dteExpiration, InstitutionUserName, strCompletionReport
+    ...     from CRS limit 3"""):
+    ...     print exp[:10], name, course
+    2000-12-22 ssttt sss
+    2000-01-13 sss Basic/Refresher Course - Human Subjects Research
+    2000-02-04 sssstttt Basic/Refresher Course - Human Subjects Research
+
 
 Now let's backfill chalk records::
 
