@@ -551,63 +551,19 @@ R3,S,RS3@example,J1,8/4/2013 0:00,rs3
         if not pwd == self.environ['CITI_PASSWORD']:
             raise IOError
 
-    @classmethod
-    def xml_records(self, template, qty):
-        n = [10]
-
-        def num():
-            n[0] += 17
-            return n[0]
-
-        def ymd():
-            n[0] += 29
-            return '%04d-%02d-%02dT12:34:56' % (
-                2000, n[0] % 12 + 1, (n[0] * 3) % 26 + 1)
-
-        def mdy():
-            n[0] += 29
-            return '%02d/%02d/%02d' % (
-                n[0] % 12 + 1, (n[0] * 3) % 26 + 1, 11)
-
-        def txt(tag):
-            n[0] += 13
-            return (
-                'Basic/Refresher Course - Human Subjects Research'
-                if tag == 'strCompletionReport' and n[0] % 3
-                else 's' * (n[0] % 5) + 't' * (n[0] % 7))
-
-        def record_markup():
-            record = ET.fromstring(template)
-            for field in record:
-                if field.text == '12345':
-                    field.text = str(num())
-                elif field.text == '2014-05-06T19:15:48':
-                    field.text = ymd()
-                elif field.text == '09/09/14':
-                    field.text = mdy()
-                else:
-                    field.text = txt(field.tag)
-
-            return ET.tostring(record)
-
-        return ("<NewDataSet>"
-                + '\n'.join(record_markup()
-                            for _ in range(qty))
-                + "</NewDataSet>")
-
     def GetCompletionReportsXML(self, usr, pwd):
         self._check(pwd)
-        xml = self.xml_records(CRS.markup, 5)
+        xml = relation.mock_xml_records(CRS.markup, 5)
         return dict(GetCompletionReportsXMLResult=xml)
 
     def GetGradeBooksXML(self, usr, pwd):
         self._check(pwd)
-        xml = self.xml_records(GRADEBOOK.markup, 3)
+        xml = relation.mock_xml_records(GRADEBOOK.markup, 3)
         return dict(GetGradeBooksXMLResult=xml)
 
     def GetMembersXML(self, usr, pwd):
         self._check(pwd)
-        xml = self.xml_records(MEMBERS.markup, 4)
+        xml = relation.mock_xml_records(MEMBERS.markup, 4)
         return dict(GetMembersXMLResult=xml)
 
 
