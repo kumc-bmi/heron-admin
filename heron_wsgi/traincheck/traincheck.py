@@ -1,21 +1,20 @@
 r'''traincheck -- check human subjects training records via CITI
 
 Usage:
-  traincheck [options] IDVAULT_NAME
-  traincheck [options] --refresh --user=NAME
-  traincheck [options] backfill --full=FILE --refresher=FILE --in-person=FILE
+  traincheck IDVAULT_NAME [--dbrd=K]
+  traincheck --refresh --user=NAME [--wsdl=U --user=N --pwenv=K --dbadmin=K]
+  traincheck backfill --full=F1 --refresher=F1 --in-person=F3 [--dbadmin=K]
 
 Options:
-  --dbrd=NAME        environment variable with sqlalchemy URL of account
-                     with read access to PII DB
+  --dbrd=K           read access to PII DB: name of environment variable
+                     with sqlalchemy URL
                      [default: HSR_TRAIN_CHECK]
-  --dbadmin=NAME     environment variable with sqlalchemy URL of account
-                     with admin (create, delete, ...) access to PII DB
+  --dbadmin=K        admin (create, delete, ...) access to PII DB
                      [default: HSR_TRAIN_ADMIN]
-  --wsdl=URL         Service Description URL
+  --wsdl=URL         access to CITI SOAP Service: Service Description URL
                      [default: https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL]  # noqa
-  --user=NAME        username for login to CitiSOAPService
-  --pwenv=K          environment variable to look up password
+  --user=NAME        access to CITI SOAP Service: username
+  --pwenv=K          access to CITI SOAP Service: password environment variable
                      [default: CITI_PASSWORD]
   --debug            turn on debug logging
 
