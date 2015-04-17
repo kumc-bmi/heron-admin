@@ -79,8 +79,7 @@ from datetime import datetime, timedelta
 from docopt import docopt
 from sqlalchemy import (MetaData, Table, Column,
                         String, Integer, Date, DateTime,
-                        select, union_all,
-                        and_)
+                        select, union_all)
 from sqlalchemy.engine.url import make_url
 
 from lalib import maker
