@@ -21,7 +21,7 @@ Options:
 
 PII DB is a database suitable for PII (personally identifiable information).
 
-.. note:: Usage doc stops here.
+.. note:: This directive separates usage doc above from design notes below.
 
 
 Make Local Copy of CITI Data
@@ -50,29 +50,46 @@ The course completion reports are now stored in the database::
     2000-02-04 sssstttt Basic/Refresher Course - Human Subjects Research
 
 
-Now let's backfill chalk records::
+Backfill
+--------
+
+We get data from the legacy system in CSV format:
+
+    >>> with s1.openf('f.csv') as datafile:
+    ...     print datafile.read()
+    FirstName,LastName,Email,EmployeeID,DateCompleted,Username
+    R,S,RS@example,J1,8/4/2011 0:00,rs
+
+Using access to this data and the database, we load it::
 
     >>> main(stdout, s1.cli_access(
     ...     'traincheck backfill '
     ...          '--full=f.csv --refresher=r.csv --in-person=i.csv',
-    ...     db=s1._db))
+    ...     db=s1._db))  # (Don't make a new in-memory DB)
 
-    >>> a = s1._db.execute('select * from HumanSubjectsRefresher')
-    >>> [zip(a.keys(), r) for r in a.fetchall()]
-    ... # doctest: +NORMALIZE_WHITESPACE
-    [[(u'FirstName', u'R3'), (u'LastName', u'S'),
-      (u'Email', u'RS3@example'), (u'EmployeeID', u'J1'),
-      (u'CompleteDate', u'2013-08-04 00:00:00.000000'),
-      (u'Username', u'rs3')]]
+The results are straightforward::
 
-Now let's look up Bob's training::
+    >>> for passed, name in s1._db.execute(
+    ...     'select CompleteDate, Username from HumanSubjectsRefresher'):
+    ...     print passed[:10], name
+    2013-08-04 rs3
+
+
+Find Training Records
+---------------------
+
+While we support checking records from the CLI, it will typically be
+done using the API. Given (read) access to the database, we can make
+a `TrainingRecordsRd`::
 
     >>> rd = TrainingRecordsRd(acct=(lambda: s1._db.connect(), None))
-    >>> rd.course_pattern
-    '%Human Subjects Research%'
+
+Now let's look up training for Sam, whose username is `sssstttt`::
 
     >>> rd['sssstttt'].expired
     datetime.datetime(2000, 2, 4, 12, 34, 56)
+
+.. note:: TODO: Integrate a story-style name into test data.
 
 But there's no training on file for Fred::
 
@@ -80,6 +97,16 @@ But there's no training on file for Fred::
     Traceback (most recent call last):
       ...
     KeyError: 'fred'
+
+
+Course Naming
+*************
+
+The courses we're interested in are selected using::
+
+    >>> rd.course_pattern
+    '%Human Subjects Research%'
+
 
 '''
 
