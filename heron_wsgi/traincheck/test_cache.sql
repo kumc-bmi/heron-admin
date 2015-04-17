@@ -44,7 +44,7 @@ CREATE TABLE "CRS" (
 	"FirstName" VARCHAR(120), 
 	"LastName" VARCHAR(120), 
 	"memberEmail" VARCHAR(120), 
-	"AddedMember" DATE, 
+	"AddedMember" DATETIME, 
 	"strCompletionReport" VARCHAR(120), 
 	"intGroupID" INTEGER, 
 	"strGroup" VARCHAR(120), 
@@ -53,14 +53,41 @@ CREATE TABLE "CRS" (
 	"strStage" VARCHAR(120), 
 	"intCompletionReportID" INTEGER, 
 	"intMemberStageID" INTEGER, 
-	"dtePassed" DATE, 
+	"dtePassed" DATETIME, 
 	"intScore" INTEGER, 
 	"intPassingScore" INTEGER, 
-	"dteExpiration" DATE
+	"dteExpiration" DATETIME
 );
-INSERT INTO "CRS" VALUES(27,44,'sst',74,'ssttt','tt','ssst','s','2000-12-24','sss',185,'ssstt',215,232,NULL,262,279,'2000-09-15',325,342,'2000-12-22');
-INSERT INTO "CRS" VALUES(388,405,'sssttttt',435,'sss','stttttt','ssssttttt','sstttt','2000-01-15','Basic/Refresher Course - Human Subjects Research',546,'sssstttttt',576,593,'stttt',623,640,'2000-10-06',686,703,'2000-01-13');
-INSERT INTO "CRS" VALUES(749,766,'sssstt',796,'sssstttt','ssttt','tt','ssst','2000-02-06','Basic/Refresher Course - Human Subjects Research',907,'ttt',937,954,'sst',984,1001,'2000-11-23',1047,1064,'2000-02-04');
-INSERT INTO "CRS" VALUES(1110,1127,'tttttt',1157,'t','sss','stttttt','ssssttttt','2000-03-23','sttttt',1268,'s',1298,1315,'sssttttt',1345,1362,'2000-12-14',1408,1425,'2000-03-21');
-INSERT INTO "CRS" VALUES(1471,1488,'sttt',1518,'sttttt','sssstttt','ssttt','tt','2000-04-14','Basic/Refresher Course - Human Subjects Research',1629,'sstttt',1659,1676,'sssstt',1706,1723,'2000-01-05',1769,1786,'2000-04-12');
+INSERT INTO "CRS" VALUES(27,44,'sst',74,'ssttt','tt','ssst','s','2000-12-24 12:34:56.000000','sss',185,'ssstt',215,232,NULL,262,279,'2000-09-15 12:34:56.000000',325,342,'2000-12-22 12:34:56.000000');
+INSERT INTO "CRS" VALUES(388,405,'sssttttt',435,'sss','stttttt','ssssttttt','sstttt','2000-01-15 12:34:56.000000','Basic/Refresher Course - Human Subjects Research',546,'sssstttttt',576,593,'stttt',623,640,'2000-10-06 12:34:56.000000',686,703,'2000-01-13 12:34:56.000000');
+INSERT INTO "CRS" VALUES(749,766,'sssstt',796,'sssstttt','ssttt','tt','ssst','2000-02-06 12:34:56.000000','Basic/Refresher Course - Human Subjects Research',907,'ttt',937,954,'sst',984,1001,'2000-11-23 12:34:56.000000',1047,1064,'2000-02-04 12:34:56.000000');
+INSERT INTO "CRS" VALUES(1110,1127,'tttttt',1157,'t','sss','stttttt','ssssttttt','2000-03-23 12:34:56.000000','sttttt',1268,'s',1298,1315,'sssttttt',1345,1362,'2000-12-14 12:34:56.000000',1408,1425,'2000-03-21 12:34:56.000000');
+INSERT INTO "CRS" VALUES(1471,1488,'sttt',1518,'sttttt','sssstttt','ssttt','tt','2000-04-14 12:34:56.000000','Basic/Refresher Course - Human Subjects Research',1629,'sstttt',1659,1676,'sssstt',1706,1723,'2000-01-05 12:34:56.000000',1769,1786,'2000-04-12 12:34:56.000000');
+CREATE TABLE "HumanSubjectsFull" (
+	"FirstName" VARCHAR(120), 
+	"LastName" VARCHAR(120), 
+	"Email" VARCHAR(120), 
+	"EmployeeID" VARCHAR(120), 
+	"DateCompleted" DATETIME, 
+	"Username" VARCHAR(120)
+);
+INSERT INTO "HumanSubjectsFull" VALUES('R','S','RS@example','J1','2011-08-04 00:00:00.000000','rs');
+CREATE TABLE "HumanSubjectsRefresher" (
+	"FirstName" VARCHAR(120), 
+	"LastName" VARCHAR(120), 
+	"Email" VARCHAR(120), 
+	"EmployeeID" VARCHAR(120), 
+	"CompleteDate" DATETIME, 
+	"Username" VARCHAR(120)
+);
+INSERT INTO "HumanSubjectsRefresher" VALUES('R3','S','RS3@example','J1','2013-08-04 00:00:00.000000','rs3');
+CREATE TABLE "HumanSubjectsInPerson" (
+	"FirstName" VARCHAR(120), 
+	"LastName" VARCHAR(120), 
+	"Email" VARCHAR(120), 
+	"EmployeeID" VARCHAR(120), 
+	"CompleteDate" DATETIME, 
+	"Username" VARCHAR(120)
+);
+INSERT INTO "HumanSubjectsInPerson" VALUES('R2','S','RS2@example','J1','2012-08-04 00:00:00.000000','rs2');
 COMMIT;
