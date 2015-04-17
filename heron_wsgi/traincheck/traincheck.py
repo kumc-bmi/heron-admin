@@ -39,14 +39,29 @@ The cache is stored in the database::
     >>> s1._db.execute('select count(*) from CRS').fetchall()
     [(5,)]
 
+Now let's backfill chalk records::
+
+    >>> main(stdout, s1.cli_access(
+    ...     'traincheck backfill '
+    ...          '--full=f.csv --refresher=r.csv --in-person=i.csv',
+    ...     db=s1._db))
+
+    >>> a = s1._db.execute('select * from HumanSubjectsRefresher')
+    >>> [zip(a.keys(), r) for r in a.fetchall()]
+    ... # doctest: +NORMALIZE_WHITESPACE
+    [[(u'FirstName', u'R3'), (u'LastName', u'S'),
+      (u'Email', u'RS3@example'), (u'EmployeeID', u'J1'),
+      (u'CompleteDate', u'2013-08-04 00:00:00.000000'),
+      (u'Username', u'rs3')]]
+
 Now let's look up Bob's training::
 
     >>> rd = TrainingRecordsRd(acct=(lambda: s1._db.connect(), None))
     >>> rd.course
     'Basic/Refresher Course - Human Subjects Research'
 
-    >>> rd['sssstttt'].dtePassed
-    datetime.datetime(2000, 11, 23, 12, 34, 56)
+    >>> rd['sssstttt'].expired
+    datetime.datetime(2000, 2, 4, 12, 34, 56)
 
 But there's no training on file for Fred::
 
@@ -55,35 +70,16 @@ But there's no training on file for Fred::
       ...
     KeyError: 'fred'
 
-
-    >>> 'TODO: check for expired training'
-    ''
-
-
-Scenario two: backfill chalk records.
-
-    >>> s2 = Mock()
-    >>> main(stdout, s2.cli_access(
-    ...     'traincheck backfill '
-    ...          '--full=f.csv --refresher=r.csv --in-person=i.csv'))
-
-    >>> a = s2._db.execute('select * from HumanSubjectsRefresher')
-    >>> [zip(a.keys(), r) for r in a.fetchall()]
-    ... # doctest: +NORMALIZE_WHITESPACE
-    [[(u'FirstName', u'R3'), (u'LastName', u'S'),
-      (u'Email', u'RS3@example'), (u'EmployeeID', u'J1'),
-      (u'CompleteDate', u'2013-08-04 00:00:00.000000'),
-      (u'Username', u'rs3')]]
-
 '''
 
 import logging
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from docopt import docopt
 from sqlalchemy import (MetaData, Table, Column,
                         String, Integer, Date, DateTime,
+                        select, union_all,
                         and_)
 from sqlalchemy.engine.url import make_url
 
@@ -305,14 +301,63 @@ class Chalk(TableDesign):
 def TrainingRecordsRd(
         acct,
         course='Basic/Refresher Course - Human Subjects Research'):
+    '''
+    >>> acct = (lambda: Mock()._db.connect(), None)
+    >>> rd = TrainingRecordsRd(acct)
+
+    >>> print rd.citi_query
+    ... # doctest: +NORMALIZE_WHITESPACE
+    SELECT "CRS"."InstitutionUserName" AS username,
+           "CRS"."dteExpiration" AS expired
+    FROM "CRS"
+    WHERE "CRS"."strCompletionReport" = :strCompletionReport_1
+
+    >>> print rd.chalk_queries[0]
+    ... # doctest: +NORMALIZE_WHITESPACE
+    SELECT "full"."Username",
+           "full"."DateCompleted" + :DateCompleted_1 AS anon_1
+    FROM "HumanSubjectsFull" AS "full"
+
+    >>> print rd.query
+    ... # doctest: +NORMALIZE_WHITESPACE
+    SELECT "CRS"."InstitutionUserName" AS username,
+           "CRS"."dteExpiration" AS expired
+    FROM "CRS"
+    WHERE "CRS"."strCompletionReport" = :strCompletionReport_1
+    UNION ALL
+    SELECT "full"."Username",
+           "full"."DateCompleted" + :DateCompleted_1 AS anon_1
+    FROM "HumanSubjectsFull" AS "full"
+    UNION ALL
+    SELECT refresher."Username",
+           refresher."CompleteDate" + :CompleteDate_1 AS anon_2
+    FROM "HumanSubjectsRefresher" AS refresher
+    UNION ALL
+    SELECT "in-person"."Username",
+           "in-person"."CompleteDate" + :CompleteDate_2 AS anon_3
+    FROM "HumanSubjectsInPerson" AS "in-person"
+
+    '''
     dbtrx, db_name = acct
-    crs = HSR(db_name).table('CRS')
+    hsr = HSR(db_name)
+    crs = hsr.table('CRS')
+
+    year = timedelta(days=365.25)
+    citi_query = (select([crs.c.InstitutionUserName.label('username'),
+                          crs.c.dteExpiration.label('expired')])
+                  .where(crs.c.strCompletionReport == course))
+    chalk_queries = [select([t.c.Username, t.c[date_col] + year])
+                     for opt, name, date_col in Chalk.tables
+                     for t in [hsr.table(name).alias(opt[2:])]]
+
+    #import sys
+    #print >>sys.stderr, "@@", citi_query.union_all(chalk_queries[0]).union_all(chalk_queries[1])
+    who_when = union_all(citi_query, *chalk_queries).alias('who_when')
 
     def __getitem__(_, instUserName):
         with dbtrx() as q:
-            result = q.execute(crs.select().where(
-                and_(crs.c.strCompletionReport == course,
-                     crs.c.InstitutionUserName == instUserName)))
+            result = q.execute(who_when.select(
+                who_when.c.username == instUserName))
             record = result.fetchone()
 
         if not record:
@@ -320,7 +365,10 @@ def TrainingRecordsRd(
 
         return record
 
-    return [__getitem__], dict(course=course)
+    return [__getitem__], dict(course=course,
+                               citi_query=citi_query,
+                               chalk_queries=chalk_queries,
+                               query=who_when)
 
 
 @maker
@@ -449,15 +497,15 @@ R3,S,RS3@example,J1,8/4/2013 0:00,rs3
             _buf, content = self._fs[path]
             yield StringIO.StringIO(content)
 
-    def cli_access(self, cmd):
+    def cli_access(self, cmd, db=None):
         import pkg_resources as pkg
         from sqlalchemy import create_engine  # sqlite in-memory use only
 
         self.argv = cmd.split()
 
         # self._db = db = create_engine('sqlite:///mock.db')
-        self._db = db = create_engine('sqlite://')
-        if not '--refresh' in self.argv:
+        self._db = db = db or create_engine('sqlite://')
+        if not ('--refresh' in self.argv or 'backfill' in self.argv):
             cn = db.connect().connection
             cn.executescript(pkg.resource_string(__name__, 'test_cache.sql'))
 
