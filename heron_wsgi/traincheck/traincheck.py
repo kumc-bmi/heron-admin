@@ -350,8 +350,6 @@ def TrainingRecordsRd(
                      for opt, name, date_col in Chalk.tables
                      for t in [hsr.table(name).alias(opt[2:])]]
 
-    #import sys
-    #print >>sys.stderr, "@@", citi_query.union_all(chalk_queries[0]).union_all(chalk_queries[1])
     who_when = union_all(citi_query, *chalk_queries).alias('who_when')
 
     def __getitem__(_, instUserName):
