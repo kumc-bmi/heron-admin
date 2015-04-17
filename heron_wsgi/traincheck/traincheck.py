@@ -342,6 +342,8 @@ def TrainingRecordsRd(
     >>> acct = (lambda: Mock()._db.connect(), None)
     >>> rd = TrainingRecordsRd(acct)
 
+    .. note:: TODO: move this complex query into a view.
+
     >>> print rd.citi_query
     ... # doctest: +NORMALIZE_WHITESPACE
     SELECT "CRS"."InstitutionUserName" AS username,
