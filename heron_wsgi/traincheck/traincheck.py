@@ -57,8 +57,8 @@ Now let's backfill chalk records::
 Now let's look up Bob's training::
 
     >>> rd = TrainingRecordsRd(acct=(lambda: s1._db.connect(), None))
-    >>> rd.course
-    'Basic/Refresher Course - Human Subjects Research'
+    >>> rd.course_pattern
+    '%Human Subjects Research%'
 
     >>> rd['sssstttt'].expired
     datetime.datetime(2000, 2, 4, 12, 34, 56)
@@ -300,7 +300,7 @@ class Chalk(TableDesign):
 @maker
 def TrainingRecordsRd(
         acct,
-        course='Basic/Refresher Course - Human Subjects Research'):
+        course_pattern='%Human Subjects Research%'):
     '''
     >>> acct = (lambda: Mock()._db.connect(), None)
     >>> rd = TrainingRecordsRd(acct)
@@ -310,7 +310,7 @@ def TrainingRecordsRd(
     SELECT "CRS"."InstitutionUserName" AS username,
            "CRS"."dteExpiration" AS expired
     FROM "CRS"
-    WHERE "CRS"."strCompletionReport" = :strCompletionReport_1
+    WHERE "CRS"."strCompletionReport" LIKE :strCompletionReport_1
 
     >>> print rd.chalk_queries[0]
     ... # doctest: +NORMALIZE_WHITESPACE
@@ -323,7 +323,7 @@ def TrainingRecordsRd(
     SELECT "CRS"."InstitutionUserName" AS username,
            "CRS"."dteExpiration" AS expired
     FROM "CRS"
-    WHERE "CRS"."strCompletionReport" = :strCompletionReport_1
+    WHERE "CRS"."strCompletionReport" LIKE :strCompletionReport_1
     UNION ALL
     SELECT "full"."Username",
            "full"."DateCompleted" + :DateCompleted_1 AS anon_1
@@ -345,7 +345,7 @@ def TrainingRecordsRd(
     year = timedelta(days=365.25)
     citi_query = (select([crs.c.InstitutionUserName.label('username'),
                           crs.c.dteExpiration.label('expired')])
-                  .where(crs.c.strCompletionReport == course))
+                  .where(crs.c.strCompletionReport.like(course_pattern)))
     chalk_queries = [select([t.c.Username, t.c[date_col] + year])
                      for opt, name, date_col in Chalk.tables
                      for t in [hsr.table(name).alias(opt[2:])]]
@@ -365,7 +365,7 @@ def TrainingRecordsRd(
 
         return record
 
-    return [__getitem__], dict(course=course,
+    return [__getitem__], dict(course_pattern=course_pattern,
                                citi_query=citi_query,
                                chalk_queries=chalk_queries,
                                query=who_when)
