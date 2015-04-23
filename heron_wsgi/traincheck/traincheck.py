@@ -2,7 +2,7 @@ r'''traincheck -- check human subjects training records via CITI
 
 Usage:
   traincheck IDVAULT_NAME [--dbrd=K]
-  traincheck --refresh --user=NAME [--wsdl=U --user=N --pwenv=K --dbadmin=K]
+  traincheck --refresh --user=NAME [--wsdl=U --pwenv=K --dbadmin=K]
   traincheck backfill --full=F1 --refresher=F1 --in-person=F3 [--dbadmin=K]
 
 Options:
@@ -549,22 +549,23 @@ R3,S,RS3@example,J1,8/4/2013 0:00,rs3
         return lambda: CLI(self.argv, self.environ, self.openf,
                            self.create_engine, self.SoapClient)
 
-    def _check(self, pwd):
-        if not pwd == self.environ['CITI_PASSWORD']:
+    def _check(self, usr, pwd):
+        if not (usr == 'MySchool' and
+                pwd == self.environ['CITI_PASSWORD']):
             raise IOError
 
     def GetCompletionReportsXML(self, usr, pwd):
-        self._check(pwd)
+        self._check(usr, pwd)
         xml = relation.mock_xml_records(CRS.markup, 5)
         return dict(GetCompletionReportsXMLResult=xml)
 
     def GetGradeBooksXML(self, usr, pwd):
-        self._check(pwd)
+        self._check(usr, pwd)
         xml = relation.mock_xml_records(GRADEBOOK.markup, 3)
         return dict(GetGradeBooksXMLResult=xml)
 
     def GetMembersXML(self, usr, pwd):
-        self._check(pwd)
+        self._check(usr, pwd)
         xml = relation.mock_xml_records(MEMBERS.markup, 4)
         return dict(GetMembersXMLResult=xml)
 
