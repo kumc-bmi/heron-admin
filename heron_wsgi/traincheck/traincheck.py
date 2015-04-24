@@ -111,7 +111,7 @@ The courses we're interested in are selected using::
 '''
 
 import logging
-import xml.etree.ElementTree as ET
+from xml.etree.ElementTree import fromstring as XML
 from datetime import datetime, timedelta
 
 from docopt import docopt
@@ -191,7 +191,7 @@ class TableDesign(object):
             VARCHAR120)
 
         return [Column(field.tag, ty(field.text))
-                for field in ET.fromstring(cls.markup)]
+                for field in XML(cls.markup)]
 
     @classmethod
     def xml_table(cls, meta, db_name):
@@ -447,7 +447,7 @@ def CitiSOAPService(client, auth):
         reply = auth(methods[which])
         markup = reply[which + 'Result']
         log.info('got length=%d from %s', len(markup), which)
-        return ET.fromstring(markup.encode('utf-8'))
+        return XML(markup.encode('utf-8'))
 
     attrs = dict((name, name) for name in methods.keys())
     return [get], attrs
