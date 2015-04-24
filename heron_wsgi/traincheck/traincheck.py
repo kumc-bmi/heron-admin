@@ -309,10 +309,11 @@ class Chalk(TableDesign):
 
         >>> with Mock().openf('i.csv') as infp:
         ...     records = relation.readRecords(infp)
-        >>> Chalk.parse_dates(records, ['CompleteDate'])
-        ... # doctest: +NORMALIZE_WHITESPACE
-        [R(FirstName='R2', LastName='S', Email='RS2@example', EmployeeID='J1',
-         CompleteDate=datetime.datetime(2012, 8, 4, 0, 0), Username='rs2')]
+        >>> records[0].CompleteDate
+        '8/4/2012 0:00'
+
+        >>> Chalk.parse_dates(records, ['CompleteDate'])[0].CompleteDate
+        datetime.datetime(2012, 8, 4, 0, 0)
     '''
     date_format = '%m/%d/%Y %H:%M'
 
