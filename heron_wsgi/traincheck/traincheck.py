@@ -126,8 +126,6 @@ import relation
 VARCHAR120 = String(120)
 log = logging.getLogger(__name__)
 
-CITI_NAMESPACE = 'https://webservices.citiprogram.org/'
-
 
 def main(stdout, access):
     cli = access()
@@ -459,10 +457,6 @@ def CLI(argv, environ, openf, create_engine, SoapClient):
     opts = docopt(usage, argv=argv[1:])
     log.debug('docopt: %s', opts)
 
-    def getBytes(_, opt):
-        with openf(opts[opt]) as infp:
-            return infp.read()
-
     def getRecords(_, opt):
         with openf(opts[opt]) as infp:
             return relation.readRecords(infp)
@@ -485,7 +479,7 @@ def CLI(argv, environ, openf, create_engine, SoapClient):
 
     attrs = dict((name.replace('--', ''), val)
                  for (name, val) in opts.iteritems())
-    return [getBytes, getRecords, auth, soapClient, account], attrs
+    return [getRecords, auth, soapClient, account], attrs
 
 
 class Mock(object):
