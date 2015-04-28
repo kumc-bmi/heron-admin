@@ -88,15 +88,15 @@ Combine sources into a view
     >>> HSR('').combo_view
     'hsr_training_combo'
 
-    >>> for who, when in s1._db.execute(
+    >>> for who, expired, completed, course in s1._db.execute(
     ...     'select * from hsr_training_combo order by expired'):
-    ...     print who, when
-    sss 2000-01-13 12:34:56.000000
-    sssstttt 2000-02-04 12:34:56.000000
-    sttttt 2000-04-12 12:34:56.000000
-    rs 2012-08-04 00:00:00
-    rs2 2013-08-04 00:00:00
-    rs3 2014-08-04 00:00:00
+    ...     print "%-8s %s %s" % (who, expired[:10], course)
+    sss      2000-01-13 Basic/Refresher Course - Human Subjects Research
+    sssstttt 2000-02-04 Basic/Refresher Course - Human Subjects Research
+    sttttt   2000-04-12 Basic/Refresher Course - Human Subjects Research
+    rs       2012-08-04 HumanSubjectsFull
+    rs2      2013-08-04 HumanSubjectsInPerson
+    rs3      2014-08-04 HumanSubjectsRefresher
 
 
 Find Training Records
@@ -141,7 +141,7 @@ from datetime import datetime
 
 from sqlalchemy import (MetaData, Table, Column,
                         String, Integer, Date, DateTime,
-                        select, union_all)
+                        select, union_all, literal_column)
 from sqlalchemy.engine.url import make_url
 
 from lalib import maker
@@ -329,7 +329,9 @@ class HSR(object):
         Table(combo_view, meta,
               Column('username', String),
               Column('expired', DateTime),
-              schema=db_name)
+              Column('completed', DateTime),
+              Column('course', String),
+              schema=db_name or None)
 
         self.tables = meta.tables
 
@@ -408,47 +410,48 @@ def TrainingRecordsAdmin(acct,
     >>> print ad.citi_query
     ... # doctest: +NORMALIZE_WHITESPACE
     SELECT "CRS"."InstitutionUserName" AS username,
-           "CRS"."dteExpiration" AS expired
+           "CRS"."dteExpiration" AS expired,
+           "CRS"."dtePassed" AS completed,
+           "CRS"."strCompletionReport" AS course
     FROM "CRS"
     WHERE "CRS"."strCompletionReport" LIKE :strCompletionReport_1
 
     >>> print ad.chalk_queries[0]
     ... # doctest: +NORMALIZE_WHITESPACE
-    SELECT "full"."Username", year_after("full"."DateCompleted")
+    SELECT "full"."Username", year_after("full"."DateCompleted"),
+           "full"."DateCompleted", 'HumanSubjectsFull'
     FROM "HumanSubjectsFull" AS "full"
 
     >>> hsr = HSR('')
     >>> [c.name for c in hsr.table(hsr.combo_view).columns]
-    ['username', 'expired']
+    ['username', 'expired', 'completed', 'course']
 
     >>> print ad.query
-    ... # doctest: +NORMALIZE_WHITESPACE
+    ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
     SELECT "CRS"."InstitutionUserName" AS username,
-           "CRS"."dteExpiration" AS expired
+           "CRS"."dteExpiration" AS expired,
+           "CRS"."dtePassed" AS completed,
+           "CRS"."strCompletionReport" AS course
     FROM "CRS"
     WHERE "CRS"."strCompletionReport" LIKE :strCompletionReport_1
     UNION ALL
     SELECT "full"."Username",
-           year_after("full"."DateCompleted")
+           year_after("full"."DateCompleted"),
+           "full"."DateCompleted", 'HumanSubjectsFull'
     FROM "HumanSubjectsFull" AS "full"
-    UNION ALL
-    SELECT refresher."Username",
-           year_after(refresher."CompleteDate")
-    FROM "HumanSubjectsRefresher" AS refresher
-    UNION ALL
-    SELECT "in-person"."Username",
-           year_after("in-person"."CompleteDate")
-    FROM "HumanSubjectsInPerson" AS "in-person"
-
+    UNION ALL ...
     '''
     dbtrx, db_name = acct
     hsr = HSR(db_name)
     crs = hsr.table('CRS')
 
     citi_query = (select([crs.c.InstitutionUserName.label('username'),
-                          crs.c.dteExpiration.label('expired')])
+                          crs.c.dteExpiration.label('expired'),
+                          crs.c.dtePassed.label('completed'),
+                          crs.c.strCompletionReport.label('course')])
                   .where(crs.c.strCompletionReport.like(course_pattern)))
-    chalk_queries = [select([t.c.Username, year_after(t.c[date_col])])
+    chalk_queries = [select([t.c.Username, year_after(t.c[date_col]),
+                             t.c[date_col], literal_column("'%s'" % name)])
                      for opt, name, date_col in Chalk.tables
                      for t in [hsr.table(name).alias(opt[2:])]]
 
