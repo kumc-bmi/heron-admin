@@ -103,7 +103,7 @@ import rtconfig
 import ldaplib
 import sealing
 from notary import makeNotary
-from traincheck import TrainingRecordsRd
+from traincheck.traincheck import TrainingRecordsRd
 
 log = logging.getLogger(__name__)
 
