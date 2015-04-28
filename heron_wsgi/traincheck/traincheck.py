@@ -385,8 +385,9 @@ def TrainingRecordsRd(acct):
 
     def __getitem__(_, instUserName):
         with dbtrx() as q:
-            result = q.execute(lookup.select(
-                lookup.c.username == instUserName))
+            result = q.execute(
+                lookup.select(lookup.c.username == instUserName)
+                .order_by(lookup.c.expired.desc()))
             record = result.fetchone()
 
         if not record:
