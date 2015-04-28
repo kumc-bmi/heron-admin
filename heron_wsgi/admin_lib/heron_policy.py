@@ -472,7 +472,9 @@ class HeronRecords(Token, Cache):
             droc_audit = None
 
         complete = (
-            current_training and system_access_sigs and (
+            # For now, show lack of training records, but do not enforce.
+            # current_training and
+            system_access_sigs and (
                 badge.is_executive() if self._pm.identified_data
                 else
                 (badge.is_faculty() or badge.is_executive() or sponsored)))
