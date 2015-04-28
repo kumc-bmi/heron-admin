@@ -1,11 +1,14 @@
 r'''traincheck -- check human subjects training records via CITI
 
 Usage:
-  traincheck IDVAULT_NAME [--dbrd=K]
-  traincheck --refresh --user=NAME [--wsdl=U --pwenv=K --dbadmin=K]
-  traincheck backfill --full=F1 --refresher=F1 --in-person=F3 [--dbadmin=K]
+  traincheck refresh --user=NAME [--wsdl=U --pwenv=K --dbadmin=K -d]
+  traincheck backfill --full=F1 --refresher=F1 --in-person=F3 [--dbadmin=K -d]
+  traincheck combine [--dbadmin=K -d]
+  traincheck lookup NAME [--dbrd=K -d]
+  traincheck --help
 
 Options:
+  NAME               userid of user whose training records are sought
   --dbrd=K           read access to PII DB: name of environment variable
                      with sqlalchemy URL
                      [default: HSR_TRAIN_CHECK]
@@ -16,8 +19,9 @@ Options:
   --user=NAME        access to CITI SOAP Service: username
   --pwenv=K          access to CITI SOAP Service: password environment variable
                      [default: CITI_PASSWORD]
-  --debug            turn on debug logging
-
+  -d --debug         turn on debug logging
+  backfill           Load data from legacy system
+  combine            create view combining training data from all sources
 
 PII DB is a database suitable for PII (personally identifiable information).
 
@@ -35,7 +39,7 @@ authorization from the command line and environment as noted above::
 
     >>> s1 = Mock()  # scenario 1
     >>> stdout = s1.stdout
-    >>> main(stdout, s1.cli_access('traincheck --refresh --user=MySchool'))
+    >>> main(stdout, s1.cli_access('traincheck refresh --user=MySchool'))
 
 __ https://www.citiprogram.org/
 
@@ -75,6 +79,26 @@ The results are straightforward::
     2013-08-04 rs3
 
 
+Combine sources into a view
+---------------------------
+
+    >>> main(stdout, s1.cli_access('traincheck combine',
+    ...      db=s1._db))  # (Don't make a new in-memory DB)
+
+    >>> HSR('').combo_view
+    'hsr_training_combo'
+
+    >>> for who, when in s1._db.execute(
+    ...     'select * from hsr_training_combo order by expired'):
+    ...     print who, when
+    sss 2000-01-13 12:34:56.000000
+    sssstttt 2000-02-04 12:34:56.000000
+    sttttt 2000-04-12 12:34:56.000000
+    rs 2012-08-04 00:00:00
+    rs2 2013-08-04 00:00:00
+    rs3 2014-08-04 00:00:00
+
+
 Find Training Records
 ---------------------
 
@@ -104,7 +128,8 @@ Course Naming
 
 The courses we're interested in are selected using::
 
-    >>> rd.course_pattern
+    >>> ad = TrainingRecordsAdmin(acct=(lambda: s1._db.connect(), None))
+    >>> ad.course_pattern
     '%Human Subjects Research%'
 
 
@@ -112,7 +137,7 @@ The courses we're interested in are selected using::
 
 import logging
 from xml.etree.ElementTree import fromstring as XML
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from docopt import docopt
 from sqlalchemy import (MetaData, Table, Column,
@@ -121,6 +146,7 @@ from sqlalchemy import (MetaData, Table, Column,
 from sqlalchemy.engine.url import make_url
 
 from lalib import maker
+from sqlaview import CreateView, DropView, year_after
 import relation
 
 VARCHAR120 = String(120)
@@ -150,10 +176,13 @@ def main(stdout, access):
         for (opt, table_name, date_col) in Chalk.tables:
             data = cli.getRecords(opt)
             admin.put(table_name, Chalk.parse_dates(data, [date_col]))
+    elif cli.combine:
+        admin = TrainingRecordsAdmin(cli.account('--dbadmin'))
+        admin.combine()
     else:
         store = TrainingRecordsRd(cli.account('--dbrd'))
         try:
-            training = store[cli.IDVAULT_NAME]
+            training = store[cli.NAME]
         except KeyError:
             raise SystemExit('no training records for %s' % cli.IDVAULT_NAME)
         log.info('training OK: %s', training)
@@ -284,8 +313,10 @@ class MEMBERS(TableDesign):
 
 
 class HSR(object):
-    def __init__(self, db_name):
+    def __init__(self, db_name,
+                 combo_view='hsr_training_combo'):
         self.db_name = db_name
+        self.combo_view = combo_view
         log.info('HSR DB name: %s', db_name)
 
         meta = MetaData()
@@ -295,6 +326,11 @@ class HSR(object):
 
         for _, name, date_col in Chalk.tables:
             Chalk.table(meta, db_name, name, date_col)
+
+        Table(combo_view, meta,
+              Column('username', String),
+              Column('expired', DateTime),
+              schema=db_name)
 
         self.tables = meta.tables
 
@@ -334,66 +370,22 @@ class Chalk(TableDesign):
 
 
 @maker
-def TrainingRecordsRd(
-        acct,
-        course_pattern='%Human Subjects Research%'):
+def TrainingRecordsRd(acct):
     '''
     >>> acct = (lambda: Mock()._db.connect(), None)
     >>> rd = TrainingRecordsRd(acct)
 
-    .. note:: TODO: move this complex query into a view.
-
-    >>> print rd.citi_query
-    ... # doctest: +NORMALIZE_WHITESPACE
-    SELECT "CRS"."InstitutionUserName" AS username,
-           "CRS"."dteExpiration" AS expired
-    FROM "CRS"
-    WHERE "CRS"."strCompletionReport" LIKE :strCompletionReport_1
-
-    >>> print rd.chalk_queries[0]
-    ... # doctest: +NORMALIZE_WHITESPACE
-    SELECT "full"."Username",
-           "full"."DateCompleted" + :DateCompleted_1 AS anon_1
-    FROM "HumanSubjectsFull" AS "full"
-
-    >>> print rd.query
-    ... # doctest: +NORMALIZE_WHITESPACE
-    SELECT "CRS"."InstitutionUserName" AS username,
-           "CRS"."dteExpiration" AS expired
-    FROM "CRS"
-    WHERE "CRS"."strCompletionReport" LIKE :strCompletionReport_1
-    UNION ALL
-    SELECT "full"."Username",
-           "full"."DateCompleted" + :DateCompleted_1 AS anon_1
-    FROM "HumanSubjectsFull" AS "full"
-    UNION ALL
-    SELECT refresher."Username",
-           refresher."CompleteDate" + :CompleteDate_1 AS anon_2
-    FROM "HumanSubjectsRefresher" AS refresher
-    UNION ALL
-    SELECT "in-person"."Username",
-           "in-person"."CompleteDate" + :CompleteDate_2 AS anon_3
-    FROM "HumanSubjectsInPerson" AS "in-person"
-
+    >>> print rd.lookup_query
+    hsr_training_combo
     '''
     dbtrx, db_name = acct
     hsr = HSR(db_name)
-    crs = hsr.table('CRS')
-
-    year = timedelta(days=365.25)
-    citi_query = (select([crs.c.InstitutionUserName.label('username'),
-                          crs.c.dteExpiration.label('expired')])
-                  .where(crs.c.strCompletionReport.like(course_pattern)))
-    chalk_queries = [select([t.c.Username, t.c[date_col] + year])
-                     for opt, name, date_col in Chalk.tables
-                     for t in [hsr.table(name).alias(opt[2:])]]
-
-    who_when = union_all(citi_query, *chalk_queries).alias('who_when')
+    lookup = hsr.table(hsr.combo_view)
 
     def __getitem__(_, instUserName):
         with dbtrx() as q:
-            result = q.execute(who_when.select(
-                who_when.c.username == instUserName))
+            result = q.execute(lookup.select(
+                lookup.c.username == instUserName))
             record = result.fetchone()
 
         if not record:
@@ -401,23 +393,82 @@ def TrainingRecordsRd(
 
         return record
 
-    return [__getitem__], dict(course_pattern=course_pattern,
-                               citi_query=citi_query,
-                               chalk_queries=chalk_queries,
-                               query=who_when)
+    return [__getitem__], dict(lookup_query=lookup)
 
 
 @maker
 def TrainingRecordsAdmin(acct,
+                         course_pattern='%Human Subjects Research%',
                          colSize=120):
+    '''
+    >>> acct = (lambda: Mock()._db.connect(), None)
+    >>> ad = TrainingRecordsAdmin(acct)
+
+    .. note:: TODO: move this complex query into a view.
+
+    >>> print ad.citi_query
+    ... # doctest: +NORMALIZE_WHITESPACE
+    SELECT "CRS"."InstitutionUserName" AS username,
+           "CRS"."dteExpiration" AS expired
+    FROM "CRS"
+    WHERE "CRS"."strCompletionReport" LIKE :strCompletionReport_1
+
+    >>> print ad.chalk_queries[0]
+    ... # doctest: +NORMALIZE_WHITESPACE
+    SELECT "full"."Username", year_after("full"."DateCompleted")
+    FROM "HumanSubjectsFull" AS "full"
+
+    >>> hsr = HSR('')
+    >>> [c.name for c in hsr.table(hsr.combo_view).columns]
+    ['username', 'expired']
+
+    >>> print ad.query
+    ... # doctest: +NORMALIZE_WHITESPACE
+    SELECT "CRS"."InstitutionUserName" AS username,
+           "CRS"."dteExpiration" AS expired
+    FROM "CRS"
+    WHERE "CRS"."strCompletionReport" LIKE :strCompletionReport_1
+    UNION ALL
+    SELECT "full"."Username",
+           year_after("full"."DateCompleted")
+    FROM "HumanSubjectsFull" AS "full"
+    UNION ALL
+    SELECT refresher."Username",
+           year_after(refresher."CompleteDate")
+    FROM "HumanSubjectsRefresher" AS refresher
+    UNION ALL
+    SELECT "in-person"."Username",
+           year_after("in-person"."CompleteDate")
+    FROM "HumanSubjectsInPerson" AS "in-person"
+
+    '''
     dbtrx, db_name = acct
     hsr = HSR(db_name)
+    crs = hsr.table('CRS')
+
+    citi_query = (select([crs.c.InstitutionUserName.label('username'),
+                          crs.c.dteExpiration.label('expired')])
+                  .where(crs.c.strCompletionReport.like(course_pattern)))
+    chalk_queries = [select([t.c.Username, year_after(t.c[date_col])])
+                     for opt, name, date_col in Chalk.tables
+                     for t in [hsr.table(name).alias(opt[2:])]]
+
+    who_when = union_all(citi_query, *chalk_queries).alias('who_when')
 
     def docRecords(_, doc):
         name = iter(doc).next().tag
         tdef = hsr.table(name)
         records = relation.docToRecords(doc, [c.name for c in tdef.columns])
         return name, records
+
+    def combine(_):
+        log.info('creating view: %s', hsr.combo_view)
+        combo = [DropView(hsr.combo_view, hsr.db_name),
+                 CreateView(hsr.combo_view, who_when, hsr.db_name)]
+
+        with dbtrx() as ddl:
+            for stmt in combo:
+                ddl.execute(stmt)
 
     def put(_, name, records):
         tdef = hsr.table(name)
@@ -428,7 +479,11 @@ def TrainingRecordsAdmin(acct,
             dml.execute(tdef.insert(), [t._asdict() for t in records])
             log.info('inserted %d rows into %s', len(records), tdef.name)
 
-    return [put, docRecords], {}
+    return [put, docRecords, combine], dict(
+        course_pattern=course_pattern,
+        citi_query=citi_query,
+        chalk_queries=chalk_queries,
+        query=who_when)
 
 
 @maker
@@ -537,7 +592,9 @@ R3,S,RS3@example,J1,8/4/2013 0:00,rs3
 
         # self._db = db = create_engine('sqlite:///mock.db')
         self._db = db = db or create_engine('sqlite://')
-        if not ('--refresh' in self.argv or 'backfill' in self.argv):
+        if not ('--refresh' in self.argv
+                or 'backfill' in self.argv
+                or 'combine' in self.argv):
             cn = db.connect().connection
             cn.executescript(pkg.resource_string(__name__, 'test_cache.sql'))
 
@@ -576,6 +633,8 @@ if __name__ == '__main__':
         def access():
             logging.basicConfig(
                 level=logging.DEBUG if '--debug' in argv else logging.INFO)
+            if '--debug' in argv:
+                logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
             # ew... after this import, basicConfig doesn't work
             from pysimplesoap.client import SoapClient
