@@ -141,7 +141,7 @@ from datetime import datetime
 
 from sqlalchemy import (MetaData, Table, Column,
                         String, Integer, Date, DateTime,
-                        select, union_all, literal_column)
+                        select, union_all, literal_column, and_)
 from sqlalchemy.engine.url import make_url
 
 from lalib import maker
@@ -450,7 +450,9 @@ def TrainingRecordsAdmin(acct,
                           crs.c.dteExpiration.label('expired'),
                           crs.c.dtePassed.label('completed'),
                           crs.c.strCompletionReport.label('course')])
-                  .where(crs.c.strCompletionReport.like(course_pattern)))
+                  .where(and_(crs.c.strCompletionReport.like(course_pattern),
+                              # != None is sqlalchemy-speak for is not null
+                              crs.c.dteExpiration != None)))  # noqa
     chalk_queries = [select([t.c.Username, year_after(t.c[date_col]),
                              t.c[date_col], literal_column("'%s'" % name)])
                      for opt, name, date_col in Chalk.tables
