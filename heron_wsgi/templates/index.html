@@ -191,11 +191,19 @@
       </li>
     </ol>
 
-    <p py:if="not trainingCurrent">
+    <div py:if="not trainingCurrent">
+      <h3>Human Subjects Training</h3>
+      <p py:if="trainingLast">
+        Our records show <cite>${trainingLast.course}</cite>
+        completed ${trainingLast.completed};
+        <br />expired  ${trainingLast.expired}
+      </p>
+      <p>
       <em id="training-records">*If you believe the records of your training are out of date,
       please contact <a href="mailto:${admin_mailbox}?subject=HSC%20training%20records"
       >${admin_mailbox}</a>.</em>
-    </p>
+      </p>
+    </div>
 
   <div class="header png">
     <h3>Data Use Agreement</h3>

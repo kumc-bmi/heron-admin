@@ -51,13 +51,13 @@ Human Subjects Training
 
 We use an database view to check human subjects research training::
 
-  >>> m.trained_thru(js)
+  >>> m.latest_training(js).expired
   '2012-01-01'
 
-  >>> m.trained_thru(bill)
+  >>> m.latest_training(bill)
   Traceback (most recent call last):
     ...
-  LookupError
+  LookupError: bill.student
 
 
 Robustness
@@ -252,17 +252,15 @@ class MedCenter(object):
                        uid in self._testing_faculty,
                        **self._browser.directory_attributes(uid))
 
-    def trained_thru(self, alleged_badge):
+    def latest_training(self, alleged_badge):
         '''
         :raises: :exc:`IOError`, :exc:`LookupError`
         '''
         badge = self.__notary.getInspector().vouch(alleged_badge)
 
-        when = self._training(badge.cn)
-        if not when:
-            raise LookupError
+        info = self._training(badge.cn)
 
-        return when
+        return info
 
 
 class NotFaculty(TypeError):
@@ -357,7 +355,7 @@ class IDBadge(LDAPBadge):
       ...    cn='john.smith',
       ...    sn='Smith',
       ...    givenname='John')
-      >>> mc.trained_thru(evil)
+      >>> mc.latest_training(evil)
       Traceback (most recent call last):
         ...
       NotVouchable
@@ -424,7 +422,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
         binder.bind(ldaplib.LDAPService,
                     injector.InstanceProvider(d))
         binder.bind(KTrainingFunction,
-                    injector.InstanceProvider(d.trainedThru))
+                    injector.InstanceProvider(d.latest_training))
         binder.bind(KTestingFaculty,
                     injector.InstanceProvider(''))
 
@@ -474,11 +472,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
 
         tr = TrainingRecordsRd(account)
 
-        def trainedThru(who):
-            who, when = tr[who]
-            return str(when)[:10]
-
-        return trainedThru
+        return tr.__getitem__
 
     @classmethod
     def mods(cls, ini):
@@ -502,14 +496,14 @@ def _integration_test():  # pragma: no cover
         print who
         print "faculty? ", who.is_faculty()
         print "investigator? ", who.is_investigator()
-        print "training: ", m.trained_thru(who)
+        print "training: ", m.latest_training(who)
 
         print "Once more, to check caching..."
         req = MockRequest()
         m.authenticated(uid, req)
         who = m.idbadge(req.context)
         print who
-        print "training: ", m.trained_thru(who)
+        print "training: ", m.latest_training(who)
 
 
 if __name__ == '__main__':  # pragma: no cover
