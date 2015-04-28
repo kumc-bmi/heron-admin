@@ -77,13 +77,6 @@ class MockLDAP(LDAPService, mock_directory.MockDirectory):
 
 
 class NativeLDAPService(LDAPService):  # pragma: nocover
-    '''
-    .. todo:: Investigate better way to deal with SSL certs
-       than putting `TLS_REQCERT allow` in /etc/ldap/ldap.conf
-       (not to be confused with /etc/ldap.conf).
-
-    '''
-
     def __init__(self, rt, native, now, ttl):
         LDAPService.__init__(self, now, ttl)
         self._rt = rt
@@ -92,7 +85,9 @@ class NativeLDAPService(LDAPService):  # pragma: nocover
 
     def _bind(self):
         rt = self._rt
-        self._l = l = self._native.initialize(rt.url)
+        ldap = self._native
+        ldap.set_option(ldap.OPT_X_TLS_CACERTFILE, rt.certfile)
+        self._l = l = ldap.initialize(rt.url)
         l.simple_bind_s(rt.userdn, rt.password)
         return l
 
@@ -118,7 +113,8 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     @provides((rtconfig.Options, CONFIG_SECTION))
     def opts(self):
         rt = rtconfig.RuntimeOptions(
-            'url userdn base password executives testing_faculty'.split())
+            ('url certfile userdn base password'
+             ' executives testing_faculty').split())
         rt.load(self._ini, CONFIG_SECTION)
         return rt
 
