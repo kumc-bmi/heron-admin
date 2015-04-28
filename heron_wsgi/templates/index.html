@@ -67,6 +67,7 @@
   <style type="text/css">
     .photo {text-align: center; margin-bottom: 1em }
     .doit {text-align: center }
+    .warn {color: red }
   </style>
     <img src="av/220px-Heron_tricol_01.JPG" alt=""/>
   </div>
@@ -191,14 +192,17 @@
       </li>
     </ol>
 
-    <div py:if="not trainingCurrent">
+    <div>
       <h3>Human Subjects Training</h3>
       <p py:if="trainingLast">
         Our records show <cite>${trainingLast.course}</cite>
         completed ${trainingLast.completed};
-        <br />expired  ${trainingLast.expired}
+        <span class="warn" py:if="trainingCurrent">
+          <br />expires  ${trainingLast.expired}.</span>
+        <strong class="warn" py:if="not trainingCurrent">
+          <br />expired  ${trainingLast.expired}.</strong>
       </p>
-      <p>
+      <p py:if="not trainingCurrent">
       <em id="training-records">*If you believe the records of your training are out of date,
       please contact <a href="mailto:${admin_mailbox}?subject=HSC%20training%20records"
       >${admin_mailbox}</a>.</em>
