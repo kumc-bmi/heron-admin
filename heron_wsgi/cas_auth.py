@@ -332,7 +332,8 @@ class CapabilityStyle(object):
                 issuer.grant(context, permission)
                 log.info('%s permits %s', issuer, permission)
                 return True
-            except TypeError:
+            except TypeError as ex:
+                log.debug('TypeError in grant: %s', ex)
                 pass
 
         log.info('CapabilityStyle.permits: %s do not have %s permission.',
