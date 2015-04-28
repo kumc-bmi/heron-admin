@@ -49,12 +49,7 @@ Junk:
 Human Subjects Training
 -----------------------
 
-We use an outboard service to check human subjects "chalk" training::
-
-  >>> print _sample_chalk_settings.inifmt(CHALK_CONFIG_SECTION)
-  [chalk]
-  param=userid
-  url=http://localhost:8080/chalk-checker
+We use an database view to check human subjects research training::
 
   >>> m.trained_thru(js)
   '2012-01-01'
@@ -98,17 +93,17 @@ API
 
 import logging
 import sys
-import urllib
-from datetime import timedelta
+from contextlib import contextmanager
 
 import injector
 from injector import inject, provides, singleton
+from sqlalchemy.engine.url import make_url
 
 import rtconfig
 import ldaplib
 import sealing
 from notary import makeNotary
-import cache_remote
+from traincheck import TrainingRecordsRd
 
 log = logging.getLogger(__name__)
 
@@ -116,7 +111,7 @@ KTrainingFunction = injector.Key('TrainingFunction')
 KExecutives = injector.Key('Executives')
 KTestingFaculty = injector.Key('TestingFaculty')
 
-CHALK_CONFIG_SECTION = 'chalk'
+TRAINING_SECTION = 'training'
 PERM_BROWSER = __name__ + '.browse'
 
 
@@ -401,31 +396,6 @@ class IDBadge(LDAPBadge):
     def is_investigator(self):
         return self.is_faculty() or self.is_executive()
 
-_sample_chalk_settings = rtconfig.TestTimeOptions(dict(
-        url='http://localhost:8080/chalk-checker',
-        param='userid'))
-
-
-class ChalkChecker(cache_remote.Cache):
-    def __init__(self, ua, now, url, param,
-                 ttl=timedelta(seconds=30)):
-        cache_remote.Cache.__init__(self, now)
-
-        def q_for(userid):
-            def q():
-                addr = url + '?' + urllib.urlencode({param: userid})
-                body = ua.open(addr).read()
-
-                if not body:  # no expiration on file
-                    raise KeyError
-
-                return ttl, body.strip()  # get rid of newline
-            return q
-        self.q_for = q_for
-
-    def check(self, userid):
-        return self._query(userid, self.q_for(userid), 'Chalk Training')
-
 
 class AttrDict(dict):
     def __init__(self, *args, **kwargs):
@@ -470,9 +440,6 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
       - :data:`KTestingFaculty` (for faculty testing hook)
 
     '''
-    import datetime
-    import urllib2
-    _ua = urllib2.build_opener()
 
     @provides(KExecutives)
     @inject(rt=(rtconfig.Options, ldaplib.CONFIG_SECTION))
@@ -489,13 +456,29 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         return tf
 
     @provides(KTrainingFunction)
-    def training(self, section=CHALK_CONFIG_SECTION, ua=_ua,
-                 now=datetime.datetime.now):
-        rt = rtconfig.RuntimeOptions('url param'.split())
+    def training(self, section=TRAINING_SECTION):
+        from sqlalchemy import create_engine
+
+        rt = rtconfig.RuntimeOptions('url'.split())
         rt.load(self._ini, section)
 
-        cc = ChalkChecker(ua, now, rt.url, rt.param)
-        return cc.check
+        u = make_url(rt.url)
+
+        @contextmanager
+        def trx():
+            conn = create_engine(u).connect()
+            with conn.begin():
+                yield conn
+
+        account = trx, u.database
+
+        tr = TrainingRecordsRd(account)
+
+        def trainedThru(who):
+            who, when = tr[who]
+            return str(when)[:10]
+
+        return trainedThru
 
     @classmethod
     def mods(cls, ini):
