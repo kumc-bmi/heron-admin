@@ -139,7 +139,6 @@ import logging
 from xml.etree.ElementTree import fromstring as XML
 from datetime import datetime
 
-from docopt import docopt
 from sqlalchemy import (MetaData, Table, Column,
                         String, Integer, Date, DateTime,
                         select, union_all)
@@ -509,6 +508,9 @@ def CitiSOAPService(client, auth):
 
 @maker
 def CLI(argv, environ, openf, create_engine, SoapClient):
+    # Don't require docopt except for command-line usage
+    from docopt import docopt
+
     usage = __doc__.split('\n..')[0]
     opts = docopt(usage, argv=argv[1:])
     log.debug('docopt: %s', opts)
