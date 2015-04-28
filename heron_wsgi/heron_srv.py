@@ -89,7 +89,7 @@ class CheckListView(Token):
         >>> from pyramid import testing
         >>> from pyramid.testing import DummyRequest
         >>> config = testing.setUp()
-        >>> for route in ('logout', 'saa', 'dua', 'home', 'oversight', 
+        >>> for route in ('logout', 'saa', 'dua', 'home', 'oversight',
         ...               'i2b2_login'):
         ...     config.add_route(route, route)
         >>> mc, hp, clv = Mock.make((medcenter.MedCenter,
