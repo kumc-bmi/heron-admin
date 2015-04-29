@@ -33,6 +33,10 @@ def compile_create_view(element, compiler, **kw):
             statement = element.query.statement
         else:
             statement = element.query
+
+        # ref: How do I render SQL expressions as strings,
+        # possibly with bound parameters inlined?
+        # http://docs.sqlalchemy.org/en/improve_toc/faq/sqlexpressions.html#faq-sql-expression-string  # noqa
         query = compiler.process(statement, literal_binds=True)
 
     pfx, sep = ((compiler.preparer.quote(element.schema, ""), '.')
