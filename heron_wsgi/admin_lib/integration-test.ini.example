@@ -9,10 +9,17 @@ base=...
 executives=...
 
 [chalk]
-# one way to get this working is to run an ssh tunnel
-# from localhost:8080 to port 8080 on the test machine
-url=http://localhost:8080/chalk-checker-0.0.1-SNAPSHOT
-param=userid
+# leave this section here for transition.
+
+[training]
+database=hsr_cache
+# account with read access to hsr_cache (and redcap...)
+username=hsr_train_check
+password= ...
+# ssh tunnel
+port=3306
+
+url=mysql+mysqldb://%(username)s:%(password)s@127.0.0.1:%(port)s/%(database)s?charset=utf8
 
 [redcapdb]
 user=....
