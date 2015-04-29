@@ -21,10 +21,19 @@ redcap_data = Table('redcap_data', redcap_meta,
                     )
 
 
+def in_schema(name,
+              meta=redcap_meta,
+              t=redcap_data):
+    tt = t.tometadata(meta)
+    tt.schema = name
+    return tt
+
+
 def unpivot(project_id, field_names,
+            record=False,
             redcap_data=redcap_data):
     '''
-    >>> print unpivot(4688, ['username', 'expired', 'course'])
+    >>> print unpivot(4688, ['username', 'expired', 'course'], record=True)
     ... # doctest: +NORMALIZE_WHITESPACE
     SELECT username.record,
            username.value AS username,
@@ -58,7 +67,8 @@ def unpivot(project_id, field_names,
                 .alias(f))
 
     fqs = [field_query(n) for n in field_names]
-    cols = [fqs[0].c.record] + [fq.c.value.label(fq.name) for fq in fqs]
+    cols = ([fqs[0].c.record] if record else []) + [
+        fq.c.value.label(fq.name) for fq in fqs]
 
     where = and_(*[fqs[ix].c.record == fqs[ix + 1].c.record
                    for ix in range(len(fqs) - 1)])

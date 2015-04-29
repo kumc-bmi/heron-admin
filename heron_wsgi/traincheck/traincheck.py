@@ -3,7 +3,7 @@ r'''traincheck -- check human subjects training records via CITI
 Usage:
   traincheck refresh --user=NAME [--wsdl=U --pwenv=K --dbadmin=K -d]
   traincheck backfill --full=F1 --refresher=F1 --in-person=F3 [--dbadmin=K -d]
-  traincheck combine [--dbadmin=K -d]
+  traincheck combine --exempt=PID [--dbadmin=K -d]
   traincheck lookup NAME [--dbrd=K -d]
   traincheck --help
 
@@ -14,6 +14,7 @@ Options:
                      [default: HSR_TRAIN_CHECK]
   --dbadmin=K        admin (create, delete, ...) access to PII DB
                      [default: HSR_TRAIN_ADMIN]
+  --exempt=PID       exempt records REDCap project ID
   --wsdl=URL         access to CITI SOAP Service: Service Description URL
                      [default: https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL]  # noqa
   --user=NAME        access to CITI SOAP Service: username
@@ -82,7 +83,7 @@ The results are straightforward::
 Combine sources into a view
 ---------------------------
 
-    >>> main(stdout, s1.cli_access('traincheck combine',
+    >>> main(stdout, s1.cli_access('traincheck combine --exempt=123',
     ...      db=s1._db))  # (Don't make a new in-memory DB)
 
     >>> HSR('').combo_view
@@ -106,7 +107,7 @@ While we support checking records from the CLI, it will typically be
 done using the API. Given (read) access to the database, we can make
 a `TrainingRecordsRd`::
 
-    >>> rd = TrainingRecordsRd(acct=(conntrx(s1._db.connect()), None))
+    >>> rd = TrainingRecordsRd(acct=(conntrx(s1._db.connect()), None, None))
 
 Now let's look up training for Sam, whose username is `sssstttt`::
 
@@ -128,7 +129,7 @@ Course Naming
 
 The courses we're interested in are selected using::
 
-    >>> ad = TrainingRecordsAdmin(acct=(lambda: s1._db.connect(), None))
+    >>> ad = TrainingRecordsAdmin((lambda: s1._db.connect(), None, None), 0)
     >>> ad.course_pattern
     '%Human Subjects Research%'
 
@@ -147,6 +148,7 @@ from sqlalchemy.engine.url import make_url
 from lalib import maker, conntrx
 from sqlaview import CreateView, DropView, year_after
 import relation
+import redcapview
 
 VARCHAR120 = String(120)
 log = logging.getLogger(__name__)
@@ -155,10 +157,12 @@ log = logging.getLogger(__name__)
 def main(stdout, access):
     cli = access()
 
+    mkTRA = lambda: TrainingRecordsAdmin(cli.account('--dbadmin'), cli.exempt)
+
     if cli.refresh:
         svc = CitiSOAPService(cli.soapClient(), cli.auth)
 
-        admin = TrainingRecordsAdmin(cli.account('--dbadmin'))
+        admin = mkTRA()
         for cls, k in [
                 # smallest to largest typical payload
                 (GRADEBOOK, svc.GetGradeBooksXML),
@@ -171,12 +175,12 @@ def main(stdout, access):
             except StopIteration:
                 raise SystemExit('no records in %s' % k)
     elif cli.backfill:
-        admin = TrainingRecordsAdmin(cli.account('--dbadmin'))
+        admin = mkTRA()
         for (opt, table_name, date_col) in Chalk.tables:
             data = cli.getRecords(opt)
             admin.put(table_name, Chalk.parse_dates(data, [date_col]))
     elif cli.combine:
-        admin = TrainingRecordsAdmin(cli.account('--dbadmin'))
+        admin = mkTRA()
         admin.combine()
     else:
         store = TrainingRecordsRd(cli.account('--dbrd'))
@@ -373,13 +377,13 @@ class Chalk(TableDesign):
 @maker
 def TrainingRecordsRd(acct):
     '''
-    >>> acct = (lambda: None, None)
+    >>> acct = (lambda: None, None, None)
     >>> rd = TrainingRecordsRd(acct)
 
     >>> print rd.lookup_query
     hsr_training_combo
     '''
-    dbtrx, db_name = acct
+    dbtrx, db_name, _ = acct
     hsr = HSR(db_name)
     lookup = hsr.table(hsr.combo_view)
 
@@ -399,12 +403,12 @@ def TrainingRecordsRd(acct):
 
 
 @maker
-def TrainingRecordsAdmin(acct,
+def TrainingRecordsAdmin(acct, exempt_pid,
                          course_pattern='%Human Subjects Research%',
                          colSize=120):
     '''
-    >>> acct = (lambda: Mock()._db.connect(), None)
-    >>> ad = TrainingRecordsAdmin(acct)
+    >>> acct = (lambda: Mock()._db.connect(), None, None)
+    >>> ad = TrainingRecordsAdmin(acct, 0)
 
     .. note:: TODO: move this complex query into a view.
 
@@ -430,21 +434,16 @@ def TrainingRecordsAdmin(acct,
 
     >>> print ad.query
     ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
-    SELECT "CRS"."InstitutionUserName" AS username,
-           "CRS"."dteExpiration" AS expired,
-           "CRS"."dtePassed" AS completed,
-           "CRS"."strCompletionReport" AS course
-    FROM "CRS"
-    WHERE "CRS"."strCompletionReport" LIKE :strCompletionReport_1
-    AND "CRS"."dteExpiration" IS NOT NULL
+    SELECT ...
+    FROM "CRS" ...
     UNION ALL
-    SELECT "full"."Username",
-           year_after("full"."DateCompleted"),
-           "full"."DateCompleted", 'HumanSubjectsFull'
-    FROM "HumanSubjectsFull" AS "full"
-    UNION ALL ...
+    SELECT ...
+    FROM redcap_data AS rd ...
+    UNION ALL
+    SELECT "full"."Username", ...
+    FROM "HumanSubjectsFull" AS "full" ...
     '''
-    dbtrx, db_name = acct
+    dbtrx, db_name, redcapdb = acct
     hsr = HSR(db_name)
     crs = hsr.table('CRS')
 
@@ -460,7 +459,13 @@ def TrainingRecordsAdmin(acct,
                      for opt, name, date_col in Chalk.tables
                      for t in [hsr.table(name).alias(opt[2:])]]
 
-    who_when = union_all(citi_query, *chalk_queries).alias('who_when')
+    redcap_data = redcapview.in_schema(redcapdb, meta=MetaData())
+    exempt_query = redcapview.unpivot(exempt_pid,
+                                      [c.name for c in citi_query.c],
+                                      redcap_data=redcap_data)
+
+    who_when = union_all(citi_query, exempt_query,
+                         *chalk_queries).alias('who_when')
 
     def docRecords(_, doc):
         name = iter(doc).next().tag
@@ -530,8 +535,10 @@ def CLI(argv, environ, openf, create_engine, SoapClient):
     def account(_, opt):
         env_key = opts[opt]
         u = make_url(environ[env_key])
+        # leave off redcap schema prefix for testing
+        redcapdb = (None if u.drivername == 'sqlite' else 'redcap')
 
-        return conntrx(create_engine(u).connect()), u.database
+        return conntrx(create_engine(u).connect()), u.database, redcapdb
 
     def auth(_, wrapped):
         usr = opts['--user']
