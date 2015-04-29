@@ -106,12 +106,12 @@ While we support checking records from the CLI, it will typically be
 done using the API. Given (read) access to the database, we can make
 a `TrainingRecordsRd`::
 
-    >>> rd = TrainingRecordsRd(acct=(lambda: s1._db.connect(), None))
+    >>> rd = TrainingRecordsRd(acct=(conntrx(s1._db.connect()), None))
 
 Now let's look up training for Sam, whose username is `sssstttt`::
 
     >>> rd['sssstttt'].expired
-    datetime.datetime(2000, 2, 4, 12, 34, 56)
+    u'2000-02-04 12:34:56.000000'
 
 .. note:: TODO: Integrate a story-style name into test data.
 
@@ -144,7 +144,7 @@ from sqlalchemy import (MetaData, Table, Column,
                         select, union_all, literal_column, and_)
 from sqlalchemy.engine.url import make_url
 
-from lalib import maker
+from lalib import maker, conntrx
 from sqlaview import CreateView, DropView, year_after
 import relation
 
@@ -373,7 +373,7 @@ class Chalk(TableDesign):
 @maker
 def TrainingRecordsRd(acct):
     '''
-    >>> acct = (lambda: Mock()._db.connect(), None)
+    >>> acct = (lambda: None, None)
     >>> rd = TrainingRecordsRd(acct)
 
     >>> print rd.lookup_query
@@ -416,6 +416,7 @@ def TrainingRecordsAdmin(acct,
            "CRS"."strCompletionReport" AS course
     FROM "CRS"
     WHERE "CRS"."strCompletionReport" LIKE :strCompletionReport_1
+    AND "CRS"."dteExpiration" IS NOT NULL
 
     >>> print ad.chalk_queries[0]
     ... # doctest: +NORMALIZE_WHITESPACE
@@ -435,6 +436,7 @@ def TrainingRecordsAdmin(acct,
            "CRS"."strCompletionReport" AS course
     FROM "CRS"
     WHERE "CRS"."strCompletionReport" LIKE :strCompletionReport_1
+    AND "CRS"."dteExpiration" IS NOT NULL
     UNION ALL
     SELECT "full"."Username",
            year_after("full"."DateCompleted"),
@@ -528,7 +530,8 @@ def CLI(argv, environ, openf, create_engine, SoapClient):
     def account(_, opt):
         env_key = opts[opt]
         u = make_url(environ[env_key])
-        return lambda: create_engine(u).connect(), u.database
+
+        return conntrx(create_engine(u).connect()), u.database
 
     def auth(_, wrapped):
         usr = opts['--user']

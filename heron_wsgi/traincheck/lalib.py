@@ -59,3 +59,14 @@ def dbmgr(connect):
         finally:
             cur.close()
     return dbtrx
+
+
+def conntrx(conn):
+    '''Make a context manager that yields cursors, given a connection.
+    '''
+    @contextmanager
+    def conntrx():
+        with conn.begin():
+            yield conn
+
+    return conntrx
