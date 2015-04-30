@@ -39,38 +39,31 @@ def unpivot(project_id, field_names,
            username.value AS username,
            expired.value AS expired,
            course.value AS course
-    FROM
-    (SELECT rd.record AS record, rd.value AS value
-    FROM redcap.redcap_data AS rd
-    WHERE rd.project_id = :project_id_1 AND rd.field_name = :field_name_1)
-    AS username,
-    (SELECT rd.record AS record, rd.value AS value
-    FROM redcap.redcap_data AS rd
-    WHERE rd.project_id = :project_id_2 AND rd.field_name = :field_name_2)
-    AS expired,
-    (SELECT rd.record AS record, rd.value AS value
-    FROM redcap.redcap_data AS rd
-    WHERE rd.project_id = :project_id_3 AND rd.field_name = :field_name_3)
-    AS course
-    WHERE username.record = expired.record AND expired.record = course.record
+    FROM redcap.redcap_data AS username,
+         redcap.redcap_data AS expired,
+         redcap.redcap_data AS course
+    WHERE username.project_id = :project_id_1
+      AND username.field_name = :field_name_1
+      AND expired.project_id = :project_id_2
+      AND expired.field_name = :field_name_2
+      AND course.project_id = :project_id_3
+      AND course.field_name = :field_name_3
+      AND username.record = expired.record
+      AND expired.record = course.record
     '''
     if not field_names:
         raise ValueError(field_names)
 
-    rd = redcap_data.alias('rd')
+    froms = [(n, redcap_data.alias(n)) for n in field_names]
+    cols = ([froms[0][1].c.record] if record else []) + [
+        frm.c.value.label(n) for (n, frm) in froms]
 
-    def field_query(f):
-        return (select([rd.c.record,
-                        rd.c.value])
-                .where(and_(rd.c.project_id == project_id,
-                            rd.c.field_name == f))
-                .alias(f))
+    project = [clause for (n, frm) in froms
+               for clause in
+               [frm.c.project_id == project_id,
+                frm.c.field_name == n]]
+    join = [froms[ix][1].c.record == froms[ix + 1][1].c.record
+            for ix in range(len(froms) - 1)]
 
-    fqs = [field_query(n) for n in field_names]
-    cols = ([fqs[0].c.record] if record else []) + [
-        fq.c.value.label(fq.name) for fq in fqs]
-
-    where = and_(*[fqs[ix].c.record == fqs[ix + 1].c.record
-                   for ix in range(len(fqs) - 1)])
-
-    return select(cols, where, from_obj=fqs)
+    return select(cols, and_(*project + join),
+                  from_obj=[f for (n, f) in froms])
