@@ -461,6 +461,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         rt.load(self._ini, section)
 
         u = make_url(rt.url)
+        redcapdb = (None if u.drivername == 'sqlite' else 'redcap')
 
         @contextmanager
         def trx():
@@ -468,7 +469,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
             with conn.begin():
                 yield conn
 
-        account = trx, u.database
+        account = trx, u.database, redcapdb
 
         tr = TrainingRecordsRd(account)
 
