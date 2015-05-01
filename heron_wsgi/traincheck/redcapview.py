@@ -21,6 +21,11 @@ redcap_data = Table('redcap_data', redcap_meta,
                     )
 
 
+backend_options = dict(mysql_engine='InnoDB',
+                       mysql_default_charset='utf8',
+                       mysql_collate='utf8_unicode_ci')
+
+
 def in_schema(name,
               meta=redcap_meta,
               t=redcap_data):

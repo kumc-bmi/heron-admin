@@ -227,7 +227,8 @@ class TableDesign(object):
     def xml_table(cls, meta, db_name):
         return Table(cls.__name__, meta,
                      *cls.columns(),
-                     schema=db_name)
+                     schema=db_name,
+                     **redcapview.backend_options)
 
 
 class CRS(TableDesign):
@@ -371,7 +372,8 @@ class Chalk(TableDesign):
                      Column('EmployeeID', VARCHAR120),
                      Column(date_col, DateTime()),
                      Column('Username', VARCHAR120),
-                     schema=db_name)
+                     schema=db_name,
+                     **redcapview.backend_options)
 
 
 @maker
