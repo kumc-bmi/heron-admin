@@ -187,7 +187,7 @@ def main(stdout, access):
         try:
             training = store[cli.NAME]
         except KeyError:
-            raise SystemExit('no training records for %s' % cli.IDVAULT_NAME)
+            raise SystemExit('no training records for %s' % cli.NAME)
         log.info('training OK: %s', training)
         stdout.write(str(training))
 
