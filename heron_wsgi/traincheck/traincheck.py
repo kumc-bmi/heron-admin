@@ -1,9 +1,9 @@
 r'''traincheck -- check human subjects training records via CITI
 
 Usage:
+  traincheck init --exempt=PID [--dbadmin=K -d]
   traincheck refresh --user=NAME [--wsdl=U --pwenv=K --dbadmin=K -d]
   traincheck backfill --full=F1 --refresher=F1 --in-person=F3 [--dbadmin=K -d]
-  traincheck combine --exempt=PID [--dbadmin=K -d]
   traincheck lookup NAME [--dbrd=K -d]
   traincheck --help
 
@@ -22,11 +22,19 @@ Options:
                      [default: CITI_PASSWORD]
   -d --debug         turn on debug logging
   backfill           Load data from legacy system
-  combine            create view combining training data from all sources
+  init               tables and view combining training data from all sources
 
 PII DB is a database suitable for PII (personally identifiable information).
 
 .. note:: This directive separates usage doc above from design notes below.
+
+
+Initialize Database
+-------------------
+
+    >>> s1 = Mock()  # scenario 1
+    >>> stdout = s1.stdout
+    >>> main(stdout, s1.cli_access('traincheck init --exempt=123'))
 
 
 Make Local Copy of CITI Data
@@ -38,8 +46,6 @@ verifying that a HERON user's human subjects training is current, we
 regularly refresh a copy of the CITI Data via their Web Service, using
 authorization from the command line and environment as noted above::
 
-    >>> s1 = Mock()  # scenario 1
-    >>> stdout = s1.stdout
     >>> main(stdout, s1.cli_access('traincheck refresh --user=MySchool'))
 
 __ https://www.citiprogram.org/
@@ -69,8 +75,7 @@ Using access to this data and the database, we load it::
 
     >>> main(stdout, s1.cli_access(
     ...     'traincheck backfill '
-    ...          '--full=f.csv --refresher=r.csv --in-person=i.csv',
-    ...     db=s1._db))  # (Don't make a new in-memory DB)
+    ...          '--full=f.csv --refresher=r.csv --in-person=i.csv'))
 
 The results are straightforward::
 
@@ -80,11 +85,8 @@ The results are straightforward::
     2013-08-04 rs3
 
 
-Combine sources into a view
----------------------------
-
-    >>> main(stdout, s1.cli_access('traincheck combine --exempt=123',
-    ...      db=s1._db))  # (Don't make a new in-memory DB)
+Combined view of all sources
+----------------------------
 
     >>> HSR('').combo_view
     'hsr_training_combo'
@@ -159,7 +161,10 @@ def main(stdout, access):
 
     mkTRA = lambda: TrainingRecordsAdmin(cli.account('--dbadmin'), cli.exempt)
 
-    if cli.refresh:
+    if cli.init:
+        admin = mkTRA()
+        admin.init()
+    elif cli.refresh:
         svc = CitiSOAPService(cli.soapClient(), cli.auth)
 
         admin = mkTRA()
@@ -179,10 +184,7 @@ def main(stdout, access):
         for (opt, table_name, date_col) in Chalk.tables:
             data = cli.getRecords(opt)
             admin.put(table_name, Chalk.parse_dates(data, [date_col]))
-    elif cli.combine:
-        admin = mkTRA()
-        admin.combine()
-    else:
+    elif cli.lookup:
         store = TrainingRecordsRd(cli.account('--dbrd'))
         try:
             training = store[cli.NAME]
@@ -338,6 +340,7 @@ class HSR(object):
               Column('course', String),
               schema=db_name or None)
 
+        self.meta = meta
         self.tables = meta.tables
 
     def table(self, name):
@@ -475,25 +478,28 @@ def TrainingRecordsAdmin(acct, exempt_pid,
         records = relation.docToRecords(doc, [c.name for c in tdef.columns])
         return name, records
 
-    def combine(_):
-        log.info('creating view: %s', hsr.combo_view)
-        combo = [DropView(hsr.combo_view, hsr.db_name),
-                 CreateView(hsr.combo_view, who_when, hsr.db_name)]
-
+    def init(_):
+        non_views = [t for (n, t) in sorted(hsr.tables.items())
+                     if 'combo' not in n]
         with dbtrx() as ddl:
-            for stmt in combo:
-                ddl.execute(stmt)
+            log.info('re-creating tables: %s',
+                     [t.name for t in non_views])
+            ddl.execute(DropView(hsr.combo_view, hsr.db_name))
+            hsr.meta.drop_all(ddl, non_views)
+            hsr.meta.create_all(ddl, non_views)
+            log.info('creating view: %s', hsr.combo_view)
+            ddl.execute(CreateView(hsr.combo_view, who_when, hsr.db_name))
 
     def put(_, name, records):
         tdef = hsr.table(name)
         with dbtrx() as dml:
-            log.info('(re-)creating %s', tdef.name)
-            tdef.drop(dml, checkfirst=True)
-            tdef.create(dml)
+            log.info('put %d records to %s:', len(records), name)
+            deleted = dml.execute(tdef.delete()).rowcount
+            log.info('deleted %d old records from %s', deleted, name)
             dml.execute(tdef.insert(), [t._asdict() for t in records])
             log.info('inserted %d rows into %s', len(records), tdef.name)
 
-    return [put, docRecords, combine], dict(
+    return [init, put, docRecords], dict(
         course_pattern=course_pattern,
         citi_query=citi_query,
         chalk_queries=chalk_queries,
@@ -579,13 +585,17 @@ R3,S,RS3@example,J1,8/4/2013 0:00,rs3
 
     def __init__(self):
         import StringIO
+        from sqlalchemy import create_engine  # sqlite in-memory use only
 
-        self._db = None  # set in cli_access()
         self.argv = []
         self._fs = dict(self.files)
         self.create_engine = lambda path: self._db
         self.SoapClient = lambda wsdl: self
         self.stdout = StringIO.StringIO()
+
+        # self._db = create_engine('sqlite:///mock.db')
+        self._db = create_engine('sqlite://')
+        self._init_redcap()
 
     from contextlib import contextmanager
 
@@ -604,22 +614,16 @@ R3,S,RS3@example,J1,8/4/2013 0:00,rs3
             _buf, content = self._fs[path]
             yield StringIO.StringIO(content)
 
-    def cli_access(self, cmd, db=None):
-        import pkg_resources as pkg
-        from sqlalchemy import create_engine  # sqlite in-memory use only
-
+    def cli_access(self, cmd):
         self.argv = cmd.split()
-
-        # self._db = db = create_engine('sqlite:///mock.db')
-        self._db = db = db or create_engine('sqlite://')
-        if not ('--refresh' in self.argv
-                or 'backfill' in self.argv
-                or 'combine' in self.argv):
-            cn = db.connect().connection
-            cn.executescript(pkg.resource_string(__name__, 'test_cache.sql'))
 
         return lambda: CLI(self.argv, self.environ, self.openf,
                            self.create_engine, self.SoapClient)
+
+    def _init_redcap(self):
+        import pkg_resources as pkg
+        cn = self._db.connect().connection
+        cn.executescript(pkg.resource_string(__name__, 'test_rc.sql'))
 
     def _check(self, usr, pwd):
         if not (usr == 'MySchool' and
