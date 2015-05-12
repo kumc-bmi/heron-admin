@@ -86,8 +86,10 @@ def mock_xml_records(template, qty):
         n[0] += 13
         return (
             # Please excuse the abstraction leak...
-            'Basic/Refresher Course - Human Subjects Research'
+            'Human Subjects Research'
             if tag == 'strCompletionReport' and n[0] % 3
+            else 'CITI Biomedical Researchers'
+            if tag == 'strGroup' and n[0] % 3
             else 's' * (n[0] % 5) + 't' * (n[0] % 7))
 
     def record_markup():

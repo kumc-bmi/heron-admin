@@ -53,12 +53,12 @@ __ https://www.citiprogram.org/
 The course completion reports are now stored in the database::
 
     >>> for exp, name, course in s1._db.execute("""
-    ...     select dteExpiration, InstitutionUserName, strCompletionReport
+    ...     select dteExpiration, InstitutionUserName, strGroup
     ...     from CRS limit 3"""):
     ...     print exp[:10], name, course
-    2000-12-22 ssttt sss
-    2000-01-13 sss Basic/Refresher Course - Human Subjects Research
-    2000-02-04 sssstttt Basic/Refresher Course - Human Subjects Research
+    2000-12-22 ssttt ssstt
+    2000-01-13 sss CITI Biomedical Researchers
+    2000-02-04 sssstttt CITI Biomedical Researchers
 
 
 Backfill
@@ -94,9 +94,9 @@ Combined view of all sources
     >>> for who, expired, completed, course in s1._db.execute(
     ...     'select * from hsr_training_combo order by expired'):
     ...     print "%-8s %s %s" % (who, expired[:10], course)
-    sss      2000-01-13 Basic/Refresher Course - Human Subjects Research
-    sssstttt 2000-02-04 Basic/Refresher Course - Human Subjects Research
-    sttttt   2000-04-12 Basic/Refresher Course - Human Subjects Research
+    sss      2000-01-13 Human Subjects Research
+    sssstttt 2000-02-04 Human Subjects Research
+    sttttt   2000-04-12 Human Subjects Research
     rs       2012-08-04 HumanSubjectsFull
     rs2      2013-08-04 HumanSubjectsInPerson
     rs3      2014-08-04 HumanSubjectsRefresher
@@ -132,8 +132,8 @@ Course Naming
 The courses we're interested in are selected using::
 
     >>> ad = TrainingRecordsAdmin((lambda: s1._db.connect(), None, None), 0)
-    >>> ad.course_pattern
-    '%Human Subjects Research%'
+    >>> ad.course_groups
+    ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers']
 
 
 '''
@@ -409,7 +409,9 @@ def TrainingRecordsRd(acct):
 
 @maker
 def TrainingRecordsAdmin(acct, exempt_pid,
-                         course_pattern='%Human Subjects Research%',
+                         course_groups=[
+                             'CITI Biomedical Researchers',
+                             'CITI Social Behavioral Researchers'],
                          colSize=120):
     '''
     >>> acct = (lambda: Mock()._db.connect(), None, None)
@@ -424,7 +426,7 @@ def TrainingRecordsAdmin(acct, exempt_pid,
            "CRS"."dtePassed" AS completed,
            "CRS"."strCompletionReport" AS course
     FROM "CRS"
-    WHERE "CRS"."strCompletionReport" LIKE :strCompletionReport_1
+    WHERE "CRS"."strGroup" IN (:strGroup_1, :strGroup_2)
     AND "CRS"."dteExpiration" IS NOT NULL
 
     >>> print ad.chalk_queries[0]
@@ -456,7 +458,7 @@ def TrainingRecordsAdmin(acct, exempt_pid,
                           crs.c.dteExpiration.label('expired'),
                           crs.c.dtePassed.label('completed'),
                           crs.c.strCompletionReport.label('course')])
-                  .where(and_(crs.c.strCompletionReport.like(course_pattern),
+                  .where(and_(crs.c.strGroup.in_(course_groups),
                               # != None is sqlalchemy-speak for is not null
                               crs.c.dteExpiration != None)))  # noqa
     chalk_queries = [select([t.c.Username, year_after(t.c[date_col]),
@@ -500,7 +502,7 @@ def TrainingRecordsAdmin(acct, exempt_pid,
             log.info('inserted %d rows into %s', len(records), tdef.name)
 
     return [init, put, docRecords], dict(
-        course_pattern=course_pattern,
+        course_groups=course_groups,
         citi_query=citi_query,
         chalk_queries=chalk_queries,
         query=who_when)
