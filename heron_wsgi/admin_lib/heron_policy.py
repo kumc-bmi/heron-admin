@@ -471,9 +471,11 @@ class HeronRecords(Token, Cache):
         except NotDROC:
             droc_audit = None
 
+        # Grace period for training enforcement ends July 1, 2015.
+        enforce_training = str(self._t.today()) >= '2015-07-01'
+
         complete = (
-            # For now, show lack of training records, but do not enforce.
-            # current_training and
+            (current_training or not enforce_training) and
             system_access_sigs and (
                 badge.is_executive() if self._pm.identified_data
                 else
