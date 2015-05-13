@@ -165,7 +165,7 @@ def main(stdout, access):
         admin = mkTRA()
         admin.init()
     elif cli.refresh:
-        svc = CitiSOAPService(cli.soapClient(), cli.auth)
+        svc = cli.citiService()
 
         admin = mkTRA()
         for cls, k in [
@@ -509,7 +509,7 @@ def TrainingRecordsAdmin(acct, exempt_pid,
 
 
 @maker
-def CitiSOAPService(client, auth):
+def CitiSOAPService(client, usr, pwd):
     '''CitiSOAPService
 
     ref https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx
@@ -520,7 +520,7 @@ def CitiSOAPService(client, auth):
         GetMembersXML=client.GetMembersXML)
 
     def get(_, which):
-        reply = auth(methods[which])
+        reply = methods[which](usr=usr, pwd=pwd)
         markup = reply[which + 'Result']
         log.info('got length=%d from %s', len(markup), which)
         return XML(markup.encode('utf-8'))
@@ -550,20 +550,17 @@ def CLI(argv, environ, openf, create_engine, SoapClient):
 
         return conntrx(create_engine(u).connect()), u.database, redcapdb
 
-    def auth(_, wrapped):
-        usr = opts['--user']
-        pwd = environ[opts['--pwenv']]
-        return wrapped(usr=usr, pwd=pwd)
-
-    def soapClient(_):
+    def citiService(_):
         wsdl = opts['--wsdl']
         log.info('getting SOAP client for %s', wsdl)
         client = SoapClient(wsdl=wsdl)
-        return client
+        usr = opts['--user']
+        pwd = environ[opts['--pwenv']]
+        return CitiSOAPService(client, usr, pwd)
 
     attrs = dict((name.replace('--', ''), val)
                  for (name, val) in opts.iteritems())
-    return [getRecords, auth, soapClient, account], attrs
+    return [getRecords, citiService, account], attrs
 
 
 class Mock(object):
