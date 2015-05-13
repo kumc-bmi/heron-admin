@@ -520,8 +520,12 @@ def CitiSOAPService(client, usr, pwd):
         GetMembersXML=client.GetMembersXML)
 
     def get(_, which):
+        log.info('CitiSOAPService.%s()...', which)
         reply = methods[which](usr=usr, pwd=pwd)
-        markup = reply[which + 'Result']
+        resultKey = which + 'Result'
+        markup = reply[resultKey]
+        if not markup:
+            raise IOError('no %s: %s', resultKey, reply)
         log.info('got length=%d from %s', len(markup), which)
         return XML(markup.encode('utf-8'))
 
