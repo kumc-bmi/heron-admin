@@ -525,7 +525,7 @@ def CitiSOAPService(client, usr, pwd):
         resultKey = which + 'Result'
         markup = reply[resultKey]
         if not markup:
-            raise IOError('no %s: %s', resultKey, reply)
+            raise IOError('no %s: %s' % (resultKey, reply))
         log.info('got length=%d from %s', len(markup), which)
         return XML(markup.encode('utf-8'))
 
