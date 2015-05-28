@@ -27,3 +27,6 @@ zope.component==4.0.2
 zope.deprecation==4.0.2
 zope.event==4.0.2
 zope.interface==4.0.3
+
+docopt
+PySimpleSOAP==1.10
