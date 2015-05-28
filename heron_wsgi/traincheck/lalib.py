@@ -1,7 +1,39 @@
-'''ladb -- least-authority style database access
+'''lalib -- least-authority I/O support
 
-.. note: cribbed from pcori_load.py from gpc-pcornet-cdm
-         Mar 17 2b34bc7b71b1
+Capability-based security is useful for establishing security
+properties of a large system in terms of properties of the parts.  The
+object capability discipline requires `absolute encapsulation`__, but
+python's classes don't encapsulate their instance state. "We're all
+consenting adults here," is the tag line.  So we provide a `@maker`
+decorator for building encapsulated objects.  It turns a function that
+returns methods and an attribute dictionary into a constructor for an
+encapsulated class.
+
+__ http://erights.org/elib/capability/ode/ode-capabilities.html#encap
+
+For example, we can encapsulate a secret in an object that can compute
+keyed hashes of the secret without ever revealing the secret::
+
+>>> import hashlib
+
+>>> @maker
+... def Keeper(secret):
+...     def hmac(_, salt):
+...         x = hashlib.md5()
+...         x.update(secret)
+...         x.update(salt)
+...         return x.hexdigest()
+...     return [hmac], {}
+
+>>> k1 = Keeper('abracadabra')
+>>> k1.hmac('salt1')
+'0fddd18ba1aac994c50c8050c917df72'
+
+>>> k1.secret
+Traceback (most recent call last):
+  ...
+AttributeError: 'Keeper' object has no attribute 'secret'
+
 '''
 
 from contextlib import contextmanager
