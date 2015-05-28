@@ -29,6 +29,26 @@ backend_options = dict(mysql_engine='InnoDB',
 def in_schema(name,
               meta=redcap_meta,
               t=redcap_data):
+    '''Use a table definition in some schema,
+    i.e. a schema name and a sqlalchemy MetaData schema.
+
+    Normal usage is:
+    >>> use_redcap = MetaData()
+    >>> rd = in_schema('redcap', use_redcap)
+    >>> print rd.select().with_only_columns([rd.c.project_id])
+    ... # doctest: +NORMALIZE_WHITESPACE
+    SELECT redcap.redcap_data.project_id
+    FROM redcap.redcap_data
+
+    But for testing with SQLite, we use:
+    >>> in_memory = MetaData()
+    >>> rd = in_schema(None, in_memory)
+    >>> print rd.select().with_only_columns([rd.c.project_id])
+    ... # doctest: +NORMALIZE_WHITESPACE
+    SELECT redcap_data.project_id
+    FROM redcap_data
+
+    '''
     tt = t.tometadata(meta)
     tt.schema = name
     return tt
