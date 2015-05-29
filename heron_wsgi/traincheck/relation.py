@@ -1,3 +1,6 @@
+'''relation -- I/O for relations, i.e. sets of tuples
+'''
+
 from collections import namedtuple
 import csv
 import logging
@@ -9,6 +12,10 @@ from lalib import maker
 
 
 def readRecords(fp):
+    '''Read CSV into named tuples.
+
+    The header is used to define a namedtuple class.
+    '''
     reader = csv.reader(fp)
     header = reader.next()
     R = namedtuple('R', header)
@@ -16,6 +23,8 @@ def readRecords(fp):
 
 
 def put(dbtrx, records):
+    '''Create a table and insert records into it.
+    '''
     exemplar = records.next()
     tuple_type = exemplar.__class__
     et = ExportTable(dbtrx,
@@ -113,6 +122,10 @@ def mock_xml_records(template, qty):
 
 
 def tableTuple(name, description):
+    '''Define a namedtuple class from a DBI__ query description.
+
+    __ https://www.python.org/dev/peps/pep-0249/
+    '''
     cols = [d[0] for d in description]
 
     return namedtuple(name, cols)
@@ -120,6 +133,8 @@ def tableTuple(name, description):
 
 @maker
 def ExportTable(dbtrx, name, cols):
+    '''Access to export a relation to a database.
+    '''
     create_stmt, insert_stmt = sql_for(name, cols)
 
     def recreate(_):
