@@ -8,6 +8,7 @@ i2b2__; this code is the regulatory enforcement web interface.
 
 __ https://www.i2b2.org/
 
+:Copyright: Copyright 2010-2015 University of Kansas Medical Center
 
 **todo** administrative interface: POST to re-read config files
 
