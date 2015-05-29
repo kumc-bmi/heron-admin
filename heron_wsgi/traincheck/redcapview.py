@@ -1,4 +1,38 @@
 '''redcapview -- a row-modelling view of data from the redcap_data EAV table
+
+The redcap_data table is a "long skinny" EAV structure:
+
+  project_id record_id field_name value
+  4688       123       username   bob
+  4688       123       expired    2001-03-21
+  4688       123       course     Fun with Flowers
+
+It's often more convenient to use row-modelling, a la a spreadsheet:
+
+  record_id  username  expired     course
+  123        bob       2001-03-21  Fun with Flowers
+
+
+The `unpivot()` function helps::
+
+    >>> print unpivot(4688, ['username', 'expired', 'course'], record=True)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    SELECT username.record,
+           username.value AS username,
+           expired.value AS expired,
+           course.value AS course
+    FROM redcap.redcap_data AS username,
+         redcap.redcap_data AS expired,
+         redcap.redcap_data AS course
+    WHERE username.project_id = :project_id_1
+      AND username.field_name = :field_name_1
+      AND expired.project_id = :project_id_2
+      AND expired.field_name = :field_name_2
+      AND course.project_id = :project_id_3
+      AND course.field_name = :field_name_3
+      AND username.record = expired.record
+      AND expired.record = course.record
+
 '''
 
 from sqlalchemy import MetaData, Table, Column
@@ -58,23 +92,7 @@ def unpivot(project_id, field_names,
             record=False,
             redcap_data=redcap_data):
     '''
-    >>> print unpivot(4688, ['username', 'expired', 'course'], record=True)
-    ... # doctest: +NORMALIZE_WHITESPACE
-    SELECT username.record,
-           username.value AS username,
-           expired.value AS expired,
-           course.value AS course
-    FROM redcap.redcap_data AS username,
-         redcap.redcap_data AS expired,
-         redcap.redcap_data AS course
-    WHERE username.project_id = :project_id_1
-      AND username.field_name = :field_name_1
-      AND expired.project_id = :project_id_2
-      AND expired.field_name = :field_name_2
-      AND course.project_id = :project_id_3
-      AND course.field_name = :field_name_3
-      AND username.record = expired.record
-      AND expired.record = course.record
+
     '''
     if not field_names:
         raise ValueError(field_names)
