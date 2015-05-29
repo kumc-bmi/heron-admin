@@ -1,5 +1,5 @@
 '''sqlaview -- sqlalchemy view support
-
+   ref: ack: https://bitbucket.org/zzzeek/sqlalchemy/wiki/UsageRecipes/Views
 '''
 
 from sqlalchemy import DateTime

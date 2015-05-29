@@ -26,15 +26,19 @@ Options:
 
 PII DB is a database suitable for PII (personally identifiable information).
 
+To access it, provide a sqlalchemy URL a la
+
+  mysql+pymysql://admin_acct:$DB_PASSWORD@localhost:3307/hsr_cache?charset=utf8
+
 .. note:: This directive separates usage doc above from design notes below.
 
 
 Initialize Database
 -------------------
 
-    >>> s1 = Mock()  # scenario 1
-    >>> stdout = s1.stdout
-    >>> main(stdout, s1.cli_access('traincheck init --exempt=123'))
+    >>> io = Mock()
+    >>> stdout = io.stdout
+    >>> main(stdout, io.cli_access('traincheck init --exempt=123'))
 
 
 Make Local Copy of CITI Data
@@ -46,13 +50,13 @@ verifying that a HERON user's human subjects training is current, we
 regularly refresh a copy of the CITI Data via their Web Service, using
 authorization from the command line and environment as noted above::
 
-    >>> main(stdout, s1.cli_access('traincheck refresh --user=MySchool'))
+    >>> main(stdout, io.cli_access('traincheck refresh --user=MySchool'))
 
 __ https://www.citiprogram.org/
 
 The course completion reports are now stored in the database::
 
-    >>> for exp, name, course in s1._db.execute("""
+    >>> for exp, name, course in io._db.execute("""
     ...     select dteExpiration, InstitutionUserName, strGroup
     ...     from CRS limit 3"""):
     ...     print exp[:10], name, course
@@ -66,20 +70,20 @@ Backfill
 
 We get data from the legacy system in CSV format:
 
-    >>> with s1.openf('f.csv') as datafile:
+    >>> with io.openf('f.csv') as datafile:
     ...     print datafile.read()
     FirstName,LastName,Email,EmployeeID,DateCompleted,Username
     R,S,RS@example,J1,8/4/2011 0:00,rs
 
 Using access to this data and the database, we load it::
 
-    >>> main(stdout, s1.cli_access(
+    >>> main(stdout, io.cli_access(
     ...     'traincheck backfill '
     ...          '--full=f.csv --refresher=r.csv --in-person=i.csv'))
 
 The results are straightforward::
 
-    >>> for passed, name in s1._db.execute(
+    >>> for passed, name in io._db.execute(
     ...     'select CompleteDate, Username from HumanSubjectsRefresher'):
     ...     print passed[:10], name
     2013-08-04 rs3
@@ -91,7 +95,7 @@ Combined view of all sources
     >>> HSR('').combo_view
     'hsr_training_combo'
 
-    >>> for who, expired, completed, course in s1._db.execute(
+    >>> for who, expired, completed, course in io._db.execute(
     ...     'select * from hsr_training_combo order by expired'):
     ...     print "%-8s %s %s" % (who, expired[:10], course)
     sss      2000-01-13 Human Subjects Research
@@ -109,7 +113,7 @@ While we support checking records from the CLI, it will typically be
 done using the API. Given (read) access to the database, we can make
 a `TrainingRecordsRd`::
 
-    >>> rd = TrainingRecordsRd(acct=(s1._db.connect(), None, None))
+    >>> rd = TrainingRecordsRd(acct=(io._db.connect(), None, None))
 
 Now let's look up training for Sam, whose username is `sssstttt`::
 
@@ -131,7 +135,7 @@ Course Naming
 
 The courses we're interested in are selected using::
 
-    >>> ad = TrainingRecordsAdmin((lambda: s1._db.connect(), None, None), 0)
+    >>> ad = TrainingRecordsAdmin((lambda: io._db.connect(), None, None), 0)
     >>> ad.course_groups
     ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers']
 
@@ -234,7 +238,11 @@ class TableDesign(object):
 
 
 class CRS(TableDesign):
-    '''
+    '''CITI Completion Reports
+
+    per GetCompletionReportsXML__
+    __ https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?op=GetCompletionReportsXML
+
     >>> CRS._parse('2014-05-06T19:15:48.2-04:00')
     datetime.datetime(2014, 5, 6, 19, 15, 48)
 
@@ -319,6 +327,8 @@ class MEMBERS(TableDesign):
 
 
 class HSR(object):
+    '''Define/lookup tables in the human subjects research training cache.
+    '''
     def __init__(self, db_name,
                  combo_view='hsr_training_combo'):
         self.db_name = db_name

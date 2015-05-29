@@ -1,4 +1,4 @@
-'''relation -- I/O for relations, i.e. sets of tuples
+'''relation -- I/O for relations, i.e. sets of tuples/records
 '''
 
 from collections import namedtuple
