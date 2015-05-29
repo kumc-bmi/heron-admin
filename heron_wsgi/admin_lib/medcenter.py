@@ -463,13 +463,10 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         u = make_url(rt.url)
         redcapdb = (None if u.drivername == 'sqlite' else 'redcap')
 
-        @contextmanager
-        def trx():
-            conn = create_engine(u).connect()
-            with conn.begin():
-                yield conn
+        # hmm... can we count on this living for a long time?
+        conn = create_engine(u).connect()
 
-        account = trx, u.database, redcapdb
+        account = conn, u.database, redcapdb
 
         tr = TrainingRecordsRd(account)
 
