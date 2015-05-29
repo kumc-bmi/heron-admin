@@ -49,20 +49,15 @@ Junk:
 Human Subjects Training
 -----------------------
 
-We use an outboard service to check human subjects "chalk" training::
+We use an database view to check human subjects research training::
 
-  >>> print _sample_chalk_settings.inifmt(CHALK_CONFIG_SECTION)
-  [chalk]
-  param=userid
-  url=http://localhost:8080/chalk-checker
-
-  >>> m.trained_thru(js)
+  >>> m.latest_training(js).expired
   '2012-01-01'
 
-  >>> m.trained_thru(bill)
+  >>> m.latest_training(bill)
   Traceback (most recent call last):
     ...
-  LookupError
+  LookupError: bill.student
 
 
 Robustness
@@ -98,17 +93,17 @@ API
 
 import logging
 import sys
-import urllib
-from datetime import timedelta
+from contextlib import contextmanager
 
 import injector
 from injector import inject, provides, singleton
+from sqlalchemy.engine.url import make_url
 
 import rtconfig
 import ldaplib
 import sealing
 from notary import makeNotary
-import cache_remote
+from heron_wsgi.traincheck.traincheck import TrainingRecordsRd
 
 log = logging.getLogger(__name__)
 
@@ -116,7 +111,7 @@ KTrainingFunction = injector.Key('TrainingFunction')
 KExecutives = injector.Key('Executives')
 KTestingFaculty = injector.Key('TestingFaculty')
 
-CHALK_CONFIG_SECTION = 'chalk'
+TRAINING_SECTION = 'training'
 PERM_BROWSER = __name__ + '.browse'
 
 
@@ -257,17 +252,15 @@ class MedCenter(object):
                        uid in self._testing_faculty,
                        **self._browser.directory_attributes(uid))
 
-    def trained_thru(self, alleged_badge):
+    def latest_training(self, alleged_badge):
         '''
         :raises: :exc:`IOError`, :exc:`LookupError`
         '''
         badge = self.__notary.getInspector().vouch(alleged_badge)
 
-        when = self._training(badge.cn)
-        if not when:
-            raise LookupError
+        info = self._training(badge.cn)
 
-        return when
+        return info
 
 
 class NotFaculty(TypeError):
@@ -362,7 +355,7 @@ class IDBadge(LDAPBadge):
       ...    cn='john.smith',
       ...    sn='Smith',
       ...    givenname='John')
-      >>> mc.trained_thru(evil)
+      >>> mc.latest_training(evil)
       Traceback (most recent call last):
         ...
       NotVouchable
@@ -401,31 +394,6 @@ class IDBadge(LDAPBadge):
     def is_investigator(self):
         return self.is_faculty() or self.is_executive()
 
-_sample_chalk_settings = rtconfig.TestTimeOptions(dict(
-        url='http://localhost:8080/chalk-checker',
-        param='userid'))
-
-
-class ChalkChecker(cache_remote.Cache):
-    def __init__(self, ua, now, url, param,
-                 ttl=timedelta(seconds=30)):
-        cache_remote.Cache.__init__(self, now)
-
-        def q_for(userid):
-            def q():
-                addr = url + '?' + urllib.urlencode({param: userid})
-                body = ua.open(addr).read()
-
-                if not body:  # no expiration on file
-                    raise KeyError
-
-                return ttl, body.strip()  # get rid of newline
-            return q
-        self.q_for = q_for
-
-    def check(self, userid):
-        return self._query(userid, self.q_for(userid), 'Chalk Training')
-
 
 class AttrDict(dict):
     def __init__(self, *args, **kwargs):
@@ -454,7 +422,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
         binder.bind(ldaplib.LDAPService,
                     injector.InstanceProvider(d))
         binder.bind(KTrainingFunction,
-                    injector.InstanceProvider(d.trainedThru))
+                    injector.InstanceProvider(d.latest_training))
         binder.bind(KTestingFaculty,
                     injector.InstanceProvider(''))
 
@@ -470,9 +438,6 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
       - :data:`KTestingFaculty` (for faculty testing hook)
 
     '''
-    import datetime
-    import urllib2
-    _ua = urllib2.build_opener()
 
     @provides(KExecutives)
     @inject(rt=(rtconfig.Options, ldaplib.CONFIG_SECTION))
@@ -489,13 +454,23 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         return tf
 
     @provides(KTrainingFunction)
-    def training(self, section=CHALK_CONFIG_SECTION, ua=_ua,
-                 now=datetime.datetime.now):
-        rt = rtconfig.RuntimeOptions('url param'.split())
+    def training(self, section=TRAINING_SECTION):
+        from sqlalchemy import create_engine
+
+        rt = rtconfig.RuntimeOptions('url'.split())
         rt.load(self._ini, section)
 
-        cc = ChalkChecker(ua, now, rt.url, rt.param)
-        return cc.check
+        u = make_url(rt.url)
+        redcapdb = (None if u.drivername == 'sqlite' else 'redcap')
+
+        # hmm... can we count on this living for a long time?
+        conn = create_engine(u).connect()
+
+        account = conn, u.database, redcapdb
+
+        tr = TrainingRecordsRd(account)
+
+        return tr.__getitem__
 
     @classmethod
     def mods(cls, ini):
@@ -519,14 +494,14 @@ def _integration_test():  # pragma: no cover
         print who
         print "faculty? ", who.is_faculty()
         print "investigator? ", who.is_investigator()
-        print "training: ", m.trained_thru(who)
+        print "training: ", m.latest_training(who)
 
         print "Once more, to check caching..."
         req = MockRequest()
         m.authenticated(uid, req)
         who = m.idbadge(req.context)
         print who
-        print "training: ", m.trained_thru(who)
+        print "training: ", m.latest_training(who)
 
 
 if __name__ == '__main__':  # pragma: no cover

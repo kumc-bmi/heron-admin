@@ -1,27 +1,44 @@
 r'''traincheck -- check human subjects training records via CITI
 
 Usage:
-  traincheck IDVAULT_NAME [--dbrd=K]
-  traincheck --refresh --user=NAME [--wsdl=U --pwenv=K --dbadmin=K]
-  traincheck backfill --full=F1 --refresher=F1 --in-person=F3 [--dbadmin=K]
+  traincheck init --exempt=PID [--dbadmin=K -d]
+  traincheck refresh --user=NAME [--wsdl=U --pwenv=K --dbadmin=K -d]
+  traincheck backfill --full=F1 --refresher=F1 --in-person=F3 [--dbadmin=K -d]
+  traincheck lookup NAME [--dbrd=K -d]
+  traincheck --help
 
 Options:
+  NAME               userid of user whose training records are sought
   --dbrd=K           read access to PII DB: name of environment variable
                      with sqlalchemy URL
                      [default: HSR_TRAIN_CHECK]
   --dbadmin=K        admin (create, delete, ...) access to PII DB
                      [default: HSR_TRAIN_ADMIN]
+  --exempt=PID       exempt records REDCap project ID
   --wsdl=URL         access to CITI SOAP Service: Service Description URL
                      [default: https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?WSDL]  # noqa
   --user=NAME        access to CITI SOAP Service: username
   --pwenv=K          access to CITI SOAP Service: password environment variable
                      [default: CITI_PASSWORD]
-  --debug            turn on debug logging
-
+  -d --debug         turn on debug logging
+  backfill           Load data from legacy system
+  init               tables and view combining training data from all sources
 
 PII DB is a database suitable for PII (personally identifiable information).
 
+To access it, provide a sqlalchemy URL a la
+
+  mysql+pymysql://admin_acct:$DB_PASSWORD@localhost:3307/hsr_cache?charset=utf8
+
 .. note:: This directive separates usage doc above from design notes below.
+
+
+Initialize Database
+-------------------
+
+    >>> io = Mock()
+    >>> stdout = io.stdout
+    >>> main(stdout, io.cli_access('traincheck init --exempt=123'))
 
 
 Make Local Copy of CITI Data
@@ -33,21 +50,19 @@ verifying that a HERON user's human subjects training is current, we
 regularly refresh a copy of the CITI Data via their Web Service, using
 authorization from the command line and environment as noted above::
 
-    >>> s1 = Mock()  # scenario 1
-    >>> stdout = s1.stdout
-    >>> main(stdout, s1.cli_access('traincheck --refresh --user=MySchool'))
+    >>> main(stdout, io.cli_access('traincheck refresh --user=MySchool'))
 
 __ https://www.citiprogram.org/
 
 The course completion reports are now stored in the database::
 
-    >>> for exp, name, course in s1._db.execute("""
-    ...     select dteExpiration, InstitutionUserName, strCompletionReport
+    >>> for exp, name, course in io._db.execute("""
+    ...     select dteExpiration, InstitutionUserName, strGroup
     ...     from CRS limit 3"""):
     ...     print exp[:10], name, course
-    2000-12-22 ssttt sss
-    2000-01-13 sss Basic/Refresher Course - Human Subjects Research
-    2000-02-04 sssstttt Basic/Refresher Course - Human Subjects Research
+    2000-12-22 ssttt ssstt
+    2000-01-13 sss CITI Biomedical Researchers
+    2000-02-04 sssstttt CITI Biomedical Researchers
 
 
 Backfill
@@ -55,24 +70,40 @@ Backfill
 
 We get data from the legacy system in CSV format:
 
-    >>> with s1.openf('f.csv') as datafile:
+    >>> with io.openf('f.csv') as datafile:
     ...     print datafile.read()
     FirstName,LastName,Email,EmployeeID,DateCompleted,Username
     R,S,RS@example,J1,8/4/2011 0:00,rs
 
 Using access to this data and the database, we load it::
 
-    >>> main(stdout, s1.cli_access(
+    >>> main(stdout, io.cli_access(
     ...     'traincheck backfill '
-    ...          '--full=f.csv --refresher=r.csv --in-person=i.csv',
-    ...     db=s1._db))  # (Don't make a new in-memory DB)
+    ...          '--full=f.csv --refresher=r.csv --in-person=i.csv'))
 
 The results are straightforward::
 
-    >>> for passed, name in s1._db.execute(
+    >>> for passed, name in io._db.execute(
     ...     'select CompleteDate, Username from HumanSubjectsRefresher'):
     ...     print passed[:10], name
     2013-08-04 rs3
+
+
+Combined view of all sources
+----------------------------
+
+    >>> HSR('').combo_view
+    'hsr_training_combo'
+
+    >>> for who, expired, completed, course in io._db.execute(
+    ...     'select * from hsr_training_combo order by expired'):
+    ...     print "%-8s %s %s" % (who, expired[:10], course)
+    sss      2000-01-13 Human Subjects Research
+    sssstttt 2000-02-04 Human Subjects Research
+    sttttt   2000-04-12 Human Subjects Research
+    rs       2012-08-04 HumanSubjectsFull
+    rs2      2013-08-04 HumanSubjectsInPerson
+    rs3      2014-08-04 HumanSubjectsRefresher
 
 
 Find Training Records
@@ -82,12 +113,12 @@ While we support checking records from the CLI, it will typically be
 done using the API. Given (read) access to the database, we can make
 a `TrainingRecordsRd`::
 
-    >>> rd = TrainingRecordsRd(acct=(lambda: s1._db.connect(), None))
+    >>> rd = TrainingRecordsRd(acct=(io._db.connect(), None, None))
 
 Now let's look up training for Sam, whose username is `sssstttt`::
 
     >>> rd['sssstttt'].expired
-    datetime.datetime(2000, 2, 4, 12, 34, 56)
+    u'2000-02-04 12:34:56.000000'
 
 .. note:: TODO: Integrate a story-style name into test data.
 
@@ -104,38 +135,43 @@ Course Naming
 
 The courses we're interested in are selected using::
 
-    >>> rd.course_pattern
-    '%Human Subjects Research%'
+    >>> ad = TrainingRecordsAdmin((lambda: io._db.connect(), None, None), 0)
+    >>> ad.course_groups
+    ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers']
 
 
 '''
 
 import logging
 from xml.etree.ElementTree import fromstring as XML
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from docopt import docopt
 from sqlalchemy import (MetaData, Table, Column,
                         String, Integer, Date, DateTime,
-                        select, union_all)
+                        select, union_all, literal_column, and_)
 from sqlalchemy.engine.url import make_url
 
 from lalib import maker
+from sqlaview import CreateView, DropView, year_after
 import relation
+import redcapview
 
 VARCHAR120 = String(120)
 log = logging.getLogger(__name__)
-
-CITI_NAMESPACE = 'https://webservices.citiprogram.org/'
 
 
 def main(stdout, access):
     cli = access()
 
-    if cli.refresh:
-        svc = CitiSOAPService(cli.soapClient(), cli.auth)
+    mkTRA = lambda: TrainingRecordsAdmin(cli.account('--dbadmin'), cli.exempt)
 
-        admin = TrainingRecordsAdmin(cli.account('--dbadmin'))
+    if cli.init:
+        admin = mkTRA()
+        admin.init()
+    elif cli.refresh:
+        svc = cli.citiService()
+
+        admin = mkTRA()
         for cls, k in [
                 # smallest to largest typical payload
                 (GRADEBOOK, svc.GetGradeBooksXML),
@@ -148,16 +184,16 @@ def main(stdout, access):
             except StopIteration:
                 raise SystemExit('no records in %s' % k)
     elif cli.backfill:
-        admin = TrainingRecordsAdmin(cli.account('--dbadmin'))
+        admin = mkTRA()
         for (opt, table_name, date_col) in Chalk.tables:
             data = cli.getRecords(opt)
             admin.put(table_name, Chalk.parse_dates(data, [date_col]))
-    else:
+    elif cli.lookup:
         store = TrainingRecordsRd(cli.account('--dbrd'))
         try:
-            training = store[cli.IDVAULT_NAME]
+            training = store[cli.NAME]
         except KeyError:
-            raise SystemExit('no training records for %s' % cli.IDVAULT_NAME)
+            raise SystemExit('no training records for %s' % cli.NAME)
         log.info('training OK: %s', training)
         stdout.write(str(training))
 
@@ -197,11 +233,16 @@ class TableDesign(object):
     def xml_table(cls, meta, db_name):
         return Table(cls.__name__, meta,
                      *cls.columns(),
-                     schema=db_name)
+                     schema=db_name,
+                     **redcapview.backend_options)
 
 
 class CRS(TableDesign):
-    '''
+    '''CITI Completion Reports
+
+    per GetCompletionReportsXML__
+    __ https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?op=GetCompletionReportsXML
+
     >>> CRS._parse('2014-05-06T19:15:48.2-04:00')
     datetime.datetime(2014, 5, 6, 19, 15, 48)
 
@@ -286,8 +327,12 @@ class MEMBERS(TableDesign):
 
 
 class HSR(object):
-    def __init__(self, db_name):
+    '''Define/lookup tables in the human subjects research training cache.
+    '''
+    def __init__(self, db_name,
+                 combo_view='hsr_training_combo'):
         self.db_name = db_name
+        self.combo_view = combo_view
         log.info('HSR DB name: %s', db_name)
 
         meta = MetaData()
@@ -298,6 +343,14 @@ class HSR(object):
         for _, name, date_col in Chalk.tables:
             Chalk.table(meta, db_name, name, date_col)
 
+        Table(combo_view, meta,
+              Column('username', String),
+              Column('expired', DateTime),
+              Column('completed', DateTime),
+              Column('course', String),
+              schema=db_name or None)
+
+        self.meta = meta
         self.tables = meta.tables
 
     def table(self, name):
@@ -311,10 +364,11 @@ class Chalk(TableDesign):
 
         >>> with Mock().openf('i.csv') as infp:
         ...     records = relation.readRecords(infp)
-        >>> Chalk.parse_dates(records, ['CompleteDate'])
-        ... # doctest: +NORMALIZE_WHITESPACE
-        [R(FirstName='R2', LastName='S', Email='RS2@example', EmployeeID='J1',
-         CompleteDate=datetime.datetime(2012, 8, 4, 0, 0), Username='rs2')]
+        >>> records[0].CompleteDate
+        '8/4/2012 0:00'
+
+        >>> Chalk.parse_dates(records, ['CompleteDate'])[0].CompleteDate
+        datetime.datetime(2012, 8, 4, 0, 0)
     '''
     date_format = '%m/%d/%Y %H:%M'
 
@@ -331,70 +385,28 @@ class Chalk(TableDesign):
                      Column('EmployeeID', VARCHAR120),
                      Column(date_col, DateTime()),
                      Column('Username', VARCHAR120),
-                     schema=db_name)
+                     schema=db_name,
+                     **redcapview.backend_options)
 
 
 @maker
-def TrainingRecordsRd(
-        acct,
-        course_pattern='%Human Subjects Research%'):
+def TrainingRecordsRd(acct):
     '''
-    >>> acct = (lambda: Mock()._db.connect(), None)
+    >>> acct = (lambda: None, None, None)
     >>> rd = TrainingRecordsRd(acct)
 
-    .. note:: TODO: move this complex query into a view.
-
-    >>> print rd.citi_query
-    ... # doctest: +NORMALIZE_WHITESPACE
-    SELECT "CRS"."InstitutionUserName" AS username,
-           "CRS"."dteExpiration" AS expired
-    FROM "CRS"
-    WHERE "CRS"."strCompletionReport" LIKE :strCompletionReport_1
-
-    >>> print rd.chalk_queries[0]
-    ... # doctest: +NORMALIZE_WHITESPACE
-    SELECT "full"."Username",
-           "full"."DateCompleted" + :DateCompleted_1 AS anon_1
-    FROM "HumanSubjectsFull" AS "full"
-
-    >>> print rd.query
-    ... # doctest: +NORMALIZE_WHITESPACE
-    SELECT "CRS"."InstitutionUserName" AS username,
-           "CRS"."dteExpiration" AS expired
-    FROM "CRS"
-    WHERE "CRS"."strCompletionReport" LIKE :strCompletionReport_1
-    UNION ALL
-    SELECT "full"."Username",
-           "full"."DateCompleted" + :DateCompleted_1 AS anon_1
-    FROM "HumanSubjectsFull" AS "full"
-    UNION ALL
-    SELECT refresher."Username",
-           refresher."CompleteDate" + :CompleteDate_1 AS anon_2
-    FROM "HumanSubjectsRefresher" AS refresher
-    UNION ALL
-    SELECT "in-person"."Username",
-           "in-person"."CompleteDate" + :CompleteDate_2 AS anon_3
-    FROM "HumanSubjectsInPerson" AS "in-person"
-
+    >>> print rd.lookup_query
+    hsr_training_combo
     '''
-    dbtrx, db_name = acct
+    conn, db_name, _ = acct
     hsr = HSR(db_name)
-    crs = hsr.table('CRS')
-
-    year = timedelta(days=365.25)
-    citi_query = (select([crs.c.InstitutionUserName.label('username'),
-                          crs.c.dteExpiration.label('expired')])
-                  .where(crs.c.strCompletionReport.like(course_pattern)))
-    chalk_queries = [select([t.c.Username, t.c[date_col] + year])
-                     for opt, name, date_col in Chalk.tables
-                     for t in [hsr.table(name).alias(opt[2:])]]
-
-    who_when = union_all(citi_query, *chalk_queries).alias('who_when')
+    lookup = hsr.table(hsr.combo_view)
 
     def __getitem__(_, instUserName):
-        with dbtrx() as q:
-            result = q.execute(who_when.select(
-                who_when.c.username == instUserName))
+        with conn.begin():
+            result = conn.execute(
+                lookup.select(lookup.c.username == instUserName)
+                .order_by(lookup.c.expired.desc()))
             record = result.fetchone()
 
         if not record:
@@ -402,17 +414,75 @@ def TrainingRecordsRd(
 
         return record
 
-    return [__getitem__], dict(course_pattern=course_pattern,
-                               citi_query=citi_query,
-                               chalk_queries=chalk_queries,
-                               query=who_when)
+    return [__getitem__], dict(lookup_query=lookup)
 
 
 @maker
-def TrainingRecordsAdmin(acct,
+def TrainingRecordsAdmin(acct, exempt_pid,
+                         course_groups=[
+                             'CITI Biomedical Researchers',
+                             'CITI Social Behavioral Researchers'],
                          colSize=120):
-    dbtrx, db_name = acct
+    '''
+    >>> acct = (lambda: Mock()._db.connect(), None, None)
+    >>> ad = TrainingRecordsAdmin(acct, 0)
+
+    .. note:: TODO: move this complex query into a view.
+
+    >>> print ad.citi_query
+    ... # doctest: +NORMALIZE_WHITESPACE
+    SELECT "CRS"."InstitutionUserName" AS username,
+           "CRS"."dteExpiration" AS expired,
+           "CRS"."dtePassed" AS completed,
+           "CRS"."strCompletionReport" AS course
+    FROM "CRS"
+    WHERE "CRS"."strGroup" IN (:strGroup_1, :strGroup_2)
+    AND "CRS"."dteExpiration" IS NOT NULL
+
+    >>> print ad.chalk_queries[0]
+    ... # doctest: +NORMALIZE_WHITESPACE
+    SELECT "full"."Username", year_after("full"."DateCompleted"),
+           "full"."DateCompleted", 'HumanSubjectsFull'
+    FROM "HumanSubjectsFull" AS "full"
+
+    >>> hsr = HSR('')
+    >>> [c.name for c in hsr.table(hsr.combo_view).columns]
+    ['username', 'expired', 'completed', 'course']
+
+    >>> print ad.query
+    ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+    SELECT "CRS"."InstitutionUserName" ...
+    FROM "CRS" ...
+    UNION ALL
+    SELECT username.value ...
+    FROM redcap_data AS username, ...
+    UNION ALL
+    SELECT "full"."Username", ...
+    FROM "HumanSubjectsFull" AS "full" ...
+    '''
+    conn, db_name, redcapdb = acct
     hsr = HSR(db_name)
+    crs = hsr.table('CRS')
+
+    citi_query = (select([crs.c.InstitutionUserName.label('username'),
+                          crs.c.dteExpiration.label('expired'),
+                          crs.c.dtePassed.label('completed'),
+                          crs.c.strCompletionReport.label('course')])
+                  .where(and_(crs.c.strGroup.in_(course_groups),
+                              # != None is sqlalchemy-speak for is not null
+                              crs.c.dteExpiration != None)))  # noqa
+    chalk_queries = [select([t.c.Username, year_after(t.c[date_col]),
+                             t.c[date_col], literal_column("'%s'" % name)])
+                     for opt, name, date_col in Chalk.tables
+                     for t in [hsr.table(name).alias(opt[2:])]]
+
+    redcap_data = redcapview.in_schema(redcapdb, meta=MetaData())
+    exempt_query = redcapview.unpivot(exempt_pid,
+                                      [c.name for c in citi_query.c],
+                                      redcap_data=redcap_data)
+
+    who_when = union_all(citi_query, exempt_query,
+                         *chalk_queries).alias('who_when')
 
     def docRecords(_, doc):
         name = iter(doc).next().tag
@@ -420,20 +490,36 @@ def TrainingRecordsAdmin(acct,
         records = relation.docToRecords(doc, [c.name for c in tdef.columns])
         return name, records
 
+    def init(_):
+        non_views = [t for (n, t) in sorted(hsr.tables.items())
+                     if 'combo' not in n]
+        with conn.begin():
+            log.info('re-creating tables: %s',
+                     [t.name for t in non_views])
+            conn.execute(DropView(hsr.combo_view, hsr.db_name))
+            hsr.meta.drop_all(conn, non_views)
+            hsr.meta.create_all(conn, non_views)
+            log.info('creating view: %s', hsr.combo_view)
+            conn.execute(CreateView(hsr.combo_view, who_when, hsr.db_name))
+
     def put(_, name, records):
         tdef = hsr.table(name)
-        with dbtrx() as dml:
-            log.info('(re-)creating %s', tdef.name)
-            tdef.drop(dml, checkfirst=True)
-            tdef.create(dml)
-            dml.execute(tdef.insert(), [t._asdict() for t in records])
+        with conn.begin():
+            log.info('put %d records to %s:', len(records), name)
+            deleted = conn.execute(tdef.delete()).rowcount
+            log.info('deleted %d old records from %s', deleted, name)
+            conn.execute(tdef.insert(), [t._asdict() for t in records])
             log.info('inserted %d rows into %s', len(records), tdef.name)
 
-    return [put, docRecords], {}
+    return [init, put, docRecords], dict(
+        course_groups=course_groups,
+        citi_query=citi_query,
+        chalk_queries=chalk_queries,
+        query=who_when)
 
 
 @maker
-def CitiSOAPService(client, auth):
+def CitiSOAPService(client, usr, pwd):
     '''CitiSOAPService
 
     ref https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx
@@ -444,8 +530,12 @@ def CitiSOAPService(client, auth):
         GetMembersXML=client.GetMembersXML)
 
     def get(_, which):
-        reply = auth(methods[which])
-        markup = reply[which + 'Result']
+        log.info('CitiSOAPService.%s()...', which)
+        reply = methods[which](usr=usr, pwd=pwd)
+        resultKey = which + 'Result'
+        markup = reply[resultKey]
+        if not markup:
+            raise IOError('no %s: %s' % (resultKey, reply))
         log.info('got length=%d from %s', len(markup), which)
         return XML(markup.encode('utf-8'))
 
@@ -455,13 +545,12 @@ def CitiSOAPService(client, auth):
 
 @maker
 def CLI(argv, environ, openf, create_engine, SoapClient):
+    # Don't require docopt except for command-line usage
+    from docopt import docopt
+
     usage = __doc__.split('\n..')[0]
     opts = docopt(usage, argv=argv[1:])
     log.debug('docopt: %s', opts)
-
-    def getBytes(_, opt):
-        with openf(opts[opt]) as infp:
-            return infp.read()
 
     def getRecords(_, opt):
         with openf(opts[opt]) as infp:
@@ -470,22 +559,22 @@ def CLI(argv, environ, openf, create_engine, SoapClient):
     def account(_, opt):
         env_key = opts[opt]
         u = make_url(environ[env_key])
-        return lambda: create_engine(u).connect(), u.database
+        # leave off redcap schema prefix for testing
+        redcapdb = (None if u.drivername == 'sqlite' else 'redcap')
 
-    def auth(_, wrapped):
-        usr = opts['--user']
-        pwd = environ[opts['--pwenv']]
-        return wrapped(usr=usr, pwd=pwd)
+        return create_engine(u).connect(), u.database, redcapdb
 
-    def soapClient(_):
+    def citiService(_):
         wsdl = opts['--wsdl']
         log.info('getting SOAP client for %s', wsdl)
         client = SoapClient(wsdl=wsdl)
-        return client
+        usr = opts['--user']
+        pwd = environ[opts['--pwenv']]
+        return CitiSOAPService(client, usr, pwd)
 
     attrs = dict((name.replace('--', ''), val)
                  for (name, val) in opts.iteritems())
-    return [getBytes, getRecords, auth, soapClient, account], attrs
+    return [getRecords, citiService, account], attrs
 
 
 class Mock(object):
@@ -509,13 +598,17 @@ R3,S,RS3@example,J1,8/4/2013 0:00,rs3
 
     def __init__(self):
         import StringIO
+        from sqlalchemy import create_engine  # sqlite in-memory use only
 
-        self._db = None  # set in cli_access()
         self.argv = []
         self._fs = dict(self.files)
         self.create_engine = lambda path: self._db
         self.SoapClient = lambda wsdl: self
         self.stdout = StringIO.StringIO()
+
+        # self._db = create_engine('sqlite:///mock.db')
+        self._db = create_engine('sqlite://')
+        self._init_redcap()
 
     from contextlib import contextmanager
 
@@ -534,20 +627,16 @@ R3,S,RS3@example,J1,8/4/2013 0:00,rs3
             _buf, content = self._fs[path]
             yield StringIO.StringIO(content)
 
-    def cli_access(self, cmd, db=None):
-        import pkg_resources as pkg
-        from sqlalchemy import create_engine  # sqlite in-memory use only
-
+    def cli_access(self, cmd):
         self.argv = cmd.split()
-
-        # self._db = db = create_engine('sqlite:///mock.db')
-        self._db = db = db or create_engine('sqlite://')
-        if not ('--refresh' in self.argv or 'backfill' in self.argv):
-            cn = db.connect().connection
-            cn.executescript(pkg.resource_string(__name__, 'test_cache.sql'))
 
         return lambda: CLI(self.argv, self.environ, self.openf,
                            self.create_engine, self.SoapClient)
+
+    def _init_redcap(self):
+        import pkg_resources as pkg
+        cn = self._db.connect().connection
+        cn.executescript(pkg.resource_string(__name__, 'test_rc.sql'))
 
     def _check(self, usr, pwd):
         if not (usr == 'MySchool' and
@@ -581,6 +670,8 @@ if __name__ == '__main__':
         def access():
             logging.basicConfig(
                 level=logging.DEBUG if '--debug' in argv else logging.INFO)
+            if '--debug' in argv:
+                logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
             # ew... after this import, basicConfig doesn't work
             from pysimplesoap.client import SoapClient

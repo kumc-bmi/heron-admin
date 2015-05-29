@@ -1,3 +1,6 @@
+'''relation -- I/O for relations, i.e. sets of tuples/records
+'''
+
 from collections import namedtuple
 import csv
 import logging
@@ -9,20 +12,14 @@ from lalib import maker
 
 
 def readRecords(fp):
+    '''Read CSV into named tuples.
+
+    The header is used to define a namedtuple class.
+    '''
     reader = csv.reader(fp)
     header = reader.next()
     R = namedtuple('R', header)
     return [R(*row) for row in reader]
-
-
-def put(dbtrx, records):
-    exemplar = records.next()
-    tuple_type = exemplar.__class__
-    et = ExportTable(dbtrx,
-                     tuple_type.__name__,
-                     tuple_type._fields)
-    et.recreate()
-    return et.insert([exemplar] + list(records)), tuple_type
 
 
 def docToRecords(relation_doc,
@@ -86,8 +83,10 @@ def mock_xml_records(template, qty):
         n[0] += 13
         return (
             # Please excuse the abstraction leak...
-            'Basic/Refresher Course - Human Subjects Research'
+            'Human Subjects Research'
             if tag == 'strCompletionReport' and n[0] % 3
+            else 'CITI Biomedical Researchers'
+            if tag == 'strGroup' and n[0] % 3
             else 's' * (n[0] % 5) + 't' * (n[0] % 7))
 
     def record_markup():
@@ -108,47 +107,3 @@ def mock_xml_records(template, qty):
             + '\n'.join(record_markup()
                         for _ in range(qty))
             + "</NewDataSet>")
-
-
-def tableTuple(name, description):
-    cols = [d[0] for d in description]
-
-    return namedtuple(name, cols)
-
-
-@maker
-def ExportTable(dbtrx, name, cols):
-    create_stmt, insert_stmt = sql_for(name, cols)
-
-    def recreate(_):
-        log.info('(re-)creating %s: %s',
-                 name, create_stmt)
-        with dbtrx() as ddl:
-            ddl.execute('drop table if exists %s' % name)
-            ddl.execute(create_stmt)
-
-    def insert(_, rows):
-        with dbtrx() as dml:
-            dml.executemany(insert_stmt, rows)
-        log.info('inserted %d rows into %s', len(rows), name)
-        return len(rows)
-
-    return [recreate, insert], dict(name=name)
-
-
-def sql_for(table, cols):
-    '''
-    >>> c, i = sql_for('t1', ['cx', 'cy', 'cz'])
-    >>> print c
-    create table t1 ( cx, cy, cz )
-    >>> print i
-    insert into t1 (cx, cy, cz) values (?, ?, ?)
-    '''
-    create_stmt = 'create table %s ( %s )' % (
-        table,
-        ', '.join(cols))
-    insert_stmt = 'insert into %s (%s) values (%s)' % (
-        table,
-        ', '.join(cols),
-        ', '.join(['?'] * len(cols)))
-    return create_stmt, insert_stmt

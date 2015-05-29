@@ -89,7 +89,7 @@ class CheckListView(Token):
         >>> from pyramid import testing
         >>> from pyramid.testing import DummyRequest
         >>> config = testing.setUp()
-        >>> for route in ('logout', 'saa', 'dua', 'home', 'oversight', 
+        >>> for route in ('logout', 'saa', 'dua', 'home', 'oversight',
         ...               'i2b2_login'):
         ...     config.add_route(route, route)
         >>> mc, hp, clv = Mock.make((medcenter.MedCenter,
@@ -109,6 +109,7 @@ class CheckListView(Token):
         >>> hp.grant(facreq.context, heron_policy.PERM_STATUS)
         >>> from pprint import pprint
         >>> pprint(clv.get(facreq.context, facreq))
+        ... # doctest: +NORMALIZE_WHITESPACE
         {'affiliate': John Smith <john.smith@js.example>,
          'data_use_path': 'http://example.com/oversight',
          'droc': {},
@@ -124,7 +125,9 @@ class CheckListView(Token):
          'sponsored': {},
          'sponsorship_path': 'http://example.com/oversight',
          'trainingCurrent': {'checked': 'checked'},
-         'trainingExpiration': '2012-01-01'}
+         'trainingLast': Training(username='john.smith',
+                                  expired='2012-01-01', completed='2012-01-01',
+                                  course='Human Subjects 101')}
 
         >>> execreq = DummyRequest(context=medcenter.AttrDict())
         >>> mc.authenticated('big.wig', execreq) and None
@@ -142,8 +145,8 @@ class CheckListView(Token):
 
         parts = dict(affiliate=ctx.badge,
                      trainingCurrent=yn(status.current_training),
-                     trainingExpiration=(status.current_training
-                                         or status.expired_training),
+                     trainingLast=(status.current_training
+                                   or status.expired_training),
                      signatureOnFile=yn(status.system_access_signed),
                      repositoryAccess=yn(status.complete),
                      faculty=yn(status.faculty),

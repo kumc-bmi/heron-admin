@@ -44,7 +44,11 @@ investigator requests::
   INFO:cache_remote:... cached until 2011-09-02 00:01:00.500000
   >>> facreq.context.status  # doctest: +NORMALIZE_WHITESPACE
   Status(complete=True,
-         current_training='2012-01-01', droc=None, executive=False,
+         current_training=Training(username='john.smith',
+                                   expired='2012-01-01',
+                                   completed='2012-01-01',
+                                   course='Human Subjects 101'),
+         droc=None, executive=False,
          expired_training=None, faculty=True, sponsored=None,
          system_access_signed=[datetime.datetime(2011, 8, 26, 0, 0)])
 
@@ -155,11 +159,11 @@ Another student has been sponsored and is current on training, but has
 not yet executed the system access agreement::
 
   >>> stu2req = _login('some.one', mc, hp, PERM_START_I2B2)
-  ... #doctest: +NORMALIZE_WHITESPACE
+  ... #doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
   Traceback (most recent call last):
     ...
   NoPermission: NoPermission(Status(complete=False,
-            current_training='2012-01-01',
+            current_training=...,
             droc=None, executive=False,
             expired_training=None, faculty=False, sponsored=True,
             system_access_signed=[]))
@@ -467,8 +471,12 @@ class HeronRecords(Token, Cache):
         except NotDROC:
             droc_audit = None
 
+        # Grace period for training enforcement ends July 1, 2015.
+        enforce_training = str(self._t.today()) >= '2015-07-01'
+
         complete = (
-            current_training and system_access_sigs and (
+            (current_training or not enforce_training) and
+            system_access_sigs and (
                 badge.is_executive() if self._pm.identified_data
                 else
                 (badge.is_faculty() or badge.is_executive() or sponsored)))
@@ -508,7 +516,7 @@ class HeronRecords(Token, Cache):
 
     def _training_current(self, badge):
         try:
-            when = self._mc.trained_thru(badge)
+            info = self._mc.latest_training(badge)
         except (IOError):
             log.warn('failed to look up training due to IOError')
             log.debug('training error detail', exc_info=True)
@@ -518,12 +526,13 @@ class HeronRecords(Token, Cache):
                      badge.cn, badge.full_name())
             return None, None
 
-        current = when >= self._t.today().isoformat()
+        # convert dates to strings if the database hasn't already
+        current = str(info.expired) >= str(self._t.today())
         if not current:
             log.info('training expired %s for: %s (%s)',
-                     when, badge.cn, badge.full_name())
+                     info.expired, badge.cn, badge.full_name())
 
-        return (when, None) if current else (None, when)
+        return (info, None) if current else (None, info)
 
     def _signatures(self, mail,
                     ttl=timedelta(seconds=15)):

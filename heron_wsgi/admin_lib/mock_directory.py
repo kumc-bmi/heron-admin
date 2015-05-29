@@ -32,10 +32,11 @@ It implements the LDAP search API in a few cases::
 
 It also supplies HSC training info::
 
-  >>> d.trainedThru('john.smith')
+  >>> d.latest_training('john.smith').expired
   '2012-01-01'
 '''
 
+from collections import namedtuple
 import pkg_resources
 import csv
 import re
@@ -58,8 +59,11 @@ class MockDirectory(object):
                        for a in (attrs or record.keys())
                        if record[a] != '']))]
 
-    def trainedThru(self, cn):
-        return self._d[cn]['trainedThru']
+    def latest_training(self, cn):
+        expired = self._d[cn]['trainedThru']
+        if not expired:
+            raise LookupError(cn)
+        return Training(cn, expired, expired, 'Human Subjects 101')
 
     @classmethod
     def _records(cls, resource):
@@ -80,3 +84,8 @@ class MockDirectory(object):
         if m:
             return m.group(1)
         raise ValueError
+
+
+class Training(namedtuple('Training',
+                          'username expired completed course'.split())):
+    pass
