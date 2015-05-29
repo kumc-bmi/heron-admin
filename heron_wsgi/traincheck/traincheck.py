@@ -109,7 +109,7 @@ While we support checking records from the CLI, it will typically be
 done using the API. Given (read) access to the database, we can make
 a `TrainingRecordsRd`::
 
-    >>> rd = TrainingRecordsRd(acct=(conntrx(s1._db.connect()), None, None))
+    >>> rd = TrainingRecordsRd(acct=(s1._db.connect(), None, None))
 
 Now let's look up training for Sam, whose username is `sssstttt`::
 
@@ -147,7 +147,7 @@ from sqlalchemy import (MetaData, Table, Column,
                         select, union_all, literal_column, and_)
 from sqlalchemy.engine.url import make_url
 
-from lalib import maker, conntrx
+from lalib import maker
 from sqlaview import CreateView, DropView, year_after
 import relation
 import redcapview
@@ -388,13 +388,13 @@ def TrainingRecordsRd(acct):
     >>> print rd.lookup_query
     hsr_training_combo
     '''
-    dbtrx, db_name, _ = acct
+    conn, db_name, _ = acct
     hsr = HSR(db_name)
     lookup = hsr.table(hsr.combo_view)
 
     def __getitem__(_, instUserName):
-        with dbtrx() as q:
-            result = q.execute(
+        with conn.begin():
+            result = conn.execute(
                 lookup.select(lookup.c.username == instUserName)
                 .order_by(lookup.c.expired.desc()))
             record = result.fetchone()
@@ -450,7 +450,7 @@ def TrainingRecordsAdmin(acct, exempt_pid,
     SELECT "full"."Username", ...
     FROM "HumanSubjectsFull" AS "full" ...
     '''
-    dbtrx, db_name, redcapdb = acct
+    conn, db_name, redcapdb = acct
     hsr = HSR(db_name)
     crs = hsr.table('CRS')
 
@@ -483,22 +483,22 @@ def TrainingRecordsAdmin(acct, exempt_pid,
     def init(_):
         non_views = [t for (n, t) in sorted(hsr.tables.items())
                      if 'combo' not in n]
-        with dbtrx() as ddl:
+        with conn.begin():
             log.info('re-creating tables: %s',
                      [t.name for t in non_views])
-            ddl.execute(DropView(hsr.combo_view, hsr.db_name))
-            hsr.meta.drop_all(ddl, non_views)
-            hsr.meta.create_all(ddl, non_views)
+            conn.execute(DropView(hsr.combo_view, hsr.db_name))
+            hsr.meta.drop_all(conn, non_views)
+            hsr.meta.create_all(conn, non_views)
             log.info('creating view: %s', hsr.combo_view)
-            ddl.execute(CreateView(hsr.combo_view, who_when, hsr.db_name))
+            conn.execute(CreateView(hsr.combo_view, who_when, hsr.db_name))
 
     def put(_, name, records):
         tdef = hsr.table(name)
-        with dbtrx() as dml:
+        with conn.begin():
             log.info('put %d records to %s:', len(records), name)
-            deleted = dml.execute(tdef.delete()).rowcount
+            deleted = conn.execute(tdef.delete()).rowcount
             log.info('deleted %d old records from %s', deleted, name)
-            dml.execute(tdef.insert(), [t._asdict() for t in records])
+            conn.execute(tdef.insert(), [t._asdict() for t in records])
             log.info('inserted %d rows into %s', len(records), tdef.name)
 
     return [init, put, docRecords], dict(
@@ -552,7 +552,7 @@ def CLI(argv, environ, openf, create_engine, SoapClient):
         # leave off redcap schema prefix for testing
         redcapdb = (None if u.drivername == 'sqlite' else 'redcap')
 
-        return conntrx(create_engine(u).connect()), u.database, redcapdb
+        return create_engine(u).connect(), u.database, redcapdb
 
     def citiService(_):
         wsdl = opts['--wsdl']

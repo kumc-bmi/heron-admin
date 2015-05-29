@@ -72,33 +72,3 @@ def Rd(path, open_rd, listdir):
     return [__div__, open, iterdir], dict(
         name=basename(path),
         suffix=splitext(path)[1])
-
-
-def dbmgr(connect):
-    '''Make a context manager that yields cursors, given connect access.
-    '''
-    @contextmanager
-    def dbtrx():
-        conn = connect()
-        cur = conn.cursor()
-        try:
-            yield cur
-        except:
-            conn.rollback()
-            raise
-        else:
-            conn.commit()
-        finally:
-            cur.close()
-    return dbtrx
-
-
-def conntrx(conn):
-    '''Make a context manager that yields cursors, given a connection.
-    '''
-    @contextmanager
-    def conntrx():
-        with conn.begin():
-            yield conn
-
-    return conntrx
