@@ -22,18 +22,6 @@ def readRecords(fp):
     return [R(*row) for row in reader]
 
 
-def put(dbtrx, records):
-    '''Create a table and insert records into it.
-    '''
-    exemplar = records.next()
-    tuple_type = exemplar.__class__
-    et = ExportTable(dbtrx,
-                     tuple_type.__name__,
-                     tuple_type._fields)
-    et.recreate()
-    return et.insert([exemplar] + list(records)), tuple_type
-
-
 def docToRecords(relation_doc,
                  cols=None):
     r'''Given a record-oriented XML document, generate namedtuple per record.
@@ -119,53 +107,3 @@ def mock_xml_records(template, qty):
             + '\n'.join(record_markup()
                         for _ in range(qty))
             + "</NewDataSet>")
-
-
-def tableTuple(name, description):
-    '''Define a namedtuple class from a DBI__ query description.
-
-    __ https://www.python.org/dev/peps/pep-0249/
-    '''
-    cols = [d[0] for d in description]
-
-    return namedtuple(name, cols)
-
-
-@maker
-def ExportTable(dbtrx, name, cols):
-    '''Access to export a relation to a database.
-    '''
-    create_stmt, insert_stmt = sql_for(name, cols)
-
-    def recreate(_):
-        log.info('(re-)creating %s: %s',
-                 name, create_stmt)
-        with dbtrx() as ddl:
-            ddl.execute('drop table if exists %s' % name)
-            ddl.execute(create_stmt)
-
-    def insert(_, rows):
-        with dbtrx() as dml:
-            dml.executemany(insert_stmt, rows)
-        log.info('inserted %d rows into %s', len(rows), name)
-        return len(rows)
-
-    return [recreate, insert], dict(name=name)
-
-
-def sql_for(table, cols):
-    '''
-    >>> c, i = sql_for('t1', ['cx', 'cy', 'cz'])
-    >>> print c
-    create table t1 ( cx, cy, cz )
-    >>> print i
-    insert into t1 (cx, cy, cz) values (?, ?, ?)
-    '''
-    create_stmt = 'create table %s ( %s )' % (
-        table,
-        ', '.join(cols))
-    insert_stmt = 'insert into %s (%s) values (%s)' % (
-        table,
-        ', '.join(cols),
-        ', '.join(['?'] * len(cols)))
-    return create_stmt, insert_stmt
