@@ -197,7 +197,7 @@
       <p py:if="trainingLast">
         Our records show <cite>${trainingLast.course}</cite>
         completed ${trainingLast.completed};
-        <span class="warn" py:if="trainingCurrent">
+        <span py:if="trainingCurrent">
           <br />expires  ${trainingLast.expired}.</span>
         <strong class="warn" py:if="not trainingCurrent">
           <br />expired  ${trainingLast.expired}.</strong>
