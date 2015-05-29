@@ -55,6 +55,9 @@ def maker(wrapped):
 
 @maker
 def Rd(path, open_rd, listdir):
+    '''Yet another version of `Readable()`__
+    __ https://bitbucket.org/DanC/blackknightcap/src/tip/ocap/lafile.py
+    '''
     def __div__(_, sub):
         fullsub = join(path, sub)
         if not fullsub.startswith(path):
