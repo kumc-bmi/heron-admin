@@ -61,23 +61,25 @@ def compile3(element, compiler, **kw):
     return "DROP VIEW IF EXISTS %s%s%s" % (pfx, sep, element.name)
 
 
-class year_after(FunctionElement):
+class years_after(FunctionElement):
     type = DateTime()
-    name = 'year_after'
+    name = 'years_after'
 
 
-@compiles(year_after)
+@compiles(years_after)
 def year_after_default(element, compiler, **kw):
     return compiler.visit_function(element)
 
 
-@compiles(year_after, 'sqlite')
+@compiles(years_after, 'sqlite')
 def year_after_sqlite(element, compiler, **kw):
-    [arg1] = list(element.clauses)
-    return "datetime(%s, '+1 year')" % compiler.process(arg1)
+    [t0, n] = list(element.clauses)
+    return "datetime(%s, '+%s year')" % (
+        compiler.process(t0), compiler.process(n, literal_binds=True))
 
 
-@compiles(year_after, 'mysql')
+@compiles(years_after, 'mysql')
 def year_after_mysql(element, compiler, **kw):
-    [arg1] = list(element.clauses)
-    return 'adddate(%s, interval 1 year)' % compiler.process(arg1)
+    [t0, n] = list(element.clauses)
+    return 'adddate(%s, interval %s year)' % (
+        compiler.process(t0), compiler.process(n, literal_binds=True))

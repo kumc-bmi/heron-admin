@@ -101,9 +101,9 @@ Combined view of all sources
     sss      2000-01-13 Human Subjects Research
     sssstttt 2000-02-04 Human Subjects Research
     sttttt   2000-04-12 Human Subjects Research
-    rs       2012-08-04 HumanSubjectsFull
-    rs2      2013-08-04 HumanSubjectsInPerson
-    rs3      2014-08-04 HumanSubjectsRefresher
+    rs       2014-08-04 HumanSubjectsFull
+    rs2      2015-08-04 HumanSubjectsInPerson
+    rs3      2016-08-04 HumanSubjectsRefresher
 
 
 Find Training Records
@@ -135,7 +135,7 @@ Course Naming
 
 The courses we're interested in are selected using::
 
-    >>> ad = TrainingRecordsAdmin((lambda: io._db.connect(), None, None), 0)
+    >>> ad = TrainingRecordsAdmin((io._db.connect(), None, None), 0)
     >>> ad.course_groups
     ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers']
 
@@ -152,7 +152,7 @@ from sqlalchemy import (MetaData, Table, Column,
 from sqlalchemy.engine.url import make_url
 
 from lalib import maker
-from sqlaview import CreateView, DropView, year_after
+from sqlaview import CreateView, DropView, years_after
 import relation
 import redcapview
 
@@ -422,8 +422,15 @@ def TrainingRecordsAdmin(acct, exempt_pid,
                          course_groups=[
                              'CITI Biomedical Researchers',
                              'CITI Social Behavioral Researchers'],
-                         colSize=120):
-    '''
+                         years=3):
+    '''Administrative access to training records
+
+    :param acct: tuple of connection, HSR schema name, redcap schema name
+    :param exempt_pid: id of REDCap project to use for exemptions
+    :param course_groups: list of groups that should be selected from CRS in
+                          the combo view
+    :param years: number of years between chalk completion and expiration
+
     >>> acct = (lambda: Mock()._db.connect(), None, None)
     >>> ad = TrainingRecordsAdmin(acct, 0)
 
@@ -441,7 +448,8 @@ def TrainingRecordsAdmin(acct, exempt_pid,
 
     >>> print ad.chalk_queries[0]
     ... # doctest: +NORMALIZE_WHITESPACE
-    SELECT "full"."Username", year_after("full"."DateCompleted"),
+    SELECT "full"."Username",
+           years_after("full"."DateCompleted", :years_after_1),
            "full"."DateCompleted", 'HumanSubjectsFull'
     FROM "HumanSubjectsFull" AS "full"
 
@@ -471,7 +479,7 @@ def TrainingRecordsAdmin(acct, exempt_pid,
                   .where(and_(crs.c.strGroup.in_(course_groups),
                               # != None is sqlalchemy-speak for is not null
                               crs.c.dteExpiration != None)))  # noqa
-    chalk_queries = [select([t.c.Username, year_after(t.c[date_col]),
+    chalk_queries = [select([t.c.Username, years_after(t.c[date_col], years),
                              t.c[date_col], literal_column("'%s'" % name)])
                      for opt, name, date_col in Chalk.tables
                      for t in [hsr.table(name).alias(opt[2:])]]
