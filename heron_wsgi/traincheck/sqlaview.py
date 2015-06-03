@@ -65,6 +65,9 @@ class fyears_after(FunctionElement):
     '''Fiscal years after
 
     fyears_after(t, n, fy_basis_months, fy_start_mm_dd)
+
+    e.g.
+    fyears_after(events.when, 3, -6, '07-01')
     '''
     type = DateTime()
     name = 'fyears_after'
@@ -76,7 +79,26 @@ def fyear_after_default(element, compiler, **kw):
 
 
 @compiles(fyears_after, 'sqlite')
-def fyear_after_sqlite(element, compiler, **kw):
+def fyears_after_sqlite(element, compiler, **kw):
+    '''Compile fyears_after for sqlite.
+
+    >>> import sqlalchemy as sa
+    >>> meta = sa.MetaData()
+
+    >>> events = sa.Table('events', meta,
+    ...                   sa.Column('what', sa.String),
+    ...                   sa.Column('when', sa.Date))
+    >>> q = sa.select([fyears_after(events.c.when, 3, -6, '07-01')])
+
+    >>> memdb = sa.create_engine('sqlite:///')
+    >>> print q.compile(memdb)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    SELECT datetime(
+              strftime('%Y-' || '07-01',
+                       datetime(events."when", '-6 months')),
+              '+3 years')
+    FROM events
+    '''
     # 1. add basis months
     # 2. extract year
     # 3. append fy_start mm-dd
@@ -86,7 +108,7 @@ def fyear_after_sqlite(element, compiler, **kw):
           strftime('%%Y-' || %(fy_start)s,
                    datetime(%(t0)s, '%(basis)s months')),
           '+%(n)s years')
-        """ % _parts(compiler, element.clauses)
+        """.strip() % _parts(compiler, element.clauses)
 
 
 def _parts(compiler, clauses):
@@ -98,7 +120,27 @@ def _parts(compiler, clauses):
 
 
 @compiles(fyears_after, 'mysql')
-def fyear_after_mysql(element, compiler, **kw):
+def fyears_after_mysql(element, compiler, **kw):
+    '''Compile fyears_after for mysql.
+
+    >>> import sqlalchemy as sa
+    >>> meta = sa.MetaData()
+
+    >>> events = sa.Table('events', meta,
+    ...                   sa.Column('what', sa.String),
+    ...                   sa.Column('when', sa.Date))
+    >>> q = sa.select([fyears_after(events.c.when, 3, -6, '07-01')])
+
+    >>> db = sa.create_engine('mysql://')
+    >>> print q.compile(db)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    SELECT str_to_date(
+          concat(cast(round(
+             period_add(date_format(events.`when`, '%Y%m'), -6 + 12 * 3)
+             / 100) as char), '-', '07-01'), '%Y-%m-%d')
+    FROM events
+
+    '''
     # 1. format t0 as period: YYYYMM
     # 2. add basis + 12 * n months
     # 3. divide period by 100 to get year
@@ -109,4 +151,4 @@ def fyear_after_mysql(element, compiler, **kw):
       concat(cast(round(
          period_add(date_format(%(t0)s, '%%Y%%m'), %(basis)s + 12 * %(n)s)
          / 100) as char), '-', %(fy_start)s), '%%Y-%%m-%%d')
-    """ % _parts(compiler, element.clauses)
+    """.strip() % _parts(compiler, element.clauses)
