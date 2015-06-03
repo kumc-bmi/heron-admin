@@ -73,7 +73,10 @@ We get data from the legacy system in CSV format:
     >>> with io.openf('f.csv') as datafile:
     ...     print datafile.read()
     FirstName,LastName,Email,EmployeeID,DateCompleted,Username
-    R,S,RS@example,J1,8/4/2011 0:00,rs
+    Old,Chalk,a@example,J1,2/7/2013 0:00,old
+    Squeakby,Chalk,a@example,J1,7/1/2013 0:00,squeakby
+    Feb14,Chalk,b@example,J2,2/7/2014 0:00,Feb14
+    Mike,P,mp@example,J3,5/1/2015 0:00,mp
 
 Using access to this data and the database, we load it::
 
@@ -97,13 +100,16 @@ Combined view of all sources
 
     >>> for who, expired, completed, course in io._db.execute(
     ...     'select * from hsr_training_combo order by expired'):
-    ...     print "%-8s %s %s" % (who, expired[:10], course)
-    sss      2000-01-13 Human Subjects Research
-    sssstttt 2000-02-04 Human Subjects Research
-    sttttt   2000-04-12 Human Subjects Research
-    rs       2012-08-04 HumanSubjectsFull
-    rs2      2013-08-04 HumanSubjectsInPerson
-    rs3      2014-08-04 HumanSubjectsRefresher
+    ...     print "%-8s %s %s %s" % (who, completed[:10], expired[:10], course)
+    sss      2000-10-06 2000-01-13 Human Subjects Research
+    sssstttt 2000-11-23 2000-02-04 Human Subjects Research
+    sttttt   2000-01-05 2000-04-12 Human Subjects Research
+    old      2013-02-07 2015-07-01 HumanSubjectsFull
+    rs2      2012-08-04 2015-07-01 HumanSubjectsInPerson
+    squeakby 2013-07-01 2016-07-01 HumanSubjectsFull
+    Feb14    2014-02-07 2016-07-01 HumanSubjectsFull
+    rs3      2013-08-04 2016-07-01 HumanSubjectsRefresher
+    mp       2015-05-01 2017-07-01 HumanSubjectsFull
 
 
 Find Training Records
@@ -135,7 +141,7 @@ Course Naming
 
 The courses we're interested in are selected using::
 
-    >>> ad = TrainingRecordsAdmin((lambda: io._db.connect(), None, None), 0)
+    >>> ad = TrainingRecordsAdmin((io._db.connect(), None, None), 0)
     >>> ad.course_groups
     ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers']
 
@@ -152,7 +158,7 @@ from sqlalchemy import (MetaData, Table, Column,
 from sqlalchemy.engine.url import make_url
 
 from lalib import maker
-from sqlaview import CreateView, DropView, year_after
+from sqlaview import CreateView, DropView, fyears_after
 import relation
 import redcapview
 
@@ -422,8 +428,16 @@ def TrainingRecordsAdmin(acct, exempt_pid,
                          course_groups=[
                              'CITI Biomedical Researchers',
                              'CITI Social Behavioral Researchers'],
-                         colSize=120):
-    '''
+                         years=3, basis=-6):
+    '''Administrative access to training records
+
+    :param acct: tuple of connection, HSR schema name, redcap schema name
+    :param exempt_pid: id of REDCap project to use for exemptions
+    :param course_groups: list of groups that should be selected from CRS in
+                          the combo view
+    :param years: number of fiscal years from chalk completion to expiration
+    :param basis: fiscal year basis (month offset)
+
     >>> acct = (lambda: Mock()._db.connect(), None, None)
     >>> ad = TrainingRecordsAdmin(acct, 0)
 
@@ -441,7 +455,9 @@ def TrainingRecordsAdmin(acct, exempt_pid,
 
     >>> print ad.chalk_queries[0]
     ... # doctest: +NORMALIZE_WHITESPACE
-    SELECT "full"."Username", year_after("full"."DateCompleted"),
+    SELECT "full"."Username",
+           fyears_after("full"."DateCompleted",
+                        :fyears_after_1, :fyears_after_2, :fyears_after_3),
            "full"."DateCompleted", 'HumanSubjectsFull'
     FROM "HumanSubjectsFull" AS "full"
 
@@ -471,7 +487,10 @@ def TrainingRecordsAdmin(acct, exempt_pid,
                   .where(and_(crs.c.strGroup.in_(course_groups),
                               # != None is sqlalchemy-speak for is not null
                               crs.c.dteExpiration != None)))  # noqa
-    chalk_queries = [select([t.c.Username, year_after(t.c[date_col]),
+    chalk_queries = [select([t.c.Username,
+                             fyears_after(t.c[date_col],
+                                          years, basis,
+                                          '%02d-01' % ((basis % 12) + 1)),
                              t.c[date_col], literal_column("'%s'" % name)])
                      for opt, name, date_col in Chalk.tables
                      for t in [hsr.table(name).alias(opt[2:])]]
@@ -585,7 +604,10 @@ class Mock(object):
     files = {
         'f.csv': (None, '''
 FirstName,LastName,Email,EmployeeID,DateCompleted,Username
-R,S,RS@example,J1,8/4/2011 0:00,rs
+Old,Chalk,a@example,J1,2/7/2013 0:00,old
+Squeakby,Chalk,a@example,J1,7/1/2013 0:00,squeakby
+Feb14,Chalk,b@example,J2,2/7/2014 0:00,Feb14
+Mike,P,mp@example,J3,5/1/2015 0:00,mp
         '''.strip()),
         'i.csv': (None, '''
 FirstName,LastName,Email,EmployeeID,CompleteDate,Username

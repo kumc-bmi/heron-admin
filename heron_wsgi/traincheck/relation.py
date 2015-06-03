@@ -8,8 +8,6 @@ import xml.etree.ElementTree as ET
 
 log = logging.getLogger(__name__)
 
-from lalib import maker
-
 
 def readRecords(fp):
     '''Read CSV into named tuples.
