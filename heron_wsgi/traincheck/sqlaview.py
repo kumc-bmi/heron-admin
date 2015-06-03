@@ -107,6 +107,6 @@ def fyear_after_mysql(element, compiler, **kw):
     return """
     str_to_date(
       concat(cast(round(
-         period_add(date_format(t0, '%Y%m'), basis + 12 * n)
-         / 100) as char), '-', fy_start), '%Y-%m-%d')
+         period_add(date_format(%(t0)s, '%%Y%%m'), %(basis)s + 12 * %(n)s)
+         / 100) as char), '-', %(fy_start)s), '%%Y-%%m-%%d')
     """ % _parts(compiler, element.clauses)
