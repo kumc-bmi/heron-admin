@@ -61,25 +61,52 @@ def compile3(element, compiler, **kw):
     return "DROP VIEW IF EXISTS %s%s%s" % (pfx, sep, element.name)
 
 
-class years_after(FunctionElement):
+class fyears_after(FunctionElement):
+    '''Fiscal years after
+
+    fyears_after(t, n, fy_basis_months, fy_start_mm_dd)
+    '''
     type = DateTime()
-    name = 'years_after'
+    name = 'fyears_after'
 
 
-@compiles(years_after)
-def year_after_default(element, compiler, **kw):
+@compiles(fyears_after)
+def fyear_after_default(element, compiler, **kw):
     return compiler.visit_function(element)
 
 
-@compiles(years_after, 'sqlite')
-def year_after_sqlite(element, compiler, **kw):
-    [t0, n] = list(element.clauses)
-    return "datetime(%s, '+%s year')" % (
-        compiler.process(t0), compiler.process(n, literal_binds=True))
+@compiles(fyears_after, 'sqlite')
+def fyear_after_sqlite(element, compiler, **kw):
+    # 1. add basis months
+    # 2. extract year
+    # 3. append fy_start mm-dd
+    # 4. add n years
+    return """
+        datetime(
+          strftime('%%Y-' || %(fy_start)s,
+                   datetime(%(t0)s, '%(basis)s months')),
+          '+%(n)s years')
+        """ % _parts(compiler, element.clauses)
 
 
-@compiles(years_after, 'mysql')
-def year_after_mysql(element, compiler, **kw):
-    [t0, n] = list(element.clauses)
-    return 'adddate(%s, interval %s year)' % (
-        compiler.process(t0), compiler.process(n, literal_binds=True))
+def _parts(compiler, clauses):
+    [t0, n, fy_basis, fy_start] = list(clauses)
+    return dict(fy_start=compiler.process(fy_start, literal_binds=True),
+                t0=compiler.process(t0, literal_binds=True),
+                basis=compiler.process(fy_basis, literal_binds=True),
+                n=compiler.process(n, literal_binds=True))
+
+
+@compiles(fyears_after, 'mysql')
+def fyear_after_mysql(element, compiler, **kw):
+    # 1. format t0 as period: YYYYMM
+    # 2. add basis + 12 * n months
+    # 3. divide period by 100 to get year
+    # 4. append fy_start mm-dd
+    # 5. convert str_to_date
+    return """
+    str_to_date(
+      concat(cast(round(
+         period_add(date_format(t0, '%Y%m'), basis + 12 * n)
+         / 100) as char), '-', fy_start), '%Y-%m-%d')
+    """ % _parts(compiler, element.clauses)
