@@ -463,8 +463,9 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         u = make_url(rt.url)
         redcapdb = (None if u.drivername == 'sqlite' else 'redcap')
 
-        # hmm... can we count on this living for a long time?
-        conn = create_engine(u).connect()
+        # Address connection timeouts using pool_recycle
+        # ref http://docs.sqlalchemy.org/en/rel_1_0/dialects/mysql.html#connection-timeouts  # noqa
+        conn = create_engine(u, pool_recycle=3600).connect()
 
         account = conn, u.database, redcapdb
 
