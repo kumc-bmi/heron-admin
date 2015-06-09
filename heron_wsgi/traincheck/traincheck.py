@@ -119,7 +119,7 @@ While we support checking records from the CLI, it will typically be
 done using the API. Given (read) access to the database, we can make
 a `TrainingRecordsRd`::
 
-    >>> rd = TrainingRecordsRd(acct=(io._db.connect(), None, None))
+    >>> rd = TrainingRecordsRd(acct=(lambda: io._db.connect(), None, None))
 
 Now let's look up training for Sam, whose username is `sssstttt`::
 
@@ -404,11 +404,12 @@ def TrainingRecordsRd(acct):
     >>> print rd.lookup_query
     hsr_training_combo
     '''
-    conn, db_name, _ = acct
+    getConn, db_name, _ = acct
     hsr = HSR(db_name)
     lookup = hsr.table(hsr.combo_view)
 
     def __getitem__(_, instUserName):
+        conn = getConn()
         with conn.begin():
             result = conn.execute(
                 lookup.select(lookup.c.username == instUserName)
@@ -431,7 +432,7 @@ def TrainingRecordsAdmin(acct, exempt_pid,
                          years=3, basis=-6):
     '''Administrative access to training records
 
-    :param acct: tuple of connection, HSR schema name, redcap schema name
+    :param acct: tuple of () => connection, HSR schema name, redcap schema name
     :param exempt_pid: id of REDCap project to use for exemptions
     :param course_groups: list of groups that should be selected from CRS in
                           the combo view
@@ -476,7 +477,7 @@ def TrainingRecordsAdmin(acct, exempt_pid,
     SELECT "full"."Username", ...
     FROM "HumanSubjectsFull" AS "full" ...
     '''
-    conn, db_name, redcapdb = acct
+    getConn, db_name, redcapdb = acct
     hsr = HSR(db_name)
     crs = hsr.table('CRS')
 
@@ -512,6 +513,7 @@ def TrainingRecordsAdmin(acct, exempt_pid,
     def init(_):
         non_views = [t for (n, t) in sorted(hsr.tables.items())
                      if 'combo' not in n]
+        conn = getConn()
         with conn.begin():
             log.info('re-creating tables: %s',
                      [t.name for t in non_views])
@@ -523,6 +525,7 @@ def TrainingRecordsAdmin(acct, exempt_pid,
 
     def put(_, name, records):
         tdef = hsr.table(name)
+        conn = getConn()
         with conn.begin():
             log.info('put %d records to %s:', len(records), name)
             deleted = conn.execute(tdef.delete()).rowcount
@@ -580,8 +583,8 @@ def CLI(argv, environ, openf, create_engine, SoapClient):
         u = make_url(environ[env_key])
         # leave off redcap schema prefix for testing
         redcapdb = (None if u.drivername == 'sqlite' else 'redcap')
-
-        return create_engine(u).connect(), u.database, redcapdb
+        db = create_engine(u)
+        return lambda: db.connect(), u.database, redcapdb
 
     def citiService(_):
         wsdl = opts['--wsdl']
