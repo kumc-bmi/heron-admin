@@ -465,9 +465,8 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
 
         # Address connection timeouts using pool_recycle
         # ref http://docs.sqlalchemy.org/en/rel_1_0/dialects/mysql.html#connection-timeouts  # noqa
-        conn = create_engine(u, pool_recycle=3600).connect()
-
-        account = conn, u.database, redcapdb
+        trainingdb = create_engine(u, pool_recycle=3600)
+        account = lambda: trainingdb.connect(), u.database, redcapdb
 
         tr = TrainingRecordsRd(account)
 
