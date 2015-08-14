@@ -6,8 +6,10 @@ Caching:
   >>> import sys
   >>> logging.basicConfig(level=logging.INFO, stream=sys.stdout)
   >>> ts = rtconfig.MockClock()
-  >>> ds = MockLDAP(ts, ttl=2)
-  INFO:cache_remote:MockLDAP@1 cache initialized
+
+  >>> ds = LDAPService(ts.now, ttl=2, rt=_sample_settings,
+  ...                  ldap=MockLDAP(), flags=MockLDAP)
+  INFO:cache_remote:LDAPService@1 cache initialized
   >>> ds.search("(cn=john.smith)", ['sn'])
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('sn',))
   INFO:cache_remote:... cached until 2011-09-02 00:00:02.500000
@@ -27,6 +29,7 @@ Sample configuration::
   >>> print _sample_settings.inifmt(CONFIG_SECTION)
   [enterprise_directory]
   base=ou=...,o=...
+  certfile=LDAP_HOST_CERT.pem
   password=sekret
   url=ldaps://_ldap_host_:636
   userdn=cn=...,ou=...,o=...
@@ -35,8 +38,9 @@ Use `url=mock:mockDirectory.csv` to use a mock service rather
 than a native LDAP service.
 '''
 
-import logging
 from datetime import timedelta
+import logging
+import re
 
 from injector import inject, provides, singleton
 
@@ -51,9 +55,13 @@ log = logging.getLogger(__name__)
 class LDAPService(Cache):
     '''See :mod:`heron_wsgi.admin_lib.mock_directory` for API details.
     '''
-    def __init__(self, now, ttl):
+    def __init__(self, now, ttl, rt, ldap, flags):
         Cache.__init__(self, now)
         self._ttl = timedelta(seconds=ttl)
+        self._rt = rt
+        self._ldap = ldap
+        self.flags = flags
+        self._l = None
 
     def search(self, query, attrs):
         attrs = tuple(sorted(attrs))
@@ -63,46 +71,71 @@ class LDAPService(Cache):
                            'LDAP')
 
     def search_remote(self, query, attrs):
-        raise NotImplementedError(
-            'subclass must implement.')  # pragma: nocover
-
-
-class MockLDAP(LDAPService, mock_directory.MockDirectory):
-    def __init__(self, ts, ttl):
-        mock_directory.MockDirectory.__init__(self)
-        LDAPService.__init__(self, ts.now, ttl)
-
-    def search_remote(self, q, attrs):
-        return mock_directory.MockDirectory.search(self, q, attrs)
-
-
-class NativeLDAPService(LDAPService):  # pragma: nocover
-    def __init__(self, rt, native, now, ttl):
-        LDAPService.__init__(self, now, ttl)
-        self._rt = rt
-        self._native = native
-        self._l = None
+        l = self._l or self._bind()
+        base = self._rt.base
+        try:
+            ans = l.search_s(base, self.flags.SCOPE_SUBTREE, query, attrs)
+        except self.flags.SERVER_DOWN:
+            self._l = l = self._bind()
+            ans = l.search_s(base, self.flags.SCOPE_SUBTREE, query, attrs)
+        return ans
 
     def _bind(self):
         rt = self._rt
-        ldap = self._native
-        ldap.set_option(ldap.OPT_X_TLS_CACERTFILE, rt.certfile)
+        ldap = self._ldap
+        ldap.set_option(self.flags.OPT_X_TLS_CACERTFILE, rt.certfile)
         self._l = l = ldap.initialize(rt.url)
         l.simple_bind_s(rt.userdn, rt.password)
         return l
 
-    def search_remote(self, query, attrs):
-        l = self._l or self._bind()
-        base = self._rt.base
-        try:
-            ans = l.search_s(base, self._native.SCOPE_SUBTREE, query, attrs)
-        except self._native.SERVER_DOWN:
-            self._l = l = self._bind()
-            ans = l.search_s(base, self._native.SCOPE_SUBTREE, query, attrs)
-        return ans
+
+class MockLDAP(object):
+    SCOPE_SUBTREE, OPT_X_TLS_CACERTFILE = range(2)
+
+    class SERVER_DOWN(Exception):
+        pass
+
+    def __init__(self, records=None):
+        if records is None:
+            records = mock_directory.MockDirectory().records
+        self._d = dict([(r['cn'], r) for r in records])
+
+    def set_option(self, option, invalue):
+        assert option == self.OPT_X_TLS_CACERTFILE
+        assert invalue == _sample_settings.certfile
+
+    def initialize(self, url):
+        return self
+
+    def simple_bind_s(self, username, password):
+        pass
+
+    def search_s(self, base, scope, q, attrs):
+        log.debug('network fetch for %s', q)  # TODO: caching, .info()
+        i = self._qid(q)
+        record = self._d[i]
+        return [('(cn=%s)' % i,
+                 dict([(a, [record[a]])
+                       for a in (attrs or record.keys())
+                       if record[a] != '']))]
+
+    @classmethod
+    def _qid(cls, q):
+        '''Extract target cn from one or two kinds of LDAP queries.
+
+        >>> MockLDAP._qid('(cn=john.smith)')
+        'john.smith'
+        >>> MockLDAP._qid('(cn=john.smith*)')
+        'john.smith'
+        '''
+        m = re.match(r'\(cn=([^*)]+)\*?\)', q)
+        if m:
+            return m.group(1)
+        raise ValueError
 
 
 _sample_settings = rtconfig.TestTimeOptions(dict(
+    certfile='LDAP_HOST_CERT.pem',
     url='ldaps://_ldap_host_:636',
     userdn='cn=...,ou=...,o=...',
     password='sekret',
@@ -135,24 +168,36 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         import datetime
 
         if rt.url.startswith('mock:'):
-            res = rt.url[len('mock:'):]
-            import mock_directory
-            return mock_directory.MockDirectory(res)
+            flags = MockLDAP
+            ldap = MockLDAP()
+        else:
+            import ldap
+            flags = ldap
 
-        import ldap
-        return NativeLDAPService(rt, native=ldap,
-                                 now=datetime.datetime.now, ttl=ttl)
+        return LDAPService(datetime.datetime.now, ttl=ttl, rt=rt,
+                           ldap=ldap, flags=flags)
 
 
-def _integration_test():  # pragma nocover
-    import logging
-    import sys, pprint
-    ldap_query = sys.argv[1]
-    attrs = sys.argv[2].split(",") if sys.argv[2:] else []
+def _integration_test(stdout, access):  # pragma nocover
+    from pprint import pformat
 
-    logging.basicConfig(level=logging.INFO)
+    ldap_query, attrs = access()
+
     (ls, ) = RunTime.make(None, [LDAPService])
-    pprint.pprint(ls.search(ldap_query, attrs))
+    print >>stdout, pformat(ls.search(ldap_query, attrs))
+
 
 if __name__ == '__main__':  # pragma nocover
-    _integration_test()
+    def _script():  # pragma nocover
+        import logging
+        from sys import argv, stdout
+
+        def access():
+            logging.basicConfig(level=logging.INFO)
+            ldap_query = argv[1]
+            attrs = argv[2].split(",") if argv[2:] else []
+            return ldap_query, attrs
+
+        _integration_test(stdout, access)
+
+    _script()
