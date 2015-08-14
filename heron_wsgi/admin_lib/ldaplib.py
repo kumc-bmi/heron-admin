@@ -103,10 +103,10 @@ class NativeLDAPService(LDAPService):  # pragma: nocover
 
 
 _sample_settings = rtconfig.TestTimeOptions(dict(
-        url='ldaps://_ldap_host_:636',
-        userdn='cn=...,ou=...,o=...',
-        password='sekret',
-        base='ou=...,o=...'))
+    url='ldaps://_ldap_host_:636',
+    userdn='cn=...,ou=...,o=...',
+    password='sekret',
+    base='ou=...,o=...'))
 
 
 class RunTime(rtconfig.IniModule):  # pragma: nocover
