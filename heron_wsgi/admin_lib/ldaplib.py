@@ -10,16 +10,16 @@ Caching:
   >>> ds = LDAPService(ts.now, ttl=2, rt=_sample_settings,
   ...                  ldap=MockLDAP(), flags=MockLDAP)
   INFO:cache_remote:LDAPService@1 cache initialized
-  >>> ds.search("(cn=john.smith)", ['sn'])
+  >>> ds.search_cn("john.smith", ['sn'])
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('sn',))
   INFO:cache_remote:... cached until 2011-09-02 00:00:02.500000
   [('(cn=john.smith)', {'sn': ['Smith']})]
 
-  >>> ds.search("(cn=john.smith)", ['sn'])
+  >>> ds.search_cn("john.smith", ['sn'])
   [('(cn=john.smith)', {'sn': ['Smith']})]
 
   >>> ts.wait(5)
-  >>> ds.search("(cn=john.smith)", ['sn'])
+  >>> ds.search_cn("john.smith", ['sn'])
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('sn',))
   INFO:cache_remote:... cached until 2011-09-02 00:00:08.500000
   [('(cn=john.smith)', {'sn': ['Smith']})]
@@ -63,7 +63,26 @@ class LDAPService(Cache):
         self.flags = flags
         self._l = None
 
-    def search(self, query, attrs):
+    def search_cn(self, cn, attrs):
+        return self._search('(cn=%s)' % quote(cn), attrs)
+
+    def search_name_clues(self, max_qty, cn, sn, givenname, attrs):
+        clauses = ['(%s=%s*)' % (n, quote(v))
+                   for (n, v) in (('cn', cn),
+                                  ('sn', sn),
+                                  ('givenname', givenname))
+                   if v]
+        if len(clauses) == 0:
+            return []
+
+        if len(clauses) > 1:
+            q = '(&' + (''.join(clauses)) + ')'
+        else:
+            q = clauses[0]
+
+        return self._search(q, attrs)[:max_qty]
+
+    def _search(self, query, attrs):
         attrs = tuple(sorted(attrs))
         return self._query((query, attrs),
                            lambda: (self._ttl,
@@ -87,6 +106,31 @@ class LDAPService(Cache):
         self._l = l = ldap.initialize(rt.url)
         l.simple_bind_s(rt.userdn, rt.password)
         return l
+
+
+def quote(txt):
+    r'''
+    examples from `section 4 of RFC4515`__
+    __ http://tools.ietf.org/html/rfc4515.html#section-4
+
+    >>> print quote('Parens R Us (for all your parenthetical needs)')
+    Parens R Us \28for all your parenthetical needs\29
+    >>> print quote('*')
+    \2a
+    >>> print quote(r'C:\MyFile')
+    C:\5cMyFile
+    >>> print quote('\x00\x00\x00\x04')
+    \00\00\00\04
+    >>> print quote(u'Lu\u010di\u0107'.encode('utf-8'))
+    Lu\c4\8di\c4\87
+    >>> print quote('\x04\x02\x48\x69')
+    \04\02Hi
+    '''
+    hexlify = lambda m: '\\%02x' % ord(m.group(0))
+    # RFC4515 asys
+    # UTF1SUBSET     = %x01-27 / %x2B-5B / %x5D-7F
+    # we also exclude 01-1F
+    return re.sub(r'[^\x20-\x27\x2B-\x5B\x5D-\x7F]', hexlify, txt)
 
 
 class MockLDAP(object):
@@ -113,7 +157,10 @@ class MockLDAP(object):
     def search_s(self, base, scope, q, attrs):
         log.debug('network fetch for %s', q)  # TODO: caching, .info()
         i = self._qid(q)
-        record = self._d[i]
+        try:
+            record = self._d[i]
+        except KeyError:
+            return []
         return [('(cn=%s)' % i,
                  dict([(a, [record[a]])
                        for a in (attrs or record.keys())
@@ -167,12 +214,8 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         '''
         import datetime
 
-        if rt.url.startswith('mock:'):
-            flags = MockLDAP
-            ldap = MockLDAP()
-        else:
-            import ldap
-            flags = ldap
+        import ldap
+        flags = ldap
 
         return LDAPService(datetime.datetime.now, ttl=ttl, rt=rt,
                            ldap=ldap, flags=flags)
@@ -184,7 +227,7 @@ def _integration_test(stdout, access):  # pragma nocover
     ldap_query, attrs = access()
 
     (ls, ) = RunTime.make(None, [LDAPService])
-    print >>stdout, pformat(ls.search(ldap_query, attrs))
+    print >>stdout, pformat(ls._search(ldap_query, attrs))
 
 
 if __name__ == '__main__':  # pragma nocover

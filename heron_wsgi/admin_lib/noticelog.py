@@ -252,8 +252,8 @@ class DecisionRecords(Token):
         def try_lookup(who):
             try:
                 return browser.lookup(who)
-            except KeyError:
-                log.warn('no email for %s', who)
+            except Exception as ex:
+                log.warn('cannot get email for %s', who, exc_info=ex)
                 return None
 
         return (browser.lookup(inv_uid).mail,
