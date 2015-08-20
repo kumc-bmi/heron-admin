@@ -33,9 +33,6 @@ Sample configuration::
   password=sekret
   url=ldaps://_ldap_host_:636
   userdn=cn=...,ou=...,o=...
-
-Use `url=mock:mockDirectory.csv` to use a mock service rather
-than a native LDAP service.
 '''
 
 from datetime import timedelta
