@@ -15,6 +15,7 @@ Access is logged at the :data:`logging.INFO` level.
 
   >>> import sys
   >>> logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+  >>> logging.getLogger('cache_remote').setLevel(level=logging.WARN)
 
 Issuing Notarized Badges
 ------------------------
@@ -102,6 +103,7 @@ from sqlalchemy.engine.url import make_url
 import rtconfig
 import ldaplib
 import sealing
+import mock_directory
 from notary import makeNotary
 from heron_wsgi.traincheck.traincheck import TrainingRecordsRd
 
@@ -142,6 +144,10 @@ class Browser(object):
 
       >>> m.search(10, '', '', '')
       []
+
+      >>> m.search(10, '**goofy name**', '', '')
+      []
+
     '''
     @inject(searchsvc=ldaplib.LDAPService)
     def __init__(self, searchsvc):
@@ -150,7 +156,8 @@ class Browser(object):
     def directory_attributes(self, name):
         '''Get directory attributes.
         '''
-        matches = self._svc.search('(cn=%s)' % name, Badge.attributes)
+        matches = self._svc.search_cn(name, Badge.attributes)
+
         if len(matches) != 1:  # pragma nocover
             if len(matches) == 0:
                 raise KeyError(name)
@@ -161,20 +168,8 @@ class Browser(object):
         return LDAPBadge._simplify(ldapattrs)
 
     def _search(self, max_qty, cn, sn, givenname):
-        clauses = ['(%s=%s*)' % (n, v)
-                   for (n, v) in (('cn', cn),
-                                  ('sn', sn),
-                                  ('givenname', givenname))
-                   if v]
-        if len(clauses) == 0:
-            return ()
-
-        if len(clauses) > 1:
-            q = '(&' + (''.join(clauses)) + ')'
-        else:
-            q = clauses[0]
-
-        return self._svc.search(q, Badge.attributes)[:max_qty]
+        return self._svc.search_name_clues(max_qty, cn, sn, givenname,
+                                           Badge.attributes)
 
     def lookup(self, name):
         '''Get a badge for a peer, i.e. with no authority.
@@ -415,16 +410,26 @@ class Mock(injector.Module, rtconfig.MockMixin):
 
     '''
 
-    def configure(self, binder):
-        import mock_directory
-        d = mock_directory.MockDirectory()
+    @provides(ldaplib.LDAPService)
+    @inject(d=mock_directory.MockDirectory, ts=rtconfig.Clock)
+    def ldap(self, d, ts):
+        return ldaplib.LDAPService(
+            ts.now, ttl=2, rt=ldaplib._sample_settings,
+            ldap=ldaplib.MockLDAP(d.records),
+            flags=ldaplib.MockLDAP)
 
-        binder.bind(ldaplib.LDAPService,
-                    injector.InstanceProvider(d))
-        binder.bind(KTrainingFunction,
-                    injector.InstanceProvider(d.latest_training))
-        binder.bind(KTestingFaculty,
-                    injector.InstanceProvider(''))
+    @provides(rtconfig.Clock)
+    def _time_source(self):
+        return rtconfig.MockClock()
+
+    @provides(KTrainingFunction)
+    @inject(d=mock_directory.MockDirectory)
+    def training_function(self, d):
+        return d.latest_training
+
+    @provides(KTestingFaculty)
+    def fac(self):
+        return ''
 
     @provides(KExecutives)
     def executives(self):
