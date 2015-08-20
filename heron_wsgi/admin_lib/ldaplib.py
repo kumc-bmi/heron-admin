@@ -103,7 +103,7 @@ class LDAPService(Cache):
         rt = self._rt
         ldap = self._ldap
         ldap.set_option(self.flags.OPT_X_TLS_CACERTFILE, rt.certfile)
-        self._l = l = ldap.initialize(rt.url)
+        l = ldap.initialize(rt.url)
         l.simple_bind_s(rt.userdn, rt.password)
         return l
 
