@@ -143,6 +143,7 @@ class MockLDAP(object):
         if records is None:
             records = mock_directory.MockDirectory().records
         self._d = dict([(r['cn'], r) for r in records])
+        self._bound = False
 
     def set_option(self, option, invalue):
         assert option == self.OPT_X_TLS_CACERTFILE
@@ -152,9 +153,12 @@ class MockLDAP(object):
         return self
 
     def simple_bind_s(self, username, password):
-        pass
+        self._bound = True
 
     def search_s(self, base, scope, q, attrs):
+        if not self._bound:
+            raise TypeError('not bound')
+
         log.debug('network fetch for %s', q)  # TODO: caching, .info()
         i = self._qid(q)
         try:
