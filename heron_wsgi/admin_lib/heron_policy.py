@@ -277,6 +277,21 @@ Ordinary users cannot, though they can get aggregate usage info::
   NotDROC
 
 
+Mismatch between LDAP email and CAS username
+============================================
+
+Email addresses are not limited to correspond to user ids:
+
+  >>> reqtm = _login('trouble.maker', mc, hp, PERM_STATUS)
+  ... # doctest: +ELLIPSIS
+  INFO:cache_remote:LDAP query for ('(cn=trouble.maker)', ...
+  >>> reqtm.context.badge
+  Trouble Maker <tmaker@not.js.example>
+
+  >>> reqtm = _login('trouble.maker', mc, hp, PERM_START_I2B2)
+  '@@'
+
+
 '''
 
 from datetime import timedelta

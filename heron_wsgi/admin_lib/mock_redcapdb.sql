@@ -1,3 +1,4 @@
+PRAGMA foreign_keys=OFF;
 BEGIN TRANSACTION;
 CREATE TABLE notice_log (
 	id INTEGER NOT NULL, 
@@ -6,7 +7,7 @@ CREATE TABLE notice_log (
 	PRIMARY KEY (id), 
 	FOREIGN KEY(record) REFERENCES redcap_data (record)
 );
-INSERT INTO "notice_log" VALUES(1, '93180811818667777', '2011-08-26 00:00:00.000000');
+INSERT INTO "notice_log" VALUES(1,'93180811818667777','2011-08-26 00:00:00.000000');
 CREATE TABLE redcap_data (
 	project_id INTEGER NOT NULL, 
 	event_id INTEGER NOT NULL, 
@@ -70,6 +71,7 @@ CREATE TABLE redcap_surveys_participants (
 	participant_identifier VARCHAR(255), 
 	PRIMARY KEY (participant_id)
 );
+INSERT INTO "redcap_surveys_participants" VALUES(1956,11,NULL,'hash1',NULL,'trouble.maker@js.example',NULL);
 INSERT INTO "redcap_surveys_participants" VALUES(3253004250825796194,11,NULL,NULL,NULL,'big.wig@js.example',NULL);
 INSERT INTO "redcap_surveys_participants" VALUES(7868139340274461544,11,NULL,NULL,NULL,'john.smith@js.example',NULL);
 INSERT INTO "redcap_surveys_participants" VALUES(7868139340274461590,11,NULL,NULL,NULL,'prof.fickle@js.example',NULL);
@@ -82,6 +84,7 @@ CREATE TABLE redcap_surveys_response (
 	return_code VARCHAR(8), 
 	PRIMARY KEY (response_id)
 );
+INSERT INTO "redcap_surveys_response" VALUES(6591,1956,'19560',NULL,'2015-11-16 21:41:01',NULL);
 INSERT INTO "redcap_surveys_response" VALUES(3253004250825796194,3253004250825796194,'3253004250825796194',NULL,'2011-08-26 00:00:00.000000',NULL);
 INSERT INTO "redcap_surveys_response" VALUES(7868139340274461544,7868139340274461544,'7868139340274461544',NULL,'2011-08-26 00:00:00.000000',NULL);
 INSERT INTO "redcap_surveys_response" VALUES(7868139340274461590,7868139340274461590,'7868139340274461590',NULL,'2011-08-26 00:00:00.000000',NULL);
