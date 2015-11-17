@@ -288,8 +288,8 @@ Email addresses are not limited to correspond to user ids:
   >>> reqtm.context.badge
   Trouble Maker <tmaker@not.js.example>
 
-  >>> reqtm = _login('trouble.maker', mc, hp, PERM_START_I2B2)
-  '@@'
+  >>> reqtm.context.status.system_access_signed
+  [datetime.datetime(2015, 11, 16, 21, 41, 1)]
 
 
 '''
@@ -504,8 +504,18 @@ class HeronRecords(Token, Cache):
                      (self._sponsorship(badge.cn) is not None))
 
         current_training, expired_training = self._training_current(badge)
+
+        # redcap_connect uses the '%s@%s' pattern when recording
+        # signatures, but we have traditionally looked this up
+        # by badge.mail. When those didn't agree, we updated
+        # the database to match badge.mail. So now we need
+        # to check both.
+        # Cache args have to be hashable, so tuple() rather than list().
+        cn_at_domain = '%s@%s' % (badge.cn, self._saa_rc.domain)
+        mailboxes = tuple(set([badge.mail, cn_at_domain]))
+
         system_access_sigs = [sig.completion_time
-                              for sig in self._signatures(badge.mail)]
+                              for sig in self._signatures(mailboxes)]
 
         try:
             droc_audit = self.__oc._droc_auditor(badge)
@@ -575,16 +585,21 @@ class HeronRecords(Token, Cache):
 
         return (info, None) if current else (None, info)
 
-    def _signatures(self, mail,
+    def _signatures(self, mailboxes,
                     ttl=timedelta(seconds=15)):
-        '''Look up SAA survey response by email address.
+        '''Look up SAA survey response by email address(es).
         '''
 
-        def q():
-            return ttl, self._smaker().execute(
-                _saa_query(mail, self._saa_survey_id)).fetchall()
+        def mkq(mail):
+            def q():
+                return ttl, self._smaker().execute(
+                    _saa_query(mail, self._saa_survey_id)).fetchall()
+            return q
 
-        return self._query(('SAA', mail), q, 'system access')
+        return [row
+                for mail in mailboxes
+                for row in
+                self._query(('SAA', mail), mkq(mail), 'system access')]
 
     def _investigator_request(self, badge):
         log.debug('investigator_request: %s faculty? %s executive? %s',
