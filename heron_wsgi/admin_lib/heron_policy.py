@@ -101,7 +101,7 @@ Any CAS authenticated user can sign Data Usage Agreement
 ********************************************************
 
 John is a team member on a study which has requested a HERON data extract.
-John authenticates to the site using CAS and is presented with a link to the 
+John authenticates to the site using CAS and is presented with a link to the
 HERON Data Use Agreement.
 
 :meth:`HeronRecords.grant` also issues an :class:`Affiliate` user
@@ -475,10 +475,10 @@ class HeronRecords(Token, Cache):
         if p is PERM_STATUS:
             context.status = self._status(badge)
         elif p is PERM_SIGN_SAA:
-            context.sign_saa = Affiliate(badge, self._query, 
+            context.sign_saa = Affiliate(badge, self._query,
                                          saa_rc=self._saa_rc)
         elif p is PERM_SIGN_DUA:
-            context.sign_dua = Affiliate(badge, self._query, 
+            context.sign_dua = Affiliate(badge, self._query,
                                          dua_rc=self._dua_rc)
         elif p is PERM_INVESTIGATOR_REQUEST:
             context.investigator_request = self._investigator_request(badge)
