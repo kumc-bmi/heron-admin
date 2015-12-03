@@ -32,6 +32,17 @@ Please cite us as:
 __ http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3243191/
 
 
+AMIA CRI Poster with Screenshots
+================================
+
+  * Tamara M. McMahon, Daniel W. Connolly, Bhargav Adagarla,
+    Lemuel R. Waitman. `Role of Informatics Coordinator in Catalyzing
+    Adoption of a Self-Service Integrated Data Repository Model`__
+    AMIA 2014 Summit on Clinical Research Informatics
+    
+__ http://frontiersresearch.org/frontiers/sites/default/files/frontiers/AMIA2014CRI-McMahonFinal.pdf
+
+
 Acknowledgements
 ----------------
 
