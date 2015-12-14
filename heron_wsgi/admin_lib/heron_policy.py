@@ -22,6 +22,7 @@ __ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
 
   >>> hp, mc, oc = Mock.make((HeronRecords, medcenter.MedCenter,
   ...                         OversightCommittee))
+  INFO:cache_remote:LDAPService@1 cache initialized
   INFO:cache_remote:OversightCommittee@1 cache initialized
   INFO:cache_remote:HeronRecords@1 cache initialized
 
@@ -38,6 +39,8 @@ human subjects training, so he can access the repository and make
 investigator requests::
 
   >>> facreq = _login('john.smith', mc, hp, PERM_STATUS)
+  ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+  INFO:cache_remote:LDAP query for ('(cn=john.smith)', ...
   INFO:cache_remote:system access query for ('SAA', 'john.smith@js.example')
   INFO:cache_remote:... cached until 2011-09-02 00:00:15.500000
   INFO:cache_remote:in DROC? query for john.smith
@@ -98,7 +101,7 @@ Any CAS authenticated user can sign Data Usage Agreement
 ********************************************************
 
 John is a team member on a study which has requested a HERON data extract.
-John authenticates to the site using CAS and is presented with a link to the 
+John authenticates to the site using CAS and is presented with a link to the
 HERON Data Use Agreement.
 
 :meth:`HeronRecords.grant` also issues an :class:`Affiliate` user
@@ -120,6 +123,8 @@ Bill cannot access the HERON repository because he is neither
 faculty not sponsored, nor has he completed human subjects training::
 
   >>> stureq = _login('bill.student', mc, hp, PERM_STATUS)
+  ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+  INFO:cache_remote:LDAP query for ('(cn=bill.student)', ...
   INFO:cache_remote:Sponsorship query for ('sponsorship', 'bill.student')
   INFO:heron_policy:not sponsored: bill.student
   INFO:cache_remote:... cached until 2011-09-03 00:00:02.500000
@@ -180,7 +185,13 @@ This student's sponsor is not with KUMC anymore
 
   >>> stureq = _login('jill.student', mc, hp, PERM_STATUS)
   ... #doctest: +NORMALIZE_WHITESPACE
+  INFO:cache_remote:LDAP query for ('(cn=jill.student)', ('cn', 'givenname',
+       'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
+  INFO:cache_remote:... cached until 2011-09-02 00:00:07.500000
   INFO:cache_remote:Sponsorship query for ('sponsorship', 'jill.student')
+  INFO:cache_remote:LDAP query for (u'(cn=prof.fickle)', ('cn', 'givenname',
+       'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
+  INFO:cache_remote:... cached until 2011-09-02 00:00:08
   WARNING:heron_policy:Sponsor prof.fickle not at med center anymore.
   INFO:heron_policy:not sponsored: jill.student
   INFO:cache_remote:... cached until 2011-09-03 00:00:06.500000
@@ -195,6 +206,10 @@ Exception for executives from participating institutions
 Executives don't need sponsorship::
 
   >>> exreq = _login('big.wig', mc, hp, PERM_START_I2B2)
+  ... # doctest: +NORMALIZE_WHITESPACE
+  INFO:cache_remote:LDAP query for ('(cn=big.wig)', ('cn', 'givenname',
+       'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
+  INFO:cache_remote:... cached until 2011-09-02 00:00:08.500000
   INFO:cache_remote:system access query for ('SAA', 'big.wig@js.example')
   INFO:cache_remote:... cached until 2011-09-02 00:00:22.500000
   INFO:cache_remote:in DROC? query for big.wig
@@ -208,12 +223,19 @@ Faculty and executives can make sponsorship and data usage requests to
 the oversight committee::
 
   >>> facreq = _login('john.smith', mc, hp, PERM_INVESTIGATOR_REQUEST)
+  ... # doctest: +NORMALIZE_WHITESPACE
+  INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('cn', 'givenname',
+       'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
+  INFO:cache_remote:... cached until 2011-09-02 00:00:09
   >>> facreq.context.investigator_request
   InvestigatorRequest(from=john.smith)
 
   >>> facreq.context.investigator_request.ensure_oversight_survey(
   ...        ['some.one'], what_for=HeronRecords.DATA_USE).split('&')
   ... # doctest: +NORMALIZE_WHITESPACE
+  INFO:cache_remote:LDAP query for ('(cn=some.one)', ('cn', 'givenname',
+       'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
+  INFO:cache_remote:... cached until 2011-09-02 00:00:09.500000
   WARNING:medcenter:missing LDAP attribute ou for some.one
   WARNING:medcenter:missing LDAP attribute title for some.one
   ['http://testhost/redcap-host/surveys/?s=f1f9',
@@ -238,10 +260,14 @@ Oversight Auditing
 Oversight committee members can get sensitive audit info::
 
   >>> exreq = _login('big.wig', mc, hp, PERM_DROC_AUDIT)
+  ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+  INFO:cache_remote:LDAP query for ('(cn=big.wig)', ...
 
 Ordinary users cannot, though they can get aggregate usage info::
 
   >>> stureq = _login('bill.student', mc, hp, PERM_STATS_REPORTER)
+  ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+  INFO:cache_remote:LDAP query for ('(cn=bill.student)', ...
   >>> stureq.context.stats_reporter
   I2B2AggregateUsage()
 
@@ -249,6 +275,21 @@ Ordinary users cannot, though they can get aggregate usage info::
   Traceback (most recent call last):
     ...
   NotDROC
+
+
+Mismatch between LDAP email and CAS username
+============================================
+
+Email addresses are not limited to correspond to user ids:
+
+  >>> reqtm = _login('trouble.maker', mc, hp, PERM_STATUS)
+  ... # doctest: +ELLIPSIS
+  INFO:cache_remote:LDAP query for ('(cn=trouble.maker)', ...
+  >>> reqtm.context.badge
+  Trouble Maker <tmaker@not.js.example>
+
+  >>> reqtm.context.status.system_access_signed
+  [datetime.datetime(2015, 11, 16, 21, 41, 1)]
 
 
 '''
@@ -434,10 +475,10 @@ class HeronRecords(Token, Cache):
         if p is PERM_STATUS:
             context.status = self._status(badge)
         elif p is PERM_SIGN_SAA:
-            context.sign_saa = Affiliate(badge, self._query, 
+            context.sign_saa = Affiliate(badge, self._query,
                                          saa_rc=self._saa_rc)
         elif p is PERM_SIGN_DUA:
-            context.sign_dua = Affiliate(badge, self._query, 
+            context.sign_dua = Affiliate(badge, self._query,
                                          dua_rc=self._dua_rc)
         elif p is PERM_INVESTIGATOR_REQUEST:
             context.investigator_request = self._investigator_request(badge)
@@ -463,8 +504,18 @@ class HeronRecords(Token, Cache):
                      (self._sponsorship(badge.cn) is not None))
 
         current_training, expired_training = self._training_current(badge)
+
+        # redcap_connect uses the '%s@%s' pattern when recording
+        # signatures, but we have traditionally looked this up
+        # by badge.mail. When those didn't agree, we updated
+        # the database to match badge.mail. So now we need
+        # to check both.
+        # Cache args have to be hashable, so tuple() rather than list().
+        cn_at_domain = '%s@%s' % (badge.cn, self._saa_rc.domain)
+        mailboxes = tuple(set([badge.mail, cn_at_domain]))
+
         system_access_sigs = [sig.completion_time
-                              for sig in self._signatures(badge.mail)]
+                              for sig in self._signatures(mailboxes)]
 
         try:
             droc_audit = self.__oc._droc_auditor(badge)
@@ -534,16 +585,21 @@ class HeronRecords(Token, Cache):
 
         return (info, None) if current else (None, info)
 
-    def _signatures(self, mail,
+    def _signatures(self, mailboxes,
                     ttl=timedelta(seconds=15)):
-        '''Look up SAA survey response by email address.
+        '''Look up SAA survey response by email address(es).
         '''
 
-        def q():
-            return ttl, self._smaker().execute(
-                _saa_query(mail, self._saa_survey_id)).fetchall()
+        def mkq(mail):
+            def q():
+                return ttl, self._smaker().execute(
+                    _saa_query(mail, self._saa_survey_id)).fetchall()
+            return q
 
-        return self._query(('SAA', mail), q, 'system access')
+        return [row
+                for mail in mailboxes
+                for row in
+                self._query(('SAA', mail), mkq(mail), 'system access')]
 
     def _investigator_request(self, badge):
         log.debug('investigator_request: %s faculty? %s executive? %s',
@@ -659,9 +715,11 @@ def team_params(lookup, uids):
     r'''
     >>> import pprint
     >>> (mc, ) = medcenter.Mock.make([medcenter.MedCenter])
+    INFO:cache_remote:LDAPService@2 cache initialized
     >>> pprint.pprint(list(team_params(mc.peer_badge,
     ...                                ['john.smith', 'bill.student'])))
     ... # doctest: +ELLIPSIS
+    INFO:cache_remote:LDAP query for ('(cn=john.smith)', ...
     [('user_id_1', 'john.smith'),
      ('name_etc_1', 'Smith, John\nChair of Department of Neur...'),
      ('user_id_2', 'bill.student'),

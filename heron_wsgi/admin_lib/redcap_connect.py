@@ -6,7 +6,7 @@ Configuration gives us access to the REDCap API::
   >>> print _test_settings.inifmt('survey_xyz')
   [survey_xyz]
   api_url=http://redcap-host/redcap/api/
-  domain=example.edu
+  domain=js.example
   project_id=34
   survey_id=11
   survey_url=http://testhost/redcap-host/surveys/?s=43
@@ -63,7 +63,7 @@ def EndPoint(webcap, token):
     ...               email='john.smith@jsmith.example')
     ... # doctest: +NORMALIZE_WHITESPACE
     {u'add': 0, u'PROJECT_ID': 123, u'hash': u'f1f9',
-     u'email': u'BOGUS@example.edu', u'survey_id': 11}
+     u'email': u'BOGUS@js.example', u'survey_id': 11}
 
     >>> e.record_import([{'field': 'value'}])
     '{}'
@@ -126,7 +126,7 @@ _test_settings = rtconfig.TestTimeOptions(dict(
     token='sekret',
     api_url='http://redcap-host/redcap/api/',
     survey_url='http://testhost/redcap-host/surveys/?s=43',
-    domain='example.edu',
+    domain='js.example',
     survey_id=11,
     project_id=34))
 
