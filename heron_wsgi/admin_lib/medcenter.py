@@ -94,7 +94,6 @@ API
 
 import logging
 import sys
-from contextlib import contextmanager
 
 import injector
 from injector import inject, provides, singleton
