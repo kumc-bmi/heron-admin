@@ -604,7 +604,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
     redcap_connect needs, and not just what heron_policy needs::
 
       >>> src.domain
-      'example.edu'
+      'js.example'
 
       >>> orc.project_id
       34
