@@ -30,6 +30,36 @@
 </table>
 </py:def>
 
+<py:def function="studyTeamTable(studyTeam)">
+<div py:if="studyTeam">  
+  <p><strong><cite>${studyTeam[0]["Full Study Title"]}</cite></strong>
+  <br/>Study ID: ${studyTeam[0]["ID"]}
+  <br/>Expriation: ${studyTeam[0]["Date Expiration"]}
+  <br/>State: ${studyTeam[0]["State"]}</p>
+  <table>
+  <tr>
+    <th>&#160;</th>
+    <th>Name</th><th>Email</th><th>Phone</th>
+  </tr>
+  <tr py:for="who in studyTeam">
+    <td>
+      <input type="checkbox" py:if="who['Employee ID']"
+             name="s_${who['Employee ID']}"
+             id="s_${who['Employee ID']}"
+             title="${who['Employee ID']}"
+	     />
+      <input py:if="not who['Employee ID']"
+	     type="checkbox" disabled="disabled"/>
+    </td>
+    <td>${who['lastName']}, ${who['firstName']}</td>
+    <td>${who['EmailPreferred']}</td>
+    <td>${who['BusinesPhone']}</td>  <!-- sic -->
+    <td>${who['accountDisabled']}</td>
+  </tr>
+  </table>
+  </div>
+</py:def>
+
 <div id="main">
 
 <p>Choose up to 10 people per request.</p>
@@ -59,7 +89,15 @@ ${peopleTable(team, 'r')}
 </p>
 </form>
 
-<form py:if="candidates" method="get" action="">
+<form method="get" action="">
+<p>Look up IRB protocol study team members:</p>
+<label>Study ID: <input name='studyId' size="20"/></label>
+<input type="submit" name='goal' value="Lookup" />
+</form>
+
+<form py:if="candidates or studyTeam" method="get" action="">
+  <hr />
+${studyTeamTable(studyTeam)}
 ${peopleTable(candidates, 'a')}
 <p><input type="submit" name='goal' value="Add" /></p>
 <input type="hidden" name="uids" value="${uids}" />
