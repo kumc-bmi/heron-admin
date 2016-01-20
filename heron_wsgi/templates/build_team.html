@@ -32,29 +32,35 @@
 
 <py:def function="studyTeamTable(studyTeam)">
 <div py:if="studyTeam">  
-  <p><strong><cite>${studyTeam[0]["Full Study Title"]}</cite></strong>
-  <br/>Study ID: ${studyTeam[0]["ID"]}
-  <br/>Expriation: ${studyTeam[0]["Date Expiration"]}
-  <br/>State: ${studyTeam[0]["State"]}</p>
+  <p py:with="study=studyTeam[0]">
+    <strong><cite>${study["Full Study Title"]}</cite></strong>
+    <br/>Study ID: ${study["ID"]}
+    <br/>Expriation: ${study["Date Expiration"]}
+    <br/>State: ${study["State"]}</p>
   <table>
   <tr>
     <th>&#160;</th>
-    <th>Name</th><th>Email</th><th>Phone</th>
+    <th>Name</th><th>User ID</th>
+    <th>Email</th><th>Phone</th><th>Account Disabled</th>
   </tr>
   <tr py:for="who in studyTeam">
+    <div py:strip="True"
+	 py:with="cn=who['EmailPreferred'][:-len('@kumc.edu')] if who['EmailPreferred'].endswith('@kumc.edu') else None">
     <td>
-      <input type="checkbox" py:if="who['Employee ID']"
-             name="s_${who['Employee ID']}"
-             id="s_${who['Employee ID']}"
-             title="${who['Employee ID']}"
+      <input type="checkbox" py:if="cn"
+             name="a_${cn}"
+             id="a_${cn}"
+             title="${cn}"
 	     />
-      <input py:if="not who['Employee ID']"
+      <input py:if="not cn"
 	     type="checkbox" disabled="disabled"/>
     </td>
     <td>${who['lastName']}, ${who['firstName']}</td>
+    <td>${cn}</td>
     <td>${who['EmailPreferred']}</td>
     <td>${who['BusinesPhone']}</td>  <!-- sic -->
     <td>${who['accountDisabled']}</td>
+    </div>
   </tr>
   </table>
   </div>
