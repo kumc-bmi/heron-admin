@@ -41,7 +41,8 @@ The effect is a `pm_user_data` record::
   [(u'BlueHeron', u'john.smith', u'USER', u'A'),
    (u'BlueHeron', u'john.smith', u'DATA_LDS', u'A'),
    (u'BlueHeron', u'john.smith', u'DATA_OBFSC', u'A'),
-   (u'BlueHeron', u'john.smith', u'DATA_AGG', u'A')]
+   (u'BlueHeron', u'john.smith', u'DATA_AGG', u'A'),
+   (u'BlueHeron', u'john.smith', u'DATA_DEID', u'A')]
 
 If John logs in again, a new one-time authorization is issued::
 
@@ -151,10 +152,10 @@ The ADMIN role is not project specific:
   >>> s.add(admin_role)
   >>> auth, js3 = pm.authz('john.smith', 'John Smith', 'REDCap_4')
   >>> js = s.query(User).filter_by(user_id = 'john.smith').one()
-  >>> set([role.user_role_cd for role in js.roles])
-  set(['ADMIN', u'DATA_OBFSC', u'USER', u'DATA_LDS', u'DATA_AGG'])
-  >>> set([role.project_id for role in js.roles])
-  set(['@', u'REDCap_4', u'BlueHeron'])
+  >>> sorted(set([role.user_role_cd for role in js.roles]))
+  ['ADMIN', u'DATA_AGG', u'DATA_DEID', u'DATA_LDS', u'DATA_OBFSC', u'USER']
+  >>> sorted(set([role.project_id for role in js.roles]))
+  ['@', u'BlueHeron', u'REDCap_4']
 
 """
 
@@ -238,13 +239,14 @@ class I2B2PM(ocap_file.Token):
             '''Find a REDCap project whose project_description has
             not been set.
             '''
-            return pms.query(Project).\
-                        filter(Project.project_description == None).\
-                        filter(Project.project_id.like('REDCap_%')).first()
+            return (pms.query(Project).
+                    # `== None` is sqlalchemy's idiom for `is null`.
+                    filter(Project.project_description == None).  # noqa
+                    filter(Project.project_id.like('REDCap_%')).first())
 
         def update_desc(project, proj_desc):
             log.info('Update description of project %s to %s',
-                      project.project_id, proj_desc)
+                     project.project_id, proj_desc)
             project.project_description = proj_desc
             pms.commit()
             return project.project_id, proj_desc
@@ -295,7 +297,7 @@ class I2B2PM(ocap_file.Token):
             UserRole.user_role_cd.in_(list(roles)))).\
             delete(synchronize_session='fetch')
 
-        #If a user has permissions to REDCap i2b2 project,
+        # If a user has permissions to REDCap i2b2 project,
         # also grant permissions to default project #2111
         for project in set([project_id, DEFAULT_PID]):
             for r in roles:
@@ -535,7 +537,7 @@ def _mock_i2b2_proj_usage(ds, assignments):
 
 
 def _integration_test():  # pragma: nocover
-    #python i2b2pm.py badagarla 12,11,53 'Bhargav A'
+    # python i2b2pm.py badagarla 12,11,53 'Bhargav A'
     import sys
 
     logging.basicConfig(level=logging.DEBUG)
@@ -555,14 +557,15 @@ def _integration_test():  # pragma: nocover
 
 
 def _list_users():  # pragma: nocover
-    import csv, sys
+    import csv
+    import sys
     (sm, ) = RunTime.make(None,
                           [(orm.session.Session, CONFIG_SECTION)])
     s = sm()
     # get column names
-    #ans = s.execute("select * from pm_user_session "
-    #                "  where rownum < 2")
-    #print ans.fetchone().items()
+    # ans = s.execute("select * from pm_user_session "
+    #                 "  where rownum < 2")
+    # print ans.fetchone().items()
 
     ans = s.execute("select max(entry_date), count(*), user_id "
                     "  from pm_user_session "

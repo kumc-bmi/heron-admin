@@ -196,7 +196,7 @@ class Validator(Token):
         4. logout view
         5. session factory
 
-        >>> raise NotImplementedError('encrypted session factory for CSRF')
+        TODO: encrypted session factory for CSRF
         '''
         clearsigned = UnencryptedCookieSessionFactoryConfig(secret)
         config.set_session_factory(clearsigned)

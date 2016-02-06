@@ -32,7 +32,6 @@ MODULES= \
 	heron_srv.py \
 	__init__.py \
 	perf_reports.py \
-	powerbox.py \
 	stats.py \
 	tests.py
 
