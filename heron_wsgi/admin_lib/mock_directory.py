@@ -12,25 +12,10 @@ The mock directory has a handful of students and faculty::
    ('N', 'some.one'),
    ('N', 'big.wig'),
    ('N', 'jill.student'),
-   ('N', 'koam.rin')]
+   ('N', 'koam.rin'),
+   ('Y', 'trouble.maker')]
 
-It implements the LDAP search API in a few cases::
-
-  >>> d.search('(cn=john.smith)', ['sn', 'givenname'])
-  [('(cn=john.smith)', {'givenname': ['John'], 'sn': ['Smith']})]
-
-  >>> d.search('(cn=john.smith)', [])
-  ... #doctest: +NORMALIZE_WHITESPACE
-  [('(cn=john.smith)',
-   {'kumcPersonJobcode': ['1234'], 'kumcPersonFaculty': ['Y'],
-    'cn': ['john.smith'], 'title': ['Chair of Department of Neurology'],
-    'trainedThru': ['2012-01-01'], 'sn': ['Smith'],
-    'mail': ['john.smith@js.example'], 'ou': ['Neurology'],
-    'givenname': ['John']})]
-
-.. todo:: Make the two tests above independent of order of dictionary keys.
-
-It also supplies HSC training info::
+It supplies HSC training info::
 
   >>> d.latest_training('john.smith').expired
   '2012-01-01'

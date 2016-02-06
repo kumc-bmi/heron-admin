@@ -286,7 +286,7 @@ class RepositoryLogin(Token):
       .>> dict(r3.headers)['Location']
       'http://example/i2b2-webclient'
 
-    >>> raise NotImplementedError('CSRF tokens')
+    TODO: CSRF tokens
 
     '''
     @inject(i2b2_tool_addr=KI2B2Address,
@@ -331,7 +331,7 @@ class RepositoryLogin(Token):
 
     def disclaimer(self, context, req):
         '''
-        >>> raise NotImplementedError('check CSRF token')
+        TODO: check CSRF token
         '''
         disclaimers = context.disclaimers
 
