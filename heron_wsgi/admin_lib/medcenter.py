@@ -496,9 +496,10 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         byId = WebReadable(rt.studylookupaddr,
                            urllib2.build_opener(),
                            urllib2.Request)
+
         def lookup(studyId):
             sub = byId.subRdFile("?id=" + studyId)
-            log.info('@@study team lookup addr: %s', sub)
+            log.info('study team lookup addr: %s', sub)
             return json.load(sub.inChannel())
         return lookup
 
