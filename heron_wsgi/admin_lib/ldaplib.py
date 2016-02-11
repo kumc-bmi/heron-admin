@@ -195,6 +195,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     def opts(self):
         rt = rtconfig.RuntimeOptions(
             ('url certfile userdn base password'
+             ' studylookupaddr'
              ' executives testing_faculty').split())
         rt.load(self._ini, CONFIG_SECTION)
         return rt

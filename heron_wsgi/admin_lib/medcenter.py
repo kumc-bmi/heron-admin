@@ -92,6 +92,7 @@ API
 
 '''
 
+import json
 import logging
 import sys
 
@@ -105,12 +106,14 @@ import sealing
 import mock_directory
 from notary import makeNotary
 from heron_wsgi.traincheck.traincheck import TrainingRecordsRd
+from ocap_file import WebReadable
 
 log = logging.getLogger(__name__)
 
 KTrainingFunction = injector.Key('TrainingFunction')
 KExecutives = injector.Key('Executives')
 KTestingFaculty = injector.Key('TestingFaculty')
+KStudyTeamLookup = injector.Key('StudyTeamLookup')
 
 TRAINING_SECTION = 'training'
 PERM_BROWSER = __name__ + '.browse'
@@ -118,7 +121,7 @@ PERM_BROWSER = __name__ + '.browse'
 
 @singleton
 class Browser(object):
-    ''''Search the directory, without conferring authority.
+    ''''Search the directory and study teams without conferring authority.
 
       >>> (m, ) = Mock.make([Browser])
       >>> hits = m.search(10, 'john.smith', '', '')
@@ -148,9 +151,11 @@ class Browser(object):
       []
 
     '''
-    @inject(searchsvc=ldaplib.LDAPService)
-    def __init__(self, searchsvc):
+    @inject(searchsvc=ldaplib.LDAPService,
+            studyLookup=KStudyTeamLookup)
+    def __init__(self, searchsvc, studyLookup):
         self._svc = searchsvc
+        self._studyLookup = studyLookup
 
     def directory_attributes(self, name):
         '''Get directory attributes.
@@ -180,6 +185,9 @@ class Browser(object):
         '''
         return [LDAPBadge.from_attrs(ldapattrs)
                 for dn, ldapattrs in self._search(max_qty, cn, sn, givenname)]
+
+    def studyTeam(self, studyId):
+        return self._studyLookup(studyId)
 
 
 @singleton
@@ -475,6 +483,25 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         tr = TrainingRecordsRd(account)
 
         return tr.__getitem__
+
+    @provides(KStudyTeamLookup)
+    @inject(rt=(rtconfig.Options, ldaplib.CONFIG_SECTION))
+    def study_team_lookup(self, rt):
+        # TODO: share all but urllib2 stuff with Mock
+        import urllib2
+
+        if not rt.studylookupaddr:
+            raise IOError('missing studylookupaddr')
+
+        byId = WebReadable(rt.studylookupaddr,
+                           urllib2.build_opener(),
+                           urllib2.Request)
+
+        def lookup(studyId):
+            sub = byId.subRdFile("?id=" + studyId)
+            log.info('study team lookup addr: %s', sub)
+            return json.load(sub.inChannel())
+        return lookup
 
     @classmethod
     def mods(cls, ini):

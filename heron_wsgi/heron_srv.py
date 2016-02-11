@@ -379,6 +379,7 @@ class TeamBuilder(Token):
 
         params = req.GET
         uids, goal = edit_team(params)
+        candidates, studyTeam = [], []
 
         if goal == 'Search':
             log.debug('cn: %s', params.get('cn', ''))
@@ -389,8 +390,12 @@ class TeamBuilder(Token):
             log.debug('candidates: %s', candidates)
             candidates.sort(key=lambda(a): (a.sn, a.givenname))
         else:
-            candidates = []
-
+            if goal == 'Lookup':
+                log.debug('study id: %s', params.get('studyId', ''))
+                studyTeam = browser.studyTeam(params.get('studyId', ''))
+                log.debug('study team members: %s', studyTeam)
+                studyTeam.sort(key=lambda who: (who["lastName"], who["firstName"]))
+                
         # Since we're the only supposed to supply these names,
         # it seems OK to throw KeyError if we hit a bad one.
         team = [browser.lookup(n) for n in uids]
@@ -403,6 +408,7 @@ class TeamBuilder(Token):
                     what_for=what_for,
                     team=team,
                     uids=' '.join(uids),
+                    studyTeam=studyTeam,
                     candidates=candidates)
 
 

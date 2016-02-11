@@ -30,6 +30,42 @@
 </table>
 </py:def>
 
+<py:def function="studyTeamTable(studyTeam)">
+<div py:if="studyTeam">  
+  <p py:with="study=studyTeam[0]">
+    <strong><cite>${study["Full Study Title"]}</cite></strong>
+    <br/>Study ID: ${study["ID"]}
+    <br/>Expriation: ${study["Date Expiration"]}
+    <br/>State: ${study["State"]}</p>
+  <table>
+  <tr>
+    <th>&#160;</th>
+    <th>Name</th><th>User ID</th>
+    <th>Email</th><th>Phone</th><th>Account Disabled</th>
+  </tr>
+  <tr py:for="who in studyTeam">
+    <div py:strip="True"
+	 py:with="cn=who['EmailPreferred'][:-len('@kumc.edu')] if who['EmailPreferred'].endswith('@kumc.edu') else None">
+    <td>
+      <input type="checkbox" py:if="cn"
+             name="a_${cn}"
+             id="a_${cn}"
+             title="${cn}"
+	     />
+      <input py:if="not cn"
+	     type="checkbox" disabled="disabled"/>
+    </td>
+    <td>${who['lastName']}, ${who['firstName']}</td>
+    <td>${cn}</td>
+    <td>${who['EmailPreferred']}</td>
+    <td>${who['BusinesPhone']}</td>  <!-- sic -->
+    <td>${who['accountDisabled']}</td>
+    </div>
+  </tr>
+  </table>
+  </div>
+</py:def>
+
 <div id="main">
 
 <p>Choose up to 10 people per request.</p>
@@ -59,7 +95,16 @@ ${peopleTable(team, 'r')}
 </p>
 </form>
 
-<form py:if="candidates" method="get" action="">
+<form method="get" action="">
+<p>Look up IRB protocol study team members:</p>
+<label>Study ID: <input name='studyId' size="20"/></label>
+<input type="hidden" name="uids" value="${uids}" />
+<input type="submit" name='goal' value="Lookup" />
+</form>
+
+<form py:if="candidates or studyTeam" method="get" action="">
+  <hr />
+${studyTeamTable(studyTeam)}
 ${peopleTable(candidates, 'a')}
 <p><input type="submit" name='goal' value="Add" /></p>
 <input type="hidden" name="uids" value="${uids}" />
