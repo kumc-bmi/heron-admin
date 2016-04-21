@@ -13,11 +13,11 @@
   <ul>
     <li py:if="'checked' in repositoryAccess">
       <a href="${i2b2_login_path}"
-	 >Start Query Tool</a>
+        >Start HERON search</a>
     </li>
     <li py:if="'checked' not in repositoryAccess">
       <button disabled="disabled"
-	 >Start Query Tool</button>
+        >Start HERON search</button>
     </li>
     <li>
       <a href="reports/usage">Who's Using HERON?</a>
@@ -28,14 +28,20 @@
   </ul>
   </div>
 
-  <div class="header png"><h3>Training Materials</h3>
+  <div class="header png"><h3>Training/Help</h3>
   <ul>
     <li><a href=
 	"http://frontiersresearch.org/frontiers/HERON-Introduction"
-	>HERON Help</a>
+       >HERON Introduction</a>
     </li>
-	<li><a href="http://frontiersresearch.org/frontiers/informatics-training-videos">Training Videos</a>
+	<li><a href="http://frontiersresearch.org/frontiers/informatics-training-videos">HERON Training Videos</a>
 	</li>
+		<li><a href="http://frontiersresearch.org/frontiers/HERON-FAQs">HERON FAQ</a>
+		</li>
+		<li><a href="https://redcap.kumc.edu/surveys/?s=L72oqA">Lunch and Learn Clinic</a>
+		</li>
+		<li><a href="https://redcap.kumc.edu/surveys/?s=qYxMmb">Request a Consultation</a>
+		</li>
   </ul>
   </div>
 
@@ -48,7 +54,7 @@
     <li><a href="${data_use_path}">HERON
     Data Usage Request</a>
     </li>
-	<li><a href="https://redcap.kumc.edu/surveys/?s=wEkGLU&amp;principal_investigator=${affiliate.givenname}&amp;principal_investigator_las=${affiliate.sn}&amp;department=${affiliate.ou}&amp;email_address=${affiliate.mail}">Frontiers Participant Registry Request</a>
+	<li><a href="https://redcap.kumc.edu/surveys/?s=XdYZugkaqN&amp;principal_investigator=${affiliate.givenname}&amp;principal_investigator_las=${affiliate.sn}&amp;department=${affiliate.ou}&amp;email_address=${affiliate.mail}">Frontiers Participant Registry (RRRC) Request</a>
 	</li>
   </ul>
   </div>
@@ -57,6 +63,12 @@
   <ul>
     <li><a href="https://redcap.kumc.edu/redcap_v4.7.0/index.php?pid=238">DROC Review Forms</a></li>
     <li><a href="reports/usage_small">Usage Audit Report</a></li>
+  </ul>
+  </div>
+  
+  <div py:if="droc" class="header png"><h3>Other Tools</h3>
+  <ul>
+    <li><a href="https://redcap.kumc.edu/">REDCap</a></li>
   </ul>
   </div>
   </div>
@@ -75,79 +87,50 @@
   <h1>HERON Research Data Repository</h1>
 
   <!-- TODO: why does this para turn blue? -->
-  <p>HERON (Healthcare Enterprise Repository for Ontological Narration)
-  allows you to explore de-identified data from Epic/O2 (the
-  hospital electronic medical records), IDX (the clinical billing
-  system), KU Hospital Cancer Registry, KU Biospecimen Repository, REDCap (selected projects), Social Security Death Index, and University HealthSystem Consortium (Quality Measure Data).
+  <p>HERON (Healthcare Enterprise Repository for Ontological Narration) is a search discovery tool that allows KUMC faculty members to search de-identified data 
+  from various hospital and medical center sources that include but are not limited to:
   </p>
-
-  <p>The HERON i2b2 Query and Analysis Tool
-  is the main tool for composing queries such as "how many patients
-  in the repository have been diagnosed with diabetes and live within
-  20 miles of the KUMC campus?"</p>
-
-  <p>Access to de-identified data is non-human subjects research and
-  does not require IRB approval. For qualified faculty who want
-  <em>view-only</em> access to do patient count queries, executing
-  a system access agreement is the only requirement.</p>
-
-  <p>Visit the <a href=
-	"http://frontiersresearch.org/frontiers/HERON-Introduction"
-	>help page</a> or view <a href="http://frontiersresearch.org/frontiers/informatics-training-videos">training videos</a> for more information on accessing and searching HERON.
-  </p>
-
-  <p>A Data Request Oversight Committee (DROC) oversees requests to:</p>
-  <ul>
-    <li><a href="http://frontiersresearch.org/frontiers/heron-sponsorship">sponsor
-    collaborators and research team members</a></li>
-
-    <li><a href="http://frontiersresearch.org/frontiers/data-set-instructions">extract
-    data sets</a></li>
-  </ul>
   
-  <div><h2>Citing HERON</h2>
+  <p>
+	<ul>
+		<li>Epic/O2 (the hospital electronic medical record),</li>
+		<li>IDX (the clinical billing system),</li>
+		<li>KU Hospital Cancer Registry,</li>
+		<li>KU Biospecimen Repository,</li>
+		<li>REDCap (selected projects),</li>
+		<li>Social Security Death Index, and</li>
+		<li>University HealthSystem Consortium (Quality Measure Data).</li> 
+	</ul>
+	</p>
 
-  <p>Please note that any publication that results from a project utilizing HERON should cite grant support (<strong>CTSA Award # UL1TR000001</strong>) and <strong>HERON</strong>:</p>
-
-  <ul>
-  <li><cite><a href="http://www.ncbi.nlm.nih.gov/pubmed/22195209">
-    Expressing observations from electronic medical record flowsheets in an i2b2 based clinical data repository to support research and quality improvement.
-  </a></cite><br/>
-  Waitman LR1, Warren JJ, Manos EL, Connolly DW.<br/>
-  AMIA Annu Symp Proc. 2011;2011:1454-63. Epub 2011 Oct 22.
-  </li>
-
-  <li><cite><a href="http://www.ncbi.nlm.nih.gov/pubmed/20190053">
-    Serving the enterprise and beyond with informatics for integrating biology and the bedside (i2b2). 
-  </a></cite><br/>
-  Murphy SN, Weber G, Mendis M, Gainer V, Chueh HC, Churchill S, Kohane I.<br/>
-  J Am Med Inform Assoc. 2010 Mar-Apr;17(2):124-30. doi: 10.1136/jamia.2009.000893.
-  </li>
-  </ul>
-
-  <p>Publications referencing <strong>HERON</strong> and the <strong>Greater Plains Collaborative</strong> (GPC) should also cite the GPC:</p>
-
-  <ul>
-  <li><cite><a href="http://jamia.bmj.com/content/21/4/637.full">
-    The Greater Plains Collaborative: a PCORnet Clinical Research Data Network</a></cite><br/>
-  Lemuel R Waitman, Lauren S Aaronson, Prakash M Nadkarni, Daniel W Connolly, James R Campbell<br/>
-  J Am Med Inform Assoc 2014;21:637-641 doi:10.1136/amiajnl-2014-002756
-  </li>
-  </ul>
-
+  <p>By combining the various data sources, researchers can look at the data in new ways not available when viewing data in one source at a time. </p> 
+  <p><a href="http://frontiersresearch.org/frontiers/node/452">HERON research impact</a></p>
+  <p>HERON is supported in part by funds from CTSA Award #UL1TR000001 and Patient-Centered Outcomes Research Institute (PCORI) Program Award #CDRN-1306-04631</p>
+ 
+  <div><h2>HERON Access Criteria</h2>
+  <ol>
+  <li>You are a qualified faculty member or are sponsored by a faculty member.  Access to de-identified data is non-human subjects research and does not require approval by the HSC/IRB.</li>
+  <li>You are up-to-date on your Human Subjects Training.</li>
+  <li>You sign the system access agreement.</li>
+  </ol>
+	<p>Not sure if you meet these criteria?  Log onto <a href="https://heron.kumc.edu">HERON</a>. Look at the upper right corner of the screen.  All 3 check-boxes should be checked.  Any missing checks indicate a requirement not met.</p>
   </div>
 
-  <div><h2>Support and Feedback</h2>
+  <div><h2>Using HERON</h2>
 
-  <p>The Frontiers Lunch and Learn meets the 1st and 3rd Tuesdays of each month from 12:00 - 1:30 PM in room 3001D Student Center.  This training clinic provides assistance for investigators using informatics tools, such as HERON or REDCap, for data exploration, cohort discovery, and data collection. The clinic is a brainstorming session and an education forum for investigators and informatics to share knowledge, provide feedback, and optimize the use of systems.  <a href="https://redcap.kumc.edu/surveys/?s=L72oqA">Register</a> in advance if possible but drop-ins are welcome. <em>See the <a href="http://www.kumc.edu/events-calendar.html">KUMC Calendar</a> for the date of the next clinic.</em> 
-  </p>
+  <ul>
+  <li><a href="http://frontiersresearch.org/frontiers/data-set-instructions">Request a data set</a>
+  </li>
+  <li><a href="http://frontiersresearch.org/frontiers/heron-sponsorship">Sponsor collaborators and research team members</a>
+  </li>
+  <li><a href="https://heron.kumc.edu/heron/dua_survey">Sign data use agreement prior to release of data</a>
+  </li>
+  <li><a href="http://frontiersresearch.org/frontiers/participant-registry">Find consenting patients for research trials</a>
+  </li>
+  </ul>
 
-  <p>To set up consultation regarding your project, complete an
-  <a href="https://redcap.kumc.edu/surveys/?s=qYxMmb"
-     >Informatics Project Request</a> (check Other Medical Informatics Requests).
-  </p>
+  <p>Requests for data sets and sponsorship are reviewed by the HERON Data Request Oversight Committee (DROC).</p>
   </div>
-  
   <p>Feel free to send questions and concerns to <a
   href="mailto:${admin_mailbox}" >${admin_mailbox}</a>.</p>
   
@@ -168,30 +151,30 @@
 
     <ol>
       <li>
-	<label>
-	  <input py:attrs="faculty" type="checkbox" disabled="disabled" />KUMC Faculty?
-	</label>
-	<div py:if="executive">
-	  or <br />
-	  <input py:attrs="executive" type="checkbox"
-		 disabled="disabled" />executive?
-	</div>
-	<div py:if="not faculty and not executive">
-	  no: ${affiliate.title}
-	  <br />
-	  <label>
-	    <input py:attrs="sponsored" type="checkbox" disabled="disabled" />sponsored?
-	  </label>
-	</div>
+        <label>
+          <input py:attrs="faculty" type="checkbox" disabled="disabled" />KUMC Faculty?
+        </label>
+        <div py:if="executive">
+          or <br />
+          <input py:attrs="executive" type="checkbox"
+                 disabled="disabled" />executive?
+        </div>
+        <div py:if="not faculty and not executive">
+          no: ${affiliate.title}
+          <br />
+          <label>
+            <input py:attrs="sponsored" type="checkbox" disabled="disabled" />sponsored?
+          </label>
+        </div>
       </li>
 
       <li>
-	<label>
-	  <input type="checkbox" disabled="disabled" py:attrs="trainingCurrent" />
-	<a
-	href="http://www2.kumc.edu/researchcompliance/human_subjects_tutorial_inst.htm"
-	>Human subjects training</a> is complete and current?</label>
-	  <a py:if="not trainingCurrent" href="#training-records">*</a>
+        <label>
+          <input type="checkbox" disabled="disabled" py:attrs="trainingCurrent" />
+        <a
+        href="http://www2.kumc.edu/researchcompliance/human_subjects_tutorial_inst.htm"
+        >Human subjects training</a> is complete and current?</label>
+          <a py:if="not trainingCurrent" href="#training-records">*</a>
       </li>
 
       <li>
@@ -223,7 +206,7 @@
     <h3>Data Use Agreement</h3>
   </div>
   <div class="content png">
-    <p>The <a href="${dua_path}">HERON Data Use Agreement</a> must be signed by all study team members before extract data can be released.</p>
+    <p>The <a href="${dua_path}">HERON Data Use Agreement</a> must be signed by all study team members before extracted data can be released.</p>
   </div>
 
   <div class="header png">
@@ -232,19 +215,38 @@
   <div class="content png">
     <ul>
       <li>Let us know what you think: <a href="https://redcap.kumc.edu/surveys/?s=3SBkPg&amp;tool=1">Gripe/Praise</a></li>
-	  <li>Send a question to the <a href="mailto:HERON-USERS@LISTSERV.KUMC.EDU">HERON User Group</a> or review the <a href="http://listserv.kumc.edu/cgi-bin/wa?A0=HERON-USERS">mailing list archive.</a></li>
     </ul>
   </div>
 
   </div>
       <div class="header png">
-        <h2>Tools</h2>
+        <h3>Citing HERON</h3>
       </div>
       <div class="content png">
+	  <p>Any publication that results from a project utilizing HERON should cite grant support (<strong>CTSA Award # UL1TR000001</strong>) and <strong>HERON</strong>:</p>
         <ul class="links">
-          <li><a href="https://redcap.kumc.edu/">REDCap</a></li>
-        </ul>
-        
+	<li><cite><a href="http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3243191/">
+    Expressing observations from electronic medical record flowsheets in an i2b2 based clinical data repository to support research and quality improvement.</a></cite><br/>
+  Waitman LR1, Warren JJ, Manos EL, Connolly DW.<br/>
+  AMIA Annu Symp Proc. 2011;2011:1454-63. Epub 2011 Oct 22.
+  </li>
+
+  <li><cite><a href="http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3000779/">
+    Serving the enterprise and beyond with informatics for integrating biology and the bedside (i2b2).
+  </a></cite><br/>
+  Murphy SN, Weber G, Mendis M, Gainer V, Chueh HC, Churchill S, Kohane I.<br/>
+  J Am Med Inform Assoc. 2010 Mar-Apr;17(2):124-30. doi: 10.1136/jamia.2009.000893.
+  </li>
+  </ul>
+  <p>Publications referencing <strong>HERON</strong> and the <strong>Greater Plains Collaborative</strong> (GPC) should also cite the GPC:</p>
+
+  <ul>
+  <li><cite><a href="http://www.ncbi.nlm.nih.gov/pmc/articles/PMC4078294/">
+    The Greater Plains Collaborative: a PCORnet Clinical Research Data Network</a></cite><br/>
+  Lemuel R Waitman, Lauren S Aaronson, Prakash M Nadkarni, Daniel W Connolly, James R Campbell<br/>
+  J Am Med Inform Assoc 2014;21:637-641 doi:10.1136/amiajnl-2014-002756
+  </li>
+  </ul> 
       </div>
     </div>
   <div>
