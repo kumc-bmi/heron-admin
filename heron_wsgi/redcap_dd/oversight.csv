@@ -170,9 +170,37 @@ l3,kupi_review,,linkform,"Original Request",,heron_oversight_request,,,,,,,,,,,
 approve_kupi,kupi_review,,radio,"Approve on behalf of KUPI?","1, Yes | 2, No | 3, Defer to committee meeting",,,,,,,y,,,,,
 notes_kupi,kupi_review,,notes,Notes,,"comments, rationale, ...",,,,,,,,,,,
 textarea_kumc_notes_copy2,kupi_review,,calc,"KUMC Review Notes",[notes_kumc],"copy of review notes by KUMC, for convenience",,,,,,,,,,,
+search,data_request_details,,calc,"HERON Search Name",[saved_search_name_in_heron],,,,,,,,,,,,
+id_or_deid,data_request_details,,calc,"Is the data identified? 
+1= Yes
+0 = No",[is_identified_data],,,,,,,,,,,,
+approve_kuh_results,data_request_details,,calc,"Does KUHapprove this request? 
+1 = Yes 
+2 = No 
+3 = Defer to Committee Meeting",[approve_kuh],,,,,,,,,,,,
+approve_kupi_results,data_request_details,,calc,"Does KUPI approve this request? 
+1 = Yes 
+2 = No 
+3 = Defer to Committee Meeting",[approve_kupi],,,,,,,,,,,,
+approve_kumc_results,data_request_details,,calc,"Does KUMC approve this request? 
+1 = Yes 
+2 = No 
+3 = Defer to Committee Meeting",[approve_kumc],,,,,,,,,,,,
+kumc_notes,data_request_details,,calc,"Notes from KUMC review",[notes_kumc],,,,,,,,,,,,
+pi,data_request_details,,calc,"Principal investigator",[user_id],,,,,,,,,,,,
+uid1_agree,data_request_details,,sql,"Check for ""[user_id_1]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_1 from redcap_data where project_id = 238 and field_name = 'user_id_1') c on c.user_id_1 = a.user_id;",,autocomplete,,,,,,,,,,
+uid2_agree,data_request_details,,sql,"Check for ""[user_id_2]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_2 from redcap_data where project_id = 238 and field_name = 'user_id_2') c on c.user_id_2 = a.user_id;",,autocomplete,,,,,,,,,,
+uid3_agree,data_request_details,,sql,"Check for ""[user_id_3]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_3 from redcap_data where project_id = 238 and field_name = 'user_id_3') c on c.user_id_3 = a.user_id;",,autocomplete,,,,,,,,,,
+uid4_agree,data_request_details,,sql,"Check for ""[user_id_4]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_4 from redcap_data where project_id = 238 and field_name = 'user_id_4') c on c.user_id_4 = a.user_id;",,autocomplete,,,,,,,,,,
+uid5_agree,data_request_details,,sql,"Check for ""[user_id_5]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_5 from redcap_data where project_id = 238 and field_name = 'user_id_5') c on c.user_id_5 = a.user_id;",,autocomplete,,,,,,,,,,
+uid6_agree,data_request_details,,sql,"Check for ""[user_id_6]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_6 from redcap_data where project_id = 238 and field_name = 'user_id_6') c on c.user_id_6 = a.user_id;",,autocomplete,,,,,,,,,,
+uid7_agree,data_request_details,,sql,"Check for ""[user_id_7]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_7 from redcap_data where project_id = 238 and field_name = 'user_id_7') c on c.user_id_7 = a.user_id;",,autocomplete,,,,,,,,,,
+uid8_agree,data_request_details,,sql,"Check for ""[user_id_8]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_8 from redcap_data where project_id = 238 and field_name = 'user_id_8') c on c.user_id_8 = a.user_id;",,autocomplete,,,,,,,,,,
+uid9_agree,data_request_details,,sql,"Check for ""[user_id_9]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_9 from redcap_data where project_id = 238 and field_name = 'user_id_9') c on c.user_id_9 = a.user_id;",,autocomplete,,,,,,,,,,
+uid10_agree,data_request_details,,sql,"Check for ""[user_id_10]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_10 from redcap_data where project_id = 238 and field_name = 'user_id_10') c on c.user_id_10 = a.user_id;",,autocomplete,,,,,,,,,,
 dua_title_of_project,data_request_fulfillment,,calc,Title,[project_title],,,,,,,,,,,,
-dua_type_of_request,data_request_fulfillment,,radio,"Type of request","1, Data Request | 2, Sponsorship | 3, Not approved/invalid request | 4, Not applicable",,,,,,,,,,,,
-na_comment,data_request_fulfillment,,notes,Comments,,,,,,,"[dua_type_of_request] = '3' or [dua_type_of_request] = '4'",,,,,,
+dua_type_of_request,data_request_fulfillment,,radio,"Type of request","1, Data Request | 5, PCORnet Data Request | 2, Sponsorship | 3, Not approved/invalid request | 4, Not applicable",,,,,,,,,,,,
+attrition,data_request_fulfillment,,file,"Attrition Table",,,,,,,,,,,,,
 dua_is_identified,data_request_fulfillment,,yesno,"Identified data?",,,,,,,"[dua_type_of_request] = '1'",y,,,,,
 dua_num_of_searches,data_request_fulfillment,,dropdown,"Number of searches in request","1, 1 | 2, 2 | 3, 3 | 4, 4 | 5, 5 | 6, 6 | 7, 7 | 8, 8 | 9, 9 | 10, 10",,,,,,"[dua_type_of_request] = '1'",y,,,,,
 dua_search_name,data_request_fulfillment,,text,"Search Name",,,,,,,"[dua_type_of_request] = '1'",y,,,,,
@@ -245,7 +273,7 @@ dua_file_name_tenth,data_request_fulfillment,,file,"10th File sent: data",,,,,,y
 dua_file_concepts_tenth,data_request_fulfillment,,file,"10th File sent: concepts",,,,,,,"[dua_num_of_searches] = '10'",,,,,,
 dua_file_flowsheets_tenth,data_request_fulfillment,,file,"10th File sent: flowsheet concepts",,,,,,,"[dua_num_of_searches] = '10'",,,,,,
 dua_patient_num_tenth,data_request_fulfillment,,text,"10th Search number of patients",,,number,1,,,"[dua_num_of_searches] = '10'",,,,,,
-dua_date_sent,data_request_fulfillment,,text,"Date sent",,,date_dmy,,,,"[dua_type_of_request] = '1'",y,,,,,
+dua_date_sent,data_request_fulfillment,,text,"Date sent",,,date_dmy,,,,"[dua_type_of_request] = '1' or [dua_type_of_request] = '5'",y,,,,,
 dua_all_users,data_request_fulfillment,,yesno,"Email sent to all uses listed on request?",,,,,,,"[dua_type_of_request] = '1'",y,,,,,
 dua_recipients,data_request_fulfillment,,text,"List each recipient",,,,,,,"[dua_all_users] = '0' and [dua_type_of_request] = '1'",y,,,,,
 dua_notes,data_request_fulfillment,,notes,Notes,,,,,,,"[dua_type_of_request] = '1'",,,,,,
@@ -933,3 +961,4 @@ dua_date_sent_10,data_request_fulfillment,,text,"Date sent",,,date_dmy,,,,"[dua_
 dua_all_users_10,data_request_fulfillment,,yesno,"Email sent to all uses listed on request?",,,,,,,"[dua_10_request] = '1' and [dua_type_of_request] = '1'",y,,,,,
 dua_recipients_10,data_request_fulfillment,,text,"List each recipient",,,,,,,"[dua_10_request] = '1' and [dua_type_of_request] = '1'",y,,,,,
 dua_notes_10,data_request_fulfillment,,notes,Notes,,,,,,,"[dua_10_request] = '1' and [dua_type_of_request] = '1'",,,,,,
+na_comment,data_request_fulfillment,,notes,Comments,,,,,,,"[dua_type_of_request] = '3' or [dua_type_of_request] = '4' or [dua_type_of_request] = '5'",,,,,,
