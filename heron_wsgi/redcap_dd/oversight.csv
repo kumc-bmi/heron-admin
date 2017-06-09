@@ -174,18 +174,6 @@ search,data_request_details,,calc,"HERON Search Name",[saved_search_name_in_hero
 id_or_deid,data_request_details,,calc,"Is the data identified? 
 1= Yes
 0 = No",[is_identified_data],,,,,,,,,,,,
-approve_kuh_results,data_request_details,,calc,"Does KUHapprove this request? 
-1 = Yes 
-2 = No 
-3 = Defer to Committee Meeting",[approve_kuh],,,,,,,,,,,,
-approve_kupi_results,data_request_details,,calc,"Does KUPI approve this request? 
-1 = Yes 
-2 = No 
-3 = Defer to Committee Meeting",[approve_kupi],,,,,,,,,,,,
-approve_kumc_results,data_request_details,,calc,"Does KUMC approve this request? 
-1 = Yes 
-2 = No 
-3 = Defer to Committee Meeting",[approve_kumc],,,,,,,,,,,,
 kumc_notes,data_request_details,,calc,"Notes from KUMC review",[notes_kumc],,,,,,,,,,,,
 pi,data_request_details,,calc,"Principal investigator",[user_id],,,,,,,,,,,,
 uid1_agree,data_request_details,,sql,"Check for ""[user_id_1]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_1 from redcap_data where project_id = 238 and field_name = 'user_id_1') c on c.user_id_1 = a.user_id;",,autocomplete,,,,,,,,,,
