@@ -188,7 +188,7 @@ uid9_agree,data_request_details,,sql,"Check for ""[user_id_9]"" in the DUA list 
 uid10_agree,data_request_details,,sql,"Check for ""[user_id_10]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_10 from redcap_data where project_id = 238 and field_name = 'user_id_10') c on c.user_id_10 = a.user_id;",,autocomplete,,,,,,,,,,
 dua_title_of_project,data_request_fulfillment,,calc,Title,[project_title],,,,,,,,,,,,
 dua_type_of_request,data_request_fulfillment,,radio,"Type of request","1, Data Request | 5, PCORnet Data Request | 2, Sponsorship | 3, Not approved/invalid request | 4, Not applicable",,,,,,,,,,,,
-attrition,data_request_fulfillment,,file,"Attrition Table",,,,,,,,,,,,,
+attrition,data_request_fulfillment,,file,"Attrition Table",,,,,,,"[dua_type_of_request] = '5'",,,,,,
 dua_is_identified,data_request_fulfillment,,yesno,"Identified data?",,,,,,,"[dua_type_of_request] = '1'",y,,,,,
 dua_num_of_searches,data_request_fulfillment,,dropdown,"Number of searches in request","1, 1 | 2, 2 | 3, 3 | 4, 4 | 5, 5 | 6, 6 | 7, 7 | 8, 8 | 9, 9 | 10, 10",,,,,,"[dua_type_of_request] = '1'",y,,,,,
 dua_search_name,data_request_fulfillment,,text,"Search Name",,,,,,,"[dua_type_of_request] = '1'",y,,,,,
@@ -950,3 +950,9 @@ dua_all_users_10,data_request_fulfillment,,yesno,"Email sent to all uses listed 
 dua_recipients_10,data_request_fulfillment,,text,"List each recipient",,,,,,,"[dua_10_request] = '1' and [dua_type_of_request] = '1'",y,,,,,
 dua_notes_10,data_request_fulfillment,,notes,Notes,,,,,,,"[dua_10_request] = '1' and [dua_type_of_request] = '1'",,,,,,
 na_comment,data_request_fulfillment,,notes,Comments,,,,,,,"[dua_type_of_request] = '3' or [dua_type_of_request] = '4' or [dua_type_of_request] = '5'",,,,,,
+expect_fu_date,customer_satisfaction_followup,,text,"Date to Follow-Up with Customer",,"Choose date 2-3 months after data delivery",date_mdy,,,,,,,,,,
+fu_email,customer_satisfaction_followup,,descriptive,"Recommended Text: 
+",,,,,,,,,,,,,
+fu_yn,customer_satisfaction_followup,,yesno,"Has medical informatics followed up with customer?",,,,,,,,,,,,,
+fu_date,customer_satisfaction_followup,,text,"Date of Follow-Up",,,date_mdy,,,,,,,,,,
+fu_comments,customer_satisfaction_followup,,notes,"Comments by researcher",,,,,,,,,,,,,
