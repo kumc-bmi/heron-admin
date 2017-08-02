@@ -9,21 +9,15 @@
 <!-- todo: consider passing admin_mailbox in from python -->
 <body py:with="admin_mailbox='heron-admin@kumc.edu'">
   <div id="menu">
-  <div class="header png"><h3>i2b2 Query and Analysis Tool</h3>
+  <div class="header png"><h1>Use HERON Query and Analysis Tool</h1>
   <ul>
     <li py:if="'checked' in repositoryAccess">
       <a href="${i2b2_login_path}"
-        >Start HERON search</a>
+        ><font size = "6">Start HERON search</font></a>
     </li>
     <li py:if="'checked' not in repositoryAccess">
       <button disabled="disabled"
-        >Start HERON search</button>
-    </li>
-    <li>
-      <a href="reports/usage">Number of HERON Queries Run</a>
-    </li>
-    <li>
-      <a href="reports/performance">Current HERON Users and Recent Query Performance</a>
+        ><font size = "6">Start HERON search</font></button>
     </li>
   </ul>
   </div>
@@ -89,6 +83,12 @@
   
   <div py:if="droc" class="header png"><h3>Other Tools</h3>
   <ul>
+    <li>
+      <a href="reports/usage">HERON Usage Report</a>
+    </li>
+    <li>
+      <a href="reports/performance">Current HERON Users and Recent Query Performance</a>
+    </li>
     <li><a href="https://redcap.kumc.edu/" target = "_blank">REDCap</a></li>
   </ul>
   </div>
@@ -141,15 +141,15 @@
   <div><h2>Reasons to use HERON</h2>
 
   <ol>
-	<li>Search HERON to find the number of KUMC patients who meet inclusion/exclusion criteria
-		<ul><li>Useful for grant applications and feasibility counts</li></ul></li>
-	<li>Request de-identified datasets
-		<ul> <li>No IRB approval needed </li></ul></li>
-	<li>Request identified datasets
-		<ul> <li>Will require IRB approval or QI letter of determination from the IRB </li></ul></li>
-	<li>Receive data on patients in a research study
-		<ul><li>Please contact <a href ="mailto:heron-admin@kumc.edu" target = "_top">heron-admin@kumc.edu</a> to learn how to get data elements on a specific list of MRNs</li></ul></li>
-		<li>Receive contact information for patients in FRONTIERS registry who are eligible for your study </li>
+	<li style="margin-top: 0">Search HERON to find the number of KUMC patients who meet inclusion/exclusion criteria
+		<ul style="margin-top: 0"><li style="margin-top: 0">Useful for grant applications and feasibility counts</li></ul></li>
+	<li style="margin-top: 0">Request de-identified datasets
+		<ul style="margin-top: 0"> <li style="margin-top: 0">No IRB approval needed </li></ul></li>
+	<li style="margin-top: 0">Request identified datasets
+		<ul style="margin-top: 0"> <li style="margin-top: 0">Will require IRB approval or QI letter of determination from the IRB </li></ul></li>
+	<li style="margin-top: 0">Receive data on patients in a research study
+		<ul style="margin-top: 0"><li style="margin-top: 0">Please contact <a href ="mailto:heron-admin@kumc.edu" target = "_top">heron-admin@kumc.edu</a> to learn how to get data elements on a specific list of MRNs</li></ul></li>
+	<li style="margin-top: 0">Receive contact information for patients in FRONTIERS registry who are eligible for your study </li>
   </ol>
 	</div>
 
