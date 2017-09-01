@@ -9,52 +9,67 @@
 <!-- todo: consider passing admin_mailbox in from python -->
 <body py:with="admin_mailbox='heron-admin@kumc.edu'">
   <div id="menu">
-  <div class="header png"><h3>i2b2 Query and Analysis Tool</h3>
+  <div class="header png"><h2>Use HERON Query and Analysis Tool</h2>
   <ul>
     <li py:if="'checked' in repositoryAccess">
       <a href="${i2b2_login_path}"
-        >Start HERON search</a>
+        ><font size = "4">Start HERON Search</font></a>
     </li>
     <li py:if="'checked' not in repositoryAccess">
       <button disabled="disabled"
-        >Start HERON search</button>
-    </li>
-    <li>
-      <a href="reports/usage">Who's Using HERON?</a>
-    </li>
-    <li>
-      <a href="reports/performance">How busy is HERON?</a>
+        ><font size = "4">Start HERON Search</font></button>
     </li>
   </ul>
   </div>
 
-  <div class="header png"><h3>Training/Help</h3>
+  <div class="header png"><h3>Online Training</h3>
   <ul>
-    <li><a href=
-	"http://frontiersresearch.org/frontiers/HERON-Introduction"
-       >HERON Introduction</a>
+	<li><a href="http://frontiersresearch.org/frontiers/HERON-Introduction" target = "_blank">HERON Introduction</a>
     </li>
-	<li><a href="http://frontiersresearch.org/frontiers/informatics-training-videos">HERON Training Videos</a>
+	<li><a href="http://frontiersresearch.org/frontiers/HERON-FAQs" target = "_blank">HERON FAQ</a>
 	</li>
-		<li><a href="http://frontiersresearch.org/frontiers/HERON-FAQs">HERON FAQ</a>
-		</li>
-		<li><a href="https://redcap.kumc.edu/surveys/?s=L72oqA">Lunch and Learn Clinic</a>
-		</li>
-		<li><a href="https://redcap.kumc.edu/surveys/?s=qYxMmb">Request a Consultation</a>
-		</li>
+	<li><a href="http://frontiersresearch.org/frontiers/informatics-training-videos" target = "_blank">HERON Training Videos</a>
+	</li>
+	<li><a href="http://frontiersresearch.org/frontiers/sites/default/files/frontiers/HERON%20Guide_20170616.pdf" target = "_blank">HERON Training Manual</a>
+	</li>
+	<li><a href="http://frontiersresearch.org/frontiers/data-set-instructions" target = "_blank">Data Request Process</a>
+	</li>
+	<li><a href="http://frontiersresearch.org/frontiers/HERON-data-receipt" target = "_blank">Understanding HERON Data</a>
+	</li>
+	<li><a href="http://frontiersresearch.org/frontiers/participant-registry" target = "_blank">Frontiers and Pioneers Participant Recruitment Registry Information</a>
+	</li>
+  </ul>
+  </div>
+  
+    <div class="header png"><h3>In-Person Training</h3>
+  <ul>
+	<li><a href="https://redcap.kumc.edu/surveys/?s=L72oqA" target = "_blank" >Lunch and Learn Clinic</a>
+	</li>
+	<li><a href="https://redcap.kumc.edu/surveys/?s=qYxMmb" target = "_blank">Request a Consultation</a>
+	</li>
   </ul>
   </div>
 
   <div py:if="affiliate.is_investigator()" class="header png">
     <h3>Investigator Requests</h3>
   <ul>
-    <li><a href="${sponsorship_path}">HERON
-    Sponsorship Request</a>
+    <li><a href="${sponsorship_path}">HERON Sponsorship Request</a>
     </li>
-    <li><a href="${data_use_path}">HERON
-    Data Usage Request</a>
+    <li><a href="${data_use_path}">HERON Data Request</a>
     </li>
 	<li><a href="https://redcap.kumc.edu/surveys/?s=XdYZugkaqN&amp;principal_investigator=${affiliate.givenname}&amp;principal_investigator_las=${affiliate.sn}&amp;department=${affiliate.ou}&amp;email_address=${affiliate.mail}">Frontiers Participant Registry (RRRC) Request</a>
+	</li>
+  </ul>
+  </div>
+  
+    <div py:if = "not affiliate.is_investigator()" class="header png">
+    <h3>Investigator Requests</h3>
+  <ul>
+    <li><button disabled="disabled">HERON Sponsorship Request</button>
+    </li>
+    <li> <button disabled="disabled">HERON Data Request</button>
+    </li>
+	<li><button disabled="disabled">Frontiers Participant Registry (RRRC) Request</button>
 	</li>
   </ul>
   </div>
@@ -68,7 +83,13 @@
   
   <div py:if="droc" class="header png"><h3>Other Tools</h3>
   <ul>
-    <li><a href="https://redcap.kumc.edu/">REDCap</a></li>
+    <li>
+      <a href="reports/usage">HERON Usage Report</a>
+    </li>
+    <li>
+      <a href="reports/performance">Current HERON Users and Recent Query Performance</a>
+    </li>
+    <li><a href="https://redcap.kumc.edu/" target = "_blank">REDCap</a></li>
   </ul>
   </div>
   </div>
@@ -81,68 +102,117 @@
     .doit {text-align: center }
     .warn {color: red }
   </style>
-    <img src="av/220px-Heron_tricol_01.JPG" alt=""/>
+
   </div>
 
   <h1>HERON Research Data Repository</h1>
 
   <!-- TODO: why does this para turn blue? -->
   <p>HERON (Healthcare Enterprise Repository for Ontological Narration) is a search discovery tool that allows KUMC faculty members to search de-identified data 
-  from various hospital and medical center sources that include but are not limited to:
-  </p>
-  
-  <p>
-	<ul>
-		<li>Epic/O2 (the hospital electronic medical record),</li>
-		<li>IDX (the clinical billing system),</li>
-		<li>KU Hospital Cancer Registry,</li>
-		<li>KU Biospecimen Repository,</li>
-		<li>REDCap (selected projects),</li>
-		<li>Social Security Death Index, and</li>
-		<li>University HealthSystem Consortium (Quality Measure Data).</li> 
-	</ul>
-	</p>
+  from various hospital and medical center sources. By combining the various data sources, researchers can look at the data in new ways not available when viewing data in one source at a time. Data sources include but are not limited to:
+  </p>  
 
-  <p>By combining the various data sources, researchers can look at the data in new ways not available when viewing data in one source at a time. </p> 
-  <p><a href="http://frontiersresearch.org/frontiers/node/452">HERON research impact</a></p>
-  <p>HERON is supported in part by funds from CTSA Award #UL1TR000001 and Patient-Centered Outcomes Research Institute (PCORI) Program Award #CDRN-1306-04631</p>
- 
-  <div><h2>HERON Access Criteria</h2>
-  <ol>
-  <li>You are a qualified faculty member or are sponsored by a faculty member.  Access to de-identified data is non-human subjects research and does not require approval by the HSC/IRB.</li>
-  <li>You are up-to-date on your Human Subjects Training.</li>
-  <li>You sign the system access agreement.</li>
-  </ol>
-	<p>Not sure if you meet these criteria?  Log onto <a href="https://heron.kumc.edu">HERON</a>. Look at the upper right corner of the screen.  All 3 check-boxes should be checked.  Any missing checks indicate a requirement not met.</p>
-  </div>
-
-  <div><h2>Using HERON</h2>
-
+  <table cellpadding = "30">
+  <tr>
+  <td valign = "top">
   <ul>
-  <li><a href="http://frontiersresearch.org/frontiers/data-set-instructions">Request a data set</a>
-  </li>
-  <li><a href="http://frontiersresearch.org/frontiers/heron-sponsorship">Sponsor collaborators and research team members</a>
-  </li>
-  <li><a href="https://heron.kumc.edu/heron/dua_survey">Sign data use agreement prior to release of data</a>
-  </li>
-  <li><a href="http://frontiersresearch.org/frontiers/participant-registry">Find consenting patients for research trials</a>
-  </li>
-  </ul>
-
-  <p>Requests for data sets and sponsorship are reviewed by the HERON Data Request Oversight Committee (DROC).</p>
-  </div>
-  <p>Feel free to send questions and concerns to <a
-  href="mailto:${admin_mailbox}" >${admin_mailbox}</a>.</p>
-  
-  <p><small><a href="#heron-tricol-01">photo</a> credit:
+		<li>Cardiovascular Registry</li>
+		<li>Cystic Fibrosis Registry</li>
+		<li>Epic/O2 (the hospital electronic medical record)</li>
+		<li>IDX (the clinical billing system)</li>
+		<li>KU Hospital Cancer Registry</li>
+		<li>KU Biospecimen Repository</li>
+		<li>REDCap (selected projects)</li>
+		<li>Social Security Death Index</li>
+		<li>Trauma Registry</li>
+		<li>Vizient (Quality Measure Data - formerly University HealthSystem Consortium)</li> 
+	</ul>
+  </td>
+  <td align = "center" valign = "center">
+  <br /><img src="av/220px-Heron_tricol_01.JPG" alt="" />
+  <br /><small>photo credit:
   <a href="http://commons.wikimedia.org/wiki/User:Chrharshaw"
      >Christopher Harshaw</a></small>
-  </p>
+  </td>
+  </tr>
+  </table> 
+
+  
+  <div><h2>Reasons to use HERON</h2>
+  <style>
+  ol.nomargin{margin:0 0 -1em 0em;}
+  li.nomargin{margin:0 0 0em 3em;}
+  ul.nomargin{margin:0.5em 0 -0.5em 0em;}
+  </style>
+  <ol class = "nomargin">
+	<li class = "nomargin">Search HERON to find the number of KUMC patients who meet inclusion/exclusion criteria
+		<ul class = "nomargin"><li class = "nomargin">Useful for grant applications and feasibility counts</li></ul></li>
+	<li class = "nomargin">Request de-identified datasets
+		<ul class = "nomargin"> <li class = "nomargin">No IRB approval needed </li></ul></li>
+	<li class = "nomargin">Request identified datasets
+		<ul class = "nomargin"> <li class = "nomargin">Will require IRB approval or QI letter of determination from the IRB </li></ul></li>
+	<li class = "nomargin">Receive data on patients in a research study
+		<ul class = "nomargin"><li class = "nomargin">Please contact <a href ="mailto:heron-admin@kumc.edu" target = "_top">heron-admin@kumc.edu</a> to learn how to get data elements on a specific list of MRNs</li></ul></li>
+	<li class = "nomargin">Receive contact information for patients in FRONTIERS registry who are eligible for your study </li>
+  </ol>
+	</div>
+
+ 
+  <div><h2>Accessing HERON</h2>
+  <p>Check mark(s) missing in the upper right corner under "Login Credentials" indicate a missing requirement. The requirements to access HERON are as follows:</p>
+  <ol>
+  <li>You are a qualified KUMC faculty member or sponsored by a KUMC faculty member.</li>
+  <li>You are up-to-date on your Human Subjects Training.</li>
+  <li>You have signed the system access agreement.</li>
+  </ol>
+	  </div>
+
+    <div><h2>HERON Sponsorship Process</h2>
+	<p> Only faculty members may submit a sponsorship request. </p>
+  <ol>
+  <li>Faculty members should visit <a href = "https://heron.kumc.edu/heron"> HERON</a> using the KUMC network or using a <a href = "https://kumed.sharepoint.com/sites/mykumc/ir/Pages/Remote-Access-to-KUMC-Resources.aspx?wa=wsignin1.0"> KUMC VPN connection </a></li>
+  <li>Follow the "HERON Sponsorship Request" under Investigator Resources</li>
+  <li>Enter the id(s) for sponsoree(s)</li>
+  <li>Complete the following form and click submit</li>
+  </ol>
+	<p>Sponsorship requests take approximately one week to be approved. Once approved, users can begin searching HERON. More detailed instructions are found on our <a href = "http://frontiersresearch.org/frontiers/HERON-Sponsorship">Frontiers Training Pages</a>. </p>
+  </div>
+  
+  <div><h2>HERON Data Request Process</h2>
+  <p>After completing a HERON query, users may request identified or de-identified data. Identified data requires IRB approval or a QI letter of determination from the IRB.
+  Faculty or non-faculty members may create the query. However, only faculty members may submit a data request.</p>
+  <ol>
+  <li>Faculty members should visit <a href = "https://heron.kumc.edu/heron"> HERON</a> using the KUMC network or using a <a href = "https://kumed.sharepoint.com/sites/mykumc/ir/Pages/Remote-Access-to-KUMC-Resources.aspx?wa=wsignin1.0" target = "_blank"> KUMC VPN connection </a></li>
+  <li>Follow the "HERON Data Request" under Investigator Resources</li>
+  <li>Enter the id(s) for all individuals needing access to the HERON data</li>
+  <li>Add all individuals and click "done choosing people"</li>
+  <li>Complete the following form and click submit</li>
+  </ol>
+	<p>Data requests take approximately two weeks for approval and the release of data to the study team. All individuals needing access to the data must sign the <a href="https://heron.kumc.edu/heron/dua_survey">data use agreement</a> prior to release of data. 
+	More detailed instructions are found on our <a href = "http://frontiersresearch.org/frontiers/data-set-instructions" target = "_blank">Frontiers Training Pages</a>. </p>
+  </div>
+  
+  <div><h2>More Information</h2>
+  <ul>
+	<li>KUMC participates in the <a href = "http://www.gpcnetwork.org/" target = "_blank"> Greater Plains Collaborative (GPC) </a> which is a network of 12 leading medical centers in 8 states. The network brings together data on over 16 million patients. Investigators from KUMC are able to request data from participating sites. </li>
+	<li>Patient recruitment is possible through the <a href = "http://frontiersresearch.org/frontiers/participant-registry" target = "_blank"> Frontiers and Pioneers Research Registries</a>.</li>
+	<li>HERON data has been cited in several <a href="http://frontiersresearch.org/frontiers/node/452" target = "blank">publications</a>.</li>
+	<li>HERON is supported in part by funds from CTSA Award #UL1TR000001 and Patient-Centered Outcomes Research Institute (PCORI) Program Award #CDRN-1306-04631.</li>
+	</ul>
+   </div>
+  
+  
+  <div><h2>Questions?</h2>
+
+  <p>Contact the clinical informatics coordinator at <a  href="mailto:${admin_mailbox}" >${admin_mailbox}</a> or call 913-588-7688.</p>
+  
+
+  </div>
   </div>
 
   <div id="rightnav">
     <div class="span-7 last">
-
+      <h3>Login Credentials</h3>
       <form action="${logout_path}" method="post">
 	<p>${affiliate.givenname} ${affiliate.sn} (<code>${affiliate.cn}</code>)
 	<input type="submit" value="logout" />
@@ -249,9 +319,6 @@
   </ul> 
       </div>
     </div>
-  <div>
-  </div>
-
 
 </body>
 </html>
