@@ -10,54 +10,55 @@ ${'approved' if approved else 'rejected'}
 
 <p>The HERON Data Request Oversight Committee has
 ${'approved' if approved else 'rejected'}
- your request for project ( ${project_title}) for the following people:</p>
-
-<ul>
-  <li py:for='n in team'>${n}</li>
-</ul>
-
+ your request for project ( ${project_title}). </p>
 
 <py:if test='approved'>
-  <p>They may log in to <a href="${heron_home}">HERON</a>
-  (<code>${heron_home}</code>).</p>
-   
-  <p>Visit the  <a href="frontiersresearch.org/frontiers/HERON-Introduction">HERON help page</a> or view <a href="http://frontiersresearch.org/frontiers/informatics-training-videos">HERON training videos</a> for more information on accessing and searching HERON.  For access from outside the KUMC network,
-  a <a href=
-  "http://www.kumc.edu/information-resources/virtual-private-network.html"
-  >KUMC VPN connection</a> is required. </p>
+  <p>A multitude of training resources are available for your team: 
+    <ol> 
+        <li><a href = "http://www.kumc.edu/ea-mi/medical-informatics/heron/heron-training-videos.html" title = "HERON Interface Training Videos">HERON Interface Training Videos:</a> 
+		provide step-by-step exaplanation on how to search HERON</li>
+        <li><a href = "http://www.kumc.edu/ea-mi/medical-informatics/heron/receiving-data.html" title = "HERON Raw Data Training Videos">HERON Raw Data Training Videos:</a> 
+		provide overview of the raw HERON data provided during a data request. Videos on understanding the data in both REDCap and SQLite are available.</li>
+        <li><a href = "http://www.kumc.edu/ea-mi/medical-informatics/heron/heron-manual.html" title = "HERON Guide">HERON Guide:</a> provides instructions
+		to create queries, request data, and understand the raw data.</li>
+        <li><a href = "http://www.kufrontiers.org/events-calendar.html" title = "Lunch and Learn Training Clinics">Lunch and Learn Training Clinics</a>: informal training session held from 12-1:30 PM on 
+		the 1st and 3rd Tusday of the month, held in 3001D Student Center. <a href = "https://redcap.kumc.edu/surveys/?s=L72oqA" title ="Sign up">Sign up</a> in advance for pizza. </li>
+      </ol></p>
+    
+    
+    <p><b><u>Sponsorship Request:</u></b> All users listed on this email have now been sponsored to search HERON. 
+	Each user should look on the right-hand side of the homepage to see their login credentials. 
+	HERON users must sign the system access agreement and make sure their CITI training is up-to-date. 
+	For access from outside the KUMC network, a <a href="http://www.kumc.edu/information-resources/virtual-private-network.html" title = "KUMC VPN connection">
+	KUMC VPN connection</a> is required. 
+    </p>
+    
+    <p><b><u>Data Request:</u></b> You should receive your HERON data via REDCap or securefiles from a HERON team member within 1 week of receiving this email. All individuals included in this email <b>must</b> proceed to the HERON homepage to sign the data use agreement found on the right-hand side of the webpage in order to receive data.
+    </p>
+    
 
-  <p><strong>Note:</strong> any publication that results from a project utilizing HERON should <a href="http://frontiersresearch.org/frontiers/citing-frontiers-support">cite</a> grant support (<strong>CTSA Award # UL1TR000001</strong>).</p>
-
-  <p>HERON users will be required to sign a system access agreement if they
-  have not already done so for another project.</p>
-
-  <p>For each study approved by the Data Request Oversight Committe (DROC) all study team members are required to sign the HERON Data Use Agreement before extract data can be released. To do so, login to <a href="${heron_home}">HERON</a> and follow the Data Use Agreement instructions.</p>
-
-  <p>Please note that any publication that results from a project utilizing HERON should cite grant support (<strong>CTSA Award # UL1TR000001</strong>) and <strong>HERON</strong>:</p>
+  <p><b>Note:</b> any publication that results from a project utilizing HERON should cite grant support and HERON:</p>
 
   <ul>
-  <li><cite><a href="http://www.ncbi.nlm.nih.gov/pubmed/22195209">
+  <li><a href = "http://www.kufrontiers.org/About/Citing-KU-CTSI.html" title = "CTSA Award # UL1TR002366">CTSA Award # UL1TR002366</a> </li>
+  <li><cite><a href="http://www.ncbi.nlm.nih.gov/pubmed/22195209" title = "HERON Reference">
     Expressing observations from electronic medical record flowsheets in an i2b2 based clinical data repository to support research and quality improvement.
-  </a></cite><br/>
-  Waitman LR1, Warren JJ, Manos EL, Connolly DW.<br/>
-  AMIA Annu Symp Proc. 2011;2011:1454-63. Epub 2011 Oct 22.
+  </a></cite>  Waitman LR1, Warren JJ, Manos EL, Connolly DW.  AMIA Annu Symp Proc. 2011;2011:1454-63. Epub 2011 Oct 22.
   </li>
   </ul>
 
   <p>If you have any questions, feel free to email
-  <a href="mailto:heron-admin@kumc.edu">heron-admin@kumc.edu</a>.</p>
+  <a href="mailto:heron-admin@kumc.edu" title = "email to heron-admin">heron-admin@kumc.edu</a>.</p>
 </py:if>
 
 <py:if test='not approved'>
   <p>If you have any questions or want to voice concerns,
-  please email <a href="mailto:heron-admin@kumc.edu">heron-admin@kumc.edu</a>
-  and we will
-  escalate your concerns to KUMC, UKP and KUH
-  leadership.</p>
+  please email <a href="mailto:heron-admin@kumc.edu" title = "email to heron-admin">heron-admin@kumc.edu</a>.
+  </p>
 </py:if>
 
 <p>Sincerely,</p>
 
-<address>The HERON Team.</address>
+<address>The HERON Team</address>
 </body>
 </html>
