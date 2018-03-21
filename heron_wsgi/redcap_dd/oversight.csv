@@ -95,6 +95,9 @@ patient_recruitment,heron_oversight_request,,descriptive,"Patient contact inform
 is_identified_data,heron_oversight_request,,yesno,"Identified Data?",,,,,,,"[what_for] = '2'",y,,,,,
 identified_purpose,heron_oversight_request,,radio,"Project purpose?","1, Research | 2, Quality Improvement",,,,,,"[is_identified_data] = '1' and [what_for] = '2'",y,,,,,
 hsc_number,heron_oversight_request,,text,"HSC/IRB number",,,integer,,,,"[what_for] = '2' and [is_identified_data] = '1' and [identified_purpose] = '1'",y,,,,,
+retrospective,heron_oversight_request,,yesno,"Is this a retrospective study?",,,,,,,"[identified_purpose] = '1'",,,,,,
+irb_start_date,heron_oversight_request,,text,"Provide the IRB- approved start date for records being accessed:",,,date_mdy,,,,"[retrospective] = '1'",,,,,,
+irb_end_date,heron_oversight_request,,text,"Provide the IRB approved end date for records being accessed:",,,date_mdy,,,,"[retrospective] = '1'",,,,,,
 irb_protocol,heron_oversight_request,,file,"Attach IRB protocol",,"* please attach IRB protocol or IRB letter to help the DROC evaluate your request",,,,,"[what_for] = '2' and [is_identified_data] = '1' and [identified_purpose] = '1'",y,,,,,
 qi_letter,heron_oversight_request,,file,"Attach QI Letter of Determination",,,,,,,"[identified_purpose] = '2' and [what_for] = '2' and [is_identified_data] = '1'",y,,,,,
 qi_question_1,heron_oversight_request,,text,"What is the problem you are addressing?",,,,,,,"[identified_purpose] = '2' and [what_for] = '2' and [is_identified_data] = '1'",y,,,,,
@@ -175,6 +178,8 @@ id_or_deid,data_request_details,,calc,"Is the data identified?
 1= Yes
 0 = No",[is_identified_data],,,,,,,,,,,,
 kumc_notes,data_request_details,,calc,"Notes from KUMC review",[notes_kumc],,,,,,,,,,,,
+extract_by_who,data_request_details,,radio,"Who is pulling the data?","1, Maren | 2, Li | 3, Sravani | 4, Mei | 5, Tamara | 6, Other",,,,,,,,,,,,
+extract_other,data_request_details,,text,"If other, who is pulling data? ",,,,,,,"[extract_by_who] = '6'",,,,,,
 pi,data_request_details,,calc,"Principal investigator",[user_id],,,,,,,,,,,,
 uid1_agree,data_request_details,,sql,"Check for ""[user_id_1]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_1 from redcap_data where project_id = 238 and field_name = 'user_id_1') c on c.user_id_1 = a.user_id;",,autocomplete,,,,,,,,,,
 uid2_agree,data_request_details,,sql,"Check for ""[user_id_2]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_2 from redcap_data where project_id = 238 and field_name = 'user_id_2') c on c.user_id_2 = a.user_id;",,autocomplete,,,,,,,,,,
