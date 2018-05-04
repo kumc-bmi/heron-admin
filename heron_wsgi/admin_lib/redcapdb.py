@@ -4,6 +4,7 @@
 '''
 
 import logging
+import pkg_resources as pkg
 
 import injector
 from injector import inject, provides, singleton
@@ -272,6 +273,8 @@ class SetUp(injector.Module):
 
 
 class Mock(injector.Module, rtconfig.MockMixin):
+    sql = pkg.resource_string(__name__, 'mock_redcapdb.sql')
+
     @singleton
     @provides((sqlalchemy.engine.base.Connectable, CONFIG_SECTION))
     def redcap_datasource(self):
@@ -286,11 +289,16 @@ class Mock(injector.Module, rtconfig.MockMixin):
         return e
 
     def init_db(self, e, script='mock_redcapdb.sql'):
-        import pkg_resources
-        sql = pkg_resources.resource_string(
-                __name__, script)
         sqlite = e.connect().connection
-        sqlite.executescript(sql)
+        sqlite.executescript(Mock.sql)
+
+    @classmethod
+    def engine(cls):
+        # Mock support without the injector overhead
+        engine = sqlalchemy.create_engine('sqlite://')
+        sqlite = engine.connect().connection
+        sqlite.executescript(cls.sql)
+        return engine
 
     def noticelog_clobber_schema(self, e):
         '''Clobber schema from noticelog to keep sqlite happy.
