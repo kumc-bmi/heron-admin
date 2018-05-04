@@ -5,18 +5,17 @@ Configuration gives us access to the REDCap API::
 
   >>> print(_test_settings.inifmt('survey_xyz'))
   [survey_xyz]
-  api_url=http://redcap-host/redcap/api/
   domain=js.example
+  engine=redcapdb:Mock
   project_id=34
   survey_id=11
   survey_url=http://testhost/redcap-host/surveys/?s=43
-  token=sekret
 
   >>> set(OPTIONS) < set(_test_settings.settings().keys())
   True
 
-  >>> setup = SurveySetup(_test_settings,
-  ...                     EndPoint(_MockREDCapAPI(), _test_settings.token))
+  >>> io = redcap_invite.MockIO()
+  >>> setup = SurveySetup(_test_settings, io.connect, io.rng)
 
 Set up a link to survey associated with John Smith's email address::
 
@@ -24,7 +23,7 @@ Set up a link to survey associated with John Smith's email address::
   ...       {'user_id': 'john.smith', 'full_name': 'John Smith'}).split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
   ['http://testhost/redcap-host/surveys/',
-   's=f1f9&full_name=John+Smith&user_id=john.smith']
+   's=qTwAVx&full_name=John+Smith&user_id=john.smith']
 
 Fill in some of the fields in the survey, such as `full_name` and `what_for`::
 
@@ -33,139 +32,47 @@ Fill in some of the fields in the survey, such as `full_name` and `what_for`::
   ...        'what_for': '2', 'full_name': 'Smith, John'},
   ...       multi=True).split('&')
   ... # doctest: +NORMALIZE_WHITESPACE
-  ['http://testhost/redcap-host/surveys/?s=f1f9',
+  ['http://testhost/redcap-host/surveys/?s=qTwAVx',
    'full_name=Smith%2C+John',
    'multi=yes', 'user_id=john.smith', 'what_for=2']
 '''
 
-import json
-from StringIO import StringIO
+from __future__ import print_function
 import logging
-import pprint
 from urllib import urlencode
-from urlparse import urljoin, parse_qs
-from urllib2 import HTTPError
+from urlparse import urljoin
 
 import rtconfig
-from ocap_file import edef, WebPostable
+import redcap_invite
 
 log = logging.getLogger(__name__)
 
-OPTIONS = ('token', 'api_url', 'survey_url', 'domain', 'survey_id')
-
-
-def EndPoint(webcap, token):
-    '''Make REDCap API endpoint with accept_json, post_json methods.
-
-    >>> rt = _test_settings
-    >>> e = EndPoint(_MockREDCapAPI(), rt.token)
-    >>> e.accept_json(content='survey', action='setup',
-    ...               email='john.smith@jsmith.example')
-    ... # doctest: +NORMALIZE_WHITESPACE
-    {u'add': 0, u'PROJECT_ID': 123, u'hash': u'f1f9',
-     u'email': u'BOGUS@js.example', u'survey_id': 11}
-
-    >>> e.record_import([{'field': 'value'}])
-    '{}'
-    '''
-    def accept_json(content, **args):
-        body = _request(content, format='json', **args)
-        try:
-            ans = json.loads(body)
-        except ValueError as ex:
-            log.error('REDCap API answer not JSON: %s', body, exc_info=ex)
-            raise
-        return ans
-
-    def post_json(content, data, **args):
-        log.debug('POSTing %s to redcap at %s', pprint.pformat(data),
-                  webcap.fullPath())
-        return _request(content=content, format='json',
-                        data=json.dumps(data), **args)
-
-    def _request(content, format, **args):
-        params = dict(args, token=token, content=content, format=format)
-        try:
-            res = webcap.post(urlencode(params))
-        except HTTPError as ex:
-            log.error('REDCap error body: %s', ex.read())
-            raise
-        return res.read()
-
-    def __repr__():
-        return 'redcap_connect.EndPoint(%s)' % webcap.fullPath()
-
-    def record_import(data, **args):
-        log.debug('import: %s', data)
-        return post_json(content='record', action='import',
-                         data=data, **args)
-
-    return edef(__repr__, accept_json, post_json, record_import)
+OPTIONS = ('engine', 'survey_url', 'domain', 'survey_id')
 
 
 class SurveySetup(object):
-    def __init__(self, rt, endpoint, project_id=None, survey_id=None):
-        self.__endpoint = endpoint
+    def __init__(self, rt, connect, rng, project_id=None, survey_id=None):
+        self.__ss = redcap_invite.SecureSurvey(connect, rng, survey_id)
         self.domain = rt.domain
         self.base = rt.survey_url
         self.survey_id = survey_id
         self.project_id = project_id
 
     def __call__(self, userid, params, multi=False):
-        redcap = self.__endpoint
-        ans = redcap.accept_json(content='survey', action='setup',
-                                 multi='yes' if multi else 'no',
-                                 email='%s@%s' % (userid, self.domain))
-        surveycode = ans['hash']
+        email = '%s@%s' % (userid, self.domain)
+        surveycode = self.__ss.invite(email, multi)
+        assert surveycode
         params = urlencode([('s', surveycode)]
                            + sorted(params.iteritems()))
         return urljoin(self.base, '?' + params)
 
 
 _test_settings = rtconfig.TestTimeOptions(dict(
-    token='sekret',
-    api_url='http://redcap-host/redcap/api/',
+    engine='redcapdb:Mock',
     survey_url='http://testhost/redcap-host/surveys/?s=43',
     domain='js.example',
     survey_id=11,
     project_id=34))
-
-
-class _MockREDCapAPI(object):
-    '''
-    .. todo:: check for correct token.
-    '''
-    addr = _test_settings.api_url
-
-    def post(self, body):
-        params = parse_qs(body)
-        if 'action' not in params:
-            raise IOError('action param missing: ' + str(params))
-        return self.dispatch(params)
-
-    def dispatch(self, params):
-        if 'setup' in params['action']:
-            return self.service_setup(params)
-        elif 'import' in params['action']:
-            return self.service_import(params)
-        else:
-            raise IOError(params['action'])
-
-    def service_setup(self, params):
-        from hashlib import md5
-        h = md5(self.addr).hexdigest()[-4:]
-        out = {'PROJECT_ID': 123,
-               'add': 0,
-               'survey_id': _test_settings.survey_id,
-               'hash': h,
-               'email': u'BOGUS@%s' % _test_settings.domain}
-        return StringIO(json.dumps(out))
-
-    def service_import(self, params):
-        return StringIO(json.dumps({}))
-
-    def fullPath(self):
-        return self.addr
 
 
 class RunTime(rtconfig.IniModule):  # pragma: nocover
@@ -177,6 +84,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         dopts = mod.get_options(OPTIONS, 'dua_survey')
         sopts = mod.get_options(OPTIONS, 'saa_survey')
         oopts = mod.get_options(OPTIONS, 'oversight_survey')
+        #@@@ TODO: fix; itegration test
         redcap = WebPostable(sopts.api_url, build_opener(), Request)
         s0 = SurveySetup(sopts, EndPoint(redcap, dopts.token))
         s1 = SurveySetup(sopts, EndPoint(redcap, sopts.token))
@@ -184,12 +92,13 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         return s0, s1, s2
 
     @classmethod
-    def endpoint(cls, mod, section, extra=()):
-        from urllib2 import build_opener, Request
+    def db_opts(cls, mod, section, extra=()):
+        from sqlalchemy import create_engine
+        from random import Random
 
         opts = mod.get_options(OPTIONS + extra, section)
-        webcap = WebPostable(opts.api_url, build_opener(), Request)
-        return opts, EndPoint(webcap, opts.token)
+        connect = create_engine(opts.engine).connect
+        return opts, connect, Random()
 
 
 def _test_multi_use(c, uid, full_name):  # pragma: nocover

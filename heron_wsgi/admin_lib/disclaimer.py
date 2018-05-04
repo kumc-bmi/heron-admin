@@ -101,7 +101,8 @@ from sqlalchemy.orm import session, sessionmaker, exc
 import xpath
 
 # from this package
-from ocap_file import WebReadable, Token
+from ocap_file import WebReadable, WebPostable, Token
+import redcap_api
 import rtconfig
 import redcapdb
 import redcap_connect
@@ -175,7 +176,7 @@ class AcknowledgementsProject(object):
     '''AcknowledgementsProject serves as a REDCap API proxy for adding
     Acknowledgement records.
     '''
-    @inject(proxy=(redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION),
+    @inject(proxy=(redcap_api.EndPoint, ACKNOWLEGEMENTS_SECTION),
             timesrc=rtconfig.Clock)
     def __init__(self, proxy, timesrc):
         self._proxy = proxy
@@ -268,8 +269,8 @@ class DisclaimerGuard(Token):
         return redeem
 
 
-class _MockREDCapAPI2(redcap_connect._MockREDCapAPI):
-    project_id = redcap_connect._test_settings.project_id
+class _MockREDCapAPI2(redcap_api._MockREDCapAPI):
+    project_id = redcap_api._test_settings.project_id
 
     def __init__(self, smaker):
         self.__smaker = smaker
@@ -301,7 +302,7 @@ class _MockREDCapAPI2(redcap_connect._MockREDCapAPI):
 
 class Mock(redcapdb.SetUp, rtconfig.MockMixin):
     disclaimer_pid = '123'
-    ack_pid = redcap_connect._test_settings.project_id
+    ack_pid = redcap_api._test_settings.project_id
 
     def __init__(self):
         from notary import makeNotary
@@ -319,11 +320,11 @@ class Mock(redcapdb.SetUp, rtconfig.MockMixin):
     def rdblog(self):
         return _MockTracBlog()
 
-    @provides((redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION))
+    @provides((redcap_api.EndPoint, ACKNOWLEGEMENTS_SECTION))
     @inject(smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION))
     def redcap_api_endpoint(self, smaker):
         webcap = _MockREDCapAPI2(smaker)
-        return redcap_connect.EndPoint(webcap, '12345token')
+        return redcap_api.EndPoint(webcap, '12345token')
 
     @provides(rtconfig.Clock)
     def time_source(self):
@@ -368,12 +369,21 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         drt = self.get_options(['project_id'], DISCLAIMERS_SECTION)
         Disclaimer.eav_map(drt.project_id)
 
-        art, api = redcap_connect.RunTime.endpoint(
+        art, api = self.endpoint(
             self, ACKNOWLEGEMENTS_SECTION, extra=('project_id',))
         Acknowledgement.eav_map(art.project_id)
 
         binder.bind((redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION),
                     injector.InstanceProvider(api))
+
+    @classmethod
+    def endpoint(cls, mod, section, extra=()):
+        from urllib2 import build_opener, Request
+
+        opts = mod.get_options(
+            redcap_api._test_settings.keys() + extra, section)
+        webcap = WebPostable(opts.api_url, build_opener(), Request)
+        return opts, redcap_api.EndPoint(webcap, opts.token)
 
     @provides((WebReadable, DISCLAIMERS_SECTION))
 #    def rdblog(self, site='http://informatics.kumc.edu/'):
