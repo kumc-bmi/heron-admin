@@ -3,7 +3,7 @@
 
 Configuration gives us access to the REDCap API::
 
-  >>> print _test_settings.inifmt('survey_xyz')
+  >>> print(_test_settings.inifmt('survey_xyz'))
   [survey_xyz]
   api_url=http://redcap-host/redcap/api/
   domain=js.example
@@ -204,7 +204,7 @@ def _test_multi_use(c, uid, full_name):  # pragma: nocover
     if 'already' in content1:
         raise ValueError('form for 1st request says ...already...')
 
-    print "@@ The next couple tests are kinda broken."
+    print("@@ The next couple tests are kinda broken.")
 
     addr2 = c(uid, params, multi=True)
     if addr2 == addr1:
@@ -218,6 +218,7 @@ def _test_multi_use(c, uid, full_name):  # pragma: nocover
 
 def _integration_test():  # pragma: nocover
     import sys
+    import pprint
     logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
 
     userid, fullName = sys.argv[1:3]
@@ -229,9 +230,9 @@ def _integration_test():  # pragma: nocover
                                   'full_name': fullName}))
         pprint.pprint(c2(userid, {'email': userid + '@kumc.edu',
                                   'full_name': fullName}))
-    except IOError, e:
-        print e.message
-        print e
+    except IOError as e:
+        print(e.message)
+        print(e)
 
     #@@ _test_multi_use(c2, userid, fullName)
 

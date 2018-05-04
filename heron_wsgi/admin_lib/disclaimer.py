@@ -65,7 +65,7 @@ the database to get set up::
   >>> s = smaker()
   >>> for row in s.execute(redcapdb.redcap_data.select().where(
   ...  redcapdb.redcap_data.c.project_id == Mock.disclaimer_pid)).fetchall():
-  ...     print row
+  ...     print(row)
   (123, 1, u'1', u'current', u'1')
   (123, 1, u'1', u'disclaimer_id', u'1')
   (123, 1, u'1', u'url', u'http://example/blog/item/heron-release-xyz')
@@ -81,12 +81,13 @@ Now note the mapping to the Disclaimer class::
 
   .>> acksproj.add_record('bob', 'http://informatics.kumc.edu/blog/2012/x')
   .>> for ack in s.query(Acknowledgement):
-  ...     print ack
+  ...     print(ack)
   '@@'
 
 '''
 
 # python stdlib http://docs.python.org/library/
+from __future__ import print_function
 import json
 import StringIO
 import logging
@@ -126,12 +127,13 @@ class Disclaimer(redcapdb.REDCapRecord):
            (u'<div id="blog-main">\n<h1 class="blog-title">...', u'headline')
         '''
         body = rdcap.subRdFile(self.url).getBytes()
-        kludge = StringIO.StringIO(body.replace('&larr;', '').\
-                                       replace('&rarr;', ''))  # KLUDGE
+        kludge = StringIO.StringIO(body.replace('&larr;', '').
+                                   replace('&rarr;', ''))  # KLUDGE
         elt = xpath.findnode('//*[@id="blog-main"]', parse(kludge))
         headline = xpath.findvalue('.//*[@class="blog-title"]/text()', elt)
 
         return elt.toxml(), headline
+
 
 _test_doc = '''
 <!DOCTYPE html>
@@ -419,26 +421,26 @@ def _integration_test():  # pragma: nocover
         s.commit()
 
     if '--disclaimers' in sys.argv:
-        print "all disclaimers:"
+        print("all disclaimers:")
         for d in s.query(Disclaimer):
-            print d
+            print(d)
 
     if '--acks' in sys.argv:
-        print 'all acknowledgements:'
+        print('all acknowledgements:')
         for ack in s.query(Acknowledgement):
-            print ack
+            print(ack)
 
     if '--release-info' in sys.argv:
         for start, count, url in _release_info(s):
-            print "%s,%s,%s" % (start, count, url)
+            print("%s,%s,%s" % (start, count, url))
 
     if '--current' in sys.argv:
-        print "current disclaimer and content:"
+        print("current disclaimer and content:")
         for d in s.query(Disclaimer).filter(Disclaimer.current == 1):
-            print d
+            print(d)
             c, h = d.content(webrd)
-            print h
-            print c[:100]
+            print(h)
+            print(c[:100])
 
 
 def _release_info(s):
@@ -458,6 +460,7 @@ def _release_info(s):
              users_per_release[release], release)
             for release in sorted(per_release.keys(),
                                   key=lambda r: start_release[r])]
+
 
 if __name__ == '__main__':  # pragma: nocover
     _integration_test()

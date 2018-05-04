@@ -294,6 +294,7 @@ Email addresses are not limited to correspond to user ids:
 
 '''
 
+from __future__ import print_function
 from datetime import timedelta
 import itertools
 import logging
@@ -354,7 +355,7 @@ class OversightCommittee(Token, Cache):
     @classmethod
     def _memberq(cls, pid, who):
         '''
-        >>> print OversightCommittee._memberq(238, 'big.wig')
+        >>> print(OversightCommittee._memberq(238, 'big.wig'))
         ... #doctest: +NORMALIZE_WHITESPACE
         SELECT redcap_user_rights.project_id, redcap_user_rights.username
         FROM redcap_user_rights
@@ -621,7 +622,7 @@ class HeronRecords(Token, Cache):
 def _saa_query(mail, survey_id):
     '''
       >>> q = _saa_query('john.smith@js.example', 11)
-      >>> print str(q)
+      >>> print(str(q))
       ... # doctest: +NORMALIZE_WHITESPACE
       SELECT r.response_id, r.participant_id, r.record,
       r.first_submit_time, r.completion_time, r.return_code,
@@ -846,10 +847,11 @@ def _integration_test():  # pragma nocover
     mc, hr = RunTime.make(None, [medcenter.MedCenter, HeronRecords])
     mc.authenticated(userid, req)
     hr.grant(req.context, PERM_STATUS)
-    print req.context.status
+    print(req.context.status)
 
     hr.grant(req.context, PERM_START_I2B2)
-    print req.context.start_i2b2()
+    print(req.context.start_i2b2())
+
 
 if __name__ == '__main__':  # pragma nocover
     _integration_test()
