@@ -373,7 +373,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
             self, ACKNOWLEGEMENTS_SECTION, extra=('project_id',))
         Acknowledgement.eav_map(art.project_id)
 
-        binder.bind((redcap_connect.EndPoint, ACKNOWLEGEMENTS_SECTION),
+        binder.bind((redcap_api.EndPoint, ACKNOWLEGEMENTS_SECTION),
                     injector.InstanceProvider(api))
 
     @classmethod
@@ -381,7 +381,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         from urllib2 import build_opener, Request
 
         opts = mod.get_options(
-            redcap_api._test_settings.keys() + extra, section)
+            redcap_api._test_settings._d.keys() + list(extra), section)
         webcap = WebPostable(opts.api_url, build_opener(), Request)
         return opts, redcap_api.EndPoint(webcap, opts.token)
 

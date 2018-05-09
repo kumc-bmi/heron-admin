@@ -42,12 +42,16 @@ import logging
 from urllib import urlencode
 from urlparse import urljoin
 
+from injector import inject, singleton, provides, Key
+
 import rtconfig
 import redcap_invite
 
 log = logging.getLogger(__name__)
 
-OPTIONS = ('engine', 'survey_url', 'domain', 'survey_id')
+OPTIONS = ('survey_url', 'domain', 'survey_id')
+KRandom = Key(__name__ + '.Random')
+KInviteEngine = Key(__name__ + '.Engine')
 
 
 class SurveySetup(object):
@@ -84,21 +88,21 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         dopts = mod.get_options(OPTIONS, 'dua_survey')
         sopts = mod.get_options(OPTIONS, 'saa_survey')
         oopts = mod.get_options(OPTIONS, 'oversight_survey')
-        #@@@ TODO: fix; itegration test
-        redcap = WebPostable(sopts.api_url, build_opener(), Request)
-        s0 = SurveySetup(sopts, EndPoint(redcap, dopts.token))
-        s1 = SurveySetup(sopts, EndPoint(redcap, sopts.token))
-        s2 = SurveySetup(oopts, EndPoint(redcap, oopts.token))
         return s0, s1, s2
 
-    @classmethod
-    def db_opts(cls, mod, section, extra=()):
+    @singleton
+    @provides(KInviteEngine)
+    def db_engine(self):
         from sqlalchemy import create_engine
-        from random import Random
 
-        opts = mod.get_options(OPTIONS + extra, section)
-        connect = create_engine(opts.engine).connect
-        return opts, connect, Random()
+        opts = self.get_options(('engine',), redcap_invite.CONFIG_SECTION)
+        return create_engine(opts.engine)
+
+    @singleton
+    @provides(KRandom)
+    def rng(self):
+        from random import Random
+        return Random()
 
 
 def _test_multi_use(c, uid, full_name):  # pragma: nocover

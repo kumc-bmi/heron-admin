@@ -798,24 +798,32 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
 
     @singleton
     @provides((redcap_connect.SurveySetup, SAA_CONFIG_SECTION))
-    def _rc_saa(self):
-        opts, api = redcap_connect.RunTime.endpoint(self, SAA_CONFIG_SECTION)
-        return redcap_connect.SurveySetup(opts, api, survey_id=opts.survey_id)
+    @inject(rng=redcap_connect.KRandom,
+            engine=redcap_connect.KInviteEngine)
+    def _rc_saa(self, rng, engine):
+        opts = self.get_options(redcap_connect.OPTIONS, SAA_CONFIG_SECTION)
+        return redcap_connect.SurveySetup(opts, engine.connect, rng,
+                                          survey_id=opts.survey_id)
 
     @singleton
     @provides((redcap_connect.SurveySetup, DUA_CONFIG_SECTION))
-    def _rc_dua(self):
-        opts, api = redcap_connect.RunTime.endpoint(self, DUA_CONFIG_SECTION)
-        return redcap_connect.SurveySetup(opts, api, survey_id=opts.survey_id)
+    @inject(rng=redcap_connect.KRandom,
+            engine=redcap_connect.KInviteEngine)
+    def _rc_dua(self, rng, engine):
+        opts = self.get_options(redcap_connect.OPTIONS, DUA_CONFIG_SECTION)
+        return redcap_connect.SurveySetup(opts, engine.connect, rng,
+                                          survey_id=opts.survey_id)
 
     @singleton
     @provides((redcap_connect.SurveySetup, OVERSIGHT_CONFIG_SECTION))
-    def _rc_oversight(self):
-        opts, api = redcap_connect.RunTime.endpoint(
-            self, OVERSIGHT_CONFIG_SECTION, extra=('project_id',))
-        return redcap_connect.SurveySetup(
-            opts, api,
-            project_id=opts.project_id)
+    @inject(rng=redcap_connect.KRandom,
+            engine=redcap_connect.KInviteEngine)
+    def _rc_oversight(self, rng, engine):
+        opts = self.get_options(redcap_connect.OPTIONS + ('project_id',),
+                                OVERSIGHT_CONFIG_SECTION)
+        return redcap_connect.SurveySetup(opts, engine.connect, rng,
+                                          survey_id=opts.survey_id,
+                                          project_id=opts.project_id)
 
     @provides(disclaimer.KBadgeInspector)
     @inject(mc=medcenter.MedCenter)
@@ -827,6 +835,7 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
         return ([im for m in
                  (medcenter,
                   i2b2pm,
+                  redcap_connect,
                   disclaimer,
                   noticelog)
                  for im in m.RunTime.mods(ini)] + [cls(ini)])
