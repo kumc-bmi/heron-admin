@@ -71,10 +71,10 @@ CREATE TABLE redcap_surveys_participants (
 	participant_identifier VARCHAR(255), 
 	PRIMARY KEY (participant_id)
 );
-INSERT INTO "redcap_surveys_participants" VALUES(1956,11,NULL,'hash1',NULL,'trouble.maker@js.example',NULL);
-INSERT INTO "redcap_surveys_participants" VALUES(3253004250825796194,11,NULL,NULL,NULL,'big.wig@js.example',NULL);
-INSERT INTO "redcap_surveys_participants" VALUES(7868139340274461544,11,NULL,NULL,NULL,'john.smith@js.example',NULL);
-INSERT INTO "redcap_surveys_participants" VALUES(7868139340274461590,11,NULL,NULL,NULL,'prof.fickle@js.example',NULL);
+INSERT INTO "redcap_surveys_participants" VALUES(1956,11,1,'hash1',NULL,'trouble.maker@js.example',NULL);
+INSERT INTO "redcap_surveys_participants" VALUES(3253004250825796194,11,1,NULL,NULL,'big.wig@js.example',NULL);
+INSERT INTO "redcap_surveys_participants" VALUES(7868139340274461544,11,1,NULL,NULL,'john.smith@js.example',NULL);
+INSERT INTO "redcap_surveys_participants" VALUES(7868139340274461590,11,1,NULL,NULL,'prof.fickle@js.example',NULL);
 CREATE TABLE redcap_surveys_response (
 	response_id INTEGER NOT NULL, 
 	participant_id INTEGER, 
@@ -93,4 +93,25 @@ CREATE TABLE redcap_user_rights (
 	username VARCHAR
 );
 INSERT INTO "redcap_user_rights" VALUES(34,'big.wig');
+
+CREATE TABLE redcap_surveys (
+       survey_id INTEGER NOT NULL, 
+       project_id INTEGER, 
+       PRIMARY KEY (survey_id)
+);
+INSERT INTO redcap_surveys (survey_id, project_id) VALUES (11, 2377);
+
+CREATE TABLE redcap_events_arms (
+       arm_id INTEGER NOT NULL, 
+       project_id INTEGER, 
+       PRIMARY KEY (arm_id)
+);
+INSERT INTO redcap_events_arms (arm_id, project_id) VALUES (843, 2377);
+
+CREATE TABLE redcap_events_metadata (
+       event_id INTEGER NOT NULL, 
+       arm_id INTEGER, 
+       PRIMARY KEY (event_id)
+);
+INSERT INTO redcap_events_metadata (event_id, arm_id) VALUES (1, 843);
 COMMIT;

@@ -54,6 +54,27 @@ redcap_surveys_participants = Table('redcap_surveys_participants',
     )
 
 
+redcap_surveys = Table(
+    'redcap_surveys',
+    Base.metadata,
+    Column(u'survey_id', INTEGER(), primary_key=True, nullable=False),
+    Column(u'project_id', INTEGER()))
+
+
+redcap_events_arms = Table(
+    'redcap_events_arms',
+    Base.metadata,
+    Column(u'arm_id', INTEGER(), primary_key=True, nullable=False),
+    Column(u'project_id', INTEGER()))
+
+
+redcap_events_metadata = Table(
+    'redcap_events_metadata',
+    Base.metadata,
+    Column(u'event_id', INTEGER(), primary_key=True, nullable=False),
+    Column(u'arm_id', INTEGER()))
+
+
 redcap_user_rights = Table(
     'redcap_user_rights', Base.metadata,
     Column('project_id', INTEGER),

@@ -78,6 +78,7 @@ class SecureSurvey(object):
             assert nonce
             return nonce
 
+        event_id = conn.execute(self._event_q(self.survey_id)).scalar()
         failure = None
         for attempt in range(tries):
             try:
@@ -87,7 +88,8 @@ class SecureSurvey(object):
                         find.where(pt.c.hash == nonce)).fetchone()
                     if clash:
                         continue
-                    add = self._invite_dml(self.survey_id, email, nonce)
+                    add = self._invite_dml(
+                        self.survey_id, email, nonce, event_id)
                     conn.execute(add)
                     return nonce
             except IOError as failure:
@@ -128,7 +130,7 @@ class SecureSurvey(object):
                         .select_from(pt.join(
                             rt, pt.c.participant_id == rt.c.participant_id,
                             isouter=True))
-                        .where(and_(rt.c.participant_id == None,
+                        .where(and_(rt.c.participant_id == None,  # noqa
                                     pt.c.hash > '',
                                     pt.c.survey_id == survey_id))
                         .limit(1))
@@ -136,9 +138,9 @@ class SecureSurvey(object):
             and_(pt.c.survey_id == survey_id, pt.c.hash > ''))
 
     @classmethod
-    def _invite_dml(cls, survey_id, email, nonce,
-                    part_ident='',  # not known yet. (per add_participants.php)
-                    event_id=None):
+    def _invite_dml(cls, survey_id, email, nonce, event_id,
+                    # not known yet. (per add_participants.php)
+                    part_ident=''):
         # type: (int, str) -> Operation
         '''
 
@@ -162,6 +164,29 @@ class SecureSurvey(object):
             participant_identifier=part_ident,
             hash=nonce)
 
+    @classmethod
+    def _event_q(cls, survey_id):
+        # type: (int) -> Operation
+        '''
+        >>> print(SecureSurvey._event_q(10))
+        ... # doctest: +NORMALIZE_WHITESPACE
+        SELECT redcap_events_metadata.event_id
+        FROM redcap_surveys
+        JOIN redcap_events_arms
+          ON redcap_surveys.project_id = redcap_events_arms.project_id
+        JOIN redcap_events_metadata
+          ON redcap_events_metadata.arm_id = redcap_events_arms.arm_id
+        WHERE redcap_surveys.survey_id = :survey_id_1
+        '''
+        srv = redcapdb.redcap_surveys
+        arm = redcapdb.redcap_events_arms
+        evt = redcapdb.redcap_events_metadata
+        return (select([evt.c.event_id])
+                .select_from(
+                    srv.join(arm, srv.c.project_id == arm.c.project_id)
+                .join(evt, evt.c.arm_id == arm.c.arm_id))
+                .where(srv.c.survey_id == survey_id))
+
     def generateRandomHash(self):
         # type: () -> str
         '''
@@ -183,14 +208,15 @@ class SecureSurvey(object):
     def responses(self, email):
         # type: str -> List[Tuple(str, datetime)]
         conn = self.__connect()
-        q = self._response_q(email, self.survey_id)
+        event_id = conn.execute(self._event_q(self.survey_id)).scalar()
+        q = self._response_q(email, self.survey_id, event_id)
         return conn.execute(q).fetchall()
 
     @classmethod
-    def _response_q(cls, email, survey_id):
-        # type: (str, int) -> Operation
+    def _response_q(cls, email, survey_id, event_id):
+        # type: (str, int, int) -> Operation
         '''
-        >>> q = SecureSurvey._response_q('xyz@abc', 12)
+        >>> q = SecureSurvey._response_q('xyz@abc', 12, 7)
         >>> print(q)
         ... # doctest: +NORMALIZE_WHITESPACE
         SELECT r.record, r.completion_time
@@ -198,13 +224,15 @@ class SecureSurvey(object):
         WHERE r.participant_id = p.participant_id
           AND p.participant_email = :participant_email_1
           AND p.survey_id = :survey_id_1
-
+          AND p.event_id = :event_id_1
         '''
         r = redcapdb.redcap_surveys_response.alias('r')
         p = redcapdb.redcap_surveys_participants.alias('p')
         return select([r.c.record, r.c.completion_time]).where(
             and_(r.c.participant_id == p.c.participant_id,
-                 p.c.participant_email == email, p.c.survey_id == survey_id))
+                 p.c.participant_email == email,
+                 p.c.survey_id == survey_id,
+                 p.c.event_id == event_id))
 
 
 class MockIO(object):
