@@ -70,6 +70,9 @@ class SurveySetup(object):
                            + sorted(params.iteritems()))
         return urljoin(self.base, '?' + params)
 
+    def responses(self, email):
+        return self.__ss.responses(email)
+
 
 _test_settings = rtconfig.TestTimeOptions(dict(
     engine='redcapdb:Mock',

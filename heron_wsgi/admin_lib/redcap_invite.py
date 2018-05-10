@@ -7,8 +7,8 @@ Suppose the System Access Agreement is survey 11:
 
 Has big.wig responded? When?
 
-    >>> saa.response('big.wig@js.example')
-    (u'3253004250825796194', datetime.datetime(2011, 8, 26, 0, 0))
+    >>> saa.responses('big.wig@js.example')
+    [(u'3253004250825796194', datetime.datetime(2011, 8, 26, 0, 0))]
 
 Bob follows the system access survey link, so we generate a survey
 invitation hash just for him:
@@ -25,7 +25,8 @@ for him:
     qTwAVx
 
 He hasn't responded yet:
-    >>> saa.response('bob@js.example')
+    >>> saa.responses('bob@js.example')
+    []
 
 '''
 
@@ -179,11 +180,11 @@ class SecureSurvey(object):
         rng.shuffle(lr)
         return ''.join(lr)
 
-    def response(self, email):
-        # type: str -> Opt[Tuple(str, datetime)]
+    def responses(self, email):
+        # type: str -> List[Tuple(str, datetime)]
         conn = self.__connect()
         q = self._response_q(email, self.survey_id)
-        return conn.execute(q).fetchone()
+        return conn.execute(q).fetchall()
 
     @classmethod
     def _response_q(cls, email, survey_id):

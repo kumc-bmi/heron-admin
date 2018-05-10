@@ -593,8 +593,7 @@ class HeronRecords(Token, Cache):
 
         def mkq(mail):
             def q():
-                return ttl, self._smaker().execute(
-                    _saa_query(mail, self._saa_survey_id)).fetchall()
+                return ttl, self._saa_rc.responses(mail)
             return q
 
         return [row
@@ -617,27 +616,6 @@ class HeronRecords(Token, Cache):
         return [row.project_id for row in self._smaker().
                 execute(r.select(r.c.project_id).
                         where(r.c.username == uid))]
-
-
-def _saa_query(mail, survey_id):
-    '''
-      >>> q = _saa_query('john.smith@js.example', 11)
-      >>> print(str(q))
-      ... # doctest: +NORMALIZE_WHITESPACE
-      SELECT r.response_id, r.participant_id, r.record,
-      r.first_submit_time, r.completion_time, r.return_code,
-      p.participant_id, p.survey_id, p.event_id, p.hash, p.legacy_hash,
-      p.participant_email, p.participant_identifier FROM
-      redcap_surveys_response AS r JOIN redcap_surveys_participants AS
-      p ON r.participant_id = p.participant_id WHERE
-      p.participant_email = :participant_email_1 AND p.survey_id =
-      :survey_id_1
-
-    '''
-    r = redcapdb.redcap_surveys_response.alias('r')
-    p = redcapdb.redcap_surveys_participants.alias('p')
-    return r.join(p, r.c.participant_id == p.c.participant_id).select().where(
-        and_(p.c.participant_email == mail, p.c.survey_id == survey_id))
 
 
 class NoPermission(TypeError):
