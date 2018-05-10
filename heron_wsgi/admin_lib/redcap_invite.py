@@ -69,7 +69,8 @@ class SecureSurvey(object):
         :return: hash for participant
         '''
         conn = self.__connect()
-        pt, find = self._invitation_q(self.survey_id, multi)
+        event_id = conn.execute(self._event_q(self.survey_id)).scalar()
+        pt, find = self._invitation_q(self.survey_id, event_id, multi)
 
         found = conn.execute(
             find.where(pt.c.participant_email == email)).fetchone()
@@ -78,7 +79,6 @@ class SecureSurvey(object):
             assert nonce
             return nonce
 
-        event_id = conn.execute(self._event_q(self.survey_id)).scalar()
         failure = None
         for attempt in range(tries):
             try:
@@ -98,20 +98,20 @@ class SecureSurvey(object):
             raise (failure or IOError('cannot find surveycode:' + nonce))
 
     @classmethod
-    def _invitation_q(cls, survey_id,
+    def _invitation_q(cls, survey_id, event_id,
                       multi=False):
         # type: (int) -> Operation
         '''
         :return: participants table, partial query
 
-        >>> _t, q = SecureSurvey._invitation_q(11)
+        >>> _t, q = SecureSurvey._invitation_q(11, 1)
         >>> print(q)
         ... # doctest: +NORMALIZE_WHITESPACE
         SELECT p.hash
         FROM redcap_surveys_participants AS p
         WHERE p.survey_id = :survey_id_1 AND p.hash > :hash_1
 
-        >>> _t, q = SecureSurvey._invitation_q(11, multi=True)
+        >>> _t, q = SecureSurvey._invitation_q(11, 1, multi=True)
         >>> print(q)
         ... # doctest: +NORMALIZE_WHITESPACE
         SELECT p.hash
@@ -119,7 +119,9 @@ class SecureSurvey(object):
         LEFT OUTER JOIN redcap_surveys_response AS r
           ON p.participant_id = r.participant_id
         WHERE r.participant_id IS NULL
-          AND p.hash > :hash_1 AND p.survey_id = :survey_id_1
+          AND p.hash > :hash_1
+          AND p.event_id = :event_id_1
+          AND p.survey_id = :survey_id_1
         LIMIT :param_1
 
         '''
@@ -132,6 +134,7 @@ class SecureSurvey(object):
                             isouter=True))
                         .where(and_(rt.c.participant_id == None,  # noqa
                                     pt.c.hash > '',
+                                    pt.c.event_id == event_id,
                                     pt.c.survey_id == survey_id))
                         .limit(1))
         return pt, select([pt.c.hash]).where(
