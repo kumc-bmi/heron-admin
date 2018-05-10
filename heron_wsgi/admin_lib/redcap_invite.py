@@ -109,7 +109,9 @@ class SecureSurvey(object):
         ... # doctest: +NORMALIZE_WHITESPACE
         SELECT p.hash
         FROM redcap_surveys_participants AS p
-        WHERE p.survey_id = :survey_id_1 AND p.hash > :hash_1
+        WHERE p.survey_id = :survey_id_1
+          AND p.event_id = :event_id_1
+          AND p.hash > :hash_1
 
         >>> _t, q = SecureSurvey._invitation_q(11, 1, multi=True)
         >>> print(q)
@@ -138,7 +140,9 @@ class SecureSurvey(object):
                                     pt.c.survey_id == survey_id))
                         .limit(1))
         return pt, select([pt.c.hash]).where(
-            and_(pt.c.survey_id == survey_id, pt.c.hash > ''))
+            and_(pt.c.survey_id == survey_id,
+                 pt.c.event_id == event_id,
+                 pt.c.hash > ''))
 
     @classmethod
     def _invite_dml(cls, survey_id, email, nonce, event_id,
@@ -190,21 +194,23 @@ class SecureSurvey(object):
                 .join(evt, evt.c.arm_id == arm.c.arm_id))
                 .where(srv.c.survey_id == survey_id))
 
-    def generateRandomHash(self):
+    def generateRandomHash(self,
+                           hash_length=6):
         # type: () -> str
         '''
-
         based on redcap_v4.7.0/Config/init_functions.php: generateRandomHash
 
         >>> io = MockIO()
         >>> s = SecureSurvey(None, io.rng, 11)
         >>> [s.generateRandomHash(), s.generateRandomHash()]
         ['qTwAVx', 'jpMZfX']
+
+        TODO: increase default to 10 as in redcap 8
         '''
         rng = self.__rng
         cs = list("abcdefghijkmnopqrstuvwxyzABCDEFGHIJKLMNPQRSTUVWXYZ23456789")
         rng.shuffle(cs)
-        lr = cs[:6]
+        lr = cs[:hash_length]
         rng.shuffle(lr)
         return ''.join(lr)
 
