@@ -4,3 +4,35 @@
  * This is a general purpose Gradle build.
  * Learn how to create Gradle builds at https://guides.gradle.org/creating-new-gradle-builds/
  */
+
+plugins {
+  id 'java'
+  id "com.github.hierynomus.jython" version "0.8.0"
+}
+
+
+dependencies {
+  compile 'org.python:jython-standalone:2.7.1'
+
+  // https://mvnrepository.com/artifact/org.xerial/sqlite-jdbc
+  compile group: 'org.xerial', name: 'sqlite-jdbc', version: '3.21.0.1'
+
+  jython python(":JayDeBeApi:1.1.1") {
+    moduleName = "jaydebeapi"
+    copy {
+      from "jaydebeapi"
+    }
+  }
+}
+
+repositories {
+    mavenCentral()
+}
+
+task testSqliteJdbc(type: Exec) {
+  group = 'verification'
+
+  def driver = project.configurations.compile.find { it.name.startsWith('sqlite-jdbc') }
+  commandLine 'jython', '-J-cp', driver, 'heron_wsgi/admin_lib/jdbc_test.py'
+}
+

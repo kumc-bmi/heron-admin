@@ -34,3 +34,4 @@ man/
 # sphinx build stuff
 devdoc/_build
 .externalToolBuilders/
+.gradle/
