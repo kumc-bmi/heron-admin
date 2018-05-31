@@ -29,10 +29,18 @@ repositories {
     mavenCentral()
 }
 
-task testSqliteJdbc(type: Exec) {
+task testSqliteJdbc {
   group = 'verification'
 
-  def driver = project.configurations.compile.find { it.name.startsWith('sqlite-jdbc') }
-  commandLine 'jython', '-J-cp', driver, 'heron_wsgi/admin_lib/jdbc_test.py'
+  // Delay driver to avoid
+  //   Cannot change dependencies of configuration after it has been included in dependency resolution
+  // https://stackoverflow.com/a/37219989
+  doLast {
+    exec {
+      def driver = project.configurations.runtime.find { it.name.startsWith('sqlite-jdbc') }
+
+      commandLine 'jython', '-J-cp', driver, 'heron_wsgi/admin_lib/jdbc_test.py'
+    }
+  }
 }
 
