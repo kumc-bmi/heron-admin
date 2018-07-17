@@ -8,16 +8,14 @@
 </head>
 <!-- todo: factor admin_mailbox out of templates -->
 <body py:with="admin_mailbox='heron-admin@kumc.edu'">
-
-<h1>Oops!</h1>
-
-<p>Sorry, we're having trouble with your request.</p>
-
+ 
+<h1>Oops! Please try refreshing your browser!</h1>
+ 
 <!-- todo: factor feedback survey address out of templates -->
-<p>Please submit this <a href=
+<p>If the problem persists, please submit this <a href=
 "https://redcap.kumc.edu/surveys/?s=3SBkPg&amp;tool=1&amp;problem=HERON+web+site+crash:${error_info}"
 >problem report</a> to notify our team of the issue. The details in the report will help our team fix the error. </p>
-
+ 
 <hr />
 <address>
 The HERON Team <a href="mailto:${admin_mailbox}">${admin_mailbox}</a><br />
@@ -26,6 +24,3 @@ The HERON Team <a href="mailto:${admin_mailbox}">${admin_mailbox}</a><br />
 </address>
 </body>
 </html>
-
-
-
