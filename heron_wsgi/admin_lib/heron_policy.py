@@ -95,7 +95,7 @@ survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
   INFO:cache_remote:SAA link query for ('SAA', 'john.smith')
   INFO:cache_remote:... cached until 2011-09-02 00:00:16.500000
   ['http://testhost/redcap-host/surveys/',
-   's=f1f9&full_name=Smith%2C+John&user_id=john.smith']
+   's=qTwAVx&full_name=Smith%2C+John&user_id=john.smith']
 
 Any CAS authenticated user can sign Data Usage Agreement
 ********************************************************
@@ -114,7 +114,7 @@ survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
   INFO:cache_remote:DUA link query for ('DUA', 'john.smith')
   INFO:cache_remote:... cached until 2011-09-02 00:00:17
   ['http://testhost/redcap-host/surveys/',
-   's=f1f9&full_name=Smith%2C+John&user_id=john.smith']
+   's=qTwAVx&full_name=Smith%2C+John&user_id=john.smith']
 
 Sponsored Users
 ===============
@@ -238,7 +238,7 @@ the oversight committee::
   INFO:cache_remote:... cached until 2011-09-02 00:00:09.500000
   WARNING:medcenter:missing LDAP attribute ou for some.one
   WARNING:medcenter:missing LDAP attribute title for some.one
-  ['http://testhost/redcap-host/surveys/?s=f1f9',
+  ['http://testhost/redcap-host/surveys/?s=jpMZfX',
    'full_name=Smith%2C+John',
    'multi=yes',
    'name_etc_1=One%2C+Some%0A%0A',
@@ -294,6 +294,7 @@ Email addresses are not limited to correspond to user ids:
 
 '''
 
+from __future__ import print_function
 from datetime import timedelta
 import itertools
 import logging
@@ -354,7 +355,7 @@ class OversightCommittee(Token, Cache):
     @classmethod
     def _memberq(cls, pid, who):
         '''
-        >>> print OversightCommittee._memberq(238, 'big.wig')
+        >>> print(OversightCommittee._memberq(238, 'big.wig'))
         ... #doctest: +NORMALIZE_WHITESPACE
         SELECT redcap_user_rights.project_id, redcap_user_rights.username
         FROM redcap_user_rights
@@ -592,8 +593,7 @@ class HeronRecords(Token, Cache):
 
         def mkq(mail):
             def q():
-                return ttl, self._smaker().execute(
-                    _saa_query(mail, self._saa_survey_id)).fetchall()
+                return ttl, self._saa_rc.responses(mail)
             return q
 
         return [row
@@ -616,27 +616,6 @@ class HeronRecords(Token, Cache):
         return [row.project_id for row in self._smaker().
                 execute(r.select(r.c.project_id).
                         where(r.c.username == uid))]
-
-
-def _saa_query(mail, survey_id):
-    '''
-      >>> q = _saa_query('john.smith@js.example', 11)
-      >>> print str(q)
-      ... # doctest: +NORMALIZE_WHITESPACE
-      SELECT r.response_id, r.participant_id, r.record,
-      r.first_submit_time, r.completion_time, r.return_code,
-      p.participant_id, p.survey_id, p.event_id, p.hash, p.legacy_hash,
-      p.participant_email, p.participant_identifier FROM
-      redcap_surveys_response AS r JOIN redcap_surveys_participants AS
-      p ON r.participant_id = p.participant_id WHERE
-      p.participant_email = :participant_email_1 AND p.survey_id =
-      :survey_id_1
-
-    '''
-    r = redcapdb.redcap_surveys_response.alias('r')
-    p = redcapdb.redcap_surveys_participants.alias('p')
-    return r.join(p, r.c.participant_id == p.c.participant_id).select().where(
-        and_(p.c.participant_email == mail, p.c.survey_id == survey_id))
 
 
 class NoPermission(TypeError):
@@ -737,30 +716,30 @@ def team_params(lookup, uids):
 
 class Mock(injector.Module, rtconfig.MockMixin):
     def __init__(self):
+        import redcap_invite
+
         injector.Module.__init__(self)
-        token = redcap_connect._test_settings.token
-        webcap = redcap_connect._MockREDCapAPI()
-        self.__redcapapi = redcap_connect.EndPoint(webcap, token)
+        self.io = redcap_invite.MockIO()
 
     @singleton
     @provides((redcap_connect.SurveySetup, SAA_CONFIG_SECTION))
     def _rc_saa(self):
         opts = redcap_connect._test_settings
-        return redcap_connect.SurveySetup(opts, self.__redcapapi,
+        return redcap_connect.SurveySetup(opts, self.io.connect, self.io.rng,
                                           survey_id=opts.survey_id)
 
     @singleton
     @provides((redcap_connect.SurveySetup, DUA_CONFIG_SECTION))
     def _rc_dua(self):
         opts = redcap_connect._test_settings
-        return redcap_connect.SurveySetup(opts, self.__redcapapi,
+        return redcap_connect.SurveySetup(opts, self.io.connect, self.io.rng,
                                           survey_id=opts.survey_id)
 
     @singleton
     @provides((redcap_connect.SurveySetup, OVERSIGHT_CONFIG_SECTION))
     def _rc_oversight(self):
         opts = redcap_connect._test_settings
-        return redcap_connect.SurveySetup(opts, self.__redcapapi,
+        return redcap_connect.SurveySetup(opts, self.io.connect, self.io.rng,
                                           project_id=opts.project_id)
 
     @provides(disclaimer.KBadgeInspector)
@@ -797,24 +776,32 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
 
     @singleton
     @provides((redcap_connect.SurveySetup, SAA_CONFIG_SECTION))
-    def _rc_saa(self):
-        opts, api = redcap_connect.RunTime.endpoint(self, SAA_CONFIG_SECTION)
-        return redcap_connect.SurveySetup(opts, api, survey_id=opts.survey_id)
+    @inject(rng=redcap_connect.KRandom,
+            engine=redcap_connect.KInviteEngine)
+    def _rc_saa(self, rng, engine):
+        opts = self.get_options(redcap_connect.OPTIONS, SAA_CONFIG_SECTION)
+        return redcap_connect.SurveySetup(opts, engine.connect, rng,
+                                          survey_id=opts.survey_id)
 
     @singleton
     @provides((redcap_connect.SurveySetup, DUA_CONFIG_SECTION))
-    def _rc_dua(self):
-        opts, api = redcap_connect.RunTime.endpoint(self, DUA_CONFIG_SECTION)
-        return redcap_connect.SurveySetup(opts, api, survey_id=opts.survey_id)
+    @inject(rng=redcap_connect.KRandom,
+            engine=redcap_connect.KInviteEngine)
+    def _rc_dua(self, rng, engine):
+        opts = self.get_options(redcap_connect.OPTIONS, DUA_CONFIG_SECTION)
+        return redcap_connect.SurveySetup(opts, engine.connect, rng,
+                                          survey_id=opts.survey_id)
 
     @singleton
     @provides((redcap_connect.SurveySetup, OVERSIGHT_CONFIG_SECTION))
-    def _rc_oversight(self):
-        opts, api = redcap_connect.RunTime.endpoint(
-            self, OVERSIGHT_CONFIG_SECTION, extra=('project_id',))
-        return redcap_connect.SurveySetup(
-            opts, api,
-            project_id=opts.project_id)
+    @inject(rng=redcap_connect.KRandom,
+            engine=redcap_connect.KInviteEngine)
+    def _rc_oversight(self, rng, engine):
+        opts = self.get_options(redcap_connect.OPTIONS + ('project_id',),
+                                OVERSIGHT_CONFIG_SECTION)
+        return redcap_connect.SurveySetup(opts, engine.connect, rng,
+                                          survey_id=opts.survey_id,
+                                          project_id=opts.project_id)
 
     @provides(disclaimer.KBadgeInspector)
     @inject(mc=medcenter.MedCenter)
@@ -826,6 +813,7 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
         return ([im for m in
                  (medcenter,
                   i2b2pm,
+                  redcap_connect,
                   disclaimer,
                   noticelog)
                  for im in m.RunTime.mods(ini)] + [cls(ini)])
@@ -846,10 +834,11 @@ def _integration_test():  # pragma nocover
     mc, hr = RunTime.make(None, [medcenter.MedCenter, HeronRecords])
     mc.authenticated(userid, req)
     hr.grant(req.context, PERM_STATUS)
-    print req.context.status
+    print(req.context.status)
 
     hr.grant(req.context, PERM_START_I2B2)
-    print req.context.start_i2b2()
+    print(req.context.start_i2b2())
+
 
 if __name__ == '__main__':  # pragma nocover
     _integration_test()

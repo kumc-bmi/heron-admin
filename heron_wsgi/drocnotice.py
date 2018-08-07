@@ -171,7 +171,7 @@ def render_value(investigator, team, decision, detail, heron_home):
     Check that this supplies everything the template expects::
       >>> f = genshi_render.Factory({})
       >>> s = f(v, dict(renderer_name='drocnotice.html'))
-      >>> 'Some One' in s
+      >>> 'Study Warts' in s
       True
     '''
     return dict(detail,

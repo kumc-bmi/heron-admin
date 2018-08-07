@@ -266,6 +266,7 @@ def project_description(detail):
     return (detail.get('description_sponsor', None) or
             detail.get('data_use_description', ''))
 
+
 ProperName = namedtuple('ProperName', ('cn', 'fn', 'name_etc'))
 
 
@@ -501,9 +502,9 @@ def _integration_test():  # pragma nocover
         raise SystemExit(0)
     elif '--sponsorships' in sys.argv:
         who = sys.argv[2]
-        print ds.about_sponsorships(who)
+        print(ds.about_sponsorships(who))
 
-    print "pending notifications:", ds.oversight_decisions()
+    print("pending notifications:", ds.oversight_decisions())
 
 
 if __name__ == '__main__':  # pragma nocover
