@@ -224,22 +224,22 @@ class SecureSurvey(object):
 
         while retryCount > 0:
             try:
-            # Attempt Connection To REDCap DB 
-            conn = self.__connect()
-            event_id = conn.execute(self._event_q(self.survey_id)).scalar()
-            q = self._response_q(email, self.survey_id, event_id)
-            timestamp = conn.execute(q).fetchall()
-            return timestamp
+                # Attempt Connection To REDCap DB 
+                conn = self.__connect()
+                event_id = conn.execute(self._event_q(self.survey_id)).scalar()
+                q = self._response_q(email, self.survey_id, event_id)
+                timestamp = conn.execute(q).fetchall()
+                return timestamp
 
-            except OperationalError e:
-            # Log error, try again...
-            log.info('MySQL Connection Failed, trying {} more times...'.format(MAX_RETRIES-x))
-            retryCount = retryCount - 1
+            except OperationalError:
+                # Log error, try again...
+                log.info('MySQL Connection Failed, trying {} more times...'.format(MAX_RETRIES-x))
+                retryCount = retryCount - 1
 
         if retryCount == 0:
-        # At this point, connecting to connect to REDCap DB has failed {MAX_RETRIES} times. Manually giving response 
-        log.info('Could not reconnect! Manually supplying event id, and timestamp for {}'.format(email))
-        eventResponse = ('767', datetime.datetime(2017, 1, 25, 8, 55, 10)) # creating tuple with fake response
+            # At this point, connecting to connect to REDCap DB has failed {MAX_RETRIES} times. Manually giving response 
+            log.info('Could not reconnect! Manually supplying event id, and timestamp for {}'.format(email))
+            eventResponse = ('767', datetime.datetime(2017, 1, 25, 8, 55, 10)) # creating tuple with fake response
 
         # placing tuple in list, to follow the original comment 
         # (line 2 of this method)
