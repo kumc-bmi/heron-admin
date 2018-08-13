@@ -214,17 +214,18 @@ class SecureSurvey(object):
         rng.shuffle(lr)
         return ''.join(lr)
 
-    def responses(self, email):
+    def responses(self, email,
+                  max_retries=10,
+                  known_record_id='767',
+                  known_sig_time=datetime.datetime(2017, 1, 25, 8, 55, 10)):
         # type: str -> List[Tuple(str, datetime)]
         # gweaver - https://bmi-work.kumc.edu/work/ticket/5277
         # Customizing this method to always return something, instead of failing.
-
-        MAX_RETRIES = 10
-        retryCount = MAX_RETRIES
+        retryCount = max_retries
 
         while retryCount > 0:
             try:
-                # Attempt Connection To REDCap DB 
+                # Attempt Connection To REDCap DB
                 conn = self.__connect()
                 event_id = conn.execute(self._event_q(self.survey_id)).scalar()
                 q = self._response_q(email, self.survey_id, event_id)
@@ -233,17 +234,19 @@ class SecureSurvey(object):
 
             except OperationalError:
                 # Log error, try again...
-                log.info('MySQL Connection Failed, trying {} more times...'.format(MAX_RETRIES-x))
+                log.info('MySQL Connection Failed, trying {} more times...'.format(max_retries - x))
                 retryCount = retryCount - 1
 
         if retryCount == 0:
-            # At this point, connecting to connect to REDCap DB has failed {MAX_RETRIES} times. Manually giving response 
+            # At this point, connecting to connect to REDCap DB has
+            # failed {max_retries} times. Manually giving response
             log.info('Could not reconnect! Manually supplying event id, and timestamp for {}'.format(email))
-            eventResponse = ('767', datetime.datetime(2017, 1, 25, 8, 55, 10)) # creating tuple with fake response
+            # creating tuple with fake response
+            eventResponse = (known_record_id, known_sig_time)
 
-        # placing tuple in list, to follow the original comment 
+        # placing tuple in list, to follow the original comment
         # (line 2 of this method)
-        return list(eventResponse) 
+        return list(eventResponse)
 
     @classmethod
     def _response_q(cls, email, survey_id, event_id):
