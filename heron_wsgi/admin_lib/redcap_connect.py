@@ -99,7 +99,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         from sqlalchemy import create_engine
 
         opts = self.get_options(('engine',), redcap_invite.CONFIG_SECTION)
-        return create_engine(opts.engine)
+        return create_engine(opts.engine, pool_recycle=3600)
 
     @singleton
     @provides(KRandom)
