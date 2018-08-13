@@ -32,9 +32,11 @@ He hasn't responded yet:
 
 from __future__ import print_function
 from ConfigParser import SafeConfigParser
+import datetime
 import logging
 
 from sqlalchemy import and_, select
+from sqlalchemy.exc import OperationalError
 
 import redcapdb
 
@@ -218,6 +220,22 @@ class SecureSurvey(object):
                   max_retries=10,
                   known_record_id='767',
                   known_sig_time=datetime.datetime(2017, 1, 25, 8, 55, 10)):
+        '''Find responses to this survey.
+
+        To work around persistent problems connecting to a
+        REDCap DB for the system access survey, this method
+        tries `max_retries` to connect and then returns a
+        known survey record rather than failing:
+
+        >>> from random import Random
+        >>> predictable = Random(1)
+        >>> def lose(*argv):
+        ...     raise OperationalError('select...', {}, None)
+        >>> ss = SecureSurvey(connect=lose, rng=predictable, survey_id=93)
+        >>> ss.responses('daffy@walt.disney')
+        ['767', datetime.datetime(2017, 1, 25, 8, 55, 10)]
+
+        '''
         # type: str -> List[Tuple(str, datetime)]
         # gweaver - https://bmi-work.kumc.edu/work/ticket/5277
         # Customizing this method to always return something, instead of failing.
@@ -233,15 +251,13 @@ class SecureSurvey(object):
                 return timestamp
 
             except OperationalError:
-                # Log error, try again...
-                log.info('MySQL Connection Failed, trying {} more times...'.format(max_retries - x))
+                log.info(
+                    'MySQL Connection Failed, trying {} more times...'.format(
+                        max_retries - retryCount))
                 retryCount = retryCount - 1
 
         if retryCount == 0:
-            # At this point, connecting to connect to REDCap DB has
-            # failed {max_retries} times. Manually giving response
             log.info('Could not reconnect! Manually supplying event id, and timestamp for {}'.format(email))
-            # creating tuple with fake response
             eventResponse = (known_record_id, known_sig_time)
 
         # placing tuple in list, to follow the original comment
