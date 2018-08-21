@@ -511,9 +511,9 @@ class HeronRecords(Token, Cache):
         # by badge.mail. When those didn't agree, we updated
         # the database to match badge.mail. So now we need
         # to check both.
-        # Cache args have to be hashable, so tuple() rather than list().
         cn_at_domain = '%s@%s' % (badge.cn, self._saa_rc.domain)
-        mailboxes = tuple(set([badge.mail, cn_at_domain]))
+        # Cache args have to be hashable
+        mailboxes = frozenset([badge.mail, cn_at_domain])
 
         system_access_sigs = [sig.completion_time
                               for sig in self._signatures(mailboxes)]

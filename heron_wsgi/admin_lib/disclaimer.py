@@ -2,7 +2,8 @@ r'''disclaimer -- access disclaimers and acknowledgements from REDCap EAV DB
 ---------------------------------------------------------------------------
 
   >>> logging.basicConfig(level=logging.INFO)
-  ... logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
+  ??? logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 A DisclaimerGuard provides a power only to those who have acknowledged
 a disclaimer:
@@ -11,9 +12,11 @@ a disclaimer:
   >>> dg
   DisclaimerGuard()
   >>> notary
-  Notary(disclaimer)
+  ... # doctest: +ELLIPSIS
+  Notary(...disclaimer)
   >>> notary.getInspector()
-  Inspector(disclaimer)
+  ... # doctest: +ELLIPSIS
+  Inspector(...disclaimer)
 
 You can't acknowledge a disclaimer without a notarized badge:
 

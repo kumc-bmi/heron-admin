@@ -128,6 +128,7 @@ class MockMixin(object):
         This is analagous to :meth:`IniModule.make`, but with no
         constructor arguments.
         '''
+        it = None
         if what is None:
             what = cls.stuff
         modules = cls.mods()

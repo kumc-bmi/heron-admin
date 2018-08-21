@@ -95,9 +95,9 @@ Get current email addresses of the team:
 
 The following table is used to log notices::
 
-  >>> from sqlalchemy import create_engine
+  >>> from jdbc_test import sqlite_memory_engine
   >>> from sqlalchemy.schema import CreateTable
-  >>> ddl = CreateTable(notice_log, bind=create_engine('sqlite://'))
+  >>> ddl = CreateTable(notice_log, bind=sqlite_memory_engine)
   >>> print str(ddl).strip()
   ... #doctest: +NORMALIZE_WHITESPACE
   CREATE TABLE notice_log (

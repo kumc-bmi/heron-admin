@@ -17,8 +17,8 @@ import org.sqlite.JDBC
 from jaydebeapi import paramstyle, Error, ProgrammingError
 
 
-def sqlite_memory_engine():
-    return _dbi_engine('sqlite://', module=_SqliteJDBC)
+def sqlite_memory_engine(echo=False):
+    return _dbi_engine('sqlite://', module=_SqliteJDBC, echo=echo)
 
 
 class _SqliteJDBC(object):
@@ -51,13 +51,14 @@ def _sqlite_memory_conn():
     return connect(org.sqlite.JDBC.getName(), _SqliteJDBC.memory_url)
 
 
-def _dbi_engine(url, module):
+def _dbi_engine(url, module,
+                echo=False):
     """Create an SQLAlchemy engine from a DB API module.
     """
     # In general, create_engine has ambient authority,
     # but supplying the DB API module overrides it.
     from sqlalchemy import create_engine
-    return create_engine(url, module=module)
+    return create_engine(url, module=module, echo=echo)
 
 
 if __name__ == '__main__':

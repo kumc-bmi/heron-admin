@@ -294,31 +294,40 @@ class SetUp(injector.Module):
 
 
 class Mock(injector.Module, rtconfig.MockMixin):
-    sql = pkg.resource_string(__name__, 'mock_redcapdb.sql')
+    sql = pkg.resource_string(__name__, 'mock_redcapdb.sql').split(';\n')
 
     @singleton
     @provides((sqlalchemy.engine.base.Connectable, CONFIG_SECTION))
     def redcap_datasource(self):
-        import logging  # @@ lazy
-        log = logging.getLogger(__name__)
-        #salog = logging.getLogger('sqlalchemy.engine.base.Engine')
-        #salog.setLevel(logging.INFO)
-        log.debug('redcap create_engine: again?')
-        e = sqlalchemy.create_engine('sqlite://')
+        # import logging  # @@ lazy
+        # log = logging.getLogger(__name__)
+        # salog = logging.getLogger('sqlalchemy.engine.base.Engine')
+        # salog.setLevel(logging.INFO)
+        # log.debug('redcap create_engine: again?')
+        e = _test_engine()
         self.init_db(e)
         self.noticelog_clobber_schema(e)
         return e
 
-    def init_db(self, e, script='mock_redcapdb.sql'):
-        sqlite = e.connect().connection
-        sqlite.executescript(Mock.sql)
+    @classmethod
+    def init_db(cls, e):
+        salog = logging.getLogger('sqlalchemy.engine.base.Engine')
+        old = salog.level
+        salog.setLevel(logging.WARN)
+        work = e.connect()
+        for sql in Mock.sql:
+            # avoid "cannot start a transaction within a transaction"
+            if sql in ['', 'BEGIN TRANSACTION', 'COMMIT']:
+                continue
+            work.execute(sql)
+        work.close()
+        salog.setLevel(old)
 
     @classmethod
     def engine(cls):
         # Mock support without the injector overhead
-        engine = sqlalchemy.create_engine('sqlite://')
-        sqlite = engine.connect().connection
-        sqlite.executescript(cls.sql)
+        engine = _test_engine()
+        cls.init_db(engine)
         return engine
 
     def noticelog_clobber_schema(self, e):
@@ -330,6 +339,11 @@ class Mock(injector.Module, rtconfig.MockMixin):
     @classmethod
     def mods(cls):
         return [cls(), SetUp()]
+
+
+def _test_engine():
+    from jdbc_test import sqlite_memory_engine
+    return sqlite_memory_engine()
 
 
 def add_test_eav(s, project_id, event_id, e, avs):
@@ -376,16 +390,16 @@ def _integration_test():  # pragma: nocover
     (sm, ) = RunTime.make(None, [(sqlalchemy.orm.session.Session,
                                  CONFIG_SECTION)])
     s = sm()
-    print "slice of redcap_data:"
+    print("slice of redcap_data:")
     pprint(s.query(redcap_data).slice(1, 10))
     pprint(s.query(redcap_data).slice(1, 10).all())
 
-    print "field_name list:"
+    print("field_name list:")
     ans = s.execute(select([redcap_data.c.field_name], distinct=True).\
                     where(redcap_data.c.project_id == project_id))
     pprint(ans.fetchall())
 
-    print "users:"
+    print("users:")
     ans = s.execute(select([redcap_user_rights.c.username], distinct=True).\
                     where(redcap_user_rights.c.project_id == project_id))
     pprint(ans.fetchall())

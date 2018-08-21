@@ -79,8 +79,8 @@ CREATE TABLE redcap_surveys_response (
 	response_id INTEGER NOT NULL, 
 	participant_id INTEGER, 
 	record VARCHAR(100), 
-	first_submit_time DATETIME, 
-	completion_time DATETIME, 
+	first_submit_time DATETIME_CHAR, 
+	completion_time DATETIME_CHAR, 
 	return_code VARCHAR(8), 
 	PRIMARY KEY (response_id)
 );

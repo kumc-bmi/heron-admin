@@ -485,9 +485,9 @@ class Mock(injector.Module, rtconfig.MockMixin):
     @singleton
     @provides((orm.session.Session, CONFIG_SECTION))
     def pm_sessionmaker(self):
-        from sqlalchemy import create_engine
+        from jdbc_test import sqlite_memory_engine
 
-        engine = create_engine('sqlite://')
+        engine = sqlite_memory_engine()
         Base.metadata.create_all(engine)
         return orm.session.sessionmaker(engine)
 
