@@ -13,8 +13,9 @@ __ http://informatics.kumc.edu/work/wiki/AuthorityInjection
 
 '''
 
-import os
 import ConfigParser
+import logging
+import os
 
 import injector
 
@@ -81,6 +82,27 @@ class MockClock(object):
     def wait(self, seconds):
         import datetime
         self._t = self._t + datetime.timedelta(seconds=seconds)
+
+
+def _printLogs():
+    class DoctestHandler(logging.Handler):
+        def emit(self, record):
+            msg = self.format(record)
+            print(msg)
+
+    class FileNameFormatter(logging.Formatter):
+        """Only show module name, not path.
+        """
+        def format(self, record):
+            record.name = record.name.split('.')[-1]
+            return logging.Formatter.format(self, record)
+
+    root = logging.Logger.root
+    f = FileNameFormatter(logging.BASIC_FORMAT)
+    h = DoctestHandler()
+    h.setFormatter(f)
+    root.setLevel(logging.INFO)
+    root.addHandler(h)
 
 
 class RuntimeOptions(Options):  # pragma nocover
@@ -199,6 +221,7 @@ class IniModule(injector.Module):  # pragma: nocover
         '''
         modules = cls.mods(ini)
         depgraph = injector.Injector(modules)
+        it = None
         try:
             return [depgraph.get(it) if it else depgraph
                     for it in what]

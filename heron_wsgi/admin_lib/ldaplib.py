@@ -3,8 +3,7 @@
 
 Caching:
 
-  >>> import sys
-  >>> logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+  >>> rtconfig._printLogs()
   >>> ts = rtconfig.MockClock()
 
   >>> ds = LDAPService(ts.now, ttl=2, rt=_sample_settings,
