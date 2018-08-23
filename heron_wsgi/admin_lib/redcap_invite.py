@@ -14,7 +14,7 @@ Bob follows the system access survey link, so we generate a survey
 invitation hash just for him:
 
     >>> print(saa.invite('bob@js.example'))
-    qTwAVx
+    aqFVbr
 
 ISSUE: REDCap logging?
 
@@ -203,7 +203,7 @@ class SecureSurvey(object):
         >>> io = MockIO()
         >>> s = SecureSurvey(None, io.rng, 11)
         >>> [s.generateRandomHash(), s.generateRandomHash()]
-        ['qTwAVx', 'jpMZfX']
+        ['aqFVbr', 'akvfqA']
 
         TODO: increase default to 10 as in redcap 8
         '''
@@ -246,9 +246,18 @@ class SecureSurvey(object):
 
 class MockIO(object):
     def __init__(self):
-        from random import Random
-        self.rng = Random(1)
+        # random.Random is not portable between cpython and jython :-/
+        self.rng = self
+        self._rng_state = 7
         self.connect = redcapdb.Mock.engine().connect
+
+    def shuffle(self, items):
+        n = (self._rng_state * 2 + 1) % 101
+        self._rng_state = n
+        n = n % len(items)
+        items[:] = [it
+                    for k in range(n)
+                    for it in items[k % n::n]]
 
 
 def _integration_test(argv, io_open, Random, create_engine,

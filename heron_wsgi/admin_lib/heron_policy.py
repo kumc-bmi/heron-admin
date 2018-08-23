@@ -95,7 +95,7 @@ survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
   INFO:cache_remote:SAA link query for ('SAA', 'john.smith')
   INFO:cache_remote:... cached until 2011-09-02 00:00:16.500000
   ['http://testhost/redcap-host/surveys/',
-   's=qTwAVx&full_name=Smith%2C+John&user_id=john.smith']
+   's=aqFVbr&full_name=Smith%2C+John&user_id=john.smith']
 
 Any CAS authenticated user can sign Data Usage Agreement
 ********************************************************
@@ -114,7 +114,7 @@ survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
   INFO:cache_remote:DUA link query for ('DUA', 'john.smith')
   INFO:cache_remote:... cached until 2011-09-02 00:00:17
   ['http://testhost/redcap-host/surveys/',
-   's=qTwAVx&full_name=Smith%2C+John&user_id=john.smith']
+   's=aqFVbr&full_name=Smith%2C+John&user_id=john.smith']
 
 Sponsored Users
 ===============
@@ -238,7 +238,7 @@ the oversight committee::
   INFO:cache_remote:... cached until 2011-09-02 00:00:09.500000
   WARNING:medcenter:missing LDAP attribute ou for some.one
   WARNING:medcenter:missing LDAP attribute title for some.one
-  ['http://testhost/redcap-host/surveys/?s=jpMZfX',
+  ['http://testhost/redcap-host/surveys/?s=akvfqA',
    'full_name=Smith%2C+John',
    'multi=yes',
    'name_etc_1=One%2C+Some%0A%0A',
