@@ -28,6 +28,37 @@ __ http://www.hpl.hp.com/techreports/2006/HPL-2006-116.html
 from urlparse import urljoin
 
 
+class Path(object):
+    '''Just the parts of the pathlib API that we use.
+
+    :type joinpath: (str) -> Path
+    :type open: (...) -> Path
+    :type exists: () -> bool
+    '''
+    def __init__(self, here, ops):
+        '''
+        :param str here:
+        '''
+        io_open, path_join, path_exists = ops
+        self.joinpath = lambda there: Path(path_join(here, there), ops)
+        self.open = lambda **kwargs: io_open(here, **kwargs)
+        self.exists = lambda: path_exists(here)
+        self._path = here
+
+    def __repr__(self):
+        return '{cls}(...)'.format(cls=self.__class__.__name__)
+
+    def __str__(self):
+        return self._path
+
+    def __div__(self, there):
+        '''
+        :param str there:
+        :rtype: Path
+        '''
+        return self.joinpath(there)
+
+
 def Readable(path0, os_path, os_listdir, openf):
     '''Wrap the python file API in the Emily/E least-authority API.
 

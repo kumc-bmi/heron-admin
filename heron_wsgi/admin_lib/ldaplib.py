@@ -43,9 +43,10 @@ import re
 
 from injector import inject, provides, singleton
 
-import rtconfig
-import mock_directory
 from cache_remote import Cache
+from ocap_file import Path
+import mock_directory
+import rtconfig
 
 CONFIG_SECTION = 'enterprise_directory'
 log = logging.getLogger(__name__)
@@ -192,20 +193,37 @@ _sample_settings = rtconfig.TestTimeOptions(dict(
     base='ou=...,o=...'))
 
 
+def _logged(x):
+    from sys import stderr
+    from pprint import pprint
+
+    pprint(x, stream=stderr)
+    return x
+
+
 class RunTime(rtconfig.IniModule):  # pragma: nocover
+    def __init__(self, ini, ldap):
+        rtconfig.IniModule.__init__(self, ini)
+        self.__ldap = ldap
+        self.label = '%s(%s, %s)' % (self.__class__.__name__, ini, ldap)
+
+    def __repr__(self):
+        return self.label
+
     @provides((rtconfig.Options, CONFIG_SECTION))
     def opts(self):
-        rt = rtconfig.RuntimeOptions(
+        return self.get_options(
             ('url certfile userdn base password'
              ' studylookupaddr'
-             ' executives testing_faculty').split())
-        rt.load(self._ini, CONFIG_SECTION)
-        return rt
+             ' executives testing_faculty').split(),
+            CONFIG_SECTION)
 
     @singleton
     @provides(LDAPService)
-    @inject(rt=(rtconfig.Options, CONFIG_SECTION))
-    def service(self, rt, ttl=15):
+    @inject(rt=(rtconfig.Options, CONFIG_SECTION),
+            clock=rtconfig.Clock)
+    def service(self, rt, clock,
+                ttl=15):
         '''Provide native or mock LDAP implementation.
 
         This is demand-loaded so that the codebase can be tested
@@ -216,35 +234,39 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         __ http://www.python-ldap.org/doc/html/ldap.html
 
         '''
-        import datetime
+        flags = self.__ldap
+        return LDAPService(clock, ttl=ttl, rt=rt,
+                           ldap=self.__ldap, flags=flags)
 
-        import ldap
-        flags = ldap
-
-        return LDAPService(datetime.datetime.now, ttl=ttl, rt=rt,
-                           ldap=ldap, flags=flags)
-
-
-def _integration_test(stdout, access):  # pragma nocover
-    from pprint import pformat
-
-    ldap_query, attrs = access()
-
-    (ls, ) = RunTime.make(None, [LDAPService])
-    print >>stdout, pformat(ls._search(ldap_query, attrs))
+    @classmethod
+    def mods(cls, ini, ldap, clock, **kwargs):
+        return [cls(ini, ldap), rtconfig.RealClockInjector(clock)]
 
 
 if __name__ == '__main__':  # pragma nocover
     def _script():  # pragma nocover
-        import logging
+        from io import open as io_open
+        from os.path import join as path_join, exists as path_exists
         from sys import argv, stdout
+        from datetime import datetime
+        import logging
 
-        def access():
-            logging.basicConfig(level=logging.INFO)
-            ldap_query = argv[1]
-            attrs = argv[2].split(",") if argv[2:] else []
-            return ldap_query, attrs
+        import ldap
 
-        _integration_test(stdout, access)
+        logging.basicConfig(level=logging.INFO)
+
+        ldap_query = argv[1]
+        if argv[2:]:
+            attrs = argv[2].split(",")
+        else:
+            attrs = []
+
+        cwd = Path('.', (io_open, path_join, path_exists))
+
+        [ls] = RunTime.make([LDAPService],
+                            ini=cwd / 'integration-test.ini',
+                            ldap=ldap, clock=datetime.now)
+
+        print(pformat(ls._search(ldap_query, attrs)), file=stdout)
 
     _script()
