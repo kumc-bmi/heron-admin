@@ -25,7 +25,7 @@ Caching:
 
 Sample configuration::
 
-  >>> print _sample_settings.inifmt(CONFIG_SECTION)
+  >>> print(_sample_settings.inifmt(CONFIG_SECTION))
   [enterprise_directory]
   base=ou=...,o=...
   certfile=LDAP_HOST_CERT.pem
@@ -34,7 +34,10 @@ Sample configuration::
   userdn=cn=...,ou=...,o=...
 '''
 
+from __future__ import print_function
+
 from datetime import timedelta
+from pprint import pformat
 import logging
 import re
 
@@ -86,22 +89,22 @@ class LDAPService(Cache):
                            'LDAP')
 
     def search_remote(self, query, attrs):
-        l = self._l or self._bind()
+        ds = self._l or self._bind()
         base = self._rt.base
         try:
-            ans = l.search_s(base, self.flags.SCOPE_SUBTREE, query, attrs)
+            ans = ds.search_s(base, self.flags.SCOPE_SUBTREE, query, attrs)
         except self.flags.SERVER_DOWN:
-            self._l = l = self._bind()
-            ans = l.search_s(base, self.flags.SCOPE_SUBTREE, query, attrs)
+            self._l = ds = self._bind()
+            ans = ds.search_s(base, self.flags.SCOPE_SUBTREE, query, attrs)
         return ans
 
     def _bind(self):
         rt = self._rt
         ldap = self._ldap
         ldap.set_option(self.flags.OPT_X_TLS_CACERTFILE, rt.certfile)
-        l = ldap.initialize(rt.url)
-        l.simple_bind_s(rt.userdn, rt.password)
-        return l
+        ds = ldap.initialize(rt.url)
+        ds.simple_bind_s(rt.userdn, rt.password)
+        return ds
 
 
 def quote(txt):
@@ -109,17 +112,17 @@ def quote(txt):
     examples from `section 4 of RFC4515`__
     __ http://tools.ietf.org/html/rfc4515.html#section-4
 
-    >>> print quote('Parens R Us (for all your parenthetical needs)')
+    >>> print(quote('Parens R Us (for all your parenthetical needs)'))
     Parens R Us \28for all your parenthetical needs\29
-    >>> print quote('*')
+    >>> print(quote('*'))
     \2a
-    >>> print quote(r'C:\MyFile')
+    >>> print(quote(r'C:\MyFile'))
     C:\5cMyFile
-    >>> print quote('\x00\x00\x00\x04')
+    >>> print(quote('\x00\x00\x00\x04'))
     \00\00\00\04
-    >>> print quote(u'Lu\u010di\u0107'.encode('utf-8'))
+    >>> print(quote(u'Lu\u010di\u0107'.encode('utf-8')))
     Lu\c4\8di\c4\87
-    >>> print quote('\x04\x02\x48\x69')
+    >>> print(quote('\x04\x02\x48\x69'))
     \04\02Hi
     '''
     hexlify = lambda m: '\\%02x' % ord(m.group(0))
