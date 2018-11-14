@@ -8,14 +8,23 @@ import pkg_resources as pkg
 
 import injector
 from injector import inject, provides, singleton
-import sqlalchemy
 from sqlalchemy import Table, Column, text
+from sqlalchemy.engine.base import Connectable
+from sqlalchemy.engine.url import URL
 from sqlalchemy.types import INTEGER, VARCHAR, TEXT, DATETIME
 from sqlalchemy.orm import mapper
+from sqlalchemy.orm import session, sessionmaker
 from sqlalchemy.sql import and_, select
 from sqlalchemy.ext.declarative import declarative_base
 
 import rtconfig
+from ocap_file import Path
+try:
+    import sqlite3  # noqa. native cpython
+    use_jdbc = False
+except ImportError:
+    from jdbc_test import SqliteJDBC
+    use_jdbc = True
 
 log = logging.getLogger(__name__)
 Base = declarative_base()
@@ -215,7 +224,7 @@ class REDCapRecord(object):
           AND j_study_id.record = j_sex.record AND j_sex.field_name =
           :field_name_3'
 
-          >>> (smaker, ) = Mock.make([(sqlalchemy.orm.session.Session,
+          >>> (smaker, ) = Mock.make([(session.Session,
           ...                          CONFIG_SECTION)])
           >>> s = smaker()
           >>> for project_id, record, field_name, value in (
@@ -264,7 +273,7 @@ def allfields(ex, project_id, record):
 
     For example::
 
-      >>> (smaker, ) = Mock.make([(sqlalchemy.orm.session.Session,
+      >>> (smaker, ) = Mock.make([(session.Session,
       ...                          CONFIG_SECTION)])
       >>> s = smaker()
       >>> for k, v in (('study_id', 'test_002'), ('age', 32)):
@@ -287,17 +296,17 @@ def allfields(ex, project_id, record):
 class SetUp(injector.Module):
     # abusing Session a bit; this really provides a subclass,
     # not an instance, of Session
-    @provides((sqlalchemy.orm.session.Session, CONFIG_SECTION))
-    @inject(engine=(sqlalchemy.engine.base.Connectable, CONFIG_SECTION))
+    @provides((session.Session, CONFIG_SECTION))
+    @inject(engine=(Connectable, CONFIG_SECTION))
     def redcap_sessionmaker(self, engine):
-        return sqlalchemy.orm.sessionmaker(engine)
+        return sessionmaker(engine)
 
 
 class Mock(injector.Module, rtconfig.MockMixin):
     sql = pkg.resource_string(__name__, 'mock_redcapdb.sql').split(';\n')
 
     @singleton
-    @provides((sqlalchemy.engine.base.Connectable, CONFIG_SECTION))
+    @provides((Connectable, CONFIG_SECTION))
     def redcap_datasource(self):
         # import logging  # @@ lazy
         # log = logging.getLogger(__name__)
@@ -306,7 +315,6 @@ class Mock(injector.Module, rtconfig.MockMixin):
         # log.debug('redcap create_engine: again?')
         e = _test_engine()
         self.init_db(e)
-        self.noticelog_clobber_schema(e)
         return e
 
     @classmethod
@@ -330,20 +338,18 @@ class Mock(injector.Module, rtconfig.MockMixin):
         cls.init_db(engine)
         return engine
 
-    def noticelog_clobber_schema(self, e):
-        '''Clobber schema from noticelog to keep sqlite happy.
-        '''
-        import noticelog
-        noticelog.notice_log.schema = None
-
     @classmethod
     def mods(cls):
         return [cls(), SetUp()]
 
 
 def _test_engine():
-    from jdbc_test import sqlite_memory_engine
-    return sqlite_memory_engine()
+    from sqlalchemy import create_engine
+    memory = 'sqlite://'
+    if use_jdbc:
+        return create_engine(memory, module=SqliteJDBC)
+    else:
+        return create_engine(memory)
 
 
 def add_test_eav(s, project_id, event_id, e, avs):
@@ -355,55 +361,66 @@ def add_test_eav(s, project_id, event_id, e, avs):
 
 
 class RunTime(rtconfig.IniModule):  # pragma: nocover
-    def configure(self, binder):
-        #@@todo: rename sid to database (check sqlalchemy docs 1st)
-        self.bind_options(binder,
-                          'user password host port database engine'.split(),
-                          CONFIG_SECTION)
+    def __init__(self, ini, create_engine):
+        rtconfig.IniModule.__init__(self, ini)
+        # TODO: factor create_engine handling out to rtconfig?
+        self.__create_engine = create_engine
+
+    @provides((rtconfig.Options, CONFIG_SECTION))
+    def opts(self):
+        return self.get_options(
+            'user password host port database engine'.split(),
+            CONFIG_SECTION)
 
     @singleton
-    @provides((sqlalchemy.engine.base.Connectable, CONFIG_SECTION))
+    @provides((Connectable, CONFIG_SECTION))
     @inject(rt=(rtconfig.Options, CONFIG_SECTION))
     def redcap_datasource(self, rt, driver='mysql+mysqldb'):
         # support sqlite3 driver?
         u = (rt.engine if rt.engine else
-             sqlalchemy.engine.url.URL(driver, rt.user, rt.password,
-                                       rt.host, rt.port, rt.database))
+             URL(driver, rt.user, rt.password,
+                 rt.host, rt.port, rt.database))
 
         # http://www.sqlalchemy.org/docs/dialects/mysql.html
         #      #connection-timeouts
-        return sqlalchemy.create_engine(u, pool_recycle=3600)
+        return self.__create_engine(u, pool_recycle=3600)
 
     @classmethod
-    def mods(cls, ini):
-        return [cls(ini), SetUp()]
-
-
-def _integration_test():  # pragma: nocover
-    '''Print distinct field_name from a given project_id.
-    '''
-    import sys
-    from pprint import pprint
-
-    project_id = int(sys.argv[-1])
-
-    (sm, ) = RunTime.make(None, [(sqlalchemy.orm.session.Session,
-                                 CONFIG_SECTION)])
-    s = sm()
-    print("slice of redcap_data:")
-    pprint(s.query(redcap_data).slice(1, 10))
-    pprint(s.query(redcap_data).slice(1, 10).all())
-
-    print("field_name list:")
-    ans = s.execute(select([redcap_data.c.field_name], distinct=True).\
-                    where(redcap_data.c.project_id == project_id))
-    pprint(ans.fetchall())
-
-    print("users:")
-    ans = s.execute(select([redcap_user_rights.c.username], distinct=True).\
-                    where(redcap_user_rights.c.project_id == project_id))
-    pprint(ans.fetchall())
+    def mods(cls, ini, create_engine, **kwargs):
+        return [cls(ini, create_engine), SetUp()]
 
 
 if __name__ == '__main__':  # pragma: nocover
+    def _integration_test():  # pragma: nocover
+        '''Print distinct field_name from a given project_id.
+        '''
+        from io import open as io_open
+        from os.path import join as path_join, exists as path_exists
+        from pprint import pprint
+        from sys import argv
+
+        from sqlalchemy import create_engine
+
+        project_id = int(argv[-1])
+
+        cwd = Path('.', (io_open, path_join, path_exists))
+
+        [sm] = RunTime.make([(session.Session, CONFIG_SECTION)],
+                            ini=cwd / 'integration-test.ini',
+                            create_engine=create_engine)
+        s = sm()
+        print("slice of redcap_data:")
+        pprint(s.query(redcap_data).slice(1, 10))
+        pprint(s.query(redcap_data).slice(1, 10).all())
+
+        print("field_name list:")
+        ans = s.execute(select([redcap_data.c.field_name], distinct=True)
+                        .where(redcap_data.c.project_id == project_id))
+        pprint(ans.fetchall())
+
+        print("users:")
+        ans = s.execute(select([redcap_user_rights.c.username], distinct=True)
+                        .where(redcap_user_rights.c.project_id == project_id))
+        pprint(ans.fetchall())
+
     _integration_test()
