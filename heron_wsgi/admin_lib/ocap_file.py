@@ -225,14 +225,14 @@ class Token(object):
 
 
 class Editable(Token):
-    #ro : readable;
-    #subEdFiles : unit -> editable list;
-    #subEdFile : string -> editable;
-    #outChannel : unit -> out_channel;
-    #setBytes : string -> unit;
-    #mkDir : unit -> unit;
-    #createNewFile : unit -> unit;
-    #delete : unit -> unit;
+    # ro : readable;
+    # subEdFiles : unit -> editable list;
+    # subEdFile : string -> editable;
+    # outChannel : unit -> out_channel;
+    # setBytes : string -> unit;
+    # mkDir : unit -> unit;
+    # createNewFile : unit -> unit;
+    # delete : unit -> unit;
     pass
 
 
