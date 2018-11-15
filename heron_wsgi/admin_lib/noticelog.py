@@ -95,9 +95,9 @@ Get current email addresses of the team:
 
 The following table is used to log notices::
 
-  >>> from jdbc_test import sqlite_memory_engine
+  >>> from redcapdb import _test_engine
   >>> from sqlalchemy.schema import CreateTable
-  >>> ddl = CreateTable(notice_log, bind=sqlite_memory_engine)
+  >>> ddl = CreateTable(notice_log, bind=_test_engine())
   >>> print str(ddl).strip()
   ... #doctest: +NORMALIZE_WHITESPACE
   CREATE TABLE notice_log (
@@ -123,18 +123,20 @@ from sqlalchemy.sql import select, func, and_
 
 import rtconfig
 import redcapdb
+from redcap_connect import _test_settings as rc_test_settings
+from ddict import DataDict
 import medcenter
-from ocap_file import Token
+from ocap_file import Token, Path
 
 log = logging.getLogger(__name__)
 OVERSIGHT_CONFIG_SECTION = 'oversight_survey'
 KProjectId = injector.Key('ProjectId')
+KNoticeLogSchema = injector.Key('NoticeLogSchema')
 notice_log = Table('notice_log', redcapdb.Base.metadata,
                    Column('id', Integer, primary_key=True),
                    Column('record', VARCHAR(100),
                           ForeignKey('redcap_data.record')),
                    Column('timestamp', TIMESTAMP()),
-                   schema='droctools',
                    mysql_engine='InnoDB',
                    mysql_collate='utf8_unicode_ci')
 
@@ -145,7 +147,6 @@ class DecisionRecords(Token):
     .. note:: At test time, let's check consistency with the data
               dictionary.
 
-    >>> from ddict import DataDict
     >>> choices = dict(DataDict('oversight').radio('approve_kuh'))
     >>> choices[DecisionRecords.YES]
     'Yes'
@@ -156,6 +157,7 @@ class DecisionRecords(Token):
 
     '''
 
+    DataDict  # mark used
     YES = '1'
     NO = '2'
     institutions = ('kuh', 'kupi', 'kumc')
@@ -163,12 +165,14 @@ class DecisionRecords(Token):
     @inject(pid=KProjectId,
             smaker=(orm.session.Session, redcapdb.CONFIG_SECTION),
             browser=medcenter.Browser,
+            notice_log_schema=KNoticeLogSchema,
             clock=rtconfig.Clock)
-    def __init__(self, pid, smaker, browser, clock):
+    def __init__(self, pid, smaker, browser, notice_log_schema, clock):
         self._oversight_project_id = pid
         self._browser = browser
         self._smaker = smaker
         self._clock = clock
+        self._notice_log_schema=notice_log_schema
 
     def sponsorships(self, uid, inv=False):
         '''Enumerate current (un-expired) sponsorships by/for uid.
@@ -212,11 +216,13 @@ class DecisionRecords(Token):
 
         # decisions without notifications
         if pending:
+            # ISSUE: notice_log is global mutable state
             nl = notice_log
+            nl.schema = self._notice_log_schema
+            # pyflakes doesn't like the == None SQLAlchemy idiom
             dwn = cd.outerjoin(nl).select() \
                                   .with_only_columns(cd.columns)\
                                   .where(nl.c.record == None)  # noqa
-                                  # pyflakes doesn't like this SQLAlchemy idiom
         else:
             dwn = cd
 
@@ -462,16 +468,14 @@ def migrate_decisions(ds, outfp):
 class Mock(injector.Module, rtconfig.MockMixin):
     @provides(KProjectId)
     def project_id(self):
-        import redcap_connect
-        return redcap_connect._test_settings.project_id
+        return rc_test_settings.project_id
 
-    @provides(rtconfig.Clock)
-    def clock(self):
-        return rtconfig.MockClock()
+    @provides(KNoticeLogSchema)
+    def notice_log_schema(self):
+        return None
 
     @classmethod
     def mods(cls):
-        import medcenter
         return redcapdb.Mock.mods() + medcenter.Mock.mods() + [cls()]
 
 
@@ -481,31 +485,49 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
         rt = self.get_options(['project_id'], OVERSIGHT_CONFIG_SECTION)
         return rt.project_id
 
-    @provides(rtconfig.Clock)
-    def real_time(self):
-        import datetime
-        return datetime.datetime
+    @provides(KNoticeLogSchema)
+    def notice_log_schema(self):
+        return 'droctools'
 
     @classmethod
-    def mods(cls, ini):
-        return [im
-                for m in (redcapdb, medcenter)
-                for im in m.RunTime.mods(ini)] + [cls(ini)]
-
-
-def _integration_test():  # pragma nocover
-    import sys
-    (ds, ) = RunTime.make(None, [DecisionRecords])
-
-    if '--migrate' in sys.argv:
-        migrate_decisions(ds, sys.stdout)
-        raise SystemExit(0)
-    elif '--sponsorships' in sys.argv:
-        who = sys.argv[2]
-        print(ds.about_sponsorships(who))
-
-    print("pending notifications:", ds.oversight_decisions())
+    def mods(cls, ini, clock, urlopener, ldap, create_engine, trainingfn,
+             **kwargs):
+        return (
+            redcapdb.RunTime.mods(ini, create_engine) +
+            medcenter.RunTime.mods(ini, clock, urlopener, ldap, trainingfn) +
+            [cls(ini)])
 
 
 if __name__ == '__main__':  # pragma nocover
+    def _integration_test():  # pragma nocover
+        from datetime import datetime
+        from io import open as io_open
+        from os.path import join as path_join, exists as path_exists
+        from sys import argv, stdout
+
+        from sqlalchemy import create_engine
+
+        cwd = Path('.', (io_open, path_join, path_exists))
+        ini = cwd / 'integration-test.ini'
+
+        def lose(*ignore, **kwargs):
+            raise NotImplementedError
+
+        logging.basicConfig(level=logging.INFO)
+
+        [ds] = RunTime.make(
+            [DecisionRecords],
+            ini=ini, clock=datetime.now,
+            create_engine=create_engine,
+            urlopener=lose, ldap=lose, trainingfn=lose)
+
+        if '--migrate' in argv:
+            migrate_decisions(ds, stdout)
+            raise SystemExit(0)
+        elif '--sponsorships' in argv:
+            who = argv[2]
+            print(ds.about_sponsorships(who))
+
+        print("pending notifications:", ds.oversight_decisions())
+
     _integration_test()
