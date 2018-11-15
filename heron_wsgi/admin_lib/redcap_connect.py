@@ -23,7 +23,7 @@ Set up a link to survey associated with John Smith's email address::
   ...       {'user_id': 'john.smith', 'full_name': 'John Smith'}).split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
   ['http://testhost/redcap-host/surveys/',
-   's=qTwAVx&full_name=John+Smith&user_id=john.smith']
+   's=aqFVbr&full_name=John+Smith&user_id=john.smith']
 
 Fill in some of the fields in the survey, such as `full_name` and `what_for`::
 
@@ -32,7 +32,7 @@ Fill in some of the fields in the survey, such as `full_name` and `what_for`::
   ...        'what_for': '2', 'full_name': 'Smith, John'},
   ...       multi=True).split('&')
   ... # doctest: +NORMALIZE_WHITESPACE
-  ['http://testhost/redcap-host/surveys/?s=qTwAVx',
+  ['http://testhost/redcap-host/surveys/?s=aqFVbr',
    'full_name=Smith%2C+John',
    'multi=yes', 'user_id=john.smith', 'what_for=2']
 '''
