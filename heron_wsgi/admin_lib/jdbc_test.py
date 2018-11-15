@@ -13,15 +13,18 @@ To get the path to the sqlite JDBC jar, use:
 from __future__ import print_function
 from sys import stderr  # ocap note: tracing exception
 
+from sqlalchemy.dialects.sqlite.base import (
+    SQLiteDialect, SQLiteExecutionContext
+)
 import org.sqlite.JDBC
 from jaydebeapi import paramstyle, Error, ProgrammingError
 
 
 def sqlite_memory_engine(echo=False):
-    return _dbi_engine('sqlite://', module=_SqliteJDBC, echo=echo)
+    return _dbi_engine('sqlite://', module=SqliteJDBC, echo=echo)
 
 
-class _SqliteJDBC(object):
+class SqliteJDBC(object):
     """Provide DBI "module" that ignores the sqlite path given by
     SQLAlchemy.
 
@@ -48,7 +51,7 @@ def _sqlite_memory_conn():
     # In general, connect has ambient authority,
     # but using `memory_url` avoids it.
     from jaydebeapi import connect
-    return connect(org.sqlite.JDBC.getName(), _SqliteJDBC.memory_url)
+    return connect(org.sqlite.JDBC.getName(), SqliteJDBC.memory_url)
 
 
 def _dbi_engine(url, module,
@@ -58,7 +61,11 @@ def _dbi_engine(url, module,
     # In general, create_engine has ambient authority,
     # but supplying the DB API module overrides it.
     from sqlalchemy import create_engine
-    return create_engine(url, module=module, echo=echo)
+
+    # https://github.com/baztian/jaydebeapi/issues/83
+    e = create_engine(url, module=module, echo=echo)
+    e.get_lastrowid = lambda self: None
+    return e
 
 
 if __name__ == '__main__':
