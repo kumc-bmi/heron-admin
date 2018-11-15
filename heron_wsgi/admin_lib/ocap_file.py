@@ -26,6 +26,7 @@ __ http://www.hpl.hp.com/techreports/2006/HPL-2006-116.html
 '''
 
 from urlparse import urljoin
+from urllib2 import Request
 
 
 class Path(object):
@@ -100,16 +101,14 @@ def Readable(path0, os_path, os_listdir, openf):
                 getBytes, fullPath)
 
 
-def WebReadable(base, urlopener, RequestClass):
+def WebReadable(base, urlopener):
     '''Read-only wrapping of urllib2 in the Emily/E least-authority API.
 
     :param base: base URL
     :param urlopener: as from `urllib2.build_opener()`
-    :param RequestClass: e.g. `urllib2.Request`
 
     >>> urlopener = _MockMostPagesOKButSome404('Z')
-    >>> from urllib2 import Request
-    >>> rdweb = WebReadable('http://example/stuff/', urlopener, Request)
+    >>> rdweb = WebReadable('http://example/stuff/', urlopener)
 
     A refinement could fetch content, parse links,
     and enumerate those that point "downward", but
@@ -156,7 +155,7 @@ def WebReadable(base, urlopener, RequestClass):
         return False
 
     def exists():
-        class HeadRequest(RequestClass):
+        class HeadRequest(Request):
             '''
             ack: doshea Jan 15 2010
             How do you send a HEAD HTTP request in Python?
@@ -178,7 +177,7 @@ def WebReadable(base, urlopener, RequestClass):
         there = urljoin(base, path)
         if not there.startswith(base):
             raise LookupError('Path does not lead to a subordinate.')
-        return WebReadable(there, urlopener, RequestClass)
+        return WebReadable(there, urlopener)
 
     def inChannel():
         '''
@@ -197,12 +196,11 @@ def WebReadable(base, urlopener, RequestClass):
                 getBytes, fullPath)
 
 
-def WebPostable(base, urlopener, RequestClass):
+def WebPostable(base, urlopener):
     '''Extend WebReadable with POST support.
 
     >>> urlopener = _MockMostPagesOKButSome404('Z')
-    >>> from urllib2 import Request
-    >>> doweb = WebPostable('http://example/stuff/', urlopener, Request)
+    >>> doweb = WebPostable('http://example/stuff/', urlopener)
 
     >>> doweb.post('stuff').read()
     'you posted: stuff'
@@ -212,7 +210,7 @@ def WebPostable(base, urlopener, RequestClass):
     >>> doweb.subRdFile('rd').fullPath()
     'http://example/stuff/rd'
     '''
-    delegate = WebReadable(base, urlopener, RequestClass)
+    delegate = WebReadable(base, urlopener)
 
     def __repr__():
         return 'WebPostable(...)'
