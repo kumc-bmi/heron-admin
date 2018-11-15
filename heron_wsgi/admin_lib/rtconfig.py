@@ -165,6 +165,7 @@ class _Maker(object):
         from classes (or other keys) to objects, create an `injector.Injector`
         and use it to instantiate each of the classes in `what`.
         '''
+        # _logged(('make', cls, kwargs))
         modules = cls.mods(**kwargs)
         depgraph = injector.Injector(modules)
         it = None
@@ -215,3 +216,11 @@ class IniModule(injector.Module, _Maker):  # pragma: nocover
 
         '''
         return [cls(ini)]
+
+
+def _logged(x):
+    from sys import stderr
+    from pprint import pprint
+
+    pprint(x, stream=stderr)
+    return x

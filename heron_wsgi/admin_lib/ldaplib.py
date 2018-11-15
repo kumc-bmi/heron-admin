@@ -193,14 +193,6 @@ _sample_settings = rtconfig.TestTimeOptions(dict(
     base='ou=...,o=...'))
 
 
-def _logged(x):
-    from sys import stderr
-    from pprint import pprint
-
-    pprint(x, stream=stderr)
-    return x
-
-
 class RunTime(rtconfig.IniModule):  # pragma: nocover
     def __init__(self, ini, ldap):
         rtconfig.IniModule.__init__(self, ini)
