@@ -39,11 +39,14 @@ Fill in some of the fields in the survey, such as `full_name` and `what_for`::
 
 from __future__ import print_function
 import logging
+from pprint import pformat
 from urllib import urlencode
 from urlparse import urljoin
 
-from injector import inject, singleton, provides, Key
+from injector import singleton, provides, Key
+from sqlalchemy.engine.base import Connectable
 
+from ocap_file import Path
 import rtconfig
 import redcap_invite
 
@@ -51,7 +54,6 @@ log = logging.getLogger(__name__)
 
 OPTIONS = ('survey_url', 'domain', 'survey_id')
 KRandom = Key(__name__ + '.Random')
-KInviteEngine = Key(__name__ + '.Engine')
 
 
 class SurveySetup(object):
@@ -83,75 +85,63 @@ _test_settings = rtconfig.TestTimeOptions(dict(
 
 
 class RunTime(rtconfig.IniModule):  # pragma: nocover
-    @classmethod
-    def integration_test(cls):
-        from urllib2 import build_opener, Request
-
-        mod = cls(None)
-        dopts = mod.get_options(OPTIONS, 'dua_survey')
-        sopts = mod.get_options(OPTIONS, 'saa_survey')
-        oopts = mod.get_options(OPTIONS, 'oversight_survey')
-        return s0, s1, s2
+    def __init__(self, ini, rng, create_engine):
+        rtconfig.IniModule.__init__(self, ini)
+        self.__rng = rng
+        self.__create_engine = create_engine
 
     @singleton
-    @provides(KInviteEngine)
+    @provides((Connectable, redcap_invite.CONFIG_SECTION))
     def db_engine(self):
-        from sqlalchemy import create_engine
-
-        opts = self.get_options(('engine',), redcap_invite.CONFIG_SECTION)
-        return create_engine(opts.engine)
+        opts = self.get_options(['engine'], redcap_invite.CONFIG_SECTION)
+        return self.__create_engine(opts.engine)
 
     @singleton
     @provides(KRandom)
     def rng(self):
-        from random import Random
-        return Random()
+        return self.__rng
 
+    def _setup(self, opts, connect, rng, survey_id=None):
+        return SurveySetup(opts, connect, rng, survey_id=survey_id)
 
-def _test_multi_use(c, uid, full_name):  # pragma: nocover
-    '''Test that a user can use the same survey to make multiple requests.
-    '''
-    from urllib2 import urlopen
+    def _integration_test(self, userid, fullName, stderr):
+        connect = self.db_engine().connect
+        rng = self.__rng
+        ea_opts = [
+            self.get_options(OPTIONS, section)
+            for section in ['dua_survey', 'saa_survey', 'oversight_survey']]
 
-    params = {'email': uid + '@kumc.edu', 'full_name': full_name}
-    addr1 = c(uid, params, multi=True)
-
-    content1 = urlopen(addr1).read()
-    if 'already' in content1:
-        raise ValueError('form for 1st request says ...already...')
-
-    print("@@ The next couple tests are kinda broken.")
-
-    addr2 = c(uid, params, multi=True)
-    if addr2 == addr1:
-        raise ValueError('2nd request has same address as 1st: %s = %s' % (
-            addr1, addr2))
-
-    content2 = urlopen(addr2).read()
-    if 'already' in content2:
-        raise ValueError('form for 2nd request says ...already...')
-
-
-def _integration_test():  # pragma: nocover
-    import sys
-    import pprint
-    logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
-
-    userid, fullName = sys.argv[1:3]
-    c0, c1, c2 = RunTime.integration_test()
-    try:
-        pprint.pprint(c0(userid, {'email': userid + '@kumc.edu',
-                                  'full_name': fullName}))
-        pprint.pprint(c1(userid, {'email': userid + '@kumc.edu',
-                                  'full_name': fullName}))
-        pprint.pprint(c2(userid, {'email': userid + '@kumc.edu',
-                                  'full_name': fullName}))
-    except IOError as e:
-        print(e.message)
-        print(e)
-
-    #@@ _test_multi_use(c2, userid, fullName)
+        log.debug('opts: %s', [o.survey_id for o in ea_opts])
+        [dua, saa, oversight] = [self._setup(opts, connect, rng,
+                                             survey_id=opts.survey_id)
+                                 for opts in ea_opts]
+        try:
+            for ss in [dua, saa, oversight]:
+                info = ss(userid, {'email': userid + '@kumc.edu',
+                                   'full_name': fullName})
+                print(pformat(info), file=stderr)
+        except IOError as e:
+            print(e.message)
+            print(e)
 
 
 if __name__ == '__main__':  # pragma nocover
+    def _integration_test():  # pragma: nocover
+        from os.path import join as path_join, exists as path_exists
+        from io import open as io_open
+        from random import Random
+        from sys import argv, stderr
+
+        from sqlalchemy import create_engine
+
+        [userid, fullName] = argv[1:3]
+
+        logging.basicConfig(level=logging.DEBUG, stream=stderr)
+
+        cwd = Path('.', (io_open, path_join, path_exists))
+
+        rt = RunTime(ini=cwd / 'integration-test.ini',
+                     rng=Random(), create_engine=create_engine)
+        rt._integration_test(userid, fullName, stderr)
+
     _integration_test()

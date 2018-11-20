@@ -303,13 +303,14 @@ from collections import namedtuple
 import injector
 from injector import inject, provides, singleton
 from sqlalchemy import orm
-from sqlalchemy.sql import and_
+from sqlalchemy.engine.base import Connectable
 
 from ocap_file import Token
 import rtconfig
 import i2b2pm
 import medcenter
 import redcap_connect
+import redcap_invite
 import redcapdb
 import noticelog
 from noticelog import OVERSIGHT_CONFIG_SECTION
@@ -777,7 +778,7 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
     @singleton
     @provides((redcap_connect.SurveySetup, SAA_CONFIG_SECTION))
     @inject(rng=redcap_connect.KRandom,
-            engine=redcap_connect.KInviteEngine)
+            engine=(Connectable, redcap_invite.CONFIG_SECTION))
     def _rc_saa(self, rng, engine):
         opts = self.get_options(redcap_connect.OPTIONS, SAA_CONFIG_SECTION)
         return redcap_connect.SurveySetup(opts, engine.connect, rng,
@@ -786,7 +787,7 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
     @singleton
     @provides((redcap_connect.SurveySetup, DUA_CONFIG_SECTION))
     @inject(rng=redcap_connect.KRandom,
-            engine=redcap_connect.KInviteEngine)
+            engine=(Connectable, redcap_invite.CONFIG_SECTION))
     def _rc_dua(self, rng, engine):
         opts = self.get_options(redcap_connect.OPTIONS, DUA_CONFIG_SECTION)
         return redcap_connect.SurveySetup(opts, engine.connect, rng,
@@ -795,7 +796,7 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
     @singleton
     @provides((redcap_connect.SurveySetup, OVERSIGHT_CONFIG_SECTION))
     @inject(rng=redcap_connect.KRandom,
-            engine=redcap_connect.KInviteEngine)
+            engine=(Connectable, redcap_invite.CONFIG_SECTION))
     def _rc_oversight(self, rng, engine):
         opts = self.get_options(redcap_connect.OPTIONS + ('project_id',),
                                 OVERSIGHT_CONFIG_SECTION)
