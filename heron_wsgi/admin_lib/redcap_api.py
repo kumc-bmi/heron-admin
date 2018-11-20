@@ -26,11 +26,13 @@ def EndPoint(webcap, token):
 
     >>> rt = _test_settings
     >>> e = EndPoint(_MockREDCapAPI(), rt.token)
-    >>> e.accept_json(content='survey', action='setup',
-    ...               email='john.smith@jsmith.example')
+    >>> record = e.accept_json(content='survey', action='setup',
+    ...                        email='john.smith@jsmith.example')
+    >>> sorted(record.items())
     ... # doctest: +NORMALIZE_WHITESPACE
-    {u'add': 0, u'PROJECT_ID': 123, u'hash': u'f1f9',
-     u'email': u'BOGUS@js.example', u'survey_id': 11}
+    [(u'PROJECT_ID', 123), (u'add', 0),
+     (u'email', u'BOGUS@js.example'), (u'hash', u'f1f9'),
+     (u'survey_id', 11)]
 
     >>> e.record_import([{'field': 'value'}])
     '{}'
