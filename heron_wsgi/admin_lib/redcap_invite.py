@@ -22,7 +22,7 @@ If he follows the link again, we find the invitation we already made
 for him:
 
     >>> print(saa.invite('bob@js.example'))
-    qTwAVx
+    aqFVbr
 
 He hasn't responded yet:
     >>> saa.responses('bob@js.example')
