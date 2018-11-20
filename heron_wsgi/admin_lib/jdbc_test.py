@@ -13,9 +13,6 @@ To get the path to the sqlite JDBC jar, use:
 from __future__ import print_function
 from sys import stderr  # ocap note: tracing exception
 
-from sqlalchemy.dialects.sqlite.base import (
-    SQLiteDialect, SQLiteExecutionContext
-)
 import org.sqlite.JDBC
 from jaydebeapi import paramstyle, Error, ProgrammingError
 
@@ -42,16 +39,38 @@ class SqliteJDBC(object):
 
     @classmethod
     def connect(cls, _db):
-        conn = _sqlite_memory_conn()
+        conn = _SqliteWithLastrowid()
         conn.jconn.setAutoCommit(False)
         return conn
 
 
-def _sqlite_memory_conn():
-    # In general, connect has ambient authority,
-    # but using `memory_url` avoids it.
-    from jaydebeapi import connect
-    return connect(org.sqlite.JDBC.getName(), SqliteJDBC.memory_url)
+class _Delegate(object):
+    def __init__(self, delegate):
+        self._it = delegate
+
+    def __getattr__(self, name):
+        return getattr(self._it, name)
+
+
+class _SqliteWithLastrowid(_Delegate):
+    # Work around missing lastrowid
+    # https://github.com/baztian/jaydebeapi/issues/83
+
+    def __init__(self):
+        # In general, connect has ambient authority,
+        # but using `memory_url` avoids it.
+        from jaydebeapi import connect
+        con = connect(org.sqlite.JDBC.getName(), SqliteJDBC.memory_url)
+        _Delegate.__init__(self, con)
+
+    def cursor(self):
+        return _CursorWithLastrowid(self._it.cursor())
+
+
+class _CursorWithLastrowid(_Delegate):
+    @property
+    def lastrowid(self):
+        return None
 
 
 def _dbi_engine(url, module,
