@@ -429,17 +429,28 @@ class Project(Base, Audited):
 class RunTime(rtconfig.IniModule):  # pragma: nocover
     jndi_name = 'java:/PMBootStrapDS'
 
+    def __init__(self, ini, create_engine):
+        rtconfig.IniModule.__init__(ini)
+        self.__create_engine = create_engine
+
+        def jdir_access(section):
+            return ini / rtconfig.get_options(
+                ['jboss_deploy'], section).jboss_deploy
+
+        self.__jdir = jdir_access
+
+    @classmethod
+    def jboss_context(cls, ini, section, create_engine):
+        m = rtconfig.IniModule(ini)
+        rt = m.get_options(['jboss_deploy'], section)
+        jdir = ini / rt.jboss_deploy
+        return jndi_util.JBossContext(jdir, create_engine)
+
     # abusing Session a bit; this really provides a subclass, not an
     # instance, of Session
-    def sessionmaker(self, jndi, CONFIG):
-        import os
-        from sqlalchemy import create_engine
-
-        rt = rtconfig.RuntimeOptions(['jboss_deploy'])
-        rt.load(self._ini, CONFIG)
-
-        jdir = ocap_file.Readable(rt.jboss_deploy, os.path, os.listdir, open)
-        ctx = jndi_util.JBossContext(jdir, create_engine)
+    def sessionmaker(self, jndi, section):
+        ctx = jndi_util.JBossContext(
+            self.__jdir(section), self.__create_engine)
 
         sm = orm.session.sessionmaker()
 
@@ -492,7 +503,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
 
     @provides(i2b2metadata.I2B2Metadata)
     def metadata(self):
-            return i2b2metadata.MockMetadata(1)
+        return i2b2metadata.MockMetadata(1)
 
     @provides(KUUIDGen)
     def uuid_maker(self):

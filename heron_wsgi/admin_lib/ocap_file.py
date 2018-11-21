@@ -1,5 +1,7 @@
 '''ocap_file -- least-privilege interaction with the filesystem, web
 
+ISSUE: migrating away from Emily interface to pathlib.
+
 Inspired by:
 
   The Sash file object is quite similar to (though different from) the
@@ -32,18 +34,20 @@ from urllib2 import Request
 class Path(object):
     '''Just the parts of the pathlib API that we use.
 
-    :type joinpath: (str) -> Path
+    :type joinpath: (*str) -> Path
     :type open: (...) -> Path
     :type exists: () -> bool
+    :type listdir: (str) -> Iterable[str]
     '''
-    def __init__(self, here, ops):
+    def __init__(self, here, **ops):
         '''
         :param str here:
         '''
-        io_open, path_join, path_exists = ops
-        self.joinpath = lambda there: Path(path_join(here, there), ops)
-        self.open = lambda **kwargs: io_open(here, **kwargs)
-        self.exists = lambda: path_exists(here)
+        self.joinpath = lambda there: Path(ops['joinpath'](here, there), **ops)
+        self.open = lambda **kwargs: ops['open'](here, **kwargs)
+        self.exists = lambda: ops['exists'](here)
+        self.iterdir = lambda: (self / child for child in ops['listdir'](here))
+        self.resolve = lambda: self / ops['abspath'](here)
         self._path = here
 
     def __repr__(self):

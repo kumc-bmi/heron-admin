@@ -7,7 +7,7 @@ __ http://informatics.kumc.edu/work/wiki/HERON#governance
 
 .. For debugging, change .. to >>>.
 .. logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
-  >>> import sys; logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+  >>> rtconfig._printLogs()
 
 View-only access for Qualified Faculty
 ======================================

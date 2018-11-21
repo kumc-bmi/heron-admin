@@ -107,15 +107,15 @@ repositories {
     mavenCentral()
 }
 
-task noseTests(type: JavaExec) {
-  group = 'verification'
-  classpath = sourceSets.test.runtimeClasspath
+task doctests(type: JavaExec) {
+  classpath = sourceSets.main.runtimeClasspath
 
-  workingDir 'heron_wsgi/admin_lib'
   main = 'org.python.util.jython'
-  args "${buildDir}/resources/test/nose/__main__.py", '--with-doctest'
+  environment PYTHONPATH: '.:heron_wsgi:heron_wsgi/admin_lib'
+  args 'rundoctests.py'
 }
-check.dependsOn noseTests
+check.dependsOn doctests
+
 
 task testSqliteJdbc(type: JavaExec) {
   group = 'verification'

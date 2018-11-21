@@ -6,8 +6,8 @@ import logging
 from sqlalchemy import text, orm, Table, MetaData
 from injector import inject, provides, singleton
 
+import i2b2pm
 import rtconfig
-import jndi_util
 import ocap_file
 
 log = logging.getLogger(__name__)
@@ -138,46 +138,52 @@ class MockMetadata():
 
 
 class RunTime(rtconfig.IniModule):
-    #From i2b2pm.py
     jndi_name_md = 'java:/i2b2REDCapMgrDS'
 
-    def sessionmaker(self, jndi, CONFIG):
-        import os
-        from sqlalchemy import create_engine
-
-        rt = rtconfig.RuntimeOptions(['jboss_deploy'])
-        rt.load(self._ini, CONFIG)
-
-        jdir = ocap_file.Readable(rt.jboss_deploy, os.path, os.listdir, open)
-        ctx = jndi_util.JBossContext(jdir, create_engine)
-
-        def send_sessionmaker():
-            sm = orm.session.sessionmaker()
-            engine = ctx.lookup(jndi)
-            ds = sm(bind=engine)
-            return ds
-        return send_sessionmaker
+    def __init__(self, ini, create_engine):
+        rtconfig.IniModule.__init__(self, ini)
+        self.__ctx = i2b2pm.RunTime.jboss_context(
+            ini, CONFIG_SECTION_MD, create_engine)
 
     @singleton
     @provides((orm.session.Session, CONFIG_SECTION_MD))
     def md_sessionmaker(self):
-        return self.sessionmaker(self.jndi_name_md, CONFIG_SECTION_MD)
+        def send_sessionmaker():
+            sm = orm.session.sessionmaker()
+            engine = self.__ctx.lookup(self.jndi_name_md)
+            ds = sm(bind=engine)
+            return ds
+        return send_sessionmaker
 
-
-def _integration_test():
-    #e.g. python i2b2metadata.py REDCap_1 10,11,53,55
-    import sys
-
-    logging.basicConfig(level=logging.DEBUG)
-    salog = logging.getLogger('sqlalchemy.engine.base.Engine')
-    salog.setLevel(logging.INFO)
-
-    i2b2_pid, rc_pids = sys.argv[1:3]
-
-    (md, ) = RunTime.make(None, [I2B2Metadata])
-    t = md.rc_in_i2b2(rc_pids.split(','))
-    print md.project_terms(i2b2_pid, t)
+    @classmethod
+    def mods(cls, ini, create_engine):
+        return [cls(ini=ini, create_engine=create_engine)]
 
 
 if __name__ == '__main__':
+    def _integration_test():
+        # e.g. python i2b2metadata.py REDCap_1 10,11,53,55
+        from sys import argv
+        from io import open as io_open
+        import os
+
+        from sqlalchemy import create_engine
+
+        logging.basicConfig(level=logging.DEBUG)
+        salog = logging.getLogger('sqlalchemy.engine.base.Engine')
+        salog.setLevel(logging.INFO)
+
+        i2b2_pid, rc_pids = argv[1:3]
+
+        cwd = ocap_file.Path('.',
+                             open=io_open,
+                             joinpath=os.path.join,
+                             listdir=os.listdir,
+                             exists=os.path.exists)
+        [md] = RunTime.make([I2B2Metadata],
+                            ini=cwd / 'integration-test.ini',
+                            create_engine=create_engine)
+        t = md.rc_in_i2b2(rc_pids.split(','))
+        print(md.project_terms(i2b2_pid, t))
+
     _integration_test()

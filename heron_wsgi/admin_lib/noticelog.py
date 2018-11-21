@@ -502,12 +502,12 @@ if __name__ == '__main__':  # pragma nocover
     def _integration_test():  # pragma nocover
         from datetime import datetime
         from io import open as io_open
-        from os.path import join as path_join, exists as path_exists
+        from os.path import join as joinpath, exists as exists
         from sys import argv, stdout
 
         from sqlalchemy import create_engine
 
-        cwd = Path('.', (io_open, path_join, path_exists))
+        cwd = Path('.', open=io_open, joinpath=joinpath, exists=exists)
         ini = cwd / 'integration-test.ini'
 
         def lose(*ignore, **kwargs):

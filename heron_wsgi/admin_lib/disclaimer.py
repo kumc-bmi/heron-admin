@@ -20,7 +20,6 @@ a disclaimer:
 
 You can't acknowledge a disclaimer without a notarized badge:
 
-  >>> import medcenter
   >>> x = medcenter.Badge(cn='john.smith',
   ...                     givenname='John', sn='Smith')
   >>> dg.ack_disclaimer(x)
@@ -104,11 +103,14 @@ from sqlalchemy.orm import session, sessionmaker, exc
 import xpath
 
 # from this package
+from ddict import DataDict
+from notary import makeNotary
 from ocap_file import WebReadable, WebPostable, Token
+from redcapdb import add_test_eav
+import medcenter
 import redcap_api
 import rtconfig
 import redcapdb
-import redcap_connect
 
 DISCLAIMERS_SECTION = 'disclaimers'
 ACKNOWLEGEMENTS_SECTION = 'disclaimer_acknowledgements'
@@ -166,12 +168,12 @@ class _MockTracBlog(object):
 
 class Acknowledgement(redcapdb.REDCapRecord):
     '''
-    >>> from ddict import DataDict
     >>> fn = [n for (n, r) in DataDict('acknowledgement').fields()]
     >>> [fn[i] for i in range(len(Acknowledgement.fields))
     ...  if Acknowledgement.fields[i] != fn[i]]
     []
     '''
+    DataDict  # mark used
     fields = ('ack', 'timestamp', 'user_id', 'disclaimer_address')
 
 
@@ -240,6 +242,8 @@ class DisclaimerGuard(Token):
         '''
         TODO: split object between read-only and read/write
         '''
+        medcenter  # mark used
+
         badge = self.__badge_inspector.vouch(alleged_badge)
 
         d = self.current_disclaimer()
@@ -285,8 +289,6 @@ class _MockREDCapAPI2(redcap_api._MockREDCapAPI):
             return super(_MockREDCapAPI2, self).dispatch(params)
 
     def service_import(self, params):
-        from redcapdb import add_test_eav
-
         rows = json.loads(params['data'][0])
         schema = rows[0].keys()
         if sorted(schema) == sorted([u'ack', u'timestamp',
@@ -308,7 +310,6 @@ class Mock(redcapdb.SetUp, rtconfig.MockMixin):
     ack_pid = redcap_api._test_settings.project_id
 
     def __init__(self):
-        from notary import makeNotary
         sqlalchemy.orm.clear_mappers()
         self._notary = makeNotary(__name__)
 
@@ -381,8 +382,6 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
 
     @classmethod
     def endpoint(cls, mod, section, extra=()):
-        from urllib2 import build_opener, Request
-
         opts = mod.get_options(
             redcap_api._test_settings._d.keys() + list(extra), section)
         webcap = WebPostable(opts.api_url, build_opener(), Request)
@@ -405,12 +404,10 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         return redcapdb.RunTime.mods(ini) + [cls(ini)]
 
 
-def _integration_test():  # pragma: nocover
-    import sys
+def _integration_test(argv, stdout):  # pragma: nocover
+    logging.basicConfig(level=logging.DEBUG, stream=stdout)
 
-    logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
-
-    user_id = sys.argv[1]
+    user_id = argv[1]
 
     engine, acks, webrd = RunTime.make(None,
                                        [(sqlalchemy.engine.base.Connectable,
@@ -428,26 +425,26 @@ def _integration_test():  # pragma: nocover
         filter(Acknowledgement.user_id == user_id).first()
     log.info('ack for %s: %s', user_id, a)
 
-    if '--ack' in sys.argv:
+    if '--ack' in argv:
         d = s.query(Disclaimer).filter(Disclaimer.current == 1).first()
         acks.add_record(user_id, d.url)
         s.commit()
 
-    if '--disclaimers' in sys.argv:
+    if '--disclaimers' in argv:
         print("all disclaimers:")
         for d in s.query(Disclaimer):
             print(d)
 
-    if '--acks' in sys.argv:
+    if '--acks' in argv:
         print('all acknowledgements:')
         for ack in s.query(Acknowledgement):
             print(ack)
 
-    if '--release-info' in sys.argv:
+    if '--release-info' in argv:
         for start, count, url in _release_info(s):
             print("%s,%s,%s" % (start, count, url))
 
-    if '--current' in sys.argv:
+    if '--current' in argv:
         print("current disclaimer and content:")
         for d in s.query(Disclaimer).filter(Disclaimer.current == 1):
             print(d)
@@ -476,4 +473,11 @@ def _release_info(s):
 
 
 if __name__ == '__main__':  # pragma: nocover
-    _integration_test()
+    def _script():
+        from sys import argv, stdout
+        from urllib2 import build_opener
+
+        _integration_test(argv, stdout)
+
+    _script()
+

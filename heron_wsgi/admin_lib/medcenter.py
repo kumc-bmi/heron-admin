@@ -13,8 +13,7 @@ records.
 
 Access is logged at the :data:`logging.INFO` level.
 
-  >>> import sys
-  >>> logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+  >>> rtconfig._printLogs()
   >>> logging.getLogger('cache_remote').setLevel(level=logging.WARN)
 
 Issuing Notarized Badges
@@ -495,7 +494,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
 if __name__ == '__main__':  # pragma: no cover
     def _integration_test():  # pragma: no cover
         from io import open as io_open
-        from os.path import join as path_join, exists as path_exists
+        from os.path import join as joinpath, exists
         from urllib2 import build_opener
         from datetime import datetime
         from sys import argv, path as sys_path
@@ -503,7 +502,7 @@ if __name__ == '__main__':  # pragma: no cover
         from sqlalchemy import create_engine
         import ldap
 
-        cwd = Path('.', (io_open, path_join, path_exists))
+        cwd = Path('.', open=io_open, joinpath=joinpath, exists=exists)
 
         ini = cwd / 'integration-test.ini'
 

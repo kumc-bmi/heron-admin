@@ -238,7 +238,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
 if __name__ == '__main__':  # pragma nocover
     def _script():  # pragma nocover
         from io import open as io_open
-        from os.path import join as path_join, exists as path_exists
+        from os.path import join as joinpath, exists
         from sys import argv, stdout
         from datetime import datetime
         import logging
@@ -253,7 +253,7 @@ if __name__ == '__main__':  # pragma nocover
         else:
             attrs = []
 
-        cwd = Path('.', (io_open, path_join, path_exists))
+        cwd = Path('.', open=io_open, joinpath=joinpath, exists=exists)
 
         [ls] = RunTime.make([LDAPService],
                             ini=cwd / 'integration-test.ini',
