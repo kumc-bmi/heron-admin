@@ -318,7 +318,7 @@ class RepositoryLogin(Token):
         except KeyError:
             log.info('i2b2_login: redirect to disclaimer')
             return HTTPSeeOther(req.route_url(self._disclaimer_route))
-        except heron_policy.NoPermission, np:
+        except heron_policy.NoPermission as np:
             log.error('i2b2_login: NoPermission')
             return HTTPForbidden(detail=np.message)
 
