@@ -173,6 +173,7 @@ import rtconfig
 import jndi_util
 import ocap_file
 import i2b2metadata
+from sqlite_mem import _test_engine
 
 CONFIG_SECTION = 'i2b2pm'
 
@@ -485,9 +486,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
     @singleton
     @provides((orm.session.Session, CONFIG_SECTION))
     def pm_sessionmaker(self):
-        from jdbc_test import sqlite_memory_engine
-
-        engine = sqlite_memory_engine()
+        engine = _test_engine()
         Base.metadata.create_all(engine)
         return orm.session.sessionmaker(engine)
 

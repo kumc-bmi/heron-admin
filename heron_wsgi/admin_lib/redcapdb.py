@@ -19,12 +19,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 import rtconfig
 from ocap_file import Path
-try:
-    import sqlite3  # noqa. native cpython
-    use_jdbc = False
-except ImportError:
-    from jdbc_test import SqliteJDBC
-    use_jdbc = True
+from sqlite_mem import _test_engine
 
 log = logging.getLogger(__name__)
 Base = declarative_base()
@@ -341,15 +336,6 @@ class Mock(injector.Module, rtconfig.MockMixin):
     @classmethod
     def mods(cls):
         return [cls(), SetUp()]
-
-
-def _test_engine():
-    from sqlalchemy import create_engine
-    memory = 'sqlite://'
-    if use_jdbc:
-        return create_engine(memory, module=SqliteJDBC)
-    else:
-        return create_engine(memory)
 
 
 def add_test_eav(s, project_id, event_id, e, avs):
