@@ -695,7 +695,7 @@ def team_params(lookup, uids):
     r'''
     >>> import pprint
     >>> (mc, ) = medcenter.Mock.make([medcenter.MedCenter])
-    INFO:cache_remote:LDAPService@2 cache initialized
+    INFO:cache_remote:LDAPService@1 cache initialized
     >>> pprint.pprint(list(team_params(mc.peer_badge,
     ...                                ['john.smith', 'bill.student'])))
     ... # doctest: +ELLIPSIS
