@@ -254,7 +254,7 @@ class MockIO(object):
     def shuffle(self, items):
         n = (self._rng_state * 2 + 1) % 101
         self._rng_state = n
-        n = n % len(items)
+        n = n % len(items) or len(items)
         items[:] = [it
                     for k in range(n)
                     for it in items[k % n::n]]
