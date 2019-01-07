@@ -257,7 +257,7 @@ class SecureSurvey(object):
                 retryCount = retryCount - 1
 
         if retryCount == 0:
-            log.info('Could not reconnect! Manually supplying event id, and timestamp for {}'.format(email))
+            log.info('Could not reconnect! Manually supplying event id, and timestamp for {0}'.format(email))
             eventResponse = (known_record_id, known_sig_time)
 
         # placing tuple in list, to follow the original comment
