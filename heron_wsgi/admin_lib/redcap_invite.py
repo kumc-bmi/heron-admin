@@ -245,16 +245,16 @@ class SecureSurvey(object):
             try:
                 # Attempt Connection To REDCap DB
                 conn = self.__connect()
-                event_id = conn.execute(self._event_q(self.survey_id)).scalar()
-                q = self._response_q(email, self.survey_id, event_id)
-                timestamp = conn.execute(q).fetchall()
-                return timestamp
-
             except OperationalError:
                 log.info(
                     'MySQL Connection Failed, trying {0} more times...'.format(
                         max_retries - retryCount))
                 retryCount = retryCount - 1
+            else:
+                event_id = conn.execute(self._event_q(self.survey_id)).scalar()
+                q = self._response_q(email, self.survey_id, event_id)
+                timestamp = conn.execute(q).fetchall()
+                return timestamp
 
         if retryCount == 0:
             log.info('Could not reconnect! Manually supplying event id, and timestamp for {0}'.format(email))
@@ -311,7 +311,7 @@ def _integration_test(argv, io_open, Random, create_engine,
 
 def _explore(email_addr, saa):
     log.info('response to survey %s from %s?', saa.survey_id, email_addr)
-    response = saa.response(email_addr)
+    response = saa.responses(email_addr)
     if response:
         record, when = response
         log.info('record %s completed %s', record, when)
