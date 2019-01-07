@@ -252,7 +252,7 @@ class SecureSurvey(object):
 
             except OperationalError:
                 log.info(
-                    'MySQL Connection Failed, trying {} more times...'.format(
+                    'MySQL Connection Failed, trying {0} more times...'.format(
                         max_retries - retryCount))
                 retryCount = retryCount - 1
 
@@ -288,10 +288,12 @@ class SecureSurvey(object):
 
 
 class MockIO(object):
-    def __init__(self):
+    def __init__(self, configure_logging=False):
         from random import Random
         self.rng = Random(1)
         self.connect = redcapdb.Mock.engine().connect
+        if configure_logging:
+            logging.basicConfig(level=logging.DEBUG)
 
 
 def _integration_test(argv, io_open, Random, create_engine,
