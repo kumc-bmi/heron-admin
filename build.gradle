@@ -110,6 +110,8 @@ repositories {
 task doctests(type: JavaExec) {
   classpath = sourceSets.main.runtimeClasspath
 
+  systemProperty "org.sqlite.tmpdir", "/var/tmp" // see below
+
   main = 'org.python.util.jython'
   environment PYTHONPATH: '.:heron_wsgi:heron_wsgi/admin_lib'
   args 'rundoctests.py'
@@ -120,6 +122,11 @@ check.dependsOn doctests
 task testSqliteJdbc(type: JavaExec) {
   group = 'verification'
   classpath = sourceSets.main.runtimeClasspath
+
+  // avoid: java.lang.UnsatisfiedLinkError​: ​org.sqlite.core.NativeDB
+  // when /tmp is mounted noexec
+  // see https://github.com/xerial/sqlite-jdbc/issues/97
+  systemProperty "org.sqlite.tmpdir", "/var/tmp"
 
   workingDir 'heron_wsgi/admin_lib'
   main = 'org.python.util.jython'
