@@ -123,8 +123,8 @@ a `TrainingRecordsRd`::
 
 Now let's look up training for Sam, whose username is `sssstttt`::
 
-    >>> rd['sssstttt'].expired
-    u'2000-02-04 12:34:56.000000'
+    >>> str(rd['sssstttt'].expired)
+    '2000-02-04 12:34:56'
 
 .. note:: TODO: Integrate a story-style name into test data.
 
