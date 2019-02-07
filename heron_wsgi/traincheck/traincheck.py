@@ -186,6 +186,7 @@ def main(stdout, access):
             doc = svc.get(k)
             try:
                 name, data = admin.docRecords(doc)
+                data = filter(cls.record_ok, data)
                 admin.put(name, cls.parse_dates(data))
             except StopIteration:
                 raise SystemExit('no records in %s' % k)
@@ -234,6 +235,16 @@ class TableDesign(object):
 
         return [Column(field.tag, ty(field.text))
                 for field in XML(cls.markup)]
+
+    @classmethod
+    def example_record(cls):
+        doc = XML('<root>' + cls.markup + '</root>')
+        cols = [c.name for c in HSR(None).table(cls.__name__).columns]
+        return relation.docToRecords(doc, cols).next()
+    
+    @classmethod
+    def record_ok(cls, record):
+        return True
 
     @classmethod
     def xml_table(cls, meta, db_name):
@@ -288,6 +299,21 @@ class CRS(TableDesign):
         <dteExpiration>2014-05-06T19:15:48</dteExpiration>
       </CRS>
     '''
+
+    @classmethod
+    def record_ok(cls, record):
+        """
+        >>> r = CRS.example_record()
+        >>> CRS.record_ok(r)
+        True
+        >>> CRS.record_ok(r._replace(StudentID='OT-1234'))
+        False
+        """
+        if not record.StudentID.isdigit():
+            log.warning('%s: expected digits for StudentID: %s',
+                        record.memberEmail, record.StudentID)
+            return False
+        return True
 
 
 class GRADEBOOK(TableDesign):
