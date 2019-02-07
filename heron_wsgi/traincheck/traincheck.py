@@ -302,7 +302,7 @@ class CRS(TableDesign):
 
     @classmethod
     def record_ok(cls, record):
-        """Filter non-numeric StudentID
+        r"""Filter non-numeric StudentID
 
         >>> r = CRS.example_record()
         >>> CRS.record_ok(r)
@@ -310,13 +310,17 @@ class CRS(TableDesign):
         >>> CRS.record_ok(r._replace(StudentID='OT-1234'))
         False
 
+        Handle whitespace
+        >>> CRS.record_ok(r._replace(StudentID='1234 \n'))
+        True
+
         Handle null StudentID
 
         >>> CRS.record_ok(r._replace(StudentID=None))
         True
         """
         if not (record.StudentID is None or
-                record.StudentID.isdigit()):
+                record.StudentID.strip().isdigit()):
             log.warning('%s: expected digits for StudentID: %s',
                         record.memberEmail, record.StudentID)
             return False
