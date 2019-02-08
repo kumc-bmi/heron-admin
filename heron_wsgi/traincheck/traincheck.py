@@ -321,8 +321,8 @@ class CRS(TableDesign):
         """
         if not (record.StudentID is None or
                 record.StudentID.strip().isdigit()):
-            log.warning('%s: expected digits for StudentID: %s',
-                        record.memberEmail, record.StudentID)
+            log.warning('%s %s: expected digits for StudentID: %s',
+                        record.dtePassed, record.memberEmail, record.StudentID)
             return False
         return True
 
