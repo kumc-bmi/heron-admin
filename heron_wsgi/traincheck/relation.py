@@ -69,6 +69,8 @@ def mock_xml_records(template, qty):
 
     def ymd():
         n[0] += 29
+        if n[0] % 7 == 0:
+            return None
         return '%04d-%02d-%02dT12:34:56' % (
             2000, n[0] % 12 + 1, (n[0] * 3) % 26 + 1)
 

@@ -59,8 +59,8 @@ The course completion reports are now stored in the database::
     >>> for exp, name, course in io._db.execute("""
     ...     select dteExpiration, InstitutionUserName, strGroup
     ...     from CRS limit 3"""):
-    ...     print exp[:10], name, course
-    2000-12-22 ssttt ssstt
+    ...     print exp and exp[:10], name, course
+    None ssttt ssstt
     2000-01-13 sss CITI Biomedical Researchers
     2000-02-04 sssstttt CITI Biomedical Researchers
 
@@ -237,12 +237,6 @@ class TableDesign(object):
                 for field in XML(cls.markup)]
 
     @classmethod
-    def example_record(cls):
-        doc = XML('<root>' + cls.markup + '</root>')
-        cols = [c.name for c in HSR(None).table(cls.__name__).columns]
-        return relation.docToRecords(doc, cols).next()
-    
-    @classmethod
     def record_ok(cls, record):
         return True
 
@@ -304,7 +298,8 @@ class CRS(TableDesign):
     def record_ok(cls, record):
         r"""Filter non-numeric StudentID
 
-        >>> r = CRS.example_record()
+        >>> markup = relation.mock_xml_records(CRS.markup, 2)
+        >>> r = relation.docToRecords(XML(markup)).next()
         >>> CRS.record_ok(r)
         True
         >>> CRS.record_ok(r._replace(StudentID='OT-1234'))
@@ -321,8 +316,13 @@ class CRS(TableDesign):
         """
         if not (record.StudentID is None or
                 record.StudentID.strip().isdigit()):
-            log.warning('StudentID: expected digits: %s\n%s',
-                        record.StudentID, record)
+            if record.dteExpiration:
+                log.warning('StudentID: expected digits: %s\n%s',
+                            record.StudentID, record)
+            else:
+                # record is filtered out by citi_query anyway;
+                # don't log a warning.
+                pass
             return False
         return True
 
