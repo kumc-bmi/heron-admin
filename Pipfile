@@ -27,6 +27,7 @@ pyramid_mailer = "*"
 PySimpleSOAP = "*"
 PyMySQL = "*"
 typing = "*"
+waitress = "*"
 
 [requires]
 python_version = "2.7"
