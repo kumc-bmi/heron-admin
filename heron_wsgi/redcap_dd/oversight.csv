@@ -4,7 +4,7 @@ full_name,heron_oversight_request,,text,"Full Name",,,,,,,,,,,,,
 user_id,heron_oversight_request,,text,"User ID",,,,,,,,,,,,,
 project_title,heron_oversight_request,,text,"Title of the Research: ",,,,,,,,y,,,,,
 date_of_expiration,heron_oversight_request,,text,"Date of expiration",,"* Leave blank if requesting access until the user KUMC account is canceled or leaves KUMC",date_mdy,,,,,,,,,,
-what_for,heron_oversight_request,,radio,"Purpose of request:","1, Sponsorship | 2, Data Use","This choice is based on your previous selection.",,,,,,y,,,,,
+what_for,heron_oversight_request,,radio,"Purpose of request:","1, HERON Sponsorship | 3, ACT Sponsorship (CTSA National query tool- patient counts only) | 2, Data Use","This choice is based on your previous selection.",,,,,,y,,,,,
 description_sponsor,heron_oversight_request,"Sponsor Heron System Usage Users 
 
 The individuals identified below shall be referred to hereinafter as the Sponsor's ""Research Team Members"". They will be required to individually sign a HERON System Access Agreement reinforcing their responsibilities when using HERON for prepraratory to research activities. 
@@ -21,7 +21,7 @@ D. My research team members will restrict individual queries to bona fide resear
 
 E. That the research to be conducted is in an area of my research team members' scientific expertise; 
 
-F. Not to identify, or attempt to identify, data contained in the Data Set(s) by any means, including using participating organization's clinical systems (Examples: O2, EPIC, IDX, Siemens) or other information together with the Data Set (Example: voter registration records), or to contact any individual whose identity is discovered through the Data Set. ",notes,"Description of the Preparatory to Research Activities",,,,,,,"[what_for] = '1'",y,,,,,
+F. Not to identify, or attempt to identify, data contained in the Data Set(s) by any means, including using participating organization's clinical systems (Examples: O2, EPIC, IDX, Siemens) or other information together with the Data Set (Example: voter registration records), or to contact any individual whose identity is discovered through the Data Set. ",notes,"Description of the Preparatory to Research Activities",,,,,,,"[what_for] = '1' or [what_for] = '3'",y,,,,,
 data_use_description,heron_oversight_request,"UNIVERSITY OF KANSAS MEDICAL CENTER HERON DATA USE AGREEMENT
 
 I, (""Data Recipient""), acknowledge that as a condition of receiving and using any data component(s) from the University of Kansas Medical Center (KUMC) Healthcare Enterprise Repository for Ontological Narration (""HERON""), I must comply with the terms and conditions of this HERON Data Use Agreement (the ""Agreement""). I understand that the HERON data provided pursuant to this Agreement is a limited data set as defined in section 45 CFR 164.514(e) of HIPAA's Standards for Privacy of Individually Identifiable Health Information, as amended from time to time, and shall be referred to herein as the ""Limited Data Set."" I acknowledge that violation of this Agreement may subject me to sanctions including but not limited to loss of request privileges and/or institutional disciplinary action. 
@@ -52,9 +52,9 @@ D. Data Recipient agrees to require his/her Research Team Members to agree to (i
 
 E. Data Recipient shall not collaborate or allow collaboration with industry regarding access to or use of the Limited Data Set, except with the prior written consent of the Participant that supplied the data. 
 
-F. To report in writing to the KUMC Privacy Official at jwessel@kumc.edu  any use or disclosure of any portion of the Limited Data Set not covered by this Agreement that becomes known, including without limitation, any disclosure to an unauthorized subcontractor or any other individual or entity not named in Section 1 above, within 48 hours of its discovery. The Limited Data Set shall exclude the following direct identifiers of the individual or of relatives, employers, or household members of the individual: names, postal address information (other than town or city, state, and zip code), telephone numbers, fax numbers, electronic mail addresses, social security numbers, medical record numbers, health plan beneficiary numbers, account numbers, certificate/license numbers, vehicle identifiers and serial numbers (including license plate numbers), device identifiers and serial numbers, web universal resource locators (URLs), internet protocol (IP) address numbers, biometric identifiers (including finger and voice prints), full face photographic images, and any comparable images. See 45 C.F.R. 164.514(e)(2). In the event that Data Recipient becomes aware of the inclusion in the Limited Data Set of such an identifier set forth in 164.514(e)(2), Data Recipient shall report such occurrence to HERON program staff (email: phi_informatics@kumc.edu phone: 913-588-4874) and to the KUMC Privacy Official (email: jwessel@kumc.edu ). 
+F. To report in writing to the KUMC Privacy Official at hipaa@kumc.edu  any use or disclosure of any portion of the Limited Data Set not covered by this Agreement that becomes known, including without limitation, any disclosure to an unauthorized subcontractor or any other individual or entity not named in Section 1 above, within 48 hours of its discovery. The Limited Data Set shall exclude the following direct identifiers of the individual or of relatives, employers, or household members of the individual: names, postal address information (other than town or city, state, and zip code), telephone numbers, fax numbers, electronic mail addresses, social security numbers, medical record numbers, health plan beneficiary numbers, account numbers, certificate/license numbers, vehicle identifiers and serial numbers (including license plate numbers), device identifiers and serial numbers, web universal resource locators (URLs), internet protocol (IP) address numbers, biometric identifiers (including finger and voice prints), full face photographic images, and any comparable images. See 45 C.F.R. 164.514(e)(2). In the event that Data Recipient becomes aware of the inclusion in the Limited Data Set of such an identifier set forth in 164.514(e)(2), Data Recipient shall report such occurrence to HERON program staff (email: phi_informatics@kumc.edu phone: 913-588-4874) and to the KUMC Privacy Official (email: hipaa@kumc.edu ). 
 
-G. Data User shall not, without the prior written consent of the DROC, disclose the Limited Data Set on the basis that such disclosure is required by law without notifying KUMC Office of General Counsel (913-588-7281) and the KUMC Privacy Official (email: jwessel@kumc.edu ), so that KUMC shall have the opportunity to object to the disclosure and to seek appropriate relief. To the extent that KUMC decides to assume responsibility for challenging the validity of such request, Data Recipient will cooperate fully with KUMC in any such challenge. 
+G. Data User shall not, without the prior written consent of the DROC, disclose the Limited Data Set on the basis that such disclosure is required by law without notifying KUMC Office of General Counsel (913-588-7281) and the KUMC Privacy Official (email: hipaa@kumc.edu ), so that KUMC shall have the opportunity to object to the disclosure and to seek appropriate relief. To the extent that KUMC decides to assume responsibility for challenging the validity of such request, Data Recipient will cooperate fully with KUMC in any such challenge. 
 
 H. That the disposition of any intellectual property deriving from HERON data acquisition and analysis requires the reporting of potential ""discoveries"" to the KU Center for Technology Commercialization (913-588-5439). 
 
@@ -86,19 +86,32 @@ C. Data Disclaimer. KUMC, the University of Kansas Hospital Authority and Kansas
 
 D. Third Party Beneficiaries. The University of Kansas Hospital Authority and Kansas University Physicians, Inc. are third-party beneficiaries of this Agreement and shall be entitled to enforce any obligation, responsibility or claim of KUMC pursuant to this Agreement. 
 
-E. Vital status information includes data from the Social Security Death Master File.  Misuse of the Limited Access Death Master File, NTIS, U.S. Department of Commerce data is subject to penalties under provisions of 15 CFR ง 1110.200.
+E. Vital status information includes data from the Social Security Death Master File.  Misuse of the Limited Access Death Master File, NTIS, U.S. Department of Commerce data is subject to penalties under provisions of 15 CFR ยง 1110.200.
 
-By submitting this form, I agree to the foregoing and confirm my electronic signature to this Agreement (as specified in the full name and user id fields). ",notes,"Data Use Description",,,,,,,"[what_for] = '2'",y,,,,,
+By submitting this form, I agree to the foregoing and confirm my electronic signature to this Agreement (as specified in the full name and user id fields). ",notes,"Data Use Description: Please describe details of your study including inclusion, exclusion critieria",,,,,,,"[what_for] = '2'",y,,,,,
 use_0f_data,heron_oversight_request,,checkbox,"How do you plan to use the data? ","8, Class Project | 1, Grant Proposal | 2, Outcomes Review | 3, Patient Recruitment | 4, Presentation | 5, Publication | 6, Retrospective Chart Review | 7, Other","check all that apply",,,,,"[what_for] = '2'",y,,,,,
 data_use_other,heron_oversight_request,,text,"Define other",,,,,,,"[use_0f_data(7)] = '1'",,,,,,
-patient_recruitment,heron_oversight_request,,descriptive,"Patient contact information is available through the Frontiers and Pioneers registries.  Learn about <a href=""http://frontiersresearch.org/frontiers/participant-registry"">Frontiers and Pioneers Participant Registries </a>",,,,,,,"[use_0f_data(3)] = '1'",,,,,,
-is_identified_data,heron_oversight_request,,yesno,"Identified Data?",,,,,,,"[what_for] = '2'",y,,,,,
+is_identified_data,heron_oversight_request,,yesno,"Are you requesting Identified Data? (i.e. mrns)",,,,,,,"[what_for] = '2'",y,,,,,
 identified_purpose,heron_oversight_request,,radio,"Project purpose?","1, Research | 2, Quality Improvement",,,,,,"[is_identified_data] = '1' and [what_for] = '2'",y,,,,,
 hsc_number,heron_oversight_request,,text,"HSC/IRB number",,,integer,,,,"[what_for] = '2' and [is_identified_data] = '1' and [identified_purpose] = '1'",y,,,,,
-retrospective,heron_oversight_request,,yesno,"Is this a retrospective study?",,,,,,,"[identified_purpose] = '1'",,,,,,
+retrospective,heron_oversight_request,,radio,"Is this a retrospective study?","1, Yes | 0, No, we will be recruiting patients | 2, No, we need data only",,,,,,"[identified_purpose] = '1'",,,,,,
+recruit_strategy,heron_oversight_request,"Recruitment Information",checkbox,"For study recruitment, please select which areas you would like to use for recruitment: ","1, Patients From Your Own Clinic (must have a treating relationship with these patients) | 2, Patients From the Pioneers Registry | 3, Patients From another Department (Medical Informatics will help with the approval process)",,,,,,"[retrospective] = '0'",,,,,,
+researcher_affiliation,heron_oversight_request,,text,"What is your departmental or divisional affiliation?",,,,,,,"[recruit_strategy(1)] = '1' or [recruit_strategy(3)] = '1'",,,,,,
+recruit_dept,heron_oversight_request,,checkbox,"What divisions/departments would you like to recruit from? Medical Informatics will assist with the department approval.
+
+Please note: These are the departments currently participating, if your department would like to be added to the list please email heron@kumc.edu","4, Cardiology | 8, Family Medicine | 13, Internal Medicine | 15, Neurology | 20, Otolaryngology | 21, Pediatrics",,,,,,"[recruit_strategy(3)] = '1'",,,,,,
+are_any_of_co_investigator,heron_oversight_request,,yesno,"Are any Co-Investigators affiliated with the University of Kansas Health System Departments checked above?",,,,,,,"[recruit_strategy(3)] = '1'",,,,,,
+name_affiliation_and_email,heron_oversight_request,,notes,"Name, affiliation, and email of any co-investigators",,,,,,y,"[are_any_of_co_investigator] = '1'",,,,,,
+recruitment_type,heron_oversight_request,,checkbox,"Will you be recruiting patients in the clinic or via phone/mail/e-mail?","1, In Clinic Recruitment | 2, Phone, Mail, E-Mail Recruitment",,,,,,"[recruit_strategy(3)] = '1'",,,,,,
+workload_v2,heron_oversight_request,,notes,"Please describe any additional duties or work that the department staff will be asked to take on as a result of this project or study.",,"ie additional paper work or training",,,,,"[recruit_strategy(3)] = '1'",,,,,,
+opportunity_v2,heron_oversight_request,,yesno,"Is there an opportunity for faculty and/or residents to be added to the study?",,,,,,,"[recruit_strategy(3)] = '1'",,,,,,
+benefit_v3,heron_oversight_request,,notes,"Please describe how this study will advance the delivery of care in each of these departments?",,,,,,,"[recruit_strategy(3)] = '1'",y,,,,,
+compensation_v2,heron_oversight_request,,yesno,"Is compensation available for study participants?",,,,,,,"[recruit_strategy(3)] = '1'",,,,,,
+describe_compensation_v2,heron_oversight_request,,notes,"Please describe the compensation.",,,,,,,"[compensation_v2] = '1'",,,,,,
+recruit_additional_info,heron_oversight_request,,notes,"Please provide any additional information regarding patient recruitment. ",,,,,,,"[retrospective] = '0'",,,,,,
+irb_protocol,heron_oversight_request,"IRB Information",file,"Attach IRB protocol",,"* please attach IRB protocol or IRB letter to help the DROC evaluate your request",,,,,"[what_for] = '2' and [is_identified_data] = '1' and [identified_purpose] = '1'",y,,,,,
 irb_start_date,heron_oversight_request,,text,"Provide the IRB- approved start date for records being accessed:",,,date_mdy,,,,"[retrospective] = '1'",,,,,,
 irb_end_date,heron_oversight_request,,text,"Provide the IRB approved end date for records being accessed:",,,date_mdy,,,,"[retrospective] = '1'",,,,,,
-irb_protocol,heron_oversight_request,,file,"Attach IRB protocol",,"* please attach IRB protocol or IRB letter to help the DROC evaluate your request",,,,,"[what_for] = '2' and [is_identified_data] = '1' and [identified_purpose] = '1'",y,,,,,
 qi_letter,heron_oversight_request,,file,"Attach QI Letter of Determination",,,,,,,"[identified_purpose] = '2' and [what_for] = '2' and [is_identified_data] = '1'",y,,,,,
 qi_question_1,heron_oversight_request,,text,"What is the problem you are addressing?",,,,,,,"[identified_purpose] = '2' and [what_for] = '2' and [is_identified_data] = '1'",y,,,,,
 qi_question_2,heron_oversight_request,,text,"What data are needed?",,,,,,,"[identified_purpose] = '2' and [what_for] = '2' and [is_identified_data] = '1'",y,,,,,
@@ -150,37 +163,41 @@ user_id_10,heron_oversight_request,,text,"User Id #10",,,,,,,"[user_id_9] > ''",
 name_etc_10,heron_oversight_request,,notes,"Name, Title, Department",,,,,,y,"[user_id_10] > ''",,,,,,
 kumc_employee_10,heron_oversight_request,,yesno,"KUMC Employee?",,,,,,,"[user_id_10] > ''",y,,,,,
 affiliation_10,heron_oversight_request,,notes,Affiliation,,"* For non-KUMC employees, include the position and employer for any students or staff who employed by another institution where there may need to be clarification regarding conflict of interest or competitive concerns between their parent institution and KUMC, KUH or UKP.",,,,,"[kumc_employee_10] = '0'",y,,,,,
-text_title,kuh_review,,calc,Title,[project_title],,,,,,,,,,,,
-textarea_description,kuh_review,,calc,"Description of the Preparatory to Research Activities:",[description_sponsor],,,,,,[what_for]=1,,,,,,
-textarea_datausedesc,kuh_review,,calc,"Description of Data Use Request",[data_use_description],,,,,,,,,,,,
-text_n1,kuh_review,,calc,Investigator,[full_name],,,,,,,,,,,,
-orig_kuh,kuh_review,,linkform,"Original Request",,heron_oversight_request,,,,,,,,,,,
+text_title,kuh_review,,descriptive,"Title: [project_title]",,,,,,,,,,,,,
+textarea_description,kuh_review,,descriptive,"Description of the Preparatory to Research Activities: [description_sponsor]",,,,,,,[what_for]=1,,,,,,
+textarea_datausedesc,kuh_review,,descriptive,"Description of Data Use Request: [data_use_description]",,,,,,,"[what_for] = '2'",,,,,,
+text_n1,kuh_review,,descriptive,"Investigator: [full_name]",,,,,,,,,,,,,
 approve_kuh,kuh_review,,radio,"Approve on behalf of KUH?","1, Yes | 2, No | 3, Defer to committee meeting",,,,,,,y,,,,,
 notes_kuh,kuh_review,,notes,Notes,,"comments, rationale",,,,,,,,,,,
-textarea_copy_kumc_notes,kuh_review,,calc,"KUMC review notes",[notes_kumc],"copy of review notes by KUMC, for convenience",,,,,,,,,,,
-text_f1,kumc_review,,calc,Title,[project_title],,,,,,,,,,,,
-textarea_description2,kumc_review,,calc,"Description of the Preparatory to Research Activities",[description_sponsor],,,,,,[what_for]=1,,,,,,
-textarea_datausedesc2,kumc_review,,calc,"Description of Data Use Request",[data_use_description],,,,,,[what_for]=2,,,,,,
-text_investigator,kumc_review,,calc,Investigator,[full_name],,,,,,,,,,,,
-orig_kumc,kumc_review,,linkform,"Original Request",,heron_oversight_request,,,,,,,,,,,
+textarea_copy_kumc_notes,kuh_review,,descriptive,"KUMC review notes: [notes_kumc]",,"copy of review notes by KUMC, for convenience",,,,,,,,,,,
+text_f1,kumc_review,,descriptive,"Title: [project_title]",,,,,,,,,,,,,
+textarea_description2,kumc_review,,descriptive,"Description of the Preparatory to Research Activities: [description_sponsor]",,,,,,,[what_for]=1,,,,,,
+textarea_datausedesc2,kumc_review,,descriptive,"Description of Data Use Request: [data_use_description]",,,,,,,[what_for]=2,,,,,,
+text_investigator,kumc_review,,descriptive,"Investigator: [full_name]",,,,,,,,,,,,,
 approve_kumc,kumc_review,,radio,"Approve on behalf of KUMC","1, Yes | 2, No | 3, Defer to committee meeting",,,,,,,y,,,,,
 notes_kumc,kumc_review,,notes,Notes,,"comments, rationale, ...",,,,,,,,,,,
-text_t2,kupi_review,,calc,Title:,[project_title],,,,,,,,,,,,
-textarea_description3,kupi_review,,calc,"Description of the Preparatory to Research Activities",[description_sponsor],,,,,,[what_for]=1,,,,,,
-textarea_datausedesc3,kupi_review,,calc,"Description of Data Use Request",[data_use_description],,,,,,[what_for]=2,,,,,,
-text_investigator3,kupi_review,,calc,Investigator,[full_name],,,,,,,,,,,,
-l3,kupi_review,,linkform,"Original Request",,heron_oversight_request,,,,,,,,,,,
+text_t2,kupi_review,,descriptive,"Title: [project_title]",,,,,,,,,,,,,
+textarea_description3,kupi_review,,descriptive,"Description of the Preparatory to Research Activities: [description_sponsor]",,,,,,,[what_for]=1,,,,,,
+textarea_datausedesc3,kupi_review,,descriptive,"Description of Data Use Request: [data_use_description]",,,,,,,[what_for]=2,,,,,,
+text_investigator3,kupi_review,,descriptive,"Investigator: [full_name]",,,,,,,,,,,,,
 approve_kupi,kupi_review,,radio,"Approve on behalf of KUPI?","1, Yes | 2, No | 3, Defer to committee meeting",,,,,,,y,,,,,
 notes_kupi,kupi_review,,notes,Notes,,"comments, rationale, ...",,,,,,,,,,,
-textarea_kumc_notes_copy2,kupi_review,,calc,"KUMC Review Notes",[notes_kumc],"copy of review notes by KUMC, for convenience",,,,,,,,,,,
-search,data_request_details,,calc,"HERON Search Name",[saved_search_name_in_heron],,,,,,,,,,,,
-id_or_deid,data_request_details,,calc,"Is the data identified? 
-1= Yes
-0 = No",[is_identified_data],,,,,,,,,,,,
-kumc_notes,data_request_details,,calc,"Notes from KUMC review",[notes_kumc],,,,,,,,,,,,
+textarea_kumc_notes_copy2,kupi_review,,descriptive,"KUMC Review Notes: [notes_kumc]",,"copy of review notes by KUMC, for convenience",,,,,,,,,,,
+fm_title,family_medicine_review,,descriptive,"Title: [project_title]",,,,,,,,,,,,,
+fm_dua_description,family_medicine_review,,descriptive,"Description of Data Use Request: [data_use_description]",,,,,,,,,,,,,
+fm_full_name,family_medicine_review,,descriptive,"Investigator: [full_name]",,,,,,,,,,,,,
+fm_approval,family_medicine_review,,yesno,"Approve on behalf of family medicine? ",,,,,,,,,,,,,
+fm_notes,family_medicine_review,,notes,"Family Medicine Approval / Denial Notes",,,,,,,,,,,,,
+fm_attachment,family_medicine_review,,file,"Please upload any relevant documentation",,,,,,,,,,,,,
+fm_approver,family_medicine_review,,text,"Name of Family Medicine Representative Approving Request",,,,,,,,,,,,,
+fm_date,family_medicine_review,,text,"Date of Approval",,,date_mdy,,,,,,,,,,
+search,data_request_details,,descriptive,"HERON Search Name: [saved_search_name_in_heron]",,,,,,,,,,,,,
+id_or_deid,data_request_details,,descriptive,"Is the data identified? [is_identified_data]
+",,,,,,,,,,,,,
+kumc_notes,data_request_details,,descriptive,"Notes from KUMC review: [notes_kumc]",,,,,,,,,,,,,
 extract_by_who,data_request_details,,radio,"Who is pulling the data?","1, Maren | 2, Li | 3, Sravani | 4, Mei | 5, Tamara | 6, Other",,,,,,,,,,,,
 extract_other,data_request_details,,text,"If other, who is pulling data? ",,,,,,,"[extract_by_who] = '6'",,,,,,
-pi,data_request_details,,calc,"Principal investigator",[user_id],,,,,,,,,,,,
+pi,data_request_details,,descriptive,"Principal investigator: [user_id]",,,,,,,,,,,,,
 uid1_agree,data_request_details,,sql,"Check for ""[user_id_1]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_1 from redcap_data where project_id = 238 and field_name = 'user_id_1') c on c.user_id_1 = a.user_id;",,autocomplete,,,,,,,,,,
 uid2_agree,data_request_details,,sql,"Check for ""[user_id_2]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_2 from redcap_data where project_id = 238 and field_name = 'user_id_2') c on c.user_id_2 = a.user_id;",,autocomplete,,,,,,,,,,
 uid3_agree,data_request_details,,sql,"Check for ""[user_id_3]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_3 from redcap_data where project_id = 238 and field_name = 'user_id_3') c on c.user_id_3 = a.user_id;",,autocomplete,,,,,,,,,,
@@ -191,7 +208,7 @@ uid7_agree,data_request_details,,sql,"Check for ""[user_id_7]"" in the DUA list 
 uid8_agree,data_request_details,,sql,"Check for ""[user_id_8]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_8 from redcap_data where project_id = 238 and field_name = 'user_id_8') c on c.user_id_8 = a.user_id;",,autocomplete,,,,,,,,,,
 uid9_agree,data_request_details,,sql,"Check for ""[user_id_9]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_9 from redcap_data where project_id = 238 and field_name = 'user_id_9') c on c.user_id_9 = a.user_id;",,autocomplete,,,,,,,,,,
 uid10_agree,data_request_details,,sql,"Check for ""[user_id_10]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_10 from redcap_data where project_id = 238 and field_name = 'user_id_10') c on c.user_id_10 = a.user_id;",,autocomplete,,,,,,,,,,
-dua_title_of_project,data_request_fulfillment,,calc,Title,[project_title],,,,,,,,,,,,
+dua_title_of_project,data_request_fulfillment,,descriptive,"Title: [project_title]",,,,,,,,,,,,,
 dua_type_of_request,data_request_fulfillment,,radio,"Type of request","1, Data Request | 5, PCORnet Data Request | 2, Sponsorship | 3, Not approved/invalid request | 4, Not applicable",,,,,,,,,,,,
 attrition,data_request_fulfillment,,file,"Attrition Table",,,,,,,"[dua_type_of_request] = '5'",,,,,,
 dua_is_identified,data_request_fulfillment,,yesno,"Identified data?",,,,,,,"[dua_type_of_request] = '1'",y,,,,,
