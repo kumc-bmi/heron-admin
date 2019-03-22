@@ -6,7 +6,6 @@ import logging
 from sqlalchemy import text, orm, Table, MetaData
 from injector import inject, provides, singleton
 
-import i2b2pm
 import rtconfig
 import ocap_file
 
@@ -142,8 +141,15 @@ class RunTime(rtconfig.IniModule):
 
     def __init__(self, ini, create_engine):
         rtconfig.IniModule.__init__(self, ini)
-        self.__ctx = i2b2pm.RunTime.jboss_context(
+        self.__ctx = RunTime.jboss_context(
             ini, CONFIG_SECTION_MD, create_engine)
+
+    @classmethod
+    def jboss_context(cls, ini, section, create_engine):
+        m = rtconfig.IniModule(ini)
+        rt = m.get_options(['jboss_deploy'], section)
+        jdir = ini / rt.jboss_deploy
+        return jndi_util.JBossContext(jdir, create_engine)
 
     @singleton
     @provides((orm.session.Session, CONFIG_SECTION_MD))

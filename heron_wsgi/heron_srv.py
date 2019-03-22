@@ -50,7 +50,7 @@ def test_home_page_redirects_to_cas():
       'https://example/cas/login?service=http%3A%2F%2Flocalhost%2F'
     '''
     from paste.fixture import TestApp
-    t = TestApp(Mock.make()[0].make_wsgi_app())
+    t = TestApp(Mock.make([HeronAdminConfig])[0].make_wsgi_app())
     r1 = t.get('/', status=303)
     return t, r1
 
@@ -200,7 +200,7 @@ class REDCapLink(Token):
           >>> r5 = t.get('/saa_survey', status=302)
           >>> dict(r5.headers)['Location'].split('&')
           ... # doctest: +NORMALIZE_WHITESPACE
-          ['http://testhost/redcap-host/surveys/?s=qTwAVx',
+          ['http://testhost/redcap-host/surveys/?s=aqFVbr',
            'full_name=Smith%2C+John', 'user_id=john.smith']
 
         Hmm... we're doing a POST to the REDCap API inside a GET.
@@ -218,7 +218,7 @@ class REDCapLink(Token):
           >>> r5 = t.get('/dua_survey', status=302)
           >>> dict(r5.headers)['Location'].split('&')
           ... # doctest: +NORMALIZE_WHITESPACE
-          ['http://testhost/redcap-host/surveys/?s=qTwAVx',
+          ['http://testhost/redcap-host/surveys/?s=aqFVbr',
            'full_name=Smith%2C+John', 'user_id=john.smith']
 
         Hmm... we're doing a POST to the REDCap API inside a GET.
@@ -237,14 +237,14 @@ class REDCapLink(Token):
           >>> r5 = t.get('/team_done/sponsorship', status=302)
           >>> dict(r5.headers)['Location'].split('&')
           ... # doctest: +NORMALIZE_WHITESPACE
-          ['http://testhost/redcap-host/surveys/?s=qTwAVx',
+          ['http://testhost/redcap-host/surveys/?s=aqFVbr',
            'full_name=Smith%2C+John', 'multi=yes', 'user_id=john.smith',
            'what_for=1']
 
           >>> r6 = t.get('/team_done/data_use', status=302)
           >>> dict(r6.headers)['Location'].split('&')
           ... # doctest: +NORMALIZE_WHITESPACE
-          ['http://testhost/redcap-host/surveys/?s=qTwAVx',
+          ['http://testhost/redcap-host/surveys/?s=aqFVbr',
            'full_name=Smith%2C+John', 'multi=yes', 'user_id=john.smith',
            'what_for=2']
 
@@ -370,7 +370,7 @@ class TeamBuilder(Token):
           ...              status=302)
           >>> dict(done.headers)['Location'].split('&')
           ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
-          ['http://testhost/redcap-host/surveys/?s=qTwAVx',
+          ['http://testhost/redcap-host/surveys/?s=aqFVbr',
            'full_name=Smith%2C+John', 'multi=yes',
            'name_etc_1=Smith%2C+John%0AChair+...+Neurology%0ANeurology',
            'user_id=john.smith', 'user_id_1=john.smith', 'what_for=1']
@@ -464,7 +464,7 @@ def server_error_view(context, req):
 class HeronAdminConfig(Configurator):
     '''
     >>> from paste.fixture import TestApp
-    >>> t = TestApp(Mock.make()[0].make_wsgi_app())
+    >>> t = TestApp(Mock.make([HeronAdminConfig])[0].make_wsgi_app())
     >>> r1 = t.post('/decision_notifier', status=200)
     >>> r1
     <Response 200 OK 'notice sent for reco'>

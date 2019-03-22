@@ -345,15 +345,14 @@ class CapabilityStyle(object):
 
 
 class RunTime(IniModule):  # pragma: nocover
-    def __init__(self, ini):
+    def __init__(self, ini, urlopener):
         self._ini = ini
+        self.__urlopener = urlopener
 
     @provides((WebReadable, CONFIG_SECTION))
     @inject(rt=(Options, CONFIG_SECTION))
     def cas_server(self, rt):
-        from urllib2 import build_opener, Request
-
-        return WebReadable(rt.base, build_opener(), Request)
+        return WebReadable(rt.base, self.__urlopener)
 
     @provides((Options, CONFIG_SECTION))
     def opts(self):
@@ -361,12 +360,8 @@ class RunTime(IniModule):  # pragma: nocover
             self._ini, CONFIG_SECTION)
 
     @classmethod
-    def mods(cls, ini):
-        return [RunTime(ini)]
-
-    @classmethod
-    def depgraph(cls, ini):
-        return injector.Injector(cls.mods(ini))
+    def mods(cls, ini, urlopener):
+        return [cls(ini, urlopener)]
 
 
 class LinesUrlOpener(object):
@@ -397,10 +392,9 @@ class Mock(injector.Module, MockMixin):
     @provides((WebReadable, CONFIG_SECTION))
     @inject(rt=(Options, CONFIG_SECTION))
     def cas_server(self, rt):
-        from urllib2 import Request
         ua = LinesUrlOpener(['yes', 'john.smith'])
 
-        return WebReadable(rt.base, ua, Request)
+        return WebReadable(rt.base, ua)
 
     @classmethod
     def mods(cls):

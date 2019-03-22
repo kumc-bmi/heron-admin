@@ -320,12 +320,22 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
       WHERE p.field_name LIKE :field_name_1
 
       >>> print str(cdwho)
-      ...  # doctest: +NORMALIZE_WHITESPACE
+      ...  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
       SELECT cd_record AS record,
       cd_decision AS decision,
       who_userid AS candidate,
       sponsor_userid AS sponsor,
       expire_dt_exp AS dt_exp
+      FROM
+      (SELECT cdwho.cd_record AS cd_record,
+              cdwho.cd_decision AS cd_decision,
+              cdwho.cd_count_1 AS cd_count_1,
+              cdwho.who_record AS who_record,
+              cdwho.who_userid AS who_userid,
+              cdwho.sponsor_record AS sponsor_record,
+              cdwho.sponsor_userid AS sponsor_userid,
+              cdwho.expire_record AS expire_record,
+              cdwho.expire_dt_exp AS expire_dt_exp
         FROM
             (SELECT cd.record AS cd_record,
             cd.decision AS cd_decision,
@@ -379,7 +389,7 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
                     FROM redcap_data
                     WHERE redcap_data.project_id = :project_id_1) AS p
                 WHERE p.field_name = :field_name_4) AS expire
-            ON expire.record = cd.record) AS cdwho
+            ON expire.record = cd.record) AS cdwho)
 
       >>> pprint(cdwho.compile().params)
       {u'count_2': 3,

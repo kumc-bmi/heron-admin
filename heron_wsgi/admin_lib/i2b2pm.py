@@ -153,7 +153,7 @@ The ADMIN role is not project specific:
   >>> auth, js3 = pm.authz('john.smith', 'John Smith', 'REDCap_4')
   >>> js = s.query(User).filter_by(user_id = 'john.smith').one()
   >>> sorted(set([role.user_role_cd for role in js.roles]))
-  ['ADMIN', u'DATA_AGG', u'DATA_DEID', u'DATA_LDS', u'DATA_OBFSC', u'USER']
+  ['ADMIN', 'DATA_AGG', 'DATA_DEID', 'DATA_LDS', 'DATA_OBFSC', 'USER']
   >>> sorted(set([role.project_id for role in js.roles]))
   ['@', u'BlueHeron', u'REDCap_4']
 
@@ -294,7 +294,8 @@ class I2B2PM(ocap_file.Token):
             log.info('found: %s', me)
             me.password, me.status_cd, me.change_date = pw_hash, 'A', t
         # http://docs.sqlalchemy.org/en/rel_0_8/orm/query.html?highlight=query.update#sqlalchemy.orm.query.Query.update # noqa
-        ds.query(UserRole).filter(and_(UserRole.user_id == uid,
+        ds.query(UserRole).filter(and_(
+            UserRole.user_id == uid,
             UserRole.user_role_cd.in_(list(roles)))).\
             delete(synchronize_session='fetch')
 
@@ -438,13 +439,6 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
                 ['jboss_deploy'], section).jboss_deploy
 
         self.__jdir = jdir_access
-
-    @classmethod
-    def jboss_context(cls, ini, section, create_engine):
-        m = rtconfig.IniModule(ini)
-        rt = m.get_options(['jboss_deploy'], section)
-        jdir = ini / rt.jboss_deploy
-        return jndi_util.JBossContext(jdir, create_engine)
 
     # abusing Session a bit; this really provides a subclass, not an
     # instance, of Session

@@ -90,7 +90,7 @@ def eachcol(t1, t2, cols):
       >>> pairs = eachcol(redcap_data, redcap_data,
       ...                 ['project_id', 'record'])
       >>> pairs[0][0].name
-      u'project_id'
+      'project_id'
     '''
     # .columns is an OrderedDict, so we can correlate indexes.
     # oops... sqlalchemy.sql.expression.FromClause.corresponding_column
@@ -119,7 +119,7 @@ def eav_join(t, keycols, attrs, acol, vcol):
       ...                          ['url'],
       ...                          'field_name', 'value')
       >>> cols1
-      [Column(u'value', TEXT(), table=<j_url>)]
+      [Column('value', TEXT(), table=<j_url>)]
 
       >>> print select(cols1).where(w1)  # doctest: +NORMALIZE_WHITESPACE
       SELECT j_url.value
@@ -338,7 +338,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
         return [cls(), SetUp()]
 
 
-def add_test_eav(s, project_id, event_id, e, avs):
+def add_mock_eav(s, project_id, event_id, e, avs):
     log.debug('add_test_eav: %s', (project_id, event_id, e, avs))
     for a, v in avs:
         s.execute(redcap_data.insert().values(
@@ -361,7 +361,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     @singleton
     @provides((Connectable, CONFIG_SECTION))
     @inject(rt=(rtconfig.Options, CONFIG_SECTION))
-    def redcap_datasource(self, rt, driver='mysql+mysqldb'):
+    def redcap_datasource(self, rt, driver='mysql+pymysql'):
         # support sqlite3 driver?
         u = (rt.engine if rt.engine else
              URL(driver, rt.user, rt.password,
@@ -389,7 +389,7 @@ if __name__ == '__main__':  # pragma: nocover
 
         project_id = int(argv[-1])
 
-        cwd = Path('.', (io_open, path_join, path_exists))
+        cwd = Path('.', open=io_open, joinpath=path_join, exists=path_exists)
 
         [sm] = RunTime.make([(session.Session, CONFIG_SECTION)],
                             ini=cwd / 'integration-test.ini',

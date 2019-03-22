@@ -206,7 +206,7 @@ class MedCenter(object):
         '''
         :param testing_faculty: testing hook for faculty badge.
         '''
-        log.debug('MedCenter.__init__ again?')
+        #@@ log.debug('MedCenter.__init__ again?')
         self._training = trainingfn
         self._testing_faculty = testing_faculty
         self.__executives = executives
@@ -440,6 +440,12 @@ class Mock(injector.Module, rtconfig.MockMixin):
     @provides(KExecutives)
     def executives(self):
         return ('big.wig',)
+
+    @provides(KStudyTeamLookup)
+    def study_team_lookup(self):
+        def lookup(_):
+            raise KeyError
+        return lookup
 
 
 class RunTime(rtconfig.IniModule):  # pragma: nocover

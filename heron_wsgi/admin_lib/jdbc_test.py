@@ -13,8 +13,12 @@ To get the path to the sqlite JDBC jar, use:
 from __future__ import print_function
 from sys import stderr  # ocap note: tracing exception
 
-import org.sqlite.JDBC
-from jaydebeapi import paramstyle, Error, ProgrammingError
+try:
+    import org.sqlite.JDBC
+    from jaydebeapi import paramstyle, Error, ProgrammingError
+except ImportError:
+    # ISSUE: make sure we're not in jython
+    paramstyle = Error = ProgrammingError = None
 
 
 def sqlite_memory_engine(echo=False):

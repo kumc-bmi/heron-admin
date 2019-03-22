@@ -79,7 +79,7 @@ Now note the mapping to the Disclaimer class::
   [Disclaimer(disclaimer_id=1,
               url=http://example/blog/item/heron-release-xyz, current=1)]
   >>> dall[0].content(blog)[0][:30]
-  u'<div id="blog-main">\n<h1 class'
+  '<div id="blog-main">\n<h1 class'
 
   .>> acksproj.add_record('bob', 'http://informatics.kumc.edu/blog/2012/x')
   .>> for ack in s.query(Acknowledgement):
@@ -93,20 +93,19 @@ from __future__ import print_function
 import json
 import StringIO
 import logging
-from xml.dom.minidom import parse
+import xml.etree.ElementTree as ET
 
 # from pypi
 import injector
 from injector import inject, provides, singleton
 import sqlalchemy
 from sqlalchemy.orm import session, sessionmaker, exc
-import xpath
 
 # from this package
 from ddict import DataDict
 from notary import makeNotary
 from ocap_file import WebReadable, WebPostable, Token
-from redcapdb import add_test_eav
+from redcapdb import add_mock_eav
 import medcenter
 import redcap_api
 import rtconfig
@@ -130,15 +129,15 @@ class Disclaimer(redcapdb.REDCapRecord):
            >>> d.url = 'http://example/'
            >>> d.content(_MockTracBlog())
            ... # doctest: +ELLIPSIS
-           (u'<div id="blog-main">\n<h1 class="blog-title">...', u'headline')
+           ('<div id="blog-main">\n<h1 class="blog-title">...', 'headline')
         '''
         body = rdcap.subRdFile(self.url).getBytes()
         kludge = StringIO.StringIO(body.replace('&larr;', '').
                                    replace('&rarr;', ''))  # KLUDGE
-        elt = xpath.findnode('//*[@id="blog-main"]', parse(kludge))
-        headline = xpath.findvalue('.//*[@class="blog-title"]/text()', elt)
+        elt = ET.parse(kludge).getroot().find('.//*[@id="blog-main"]', )
+        headline = elt.findtext('.//*[@class="blog-title"]', )
 
-        return elt.toxml(), headline
+        return ET.tostring(elt), headline
 
 
 _test_doc = '''
@@ -297,7 +296,7 @@ class _MockREDCapAPI2(redcap_api._MockREDCapAPI):
             values = rows[0]
             record = hash(values['user_id'])
             s = self.__smaker()
-            add_test_eav(s, self.project_id, 1,
+            add_mock_eav(s, self.project_id, 1,
                          record, values.items())
             return StringIO.StringIO('')
         else:
