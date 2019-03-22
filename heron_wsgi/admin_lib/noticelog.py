@@ -7,7 +7,7 @@ Sponsorship Records
 *******************
 
   >>> dr.sponsorships('some.one')
-  [(u'6373469799195807417', u'1', u'some.one', u'john.smith', u'')]
+  [(u'6373469799195807417', u'1', u'1', u'some.one', u'john.smith', u'')]
 
 Expired sponsorships are filtered out:
 
@@ -17,7 +17,7 @@ Expired sponsorships are filtered out:
 Projects sponsored by an investigator:
 
   >>> dr.sponsorships('john.smith', inv=True)
-  [(u'6373469799195807417', u'1', u'john.smith', u'john.smith', u'')]
+  [(u'6373469799195807417', u'1', u'1', u'john.smith', u'john.smith', u'')]
 
 Sponsorship details:
   >>> dr.about_sponsorships('some.one')  # doctest: +NORMALIZE_WHITESPACE
@@ -80,7 +80,8 @@ Get oversight details that we might want to use in composing the notification::
     u'user_id': u'john.smith',
     u'user_id_1': u'some.one',
     u'user_id_2': u'carol.student',
-    u'user_id_3': u'koam.rin'})
+    u'user_id_3': u'koam.rin',
+    u'what_for': u'1'})
 
 Get current email addresses of the team:
 
@@ -164,6 +165,7 @@ class DecisionRecords(Token):
 
     YES = '1'
     NO = '2'
+    SPONSORSHIP = '1'
     institutions = ('kuh', 'kupi', 'kumc')
 
     @inject(pid=KProjectId,
@@ -189,7 +191,8 @@ class DecisionRecords(Token):
         # 1248, 'Every derived table must have its own alias'
         dc = dc.alias('mw')
         q = dc.select(and_(dc.c.candidate == uid,
-                           dc.c.decision == DecisionRecords.YES)).\
+                           dc.c.decision == DecisionRecords.YES,
+                           dc.c.what_for == DecisionRecords.SPONSORSHIP)).\
                                order_by(dc.c.record)
 
         answers = self._smaker().execute(q).fetchall()
@@ -327,6 +330,7 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
       ...  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
       SELECT cdwho.cd_record AS record,
              cdwho.cd_decision AS decision,
+             cdwho.for_what_for AS what_for,
              cdwho.who_userid AS candidate,
              cdwho.sponsor_userid AS sponsor,
              cdwho.expire_dt_exp AS dt_exp
@@ -338,6 +342,8 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
             who.userid AS who_userid,
             sponsor.record AS sponsor_record,
             sponsor.userid AS sponsor_userid,
+            "for".record AS for_record,
+            "for".what_for AS for_what_for,
             expire.record AS expire_record,
             expire.dt_exp AS expire_dt_exp
             FROM
@@ -373,6 +379,15 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
                     WHERE redcap_data.project_id = :project_id_1) AS p
                 WHERE p.field_name = :field_name_3) AS sponsor
             ON sponsor.record = cd.record
+            JOIN
+                (SELECT p.record AS record, p.value AS what_for
+                 FROM (SELECT redcap_data.record AS record,
+                       redcap_data.field_name AS field_name,
+                       redcap_data.value AS value
+                       FROM redcap_data
+                       WHERE redcap_data.project_id = :project_id_1) AS p
+                WHERE p.field_name = :field_name_4) AS "for"
+            ON "for".record = cd.record
             LEFT OUTER JOIN
                 (SELECT p.record AS record,
                 p.value AS dt_exp
@@ -382,7 +397,7 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
                     redcap_data.value AS value
                     FROM redcap_data
                     WHERE redcap_data.project_id = :project_id_1) AS p
-                WHERE p.field_name = :field_name_4) AS expire
+                WHERE p.field_name = :field_name_5) AS expire
             ON expire.record = cd.record) AS cdwho
 
       >>> pprint(cdwho.compile().params)
@@ -390,7 +405,8 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
        u'field_name_1': 'approve_%',
        u'field_name_2': 'user_id_%',
        u'field_name_3': 'user_id',
-       u'field_name_4': 'date_of_expiration',
+       u'field_name_4': 'what_for',
+       u'field_name_5': 'date_of_expiration',
        u'project_id_1': 123}
 
     '''
@@ -419,6 +435,10 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
                       proj.c.value.label('userid'))).where(
         proj.c.field_name == 'user_id').alias('sponsor')
 
+    what_for = select((proj.c.record,
+                       proj.c.value.label('what_for'))).where(
+                           proj.c.field_name == 'what_for').alias('for')
+
     dt_exp = select((proj.c.record,
                      proj.c.value.label('dt_exp'))).where(
         proj.c.field_name == 'date_of_expiration').alias('expire')
@@ -427,12 +447,14 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
                       candidate.c.record == decision.c.record).\
                       join(sponsor,
                       sponsor.c.record == decision.c.record).\
+                      join(what_for,
+                           what_for.c.record == decision.c.record).\
                           outerjoin(dt_exp,
                                     dt_exp.c.record == decision.c.record).\
                                         alias('cdwho')
-
     cdwho = select([j.c.cd_record.label('record'),
                     j.c.cd_decision.label('decision'),
+                    j.c.for_what_for.label('what_for'),
                     j.c.who_userid.label('candidate'),
                     j.c.sponsor_userid.label('sponsor'),
                     j.c.expire_dt_exp.label('dt_exp')])

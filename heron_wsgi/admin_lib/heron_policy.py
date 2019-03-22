@@ -393,34 +393,34 @@ Status = namedtuple('Status',
 
 
 class HeronRecords(Token, Cache):
-    '''
-
-    In the oversight_project, userid of sponsored users are stored in
-    REDCap fields with names like user_id_% and approval decisions are
-    stored in fields with names like approve_%, with a distinct
-    approve_% field for each participating institution.
+    '''In the oversight_project, userid of sponsored users are stored in
+    REDCap fields with names like ... ::
 
     >>> ddict = noticelog.DecisionRecords.redcap_dd
-    >>> dd_orgs = [n[len('approve_'):] for (n, etc) in ddict.fields()
-    ...            if n.startswith('approve_')]
-    >>> set(dd_orgs) == set(noticelog.DecisionRecords.institutions)
-    True
+    >>> [n for (n, etc) in ddict.fields() if n.startswith('user_id_')]
+    ... # doctest: +ELLIPSIS
+    ['user_id_1', 'user_id_2', 'user_id_3', ...]
 
-    >>> len([n for (n, etc) in ddict.fields() if n.startswith('user_id_')]) > 3
-    True
+    Approval decisions are stored in one field per participating
+    institution::
 
+    >>> sorted(n for (n, etc) in ddict.fields() if n.startswith('approve_'))
+    ['approve_kuh', 'approve_kumc', 'approve_kupi']
+    >>> sorted(noticelog.DecisionRecords.institutions)
+    ['kuh', 'kumc', 'kupi']
 
-    >>> uses = ddict.radio('what_for')
-    >>> HeronRecords.oversight_request_purposes == tuple(
-    ...     [ix for (ix, label) in uses])
-    True
+    >>> sorted(ddict.radio('what_for'))
+    ... # doctest: +ELLIPSIS
+    [('1', 'HERON Sponsorship'), ('2', 'Data Use'), ('3', 'ACT Sponsorship ...')]
 
     .. todo:: check expiration date
+
     '''
 
     SPONSORSHIP = '1'
+    ACT_SPONSORSHIP = '3'
     DATA_USE = '2'
-    oversight_request_purposes = (SPONSORSHIP, DATA_USE)
+    oversight_request_purposes = (SPONSORSHIP, DATA_USE, ACT_SPONSORSHIP)
 
     @inject(mc=medcenter.MedCenter,
             pm=i2b2pm.I2B2PM,
