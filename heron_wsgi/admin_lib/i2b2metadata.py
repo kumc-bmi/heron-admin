@@ -30,11 +30,11 @@ class I2B2Metadata(ocap_file.Token):
         pid, schema = schema_for(i2b2_pid)
         log.info('Updating redcap_terms for %s (%s) with redcap pids: %s',
                  i2b2_pid, schema, rc_pids)
-        #http://stackoverflow.com/questions/2179493/
-        #... adding-backslashes-without-escaping-python
+        # http://stackoverflow.com/questions/2179493/
+        # ... adding-backslashes-without-escaping-python
 
-        #TODO: Separate redcap_terms from heron_terms
-        #... and insert only redcap_terms
+        # TODO: Separate redcap_terms from heron_terms
+        # ... and insert only redcap_terms
         mds.execute('''DELETE FROM %s.%s''' % (schema, rct_table))
 
         rct = Table(rct_table, MetaData(), schema=schema, autoload=True,
