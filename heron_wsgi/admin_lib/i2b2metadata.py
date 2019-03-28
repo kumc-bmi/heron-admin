@@ -6,6 +6,7 @@ import logging
 from sqlalchemy import text, orm, Table, MetaData
 from injector import inject, provides, singleton
 
+import jndi_util
 import rtconfig
 import ocap_file
 
