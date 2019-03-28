@@ -32,9 +32,11 @@ He hasn't responded yet:
 
 from __future__ import print_function
 from ConfigParser import SafeConfigParser
+import datetime
 import logging
 
 from sqlalchemy import and_, select
+from sqlalchemy.exc import OperationalError
 
 import redcapdb
 
@@ -214,12 +216,53 @@ class SecureSurvey(object):
         rng.shuffle(lr)
         return ''.join(lr)
 
-    def responses(self, email):
+    def responses(self, email,
+                  max_retries=10,
+                  known_record_id='767',
+                  known_sig_time=datetime.datetime(2017, 1, 25, 8, 55, 10)):
+        '''Find responses to this survey.
+
+        To work around persistent problems connecting to a
+        REDCap DB for the system access survey, this method
+        tries `max_retries` to connect and then returns a
+        known survey record rather than failing:
+
+        >>> from random import Random
+        >>> predictable = Random(1)
+        >>> def lose(*argv):
+        ...     raise OperationalError('select...', {}, None)
+        >>> ss = SecureSurvey(connect=lose, rng=predictable, survey_id=93)
+        >>> ss.responses('daffy@walt.disney')
+        ['767', datetime.datetime(2017, 1, 25, 8, 55, 10)]
+
+        '''
         # type: str -> List[Tuple(str, datetime)]
-        conn = self.__connect()
-        event_id = conn.execute(self._event_q(self.survey_id)).scalar()
-        q = self._response_q(email, self.survey_id, event_id)
-        return conn.execute(q).fetchall()
+        # gweaver - https://bmi-work.kumc.edu/work/ticket/5277
+        # Customizing this method to always return something, instead of failing.
+        retryCount = max_retries
+
+        while retryCount > 0:
+            try:
+                # Attempt Connection To REDCap DB
+                conn = self.__connect()
+            except OperationalError:
+                log.info(
+                    'MySQL Connection Failed, trying {0} more times...'.format(
+                        max_retries - retryCount))
+                retryCount = retryCount - 1
+            else:
+                event_id = conn.execute(self._event_q(self.survey_id)).scalar()
+                q = self._response_q(email, self.survey_id, event_id)
+                timestamp = conn.execute(q).fetchall()
+                return timestamp
+
+        if retryCount == 0:
+            log.info('Could not reconnect! Manually supplying event id, and timestamp for {0}'.format(email))
+            eventResponse = (known_record_id, known_sig_time)
+
+        # placing tuple in list, to follow the original comment
+        # (line 2 of this method)
+        return list(eventResponse)
 
     @classmethod
     def _response_q(cls, email, survey_id, event_id):
@@ -275,7 +318,7 @@ def _integration_test(argv, io_open, Random, create_engine,
 
 def _explore(email_addr, saa):
     log.info('response to survey %s from %s?', saa.survey_id, email_addr)
-    response = saa.response(email_addr)
+    response = saa.responses(email_addr)
     if response:
         record, when = response
         log.info('record %s completed %s', record, when)

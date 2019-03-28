@@ -59,8 +59,8 @@ The course completion reports are now stored in the database::
     >>> for exp, name, course in io._db.execute("""
     ...     select dteExpiration, InstitutionUserName, strGroup
     ...     from CRS limit 3"""):
-    ...     print exp[:10], name, course
-    2000-12-22 ssttt ssstt
+    ...     print exp and exp[:10], name, course
+    None ssttt ssstt
     2000-01-13 sss CITI Biomedical Researchers
     2000-02-04 sssstttt CITI Biomedical Researchers
 
@@ -123,8 +123,8 @@ a `TrainingRecordsRd`::
 
 Now let's look up training for Sam, whose username is `sssstttt`::
 
-    >>> rd['sssstttt'].expired
-    u'2000-02-04 12:34:56.000000'
+    >>> str(rd['sssstttt'].expired)
+    '2000-02-04 12:34:56'
 
 .. note:: TODO: Integrate a story-style name into test data.
 
@@ -186,6 +186,7 @@ def main(stdout, access):
             doc = svc.get(k)
             try:
                 name, data = admin.docRecords(doc)
+                data = filter(cls.record_ok, data)
                 admin.put(name, cls.parse_dates(data))
             except StopIteration:
                 raise SystemExit('no records in %s' % k)
@@ -234,6 +235,10 @@ class TableDesign(object):
 
         return [Column(field.tag, ty(field.text))
                 for field in XML(cls.markup)]
+
+    @classmethod
+    def record_ok(cls, record):
+        return True
 
     @classmethod
     def xml_table(cls, meta, db_name):
@@ -288,6 +293,38 @@ class CRS(TableDesign):
         <dteExpiration>2014-05-06T19:15:48</dteExpiration>
       </CRS>
     '''
+
+    @classmethod
+    def record_ok(cls, record):
+        r"""Filter non-numeric StudentID
+
+        >>> markup = relation.mock_xml_records(CRS.markup, 2)
+        >>> r = relation.docToRecords(XML(markup)).next()
+        >>> CRS.record_ok(r)
+        True
+        >>> CRS.record_ok(r._replace(StudentID='OT-1234'))
+        False
+
+        Handle whitespace
+        >>> CRS.record_ok(r._replace(StudentID='1234 \n'))
+        True
+
+        Handle null StudentID
+
+        >>> CRS.record_ok(r._replace(StudentID=None))
+        True
+        """
+        if not (record.StudentID is None or
+                record.StudentID.strip().isdigit()):
+            if record.dteExpiration:
+                log.warning('StudentID: expected digits: %s\n%s',
+                            record.StudentID, record)
+            else:
+                # record is filtered out by citi_query anyway;
+                # don't log a warning.
+                pass
+            return False
+        return True
 
 
 class GRADEBOOK(TableDesign):

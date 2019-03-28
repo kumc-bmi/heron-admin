@@ -94,7 +94,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     @provides((Connectable, redcap_invite.CONFIG_SECTION))
     def db_engine(self):
         opts = self.get_options(['engine'], redcap_invite.CONFIG_SECTION)
-        return self.__create_engine(opts.engine)
+        return self.__create_engine(opts.engine, pool_recycle=3600)
 
     @singleton
     @provides(KRandom)
