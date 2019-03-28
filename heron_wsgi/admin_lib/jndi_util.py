@@ -37,7 +37,7 @@ class _MockDeployDir(object):
                     abspath=cls.abspath, listdir=lambda _: [cls.ds])
 
     @classmethod
-    def open(cls, path):
+    def open(cls, path, **kwargs):
         if not cls.exists(path):
             raise OSError(2, 'No such file or directory: %s' % path)
 
@@ -85,7 +85,7 @@ def ds_access(jboss_deploy, jndi_name,
     for f in jboss_deploy.iterdir():
         if not str(f).endswith('-ds.xml'):
             continue
-        doc = xml.parse(f.open())
+        doc = xml.parse(f.open(mode='rb'))
         srcs = doc.getroot().findall(ns + 'datasource')
         try:
             pw, url, un = ((cred.find(ns + 'password').text,

@@ -430,15 +430,16 @@ class Project(Base, Audited):
 class RunTime(rtconfig.IniModule):  # pragma: nocover
     jndi_name = 'java:/PMBootStrapDS'
 
-    def __init__(self, ini, create_engine):
-        rtconfig.IniModule.__init__(ini)
+    def __init__(self, ini, uuid, create_engine):
+        rtconfig.IniModule.__init__(self, ini)
         self.__create_engine = create_engine
 
         def jdir_access(section):
-            return ini / rtconfig.get_options(
+            return ini / self.get_options(
                 ['jboss_deploy'], section).jboss_deploy
 
         self.__jdir = jdir_access
+        self.__uuid = uuid
 
     # abusing Session a bit; this really provides a subclass, not an
     # instance, of Session
@@ -470,19 +471,18 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
 
     @provides(KUUIDGen)
     def uuid_maker(self):
-        import uuid
-        return uuid
+        return self.__uuid
 
     @provides(KIdentifiedData)
     def identified_data(self):
-        rt = rtconfig.RuntimeOptions(['identified_data'])
-        rt.load(self._ini, CONFIG_SECTION)
+        rt = self.get_options(['identified_data'], CONFIG_SECTION)
         mode = rt.identified_data.lower() in ('1', 'true')
         return mode
 
     @classmethod
-    def mods(cls, ini):
-        return [i2b2metadata.RunTime(ini), cls(ini)]
+    def mods(cls, ini, uuid, create_engine):
+        return [i2b2metadata.RunTime(ini, create_engine),
+                cls(ini, uuid, create_engine)]
 
 
 class Mock(injector.Module, rtconfig.MockMixin):
@@ -540,31 +540,33 @@ def _mock_i2b2_proj_usage(ds, assignments):
         ds.commit()
 
 
-def _integration_test():  # pragma: nocover
+def _integration_test(argv, stdout, cwd, uuid,
+                      create_engine):  # pragma: nocover
     # python i2b2pm.py badagarla 12,11,53 'Bhargav A'
-    import sys
 
     logging.basicConfig(level=logging.DEBUG)
     salog = logging.getLogger('sqlalchemy.engine.base.Engine')
     salog.setLevel(logging.INFO)
 
-    if '--list' in sys.argv:
-        _list_users()
+    ini = cwd / 'integration-test.ini'
+    if '--list' in argv:
+        _list_users(ini, create_engine, stdout)
         return
 
-    user_id, rc_pids, full_name = sys.argv[1:4]
+    user_id, rc_pids, full_name = argv[1:4]
 
-    (pm, ) = RunTime.make(None, [I2B2PM])
+    [pm] = RunTime.make([I2B2PM],
+                        ini=ini, uuid=uuid, create_engine=create_engine)
     t, _ = pm.i2b2_project(rc_pids.split(','))
     print("THE PROJECT THAT WAS PICKED: %s" % (t))
     print(pm.authz(user_id, full_name, t))
 
 
-def _list_users():  # pragma: nocover
+def _list_users(ini, create_engine, stdout):  # pragma: nocover
     import csv
-    import sys
-    (sm, ) = RunTime.make(None,
-                          [(orm.session.Session, CONFIG_SECTION)])
+
+    [sm] = RunTime.make([(orm.session.Session, CONFIG_SECTION)],
+                        ini=ini, create_engine=create_engine)
     s = sm()
     # get column names
     # ans = s.execute("select * from pm_user_session "
@@ -577,11 +579,24 @@ def _list_users():  # pragma: nocover
                     "  group by user_id"
                     "  order by user_id")
 
-    out = csv.writer(sys.stdout)
+    out = csv.writer(stdout)
     out.writerow(('last_login', 'login_count', 'user_id'))
     out.writerows([(when.isoformat(), qty, uid)
                    for when, qty, uid in ans.fetchall()])
 
 
 if __name__ == '__main__':  # pragma: nocover
-    _integration_test()
+    def _script():
+        from io import open as io_open
+        from os import listdir
+        from os.path import join as joinpath, exists
+        from sys import argv, stdout
+        import uuid
+
+        from sqlalchemy import create_engine
+
+        cwd = ocap_file.Path('.', open=io_open, joinpath=joinpath,
+                             exists=exists, listdir=listdir)
+
+        _integration_test(argv, stdout, cwd, uuid, create_engine)
+    _script()
