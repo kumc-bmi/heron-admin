@@ -5,9 +5,7 @@
 
 __ http://informatics.kumc.edu/work/wiki/HERON#governance
 
-.. For debugging, change .. to >>>.
-.. logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
-  >>> rtconfig._printLogs()
+  >>> logged = rtconfig._printLogs(level=logging.INFO)
 
 View-only access for Qualified Faculty
 ======================================
@@ -22,6 +20,7 @@ __ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
 
   >>> hp, mc, oc = Mock.make((HeronRecords, medcenter.MedCenter,
   ...                         OversightCommittee))
+  >>> print(logged())
   INFO:cache_remote:LDAPService@1 cache initialized
   INFO:cache_remote:OversightCommittee@1 cache initialized
   INFO:cache_remote:HeronRecords@1 cache initialized
@@ -39,6 +38,7 @@ human subjects training, so he can access the repository and make
 investigator requests::
 
   >>> facreq = _login('john.smith', mc, hp, PERM_STATUS)
+  >>> print(logged())
   ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ...
   INFO:cache_remote:system access query for ('SAA', 'john.smith@js.example')
@@ -71,8 +71,11 @@ Once he acknowledges it, he can access the repository:
   ... # doctest: +NORMALIZE_WHITESPACE
   Disclaimer(disclaimer_id=1, url=http://example/blog/item/heron-release-xyz,
              current=1)
+  >>> _ = logged()
   >>> facreq.context.disclaimers.ack_disclaimer(facreq.context.badge)
   >>> facreq.context.start_i2b2()
+  Access(John Smith <john.smith@js.example>)
+  >>> print(logged())
   ... # doctest: +NORMALIZE_WHITESPACE
   INFO:disclaimer:disclaimer ack:
   Acknowledgement(ack=2011-09-02 john.smith /heron-release-xyz,
@@ -80,7 +83,6 @@ Once he acknowledges it, he can access the repository:
     disclaimer_address=http://example/blog/item/heron-release-xyz)
   INFO:i2b2pm:Finding I2B2 project for REDCap pids: []
   INFO:i2b2pm:User REDCap projects are not in HERON
-  Access(John Smith <john.smith@js.example>)
 
 Unforgeable System Access Agreement
 ***********************************
@@ -92,10 +94,11 @@ survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
   >>> facreq = _login('john.smith', mc, hp, PERM_SIGN_SAA)
   >>> facreq.context.sign_saa.ensure_saa_survey().split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
-  INFO:cache_remote:SAA link query for ('SAA', 'john.smith')
-  INFO:cache_remote:... cached until 2011-09-02 00:00:16.500000
   ['http://testhost/redcap-host/surveys/',
    's=aqFVbr&full_name=Smith%2C+John&user_id=john.smith']
+  >>> print(logged())
+  INFO:cache_remote:SAA link query for ('SAA', 'john.smith')
+  INFO:cache_remote:... cached until 2011-09-02 00:00:16.500000
 
 Any CAS authenticated user can sign Data Usage Agreement
 ********************************************************
@@ -111,10 +114,9 @@ survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
   >>> facreq = _login('john.smith', mc, hp, PERM_SIGN_DUA)
   >>> facreq.context.sign_dua.ensure_dua_survey().split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
-  INFO:cache_remote:DUA link query for ('DUA', 'john.smith')
-  INFO:cache_remote:... cached until 2011-09-02 00:00:17
   ['http://testhost/redcap-host/surveys/',
    's=aqFVbr&full_name=Smith%2C+John&user_id=john.smith']
+  >>> _ = logged()
 
 Sponsored Users
 ===============
@@ -123,6 +125,7 @@ Bill cannot access the HERON repository because he is neither
 faculty not sponsored, nor has he completed human subjects training::
 
   >>> stureq = _login('bill.student', mc, hp, PERM_STATUS)
+  >>> print(logged())
   ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
   INFO:cache_remote:LDAP query for ('(cn=bill.student)', ...
   INFO:cache_remote:Sponsorship query for ('sponsorship', 'bill.student')
@@ -157,6 +160,8 @@ Verify that remote accesses are cached:
     ...
   NoPermission: ...
 
+  >>> _ = logged()
+
 .. note:: We count on sqlalchemy to recover from errors in the connection
    to the database of sponsorship records.
 
@@ -172,10 +177,11 @@ not yet executed the system access agreement::
             droc=None, executive=False,
             expired_training=None, faculty=False, sponsored=True,
             system_access_signed=[]))
+   >>> _ = logged()
 
 This student does have authorization to sign the SAA:
 
-  >>> stu2req = _login('some.one', mc, hp, PERM_SIGN_SAA)
+  >>> stu2req = _login('some.one', mc, hp, PERM_SIGN_SAA); print(logged())
   WARNING:medcenter:missing LDAP attribute ou for some.one
   WARNING:medcenter:missing LDAP attribute title for some.one
   >>> stu2req.context.sign_saa
@@ -184,6 +190,7 @@ This student does have authorization to sign the SAA:
 This student's sponsor is not with KUMC anymore
 
   >>> stureq = _login('jill.student', mc, hp, PERM_STATUS)
+  >>> print(logged())
   ... #doctest: +NORMALIZE_WHITESPACE
   INFO:cache_remote:LDAP query for ('(cn=jill.student)', ('cn', 'givenname',
        'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
@@ -206,6 +213,7 @@ Exception for executives from participating institutions
 Executives don't need sponsorship::
 
   >>> exreq = _login('big.wig', mc, hp, PERM_START_I2B2)
+  >>> print(logged())
   ... # doctest: +NORMALIZE_WHITESPACE
   INFO:cache_remote:LDAP query for ('(cn=big.wig)', ('cn', 'givenname',
        'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
@@ -223,6 +231,7 @@ Faculty and executives can make sponsorship and data usage requests to
 the oversight committee::
 
   >>> facreq = _login('john.smith', mc, hp, PERM_INVESTIGATOR_REQUEST)
+  >>> print(logged())
   ... # doctest: +NORMALIZE_WHITESPACE
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('cn', 'givenname',
        'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
@@ -233,11 +242,6 @@ the oversight committee::
   >>> facreq.context.investigator_request.ensure_oversight_survey(
   ...        ['some.one'], what_for=HeronRecords.DATA_USE).split('&')
   ... # doctest: +NORMALIZE_WHITESPACE
-  INFO:cache_remote:LDAP query for ('(cn=some.one)', ('cn', 'givenname',
-       'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
-  INFO:cache_remote:... cached until 2011-09-02 00:00:09.500000
-  WARNING:medcenter:missing LDAP attribute ou for some.one
-  WARNING:medcenter:missing LDAP attribute title for some.one
   ['http://testhost/redcap-host/surveys/?s=akvfqA',
    'full_name=Smith%2C+John',
    'multi=yes',
@@ -250,8 +254,6 @@ the oversight committee::
   >>> exreq = _login('big.wig', mc, hp, PERM_INVESTIGATOR_REQUEST)
   >>> ok = exreq.context.investigator_request.ensure_oversight_survey(
   ...        ['some.one'], what_for=HeronRecords.DATA_USE).split('&')
-  WARNING:medcenter:missing LDAP attribute ou for some.one
-  WARNING:medcenter:missing LDAP attribute title for some.one
 
 
 Oversight Auditing
@@ -260,14 +262,10 @@ Oversight Auditing
 Oversight committee members can get sensitive audit info::
 
   >>> exreq = _login('big.wig', mc, hp, PERM_DROC_AUDIT)
-  ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
-  INFO:cache_remote:LDAP query for ('(cn=big.wig)', ...
 
 Ordinary users cannot, though they can get aggregate usage info::
 
   >>> stureq = _login('bill.student', mc, hp, PERM_STATS_REPORTER)
-  ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
-  INFO:cache_remote:LDAP query for ('(cn=bill.student)', ...
   >>> stureq.context.stats_reporter
   I2B2AggregateUsage()
 
@@ -283,8 +281,6 @@ Mismatch between LDAP email and CAS username
 Email addresses are not limited to correspond to user ids:
 
   >>> reqtm = _login('trouble.maker', mc, hp, PERM_STATUS)
-  ... # doctest: +ELLIPSIS
-  INFO:cache_remote:LDAP query for ('(cn=trouble.maker)', ...
   >>> reqtm.context.badge
   Trouble Maker <tmaker@not.js.example>
 
@@ -695,11 +691,9 @@ def team_params(lookup, uids):
     r'''
     >>> import pprint
     >>> (mc, ) = medcenter.Mock.make([medcenter.MedCenter])
-    INFO:cache_remote:LDAPService@1 cache initialized
     >>> pprint.pprint(list(team_params(mc.peer_badge,
     ...                                ['john.smith', 'bill.student'])))
     ... # doctest: +ELLIPSIS
-    INFO:cache_remote:LDAP query for ('(cn=john.smith)', ...
     [('user_id_1', 'john.smith'),
      ('name_etc_1', 'Smith, John\nChair of Department of Neur...'),
      ('user_id_2', 'bill.student'),
