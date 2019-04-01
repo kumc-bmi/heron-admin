@@ -1,10 +1,6 @@
 r'''disclaimer -- access disclaimers and acknowledgements from REDCap EAV DB
 ---------------------------------------------------------------------------
 
-  >>> logging.basicConfig(level=logging.INFO)
-
-  ??? logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
-
 A DisclaimerGuard provides a power only to those who have acknowledged
 a disclaimer:
 

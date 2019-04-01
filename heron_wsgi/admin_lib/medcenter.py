@@ -13,7 +13,7 @@ records.
 
 Access is logged at the :data:`logging.INFO` level.
 
-  >>> rtconfig._printLogs()
+  >>> logged = rtconfig._printLogs()
   >>> logging.getLogger('cache_remote').setLevel(level=logging.WARN)
 
 Issuing Notarized Badges
@@ -64,6 +64,7 @@ Robustness
 ----------
 
   >>> who = m.peer_badge('carol.student')
+  >>> print(logged())
   WARNING:medcenter:missing LDAP attribute kumcPersonFaculty for carol.student
   WARNING:medcenter:missing LDAP attribute kumcPersonJobcode for carol.student
 
@@ -78,9 +79,10 @@ Part of making oversight requests is nominating team members::
 
   >>> m.grant(r1.context, PERM_BROWSER)
   >>> r1.context.browser.lookup('some.one')
+  Some One <some.one@js.example>
+  >>> print(logged())
   WARNING:medcenter:missing LDAP attribute ou for some.one
   WARNING:medcenter:missing LDAP attribute title for some.one
-  Some One <some.one@js.example>
 
   >>> r1.context.browser.search(5, 'john.smith', '', '')
   [John Smith <john.smith@js.example>]

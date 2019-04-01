@@ -104,11 +104,13 @@ class RealClockInjector(injector.Module):
         return self.__clock
 
 
-def _printLogs():
+def _printLogs(level=logging.INFO):
+    buf = []
+
     class DoctestHandler(logging.Handler):
         def emit(self, record):
             msg = self.format(record)
-            print(msg)
+            buf.append(msg)
 
     class FileNameFormatter(logging.Formatter):
         """Only show module name, not path.
@@ -121,8 +123,15 @@ def _printLogs():
     f = FileNameFormatter(logging.BASIC_FORMAT)
     h = DoctestHandler()
     h.setFormatter(f)
-    root.setLevel(logging.INFO)
+    root.setLevel(level)
     root.addHandler(h)
+
+    def show():
+        s = '\n'.join(buf)
+        buf[:] = []
+        return s
+
+    return show
 
 
 class RuntimeOptions(Options):  # pragma nocover

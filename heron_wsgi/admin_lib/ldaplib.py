@@ -3,25 +3,28 @@
 
 Caching:
 
-  >>> rtconfig._printLogs()
+  >>> logged = rtconfig._printLogs()
   >>> ts = rtconfig.MockClock()
 
   >>> ds = LDAPService(ts.now, ttl=2, rt=_sample_settings,
   ...                  ldap=MockLDAP(), flags=MockLDAP)
+  >>> print(logged())
   INFO:cache_remote:LDAPService@1 cache initialized
   >>> ds.search_cn("john.smith", ['sn'])
+  [('(cn=john.smith)', {'sn': ['Smith']})]
+  >>> print(logged())
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('sn',))
   INFO:cache_remote:... cached until 2011-09-02 00:00:02.500000
-  [('(cn=john.smith)', {'sn': ['Smith']})]
 
   >>> ds.search_cn("john.smith", ['sn'])
   [('(cn=john.smith)', {'sn': ['Smith']})]
 
   >>> ts.wait(5)
   >>> ds.search_cn("john.smith", ['sn'])
+  [('(cn=john.smith)', {'sn': ['Smith']})]
+  >>> print(logged())
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('sn',))
   INFO:cache_remote:... cached until 2011-09-02 00:00:08.500000
-  [('(cn=john.smith)', {'sn': ['Smith']})]
 
 Sample configuration::
 
