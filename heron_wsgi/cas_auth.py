@@ -346,7 +346,7 @@ class CapabilityStyle(object):
 
 class RunTime(IniModule):  # pragma: nocover
     def __init__(self, ini, urlopener):
-        self._ini = ini
+        IniModule.__init__(self, ini)
         self.__urlopener = urlopener
 
     @provides((WebReadable, CONFIG_SECTION))
@@ -356,11 +356,10 @@ class RunTime(IniModule):  # pragma: nocover
 
     @provides((Options, CONFIG_SECTION))
     def opts(self):
-        return RuntimeOptions(['base', 'app_secret']).load(
-            self._ini, CONFIG_SECTION)
+        return self.get_options(['base', 'app_secret'], CONFIG_SECTION)
 
     @classmethod
-    def mods(cls, ini, urlopener):
+    def mods(cls, ini, urlopener, **kwargs):
         return [cls(ini, urlopener)]
 
 
@@ -450,30 +449,36 @@ def TreasureMap(who, sekret):  # pragma: nocover
     return edef(hunter, location, __repr__)
 
 
-def _integration_test(ini, host='127.0.0.1', port=8123):  # pragma: nocover
-    from pyramid.config import Configurator
-    from paste import httpserver
-
-    #logging.basicConfig(level=logging.DEBUG)
-    logging.basicConfig(level=logging.INFO)
-
-    config = Configurator(settings={'pyramid.debug_routematch': True})
-
-    guide, guard, rt = RunTime.make(
-        ini, [MockIssuer, Validator, (Options, CONFIG_SECTION)])
-
-    CapabilityStyle.setup(config, rt.app_secret, 'logout', 'logout',
-                          guide.authenticated, [guide], guard)
-
-    config.add_route('root', '')
-    config.add_view(MockIssuer.protected_view, route_name='root',
-                    permission=guide.permission)
-
-    app = config.make_wsgi_app()
-    httpserver.serve(app, host, port)
-
-
 if __name__ == '__main__':  # pragma: nocover
-    import sys
-    ini = sys.argv[1]
-    _integration_test(ini)
+    def _integration_test(host='127.0.0.1', port=8123):  # pragma: nocover
+        from sys import argv
+        from urllib2 import build_opener
+
+        from pyramid.config import Configurator
+        from paste import httpserver
+        from pathlib import Path
+
+        cwd = Path('.')
+        ini = cwd / argv[1]
+
+        logging.basicConfig(level=logging.DEBUG if '--debug' in argv
+                            else logging.INFO)
+
+        config = Configurator(settings={'pyramid.debug_routematch': True})
+
+        guide, guard, rt = RunTime.make(
+            [MockIssuer, Validator, (Options, CONFIG_SECTION)],
+            ini=ini,
+            urlopener=build_opener())
+
+        CapabilityStyle.setup(config, rt.app_secret, 'logout', 'logout',
+                              guide.authenticated, [guide], guard)
+
+        config.add_route('root', '')
+        config.add_view(MockIssuer.protected_view, route_name='root',
+                        permission=guide.permission)
+
+        app = config.make_wsgi_app()
+        httpserver.serve(app, host, port)
+
+    _integration_test()
