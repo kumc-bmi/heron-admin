@@ -9,17 +9,15 @@ __ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
 
 '''
 
-import sys
 from urllib import urlencode
 import logging
 
-# see setup.py and http://pypi.python.org/pypi
-import injector  # http://pypi.python.org/pypi/injector/
-                 # 0.3.1 7deba485e5b966300ef733c3393c98c6
+import injector
 from injector import inject, provides
 import pyramid
 from pyramid.config import Configurator
 from pyramid.httpexceptions import HTTPFound, HTTPSeeOther, HTTPForbidden
+from pyramid_mailer.mailer import Mailer
 
 # modules in this package
 import cas_auth
@@ -33,7 +31,8 @@ from admin_lib import redcap_connect
 from admin_lib import rtconfig
 from admin_lib.rtconfig import Options, TestTimeOptions
 from admin_lib import disclaimer
-from admin_lib.ocap_file import WebReadable, Token
+from admin_lib.ocap_file import WebReadable, Token, Path
+import traincheck
 
 KAppSettings = injector.Key('AppSettings')
 KI2B2Address = injector.Key('I2B2Address')
@@ -535,43 +534,36 @@ class HeronAdminConfig(Configurator):
                       permission=pyramid.security.NO_PERMISSION_REQUIRED)
 
 
-class RunTime(injector.Module):  # pragma: nocover
-    def __init__(self, settings):
+class RunTime(rtconfig.IniModule):  # pragma: nocover
+    def __init__(self, ini, settings, mailer):
         log.debug('RunTime settings: %s', settings)
+        rtconfig.IniModule.__init__(self, ini)
         self._settings = settings
-        self._webapp_ini = settings['webapp_ini']
-        self._admin_ini = settings['admin_ini']
+        self.__mailer = mailer
 
-    def configure(self, binder):
-        '''
-        .. todo:: consider least-authority access to app settings
-        '''
-        binder.bind(KAppSettings, self._settings)
-
-        i2b2_settings = RuntimeOptions(['cas_login']).load(
-            self._webapp_ini, 'i2b2')
-        binder.bind(KI2B2Address, to=i2b2_settings.cas_login)
-
-    @provides(drocnotice.KMailSettings)
+    @provides(KAppSettings)
     def settings(self):
-        log.debug('mail settings: %s', self._settings)
         return self._settings
 
-    @classmethod
-    def mods(cls, settings):
-        webapp_ini = settings['webapp_ini']
-        admin_ini = settings['admin_ini']
-        return (cas_auth.RunTime.mods(webapp_ini) +
-                heron_policy.RunTime.mods(admin_ini) +
-                [drocnotice.Setup(), RunTime(settings)])
+    @provides(KI2B2Address)
+    def addr(self):
+        return self.get_options(['cas_login'], section='i2b2').cas_login
+
+    @provides(Mailer)
+    def mailer(self):
+        return self.__mailer
 
     @classmethod
-    def depgraph(cls, settings):
-        return injector.Injector(cls.mods(settings))
-
-    @classmethod
-    def make(cls, global_config, settings):
-        return cls.depgraph(settings).get(HeronAdminConfig)
+    def mods(cls, cwd, settings, mailer, create_engine, **kwargs):
+        ini = cwd / settings['webapp_ini']
+        admin_ini = cwd / settings['admin_ini']
+        trainingfn = traincheck.from_config(admin_ini, create_engine)
+        return (cas_auth.RunTime.mods(ini=ini, **kwargs) +
+                heron_policy.RunTime.mods(ini=admin_ini,
+                                          create_engine=create_engine,
+                                          trainingfn=trainingfn,
+                                          **kwargs) +
+                [cls(ini, settings, mailer)])
 
 
 class Mock(injector.Module, rtconfig.MockMixin):
@@ -639,8 +631,31 @@ class Mock(injector.Module, rtconfig.MockMixin):
 
 
 def app_factory(global_config, **settings):
+    from datetime import datetime
+    from io import open as io_open
+    from os import listdir
+    from os.path import join as joinpath
+    from random import Random
+    from urllib2 import build_opener
+    import uuid
+
+    from sqlalchemy import create_engine
+    import ldap
+
+    cwd = Path('.', open=io_open, joinpath=joinpath, listdir=listdir)
+
     log.debug('in app_factory')
-    config = RunTime.make(global_config, settings)
+    [config] = RunTime.make(
+        [HeronAdminConfig],
+        cwd=cwd,
+        settings=settings,
+        create_engine=create_engine,
+        ldap=ldap,
+        uuid=uuid,
+        urlopener=build_opener(),
+        timesrc=datetime,
+        rng=Random(),
+        mailer=Mailer.from_settings(settings))
 
     # https://pylonsproject.org/projects/pyramid_exclog/dev/
     # self.include('pyramid_exclog')
@@ -653,22 +668,28 @@ def app_factory(global_config, **settings):
 
 
 if __name__ == '__main__':  # pragma nocover
-    # test usage
-    from paste import httpserver
-    #@@from paste import fileapp
-    host, port = sys.argv[1:3]
+    def _script():
+        from sys import argv
 
-    logging.basicConfig(level=logging.DEBUG)
+        # test usage
+        from paste import httpserver
+        # from paste import fileapp
+        host, port = argv[1:3]
 
-    # In production use, static A/V media files would be
-    # served with apache, but for test purposes, we'll use
-    # paste DirectoryApp
-    # TODO: use paster
-    #app = prefix_router('/av/',
-    #                    fileapp.DirectoryApp(HeronAccessPartsApp.htdocs),
-    #                    )
+        logging.basicConfig(level=logging.DEBUG)
 
-    httpserver.serve(app_factory({},
-                                 webapp_ini='integration-test.ini',
-                                 admin_ini='admin_lib/integration-test.ini'),
-                     host=host, port=port)
+        # In production use, static A/V media files would be
+        # served with apache, but for test purposes, we'll use
+        # paste DirectoryApp
+        # TODO: use paster
+        # app = prefix_router('/av/',
+        #                    fileapp.DirectoryApp(HeronAccessPartsApp.htdocs),
+        #                    )
+
+        httpserver.serve(
+            app_factory({},
+                        webapp_ini='integration-test.ini',
+                        admin_ini='admin_lib/integration-test.ini'),
+            host=host, port=port)
+
+    _script()
