@@ -830,7 +830,7 @@ if __name__ == '__main__':  # pragma nocover
         from io import open as io_open
         from os.path import join as joinpath
         from random import Random
-        from sys import argv, stderr
+        from sys import argv, stderr, path as sys_path
         from urllib2 import build_opener
         import uuid
 
@@ -841,20 +841,15 @@ if __name__ == '__main__':  # pragma nocover
         cwd = Path('.', open=io_open, joinpath=joinpath)
         logging.basicConfig(level=logging.DEBUG, stream=stderr)
 
-        def trainingfn(who):
-            from collections import namedtuple
+        sys_path.append('..')
+        import traincheck
 
-            class T(namedtuple('Training',
-                               ['username',
-                                'expired',
-                                'completed',
-                                'course'])):
-                pass
-            return T('bob', '2003-01-01', '2001-01-01', 'fun stuff')
+        ini = cwd / 'integration-test.ini'
+        trainingfn = traincheck.from_config(ini, create_engine)
 
         userid = argv[1]
         mc, hr = RunTime.make([medcenter.MedCenter, HeronRecords],
-                              ini=cwd / 'integration-test.ini',
+                              ini=ini,
                               rng=Random(),
                               timesrc=datetime,
                               uuid=uuid,
