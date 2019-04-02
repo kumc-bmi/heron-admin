@@ -31,7 +31,7 @@ from admin_lib import medcenter
 from admin_lib import heron_policy
 from admin_lib import redcap_connect
 from admin_lib import rtconfig
-from admin_lib.rtconfig import Options, TestTimeOptions, RuntimeOptions
+from admin_lib.rtconfig import Options, TestTimeOptions
 from admin_lib import disclaimer
 from admin_lib.ocap_file import WebReadable, Token
 
@@ -394,8 +394,9 @@ class TeamBuilder(Token):
                 log.debug('study id: %s', params.get('studyId', ''))
                 studyTeam = browser.studyTeam(params.get('studyId', ''))
                 log.debug('study team members: %s', studyTeam)
-                studyTeam.sort(key=lambda who: (who["lastName"], who["firstName"]))
-                
+                studyTeam.sort(key=lambda who: (who["lastName"],
+                                                who["firstName"]))
+
         # Since we're the only supposed to supply these names,
         # it seems OK to throw KeyError if we hit a bad one.
         team = [browser.lookup(n) for n in uids]
@@ -507,7 +508,6 @@ class HeronAdminConfig(Configurator):
                 REDCapLink.for_sponsorship,
                 REDCapLink.for_data_use))
         rcv.configure(self, 'saa', 'team_done', 'dua')
-
 
         self.add_route('oversight', 'build_team/{what_for:%s|%s}' % (
                 REDCapLink.for_sponsorship,
