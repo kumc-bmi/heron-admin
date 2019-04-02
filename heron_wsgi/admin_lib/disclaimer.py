@@ -364,88 +364,80 @@ class TestSetUp(redcapdb.SetUp):
 
 
 class RunTime(rtconfig.IniModule):  # pragma: nocover
+    def __init__(self, ini, urlopener):
+        rtconfig.IniModule.__init__(self, ini)
+        self.__urlopener = urlopener
+
     def configure(self, binder):
         drt = self.get_options(['project_id'], DISCLAIMERS_SECTION)
         Disclaimer.eav_map(drt.project_id)
 
         art, api = self.endpoint(
-            self, ACKNOWLEGEMENTS_SECTION, extra=('project_id',))
+            ACKNOWLEGEMENTS_SECTION, extra=('project_id',))
         Acknowledgement.eav_map(art.project_id)
 
         binder.bind((redcap_api.EndPoint, ACKNOWLEGEMENTS_SECTION),
                     injector.InstanceProvider(api))
 
-    @classmethod
-    def endpoint(cls, mod, section, extra=()):
-        opts = mod.get_options(
+    def endpoint(self, section, extra=()):
+        opts = self.get_options(
             redcap_api._test_settings._d.keys() + list(extra), section)
-        webcap = WebPostable(opts.api_url, build_opener(), Request)
+        webcap = WebPostable(opts.api_url, self.__urlopener)
         return opts, redcap_api.EndPoint(webcap, opts.token)
 
     @provides((WebReadable, DISCLAIMERS_SECTION))
 #    def rdblog(self, site='http://informatics.kumc.edu/'):
     def rdblog(self, site='http'):
-        from urllib2 import build_opener, Request
-        return WebReadable(site, build_opener(), Request)
-
-    @provides(rtconfig.Clock)
-    def real_time(self):
-        import datetime
-
-        return datetime.datetime
+        return WebReadable(site, self.__urlopener)
 
     @classmethod
-    def mods(cls, ini):
-        return redcapdb.RunTime.mods(ini) + [cls(ini)]
+    def mods(cls, ini, timesrc, urlopener, create_engine, **kwargs):
+        return redcapdb.RunTime.mods(ini, create_engine) + [
+            rtconfig.RealClockInjector(timesrc), cls(ini, urlopener)]
 
+    @classmethod
+    def _integration_test(cls, argv, engine, acks, webrd):  # pragma: nocover
+        redcapdb.Base.metadata.bind = engine
+        sm = sessionmaker(engine)
 
-def _integration_test(argv, stdout):  # pragma: nocover
-    logging.basicConfig(level=logging.DEBUG, stream=stdout)
+        user_id = argv[1]
 
-    user_id = argv[1]
-
-    engine, acks, webrd = RunTime.make(None,
-                                       [(sqlalchemy.engine.base.Connectable,
-                                         redcapdb.CONFIG_SECTION),
-                                        AcknowledgementsProject,
-                                        (WebReadable, DISCLAIMERS_SECTION)])
-    redcapdb.Base.metadata.bind = engine
-    sm = sessionmaker(engine)
-
-    s = sm()
-    d = s.query(Disclaimer).filter(Disclaimer.current == 1).first()
-    log.info('current disclaimer: %s', d)
-    a = s.query(Acknowledgement).\
-        filter(Acknowledgement.disclaimer_address == d.url).\
-        filter(Acknowledgement.user_id == user_id).first()
-    log.info('ack for %s: %s', user_id, a)
-
-    if '--ack' in argv:
+        s = sm()
+        log.info('getting first current disclaimer for %s ...', user_id)
         d = s.query(Disclaimer).filter(Disclaimer.current == 1).first()
-        acks.add_record(user_id, d.url)
-        s.commit()
+        log.info('current disclaimer: %s', d)
+        log.info('getting %s ack for %s ...', user_id, d.url)
+        a = s.query(Acknowledgement).\
+            filter(Acknowledgement.disclaimer_address == d.url).\
+            filter(Acknowledgement.user_id == user_id).first()
+        log.info('ack for %s: %s', user_id, a)
 
-    if '--disclaimers' in argv:
-        print("all disclaimers:")
-        for d in s.query(Disclaimer):
-            print(d)
+        if '--ack' in argv:
+            d = s.query(Disclaimer).filter(Disclaimer.current == 1).first()
+            acks.add_record(user_id, d.url)
+            s.commit()
 
-    if '--acks' in argv:
-        print('all acknowledgements:')
-        for ack in s.query(Acknowledgement):
-            print(ack)
+        if '--disclaimers' in argv:
+            print("all disclaimers:")
+            for d in s.query(Disclaimer):
+                print(d)
 
-    if '--release-info' in argv:
-        for start, count, url in _release_info(s):
-            print("%s,%s,%s" % (start, count, url))
+        if '--acks' in argv:
+            print('all acknowledgements:')
+            for ack in s.query(Acknowledgement):
+                print(ack)
 
-    if '--current' in argv:
-        print("current disclaimer and content:")
-        for d in s.query(Disclaimer).filter(Disclaimer.current == 1):
-            print(d)
-            c, h = d.content(webrd)
-            print(h)
-            print(c[:100])
+        if '--release-info' in argv:
+            for start, count, url in _release_info(s):
+                print("%s,%s,%s" % (start, count, url))
+
+        if '--current' in argv:
+            print("current disclaimer and content:")
+            for d in s.query(Disclaimer).filter(Disclaimer.current == 1):
+                print(d)
+                c, h = d.content(webrd)
+                print(h)
+                print(c[:100])
 
 
 def _release_info(s):
@@ -453,9 +445,9 @@ def _release_info(s):
     '''
     from operator import attrgetter
     from itertools import groupby
-    acks = s.query(Acknowledgement).all()
+    acks0 = s.query(Acknowledgement).all()
     per_release = dict([(addr, list(acks)) for addr, acks in
-                        groupby(acks, attrgetter('disclaimer_address'))])
+                        groupby(acks0, attrgetter('disclaimer_address'))])
     users_per_release = dict([(addr, len(list(acks))) for addr, acks in
                               per_release.iteritems()])
     start_release = dict([(addr, min([a.timestamp for a in acks]))
@@ -469,10 +461,27 @@ def _release_info(s):
 
 if __name__ == '__main__':  # pragma: nocover
     def _script():
+        from datetime import datetime
+        from io import open as io_open
+        from os.path import join as joinpath
         from sys import argv, stdout
         from urllib2 import build_opener
 
-        _integration_test(argv, stdout)
+        from pathlib import Path
+        from sqlalchemy import create_engine
+
+        cwd = Path('.', open=io_open, joinpath=joinpath)
+
+        logging.basicConfig(level=logging.DEBUG, stream=stdout)
+
+        engine, acks, webrd = RunTime.make(
+            [(sqlalchemy.engine.base.Connectable, redcapdb.CONFIG_SECTION),
+             AcknowledgementsProject,
+             (WebReadable, DISCLAIMERS_SECTION)],
+            timesrc=datetime,
+            create_engine=create_engine,
+            ini=cwd / 'integration-test.ini',
+            urlopener=build_opener())
+        RunTime._integration_test(argv, engine, acks, webrd)
 
     _script()
-

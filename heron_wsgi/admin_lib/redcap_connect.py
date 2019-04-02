@@ -101,6 +101,10 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     def rng(self):
         return self.__rng
 
+    @classmethod
+    def mods(cls, ini, rng, create_engine, **kwargs):
+        return [cls(ini, rng, create_engine)]
+
     def _setup(self, opts, connect, rng, survey_id=None):
         return SurveySetup(opts, connect, rng, survey_id=survey_id)
 

@@ -216,8 +216,8 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     @singleton
     @provides(LDAPService)
     @inject(rt=(rtconfig.Options, CONFIG_SECTION),
-            clock=rtconfig.Clock)
-    def service(self, rt, clock,
+            timesrc=rtconfig.Clock)
+    def service(self, rt, timesrc,
                 ttl=15):
         '''Provide native or mock LDAP implementation.
 
@@ -230,12 +230,12 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
 
         '''
         flags = self.__ldap
-        return LDAPService(clock, ttl=ttl, rt=rt,
+        return LDAPService(timesrc.now, ttl=ttl, rt=rt,
                            ldap=self.__ldap, flags=flags)
 
     @classmethod
-    def mods(cls, ini, ldap, clock, **kwargs):
-        return [cls(ini, ldap), rtconfig.RealClockInjector(clock)]
+    def mods(cls, ini, ldap, timesrc, **kwargs):
+        return [cls(ini, ldap), rtconfig.RealClockInjector(timesrc)]
 
 
 if __name__ == '__main__':  # pragma nocover

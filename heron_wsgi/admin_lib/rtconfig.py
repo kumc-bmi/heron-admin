@@ -91,9 +91,9 @@ class MockClockInjector(injector.Module):
 
 
 class RealClockInjector(injector.Module):
-    def __init__(self, clock):
-        self.__clock = clock
-        self.label = '%s(%s)' % (self.__class__.__name__, clock())
+    def __init__(self, timesrc):
+        self.__timesrc = timesrc
+        self.label = '%s(%s)' % (self.__class__.__name__, timesrc.now())
 
     def __repr__(self):
         return self.label
@@ -101,7 +101,7 @@ class RealClockInjector(injector.Module):
     @singleton
     @provides(Clock)
     def the_clock(self):
-        return self.__clock
+        return self.__timesrc
 
 
 def _printLogs(level=logging.INFO):
@@ -224,7 +224,7 @@ class IniModule(injector.Module, _Maker):  # pragma: nocover
         Note: Subclasses must override this method as appropriate.
 
         '''
-        return [cls(ini)]
+        return [cls(ini, **kwargs)]
 
 
 def _logged(x):

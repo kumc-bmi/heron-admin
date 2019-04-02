@@ -462,6 +462,11 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         rtconfig.IniModule.__init__(self, ini)
         self.__urlopener = urlopener
         self.__trainingfn = trainingfn
+        self.label = '%s(%s, %s, %s)' % (
+            self.__class__.__name__, ini, urlopener, trainingfn)
+
+    def __repr__(self):
+        return self.label
 
     @provides(KExecutives)
     @inject(rt=(rtconfig.Options, ldaplib.CONFIG_SECTION))
@@ -476,6 +481,10 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         tf = (rt.testing_faculty or '').split()
         log.info('testing faculty: %s', tf)
         return tf
+
+    @provides(KTrainingFunction)
+    def training(self):
+        return self.__trainingfn
 
     @provides(KStudyTeamLookup)
     @inject(rt=(rtconfig.Options, ldaplib.CONFIG_SECTION))
@@ -494,9 +503,9 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         return lookup
 
     @classmethod
-    def mods(cls, ini, clock, urlopener, ldap, trainingfn, **kwargs):
+    def mods(cls, ini, timesrc, urlopener, ldap, trainingfn, **kwargs):
         return [cls(ini, urlopener, trainingfn)] + (
-            ldaplib.RunTime.mods(ini, ldap, clock))
+            ldaplib.RunTime.mods(ini, ldap, timesrc))
 
 
 if __name__ == '__main__':  # pragma: no cover
@@ -527,7 +536,7 @@ if __name__ == '__main__':  # pragma: no cover
 
         [m] = RunTime.make(
             [MedCenter],
-            clock=datetime.now, urlopener=build_opener(),
+            timesrc=datetime, urlopener=build_opener(),
             trainingfn=trainingfn,
             ini=ini, ldap=ldap)
 

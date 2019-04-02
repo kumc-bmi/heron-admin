@@ -321,21 +321,11 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
 
       >>> print str(cdwho)
       ...  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
-      SELECT cd_record AS record,
-      cd_decision AS decision,
-      who_userid AS candidate,
-      sponsor_userid AS sponsor,
-      expire_dt_exp AS dt_exp
-      FROM
-      (SELECT cdwho.cd_record AS cd_record,
-              cdwho.cd_decision AS cd_decision,
-              cdwho.cd_count_1 AS cd_count_1,
-              cdwho.who_record AS who_record,
-              cdwho.who_userid AS who_userid,
-              cdwho.sponsor_record AS sponsor_record,
-              cdwho.sponsor_userid AS sponsor_userid,
-              cdwho.expire_record AS expire_record,
-              cdwho.expire_dt_exp AS expire_dt_exp
+      SELECT cdwho.cd_record AS record,
+             cdwho.cd_decision AS decision,
+             cdwho.who_userid AS candidate,
+             cdwho.sponsor_userid AS sponsor,
+             cdwho.expire_dt_exp AS dt_exp
         FROM
             (SELECT cd.record AS cd_record,
             cd.decision AS cd_decision,
@@ -389,7 +379,7 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
                     FROM redcap_data
                     WHERE redcap_data.project_id = :project_id_1) AS p
                 WHERE p.field_name = :field_name_4) AS expire
-            ON expire.record = cd.record) AS cdwho)
+            ON expire.record = cd.record) AS cdwho
 
       >>> pprint(cdwho.compile().params)
       {u'count_2': 3,
@@ -435,13 +425,13 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
                       sponsor.c.record == decision.c.record).\
                           outerjoin(dt_exp,
                                     dt_exp.c.record == decision.c.record).\
-                                        alias('cdwho').select()
+                                        alias('cdwho')
 
-    cdwho = j.with_only_columns((j.c.cd_record.label('record'),
-                                 j.c.cd_decision.label('decision'),
-                                 j.c.who_userid.label('candidate'),
-                                 j.c.sponsor_userid.label('sponsor'),
-                                 j.c.expire_dt_exp.label('dt_exp')))
+    cdwho = select([j.c.cd_record.label('record'),
+                    j.c.cd_decision.label('decision'),
+                    j.c.who_userid.label('candidate'),
+                    j.c.sponsor_userid.label('sponsor'),
+                    j.c.expire_dt_exp.label('dt_exp')])
 
     return decision, candidate, cdwho
 
@@ -500,11 +490,10 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
         return 'droctools'
 
     @classmethod
-    def mods(cls, ini, clock, urlopener, ldap, create_engine, trainingfn,
-             **kwargs):
+    def mods(cls, ini, **kwargs):
         return (
-            redcapdb.RunTime.mods(ini, create_engine) +
-            medcenter.RunTime.mods(ini, clock, urlopener, ldap, trainingfn) +
+            redcapdb.RunTime.mods(ini, **kwargs) +
+            medcenter.RunTime.mods(ini, **kwargs) +
             [cls(ini)])
 
 

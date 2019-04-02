@@ -763,11 +763,8 @@ def mock_context(who, depgraph=None):
 
 
 class RunTime(rtconfig.IniModule):  # pragma nocover
-    @singleton
-    @provides(rtconfig.Clock)
-    def _real_time(self):
-        import datetime
-        return datetime.datetime
+    def __init__(self, ini):
+        rtconfig.IniModule.__init__(self, ini)
 
     @singleton
     @provides((redcap_connect.SurveySetup, SAA_CONFIG_SECTION))
@@ -804,36 +801,67 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
         return mc.getInspector()
 
     @classmethod
-    def mods(cls, ini):
-        return ([im for m in
-                 (medcenter,
-                  i2b2pm,
-                  redcap_connect,
-                  disclaimer,
-                  noticelog)
-                 for im in m.RunTime.mods(ini)] + [cls(ini)])
+    def mods(cls, ini, **kwargs):
+        return (
+            [im for mcls in
+             [medcenter.RunTime,
+              i2b2pm.RunTime,
+              redcap_connect.RunTime,
+              disclaimer.RunTime,
+              noticelog.RunTime]
+             for im in mcls.mods(ini=ini, **kwargs)] +
+            [cls(ini)])
 
+    @classmethod
+    def _integration_test(cls, mc, hr, userid):  # pragma nocover
+        req = medcenter.MockRequest()
+        req.remote_user = userid
+        mc.authenticated(userid, req)
+        hr.grant(req.context, PERM_STATUS)
+        print(req.context.status)
 
-def _integration_test():  # pragma nocover
-    import sys
-
-    if '--doctest' in sys.argv:
-        import doctest
-        doctest.testmod()
-
-    logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
-
-    userid = sys.argv[1]
-    req = medcenter.MockRequest()
-    req.remote_user = userid
-    mc, hr = RunTime.make(None, [medcenter.MedCenter, HeronRecords])
-    mc.authenticated(userid, req)
-    hr.grant(req.context, PERM_STATUS)
-    print(req.context.status)
-
-    hr.grant(req.context, PERM_START_I2B2)
-    print(req.context.start_i2b2())
+        hr.grant(req.context, PERM_START_I2B2)
+        print(req.context.start_i2b2())
 
 
 if __name__ == '__main__':  # pragma nocover
-    _integration_test()
+    def _script():
+        from datetime import datetime
+        from io import open as io_open
+        from os.path import join as joinpath
+        from random import Random
+        from sys import argv, stderr
+        from urllib2 import build_opener
+        import uuid
+
+        from pathlib import Path
+        from sqlalchemy import create_engine
+        import ldap
+
+        cwd = Path('.', open=io_open, joinpath=joinpath)
+        logging.basicConfig(level=logging.DEBUG, stream=stderr)
+
+        def trainingfn(who):
+            from collections import namedtuple
+
+            class T(namedtuple('Training',
+                               ['username',
+                                'expired',
+                                'completed',
+                                'course'])):
+                pass
+            return T('bob', '2003-01-01', '2001-01-01', 'fun stuff')
+
+        userid = argv[1]
+        mc, hr = RunTime.make([medcenter.MedCenter, HeronRecords],
+                              ini=cwd / 'integration-test.ini',
+                              rng=Random(),
+                              timesrc=datetime,
+                              uuid=uuid,
+                              urlopener=build_opener(),
+                              trainingfn=trainingfn,
+                              ldap=ldap,
+                              create_engine=create_engine)
+        RunTime._integration_test(mc, hr, userid)
+
+    _script()

@@ -480,7 +480,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         return mode
 
     @classmethod
-    def mods(cls, ini, uuid, create_engine):
+    def mods(cls, ini, uuid, create_engine, **kwargs):
         return [i2b2metadata.RunTime(ini, create_engine),
                 cls(ini, uuid, create_engine)]
 
