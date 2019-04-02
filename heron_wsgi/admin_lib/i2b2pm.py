@@ -451,6 +451,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
 
         def make_session_and_revoke():
             engine = ctx.lookup(jndi)
+            log.info('i2p2pm engine: %s', engine)
             ds = sm(bind=engine)
             revoke_expired_auths(ds)
             return ds
