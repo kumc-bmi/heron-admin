@@ -110,7 +110,7 @@ from sqlalchemy.orm import session, sessionmaker, exc
 # from this package
 from ddict import DataDict
 from notary import makeNotary
-from ocap_file import WebReadable, WebPostable, Token
+from ocap_file import WebReadable, WebPostable, Token, Path
 from redcapdb import add_mock_eav
 import medcenter
 import redcap_api
@@ -502,7 +502,6 @@ if __name__ == '__main__':  # pragma: nocover
         from sys import argv, stdout
         from urllib2 import build_opener
 
-        from pathlib import Path
         from sqlalchemy import create_engine
 
         cwd = Path('.', open=io_open, joinpath=joinpath)

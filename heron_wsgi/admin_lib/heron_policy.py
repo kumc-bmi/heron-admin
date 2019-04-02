@@ -303,7 +303,7 @@ from injector import inject, provides, singleton
 from sqlalchemy import orm
 from sqlalchemy.engine.base import Connectable
 
-from ocap_file import Token
+from ocap_file import Token, Path
 import rtconfig
 import i2b2pm
 import medcenter
@@ -830,17 +830,17 @@ if __name__ == '__main__':  # pragma nocover
     def _script():
         from datetime import datetime
         from io import open as io_open
+        from os import listdir
         from os.path import join as joinpath
         from random import Random
         from sys import argv, stderr, path as sys_path
         from urllib2 import build_opener
         import uuid
 
-        from pathlib import Path
         from sqlalchemy import create_engine
         import ldap
 
-        cwd = Path('.', open=io_open, joinpath=joinpath)
+        cwd = Path('.', open=io_open, joinpath=joinpath, listdir=listdir)
         logging.basicConfig(level=logging.DEBUG, stream=stderr)
 
         sys_path.append('..')
