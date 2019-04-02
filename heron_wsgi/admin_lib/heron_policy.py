@@ -69,8 +69,9 @@ Once he acknowledges it, he can access the repository:
 
   >>> facreq.context.disclaimers.current_disclaimer()
   ... # doctest: +NORMALIZE_WHITESPACE
-  Disclaimer(disclaimer_id=1, url=http://example/blog/item/heron-release-xyz,
-             current=1)
+    Disclaimer(project_id=123, record=1,
+               disclaimer_id=1,
+               url=http://example/blog/item/heron-release-xyz, current=1)
   >>> _ = logged()
   >>> facreq.context.disclaimers.ack_disclaimer(facreq.context.badge)
   >>> facreq.context.start_i2b2()
@@ -78,7 +79,8 @@ Once he acknowledges it, he can access the repository:
   >>> print(logged())
   ... # doctest: +NORMALIZE_WHITESPACE
   INFO:disclaimer:disclaimer ack:
-  Acknowledgement(ack=2011-09-02 john.smith /heron-release-xyz,
+  Acknowledgement(project_id=34, record=-8650809471427594162,
+    ack=2011-09-02 john.smith /heron-release-xyz,
     timestamp=2011-09-02 00:00:00, user_id=john.smith,
     disclaimer_address=http://example/blog/item/heron-release-xyz)
   INFO:i2b2pm:Finding I2B2 project for REDCap pids: []
