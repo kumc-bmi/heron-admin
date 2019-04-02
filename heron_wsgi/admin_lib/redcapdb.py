@@ -112,66 +112,64 @@ def colsmatch(t1, t2, cols):
     return and_(*[(t1c == t2c) for t1c, t2c in eachcol(t1, t2, cols)])
 
 
-def eav_join(t, keycols, attrs, acol, vcol):
+def unpivot(field_names,
+            pfx='j_',
+            record=False,
+            redcap_data=redcap_data):
+    '''Self-join redcap_data to unpivot EAV to row-modelling.
+
+    >>> cs, fs, wc, rel = unpivot(['study_id', 'age', 'sex'], record=True)
+
+    The first two columns work like a primary key:
+      >>> [c.name for c in cs[:2]]
+      ['project_id', 'record']
+
+    The rest are the redcap fields:
+      >>> [c.name for c in cs[2:]]
+      ['study_id', 'age', 'sex']
+
+    Each of the self-joins is named:
+      >>> [r.name for r in fs]
+      ['j_study_id', 'j_age', 'j_sex']
+
+    The query as a whole is:
+    >>> print(rel)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    SELECT j_study_id.project_id,
+           j_study_id.record,
+           j_study_id.value AS study_id,
+           j_age.value AS age,
+           j_sex.value AS sex
+    FROM redcap_data AS j_study_id, redcap_data AS j_age, redcap_data AS j_sex
+    WHERE j_study_id.project_id = j_study_id.project_id
+      AND j_study_id.field_name = :field_name_1
+      AND j_age.project_id = j_study_id.project_id
+      AND j_age.field_name = :field_name_2
+      AND j_sex.project_id = j_study_id.project_id
+      AND j_sex.field_name = :field_name_3
+      AND j_study_id.record = j_age.record
+      AND j_age.record = j_sex.record
     '''
-      >>> cols1, j1, w1 = eav_join(redcap_data,
-      ...                          ['project_id', 'record'],
-      ...                          ['url'],
-      ...                          'field_name', 'value')
-      >>> cols1
-      [Column('value', TEXT(), table=<j_url>)]
+    if not field_names:
+        raise ValueError(field_names)
 
-      >>> print select(cols1).where(w1)  # doctest: +NORMALIZE_WHITESPACE
-      SELECT j_url.value
-      FROM redcap_data AS j_url
-      WHERE j_url.field_name = :field_name_1
+    froms = [(n, redcap_data.alias(pfx + n)) for n in field_names]
+    d0 = froms[0]  # 0th redcap_data table
+    project_id = d0[1].c.project_id
+    cols = [project_id] + ([d0[1].c.record] if record else []) + [
+        frm.c.value.label(n) for (n, frm) in froms]
 
-      >>> c2, j2, w2 = eav_join(redcap_data,
-      ...                       ['project_id', 'record'],
-      ...                       ['url', 'name'],
-      ...                       'field_name', 'value')
-      >>> print select(c2).where(w2)
-      ... # doctest: +NORMALIZE_WHITESPACE
-      SELECT j_url.value, j_name.value FROM redcap_data AS j_url,
-      redcap_data AS j_name WHERE j_url.field_name = :field_name_1 AND
-      j_url.project_id = j_name.project_id AND j_url.record =
-      j_name.record AND j_name.field_name = :field_name_2
+    project = [clause for (n, frm) in froms
+               for clause in
+               [frm.c.project_id == project_id,
+                frm.c.field_name == n]]
+    join = [froms[ix][1].c.record == froms[ix + 1][1].c.record
+            for ix in range(len(froms) - 1)]
 
-
-      >>> c3, j3, w3 = eav_join(redcap_data,
-      ...                       ['project_id', 'record'],
-      ...                       ['disclaimer_id', 'url', 'current'],
-      ...                       'field_name', 'value')
-      >>> print select(c3).where(w3).apply_labels()
-      ... # doctest: +NORMALIZE_WHITESPACE
-      SELECT j_disclaimer_id.value AS j_disclaimer_id_value,
-      j_url.value AS j_url_value, j_current.value AS j_current_value
-      FROM redcap_data AS j_disclaimer_id, redcap_data AS j_url,
-      redcap_data AS j_current WHERE j_disclaimer_id.field_name =
-      :field_name_1 AND j_disclaimer_id.project_id = j_url.project_id
-      AND j_disclaimer_id.record = j_url.record AND j_url.field_name =
-      :field_name_2 AND j_disclaimer_id.project_id =
-      j_current.project_id AND j_disclaimer_id.record =
-      j_current.record AND j_current.field_name = :field_name_3
-      '''
-
-    #aliases = dict([(n, t.alias('t_' + n)) for n in attrs])
-
-    # use itertools rather than for loop for fold?
-    #a0 = aliases[attrs[0]]
-    t0 = t.alias('j_' + attrs[0])
-    product = t0
-    where = t0.columns[acol] == attrs[0]
-    vcols = [t0.columns[vcol]]
-
-    for n in attrs[1:]:
-        tn = t.alias('j_' + n)
-        wn = colsmatch(product, tn, keycols)
-        where = and_(where, wn, (tn.columns[acol] == n))
-        product = product.join(tn, wn)
-        vcols.append(tn.columns[vcol])
-
-    return vcols, product, where
+    w = and_(*project + join)
+    from_obj = [f for (n, f) in froms]
+    relation = select(cols, w, from_obj=from_obj)
+    return cols, from_obj, w, relation
 
 
 class REDCapRecord(object):
@@ -188,36 +186,21 @@ class REDCapRecord(object):
 
     def __repr__(self):
         '''
-          >>> r = _TestRecord('test_001', 31, 0)
-          >>> r
-          _TestRecord(study_id=test_001, age=31, sex=0)
+          >>> r = _TestRecord(123, '1', 'test_001', 31, 0)
+          >>> r  # doctest: +NORMALIZE_WHITESPACE
+          _TestRecord(project_id=123, record=1,
+                      study_id=test_001, age=31, sex=0)
         '''
+        info = [(f, getattr(self, f))
+                for f in (('project_id', 'record') + self.fields)]
         return self.__class__.__name__ + '(' + (
-            ', '.join(['%s=%s' % (f, getattr(self, f))
-                       for f in self.fields])) + ')'
+            ', '.join(['%s=%s' % fv for fv in info])) + ')'
 
     @classmethod
-    def eav_map(cls, project_id, alias='eav'):
+    def eav_map(cls, alias='eav'):
         '''Set up the ORM mapping based on project_id.
 
-        :param cls: class to map
-        :param pid: redcap project id to select
-        :param fields: 1st is primary key
-        :returns: (value_columns, join_where_clause)
-
-        For example::
-
-          >>> cols, where = _TestRecord.eav_map(project_id=123)
-          >>> [c.table.name for c in cols]
-          ['j_study_id', 'j_age', 'j_sex']
-          >>> str(where)
-          ... # doctest: +NORMALIZE_WHITESPACE
-          'j_study_id.field_name = :field_name_1 AND
-          j_study_id.project_id = j_age.project_id AND
-          j_study_id.record = j_age.record AND j_age.field_name =
-          :field_name_2 AND j_study_id.project_id = j_sex.project_id
-          AND j_study_id.record = j_sex.record AND j_sex.field_name =
-          :field_name_3'
+        For example, suppose the DB has the following data::
 
           >>> (smaker, ) = Mock.make([(session.Session,
           ...                          CONFIG_SECTION)])
@@ -231,28 +214,33 @@ class REDCapRecord(object):
           ...                 project_id=project_id, record=record,
           ...                 field_name=field_name, value=value)) and None
           >>> s.commit()
-          >>> s.query(_TestRecord).all()
-          [_TestRecord(study_id=test_002, age=32, sex=1)]
+
+       We can use the ORM as follows::
+
+          >>> _ = _TestRecord.eav_map()
+          >>> r = s.query(_TestRecord).filter(
+          ...     _TestRecord.project_id == 123).first()
+          >>> (r.study_id, r.age, r.sex)
+          (u'test_002', u'32', u'1')
 
         '''
-        data = redcap_data.select().where(
-            redcap_data.c.project_id == project_id)
-        cols, j, w = eav_join(data.alias(alias),
-                              keycols=('project_id', 'record'),
-                              attrs=cls.fields,
-                              acol='field_name', vcol='value')
+        cols, f, w, relation = unpivot(cls.fields,
+                                       record=True, redcap_data=redcap_data)
 
-        mapper(cls, select(cols).where(w).apply_labels().alias(),
-               primary_key=[cols[0]],
-               properties=dict(zip(cls.fields, cols)))
+        mapper(cls, relation.apply_labels().alias(),
+               primary_key=cols[:2],
+               properties=dict(dict(zip(cls.fields, cols[2:])),
+                               project_id=cols[0], record=cols[1]))
 
-        return cols, w
+        return cols, f, w
 
 
 class _TestRecord(REDCapRecord):
     fields = ('study_id', 'age', 'sex')
 
-    def __init__(self, study_id, age, sex):
+    def __init__(self, project_id, record, study_id, age, sex):
+        self.project_id = project_id
+        self.record = record
         self.study_id = study_id
         self.age = age
         self.sex = sex
