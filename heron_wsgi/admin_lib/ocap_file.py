@@ -51,7 +51,7 @@ class Path(object):
         self._path = here
 
     def __repr__(self):
-        return '{cls}(...)'.format(cls=self.__class__.__name__)
+        return '{cls}({p})'.format(cls=self.__class__.__name__, p=self._path)
 
     def __str__(self):
         return self._path
