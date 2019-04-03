@@ -592,8 +592,8 @@ class Mock(injector.Module, rtconfig.MockMixin):
       ...         heron_policy.SAA_CONFIG_SECTION),
       ...        (redcap_connect.SurveySetup,
       ...         heron_policy.OVERSIGHT_CONFIG_SECTION)])
-      >>> type(c)
-      <class 'heron_srv.HeronAdminConfig'>
+      >>> c.__class__.__name__
+      'HeronAdminConfig'
 
     Then make a WSGI app out of it::
       >>> tapp = c.make_wsgi_app()

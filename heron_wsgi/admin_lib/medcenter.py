@@ -14,7 +14,8 @@ records.
 Access is logged at the :data:`logging.INFO` level.
 
   >>> logged = rtconfig._printLogs()
-  >>> logging.getLogger('cache_remote').setLevel(level=logging.WARN)
+  >>> import cache_remote
+  >>> cache_remote.log.setLevel(level=logging.WARN)
 
 Issuing Notarized Badges
 ------------------------

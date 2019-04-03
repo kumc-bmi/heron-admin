@@ -131,7 +131,7 @@ def fyears_after_mysql(element, compiler, **kw):
     ...                   sa.Column('when', sa.Date))
     >>> q = sa.select([fyears_after(events.c.when, 3, -6, '07-01')])
 
-    >>> db = sa.create_engine('mysql://')
+    >>> db = sa.create_engine('mysql+pymysql://')
     >>> print q.compile(db)
     ... # doctest: +NORMALIZE_WHITESPACE
     SELECT str_to_date(
