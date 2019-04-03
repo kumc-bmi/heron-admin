@@ -260,7 +260,7 @@ if __name__ == '__main__':  # pragma nocover
 
         [ls] = RunTime.make([LDAPService],
                             ini=cwd / 'integration-test.ini',
-                            ldap=ldap, clock=datetime.now)
+                            ldap=ldap, timesrc=datetime)
 
         print(pformat(ls._search(ldap_query, attrs)), file=stdout)
 
