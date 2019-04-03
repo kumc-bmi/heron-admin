@@ -110,6 +110,7 @@ The following table is used to log notices::
 
 '''
 
+from pprint import pformat
 import logging
 from collections import namedtuple
 
@@ -172,7 +173,7 @@ class DecisionRecords(Token):
         self._browser = browser
         self._smaker = smaker
         self._clock = clock
-        self._notice_log_schema=notice_log_schema
+        self._notice_log_schema = notice_log_schema
 
     def sponsorships(self, uid, inv=False):
         '''Enumerate current (un-expired) sponsorships by/for uid.
@@ -412,7 +413,7 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
         proj.c.field_name.like('user_id' if inv else 'user_id_%')).alias('who')
 
     sponsor = select((proj.c.record,
-                        proj.c.value.label('userid'))).where(
+                      proj.c.value.label('userid'))).where(
         proj.c.field_name == 'user_id').alias('sponsor')
 
     dt_exp = select((proj.c.record,
@@ -516,7 +517,7 @@ if __name__ == '__main__':  # pragma nocover
 
         [ds] = RunTime.make(
             [DecisionRecords],
-            ini=ini, clock=datetime.now,
+            ini=ini, timesrc=datetime,
             create_engine=create_engine,
             urlopener=lose, ldap=lose, trainingfn=lose)
 
@@ -527,6 +528,7 @@ if __name__ == '__main__':  # pragma nocover
             who = argv[2]
             print(ds.about_sponsorships(who))
 
-        print("pending notifications:", ds.oversight_decisions())
+        print("pending notifications:")
+        print(pformat(ds.oversight_decisions()))
 
     _integration_test()
