@@ -1,6 +1,54 @@
 '''redcapdb -- a little ORM support for REDCap's EAV structure
 --------------------------------------------------------------
 
+The redcap_data table is a "long skinny" EAV structure:
+
+  project_id record_id field_name value
+  4688       123       study_id   x23
+  4688       123       age        42
+  4688       123       sex        M
+
+It's often more convenient to use row-modelling, a la a spreadsheet:
+
+  record_id  study_id  age  sex
+  123        x23        42   M
+
+The `unpivot()` function helps::
+
+    >>> cs, fs, wc, rel = unpivot(['study_id', 'age', 'sex'], record=True)
+    >>> print(rel)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    SELECT j_study_id.project_id,
+           j_study_id.record,
+           j_study_id.value AS study_id,
+           j_age.value AS age,
+           j_sex.value AS sex
+    FROM redcap_data AS j_study_id, redcap_data AS j_age, redcap_data AS j_sex
+    WHERE j_study_id.project_id = j_study_id.project_id
+      AND j_study_id.field_name = :field_name_1
+      AND j_age.project_id = j_study_id.project_id
+      AND j_age.field_name = :field_name_2
+      AND j_sex.project_id = j_study_id.project_id
+      AND j_sex.field_name = :field_name_3
+      AND j_study_id.record = j_age.record
+      AND j_age.record = j_sex.record
+
+
+    The first two columns work like a primary key:
+      >>> [c.name for c in cs[:2]]
+      ['project_id', 'record']
+
+    The rest are the redcap fields:
+      >>> [c.name for c in cs[2:]]
+      ['study_id', 'age', 'sex']
+
+    Each of the self-joins is named:
+      >>> [r.name for r in fs]
+      ['j_study_id', 'j_age', 'j_sex']
+
+
+ISSUE: refactor w.r.t. traincheck.redcapview
+
 '''
 
 import logging
@@ -117,38 +165,6 @@ def unpivot(field_names,
             record=False,
             redcap_data=redcap_data):
     '''Self-join redcap_data to unpivot EAV to row-modelling.
-
-    >>> cs, fs, wc, rel = unpivot(['study_id', 'age', 'sex'], record=True)
-
-    The first two columns work like a primary key:
-      >>> [c.name for c in cs[:2]]
-      ['project_id', 'record']
-
-    The rest are the redcap fields:
-      >>> [c.name for c in cs[2:]]
-      ['study_id', 'age', 'sex']
-
-    Each of the self-joins is named:
-      >>> [r.name for r in fs]
-      ['j_study_id', 'j_age', 'j_sex']
-
-    The query as a whole is:
-    >>> print(rel)
-    ... # doctest: +NORMALIZE_WHITESPACE
-    SELECT j_study_id.project_id,
-           j_study_id.record,
-           j_study_id.value AS study_id,
-           j_age.value AS age,
-           j_sex.value AS sex
-    FROM redcap_data AS j_study_id, redcap_data AS j_age, redcap_data AS j_sex
-    WHERE j_study_id.project_id = j_study_id.project_id
-      AND j_study_id.field_name = :field_name_1
-      AND j_age.project_id = j_study_id.project_id
-      AND j_age.field_name = :field_name_2
-      AND j_sex.project_id = j_study_id.project_id
-      AND j_sex.field_name = :field_name_3
-      AND j_study_id.record = j_age.record
-      AND j_age.record = j_sex.record
     '''
     if not field_names:
         raise ValueError(field_names)
