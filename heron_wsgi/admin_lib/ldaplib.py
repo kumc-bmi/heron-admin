@@ -244,7 +244,6 @@ if __name__ == '__main__':  # pragma nocover
         from os.path import join as joinpath, exists
         from sys import argv, stdout
         from datetime import datetime
-        import logging
 
         import ldap
 
