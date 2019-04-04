@@ -151,3 +151,20 @@ doctest:
 	$(SPHINXBUILD) -b doctest $(ALLSPHINXOPTS) $(BUILDDIR)/doctest
 	@echo "Testing of doctests in the sources finished, look at the " \
 	      "results in $(BUILDDIR)/doctest/output.txt."
+
+mod_deps.dot.svg: mod_deps.dot
+	dot -Tsvg mod_deps.dot >$@
+
+mod_deps.dot: mod_deps
+	sfood-graph -p <$< >$@
+
+
+mod_deps:
+	(cd ..; PYTHONPATH=.:heron_wsgi sfood -i -r heron_wsgi/heron_srv.py) >$@
+
+
+# non-pure-python dependencies are managed with ansible / yum
+# cx-Oracle==7.1.2
+# python-ldap==3.2.0
+../requirements.txt: ../Pipfile ../Pipfile.lock
+	pipenv lock --requirements | sed -E -e '/(oracle)|(ldap)/I s/^/#/' >$@
