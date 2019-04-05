@@ -13,15 +13,20 @@ __ http://informatics.kumc.edu/work/wiki/AuthorityInjection
 
 '''
 
+from typing import Any, Callable, Dict, List, TypeVar
+from datetime import datetime, date, timedelta
 import ConfigParser
 import logging
 
 import injector
 from injector import provides, singleton
 
+T = TypeVar('T')
+
 
 class Options(object):
     def __init__(self, attrs, d):
+        # type: (List[str], Dict[str, Any]) -> None
         '''Create a container of options.
 
         :param attrs: option names. See :class:`TestTimeOptions` for example.
@@ -31,35 +36,41 @@ class Options(object):
         self._d = d
 
     def __getattr__(self, n):
+        # type: (str) -> Any
         if n not in self._attrs:
             raise AttributeError(n)
         return self._d.get(n, None)
 
     def inifmt(self, section):
+        # type: (str) -> str
         # oops... redundant w.r.t. ConfigParser.write() and String()
         s = self._d
         lines = ['%s=%s' % (k, s[k]) for k in sorted(s.keys())]
         return '\n'.join(["[%s]" % section] + lines)
 
     def settings(self):
+        # type: () -> Dict[str, Any]
         return self._d
 
     def __repr__(self):
+        # type: () -> str
         return 'Options(%s / %s)' % (sorted(self._attrs),
                                      sorted(self._d.keys()))
 
 
 class Calendar(object):
     def today(self):
+        # type: () -> date
         raise NotImplementedError
 
 
 class Clock(object):
     def now(self):
+        # type: () -> datetime
         raise NotImplementedError
 
 
-class MockClock(object):
+class MockClock(Calendar, Clock):
     '''
     >>> s = MockClock()
     >>> now = s.now
@@ -69,46 +80,54 @@ class MockClock(object):
     datetime.datetime(2011, 9, 2, 0, 0, 1)
     '''
     def __init__(self):
-        import datetime
-        self._t = datetime.datetime(2011, 9, 2)
+        # type: () -> None
+        self._t = datetime(2011, 9, 2)
 
     def now(self):
+        # type: () -> datetime
         self.wait(seconds=0.5)
         return self._t
 
     def today(self):
+        # type: () -> date
         return self._t.date()
 
     def wait(self, seconds):
-        import datetime
-        self._t = self._t + datetime.timedelta(seconds=seconds)
+        # type: (float) -> None
+        self._t = self._t + timedelta(seconds=seconds)
 
 
 class MockClockInjector(injector.Module):
     @provides(Clock)
     def clock(self):
+        # type: () -> Clock
         return MockClock()
 
 
 class RealClockInjector(injector.Module):
     def __init__(self, timesrc):
+        # type: (Clock) -> None
         self.__timesrc = timesrc
         self.label = '%s(%s)' % (self.__class__.__name__, timesrc.now())
 
     def __repr__(self):
+        # type: () -> str
         return self.label
 
     @singleton
     @provides(Clock)
     def the_clock(self):
+        # type: () -> Clock
         return self.__timesrc
 
 
 def _printLogs(level=logging.INFO):
+    # type: (int) -> Callable[[], str]
     buf = []
 
     class DoctestHandler(logging.Handler):
         def emit(self, record):
+            # type: (logging.LogRecord) -> None
             msg = self.format(record)
             buf.append(msg)
 
@@ -116,10 +135,11 @@ def _printLogs(level=logging.INFO):
         """Only show module name, not path.
         """
         def format(self, record):
+            # type: (logging.LogRecord) -> str
             record.name = record.name.split('.')[-1]
             return logging.Formatter.format(self, record)
 
-    root = logging.Logger.root
+    root = logging.Logger.root  # type: ignore
     f = FileNameFormatter(logging.BASIC_FORMAT)
     h = DoctestHandler()
     h.setFormatter(f)
@@ -127,6 +147,7 @@ def _printLogs(level=logging.INFO):
     root.addHandler(h)
 
     def show():
+        # type: () -> str
         s = '\n'.join(buf)
         buf[:] = []
         return s
@@ -136,6 +157,8 @@ def _printLogs(level=logging.INFO):
 
 class RuntimeOptions(Options):  # pragma nocover
     def __init__(self, ini, attrs, section):
+        # type: (Any, List[str], str) -> None
+        # ISSUE: ocap_file.Path
         p = ConfigParser.SafeConfigParser()
         with ini.open() as stream:
             p.readfp(stream, str(ini))
@@ -158,12 +181,19 @@ class TestTimeOptions(RuntimeOptions):
       AttributeError: typo
     '''
     def __init__(self, settings):
+        # type: (Dict[str, Any]) -> None
         Options.__init__(self, settings.keys(), settings)
 
 
-class _Maker(object):
+class _Maker(injector.Module):
+    @classmethod
+    def mods(cls, ini, **kwargs):
+        # type: (Any, **Any) -> List[injector.Module]
+        raise NotImplementedError
+
     @classmethod
     def make(cls, what, **kwargs):
+        # type: (List[type], **Any) -> List[Any]
         '''Read configuration; instantiate classes using dependency injection.
 
         :param what: list of either a class to instantiate
@@ -188,7 +218,8 @@ class _Maker(object):
 
 class MockMixin(_Maker):
     @classmethod
-    def mods(cls):
+    def mods(cls, ini, **_):
+        # type: (Any, **Any) -> List[injector.Module]
         '''Instantiate this module class and each module class it depends on.
 
         Note: This class has no dependencies; subclasses should
@@ -197,10 +228,12 @@ class MockMixin(_Maker):
         return [cls()]
 
 
-class IniModule(injector.Module, _Maker):  # pragma: nocover
+class IniModule(_Maker):  # pragma: nocover
     '''Provide runtime configuration in dependency injection graph.
     '''
     def __init__(self, ini, **kwargs):
+        # type: (Any, **Any) -> None
+        # ISSUE: Any -> Path
         '''Create an injector Module that can bind :class:`Options`
         based on a section of an ini file.
 
@@ -210,15 +243,19 @@ class IniModule(injector.Module, _Maker):  # pragma: nocover
         self.__ini = ini
 
     def get_options(self, names, section):
+        # type: (List[str], str) -> RuntimeOptions
         return RuntimeOptions(self.__ini, names, section)
 
     def bind_options(self, binder, names, section):
+        # type: (Any, List[str], str) -> RuntimeOptions
+        # ISSUE: dead code???
         rt = RuntimeOptions(self.__ini, names, section)
         binder.bind((Options, section), rt)
         return rt
 
     @classmethod
     def mods(cls, ini, **kwargs):
+        # type: (Any, **Any) -> List[injector.Module]
         '''Instantiate this module class and each module class it depends on.
 
         Note: Subclasses must override this method as appropriate.
@@ -228,6 +265,7 @@ class IniModule(injector.Module, _Maker):  # pragma: nocover
 
 
 def _logged(x):
+    # type: (T) -> T
     from sys import stderr
     from pprint import pprint
 
