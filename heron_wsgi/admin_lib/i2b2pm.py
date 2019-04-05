@@ -393,6 +393,7 @@ class UserRole(Base, Audited):
                      ForeignKey('pm_user_data.user_id'),
                      primary_key=True)
     user_role_cd = Column(Enum('ADMIN', 'MANAGER', 'USER',
+                               'HERON_ANALYSIS',
                                'DATA_OBFSC', 'DATA_AGG', 'DATA_DEID',
                                'DATA_LDS', 'DATA_PROT'),
                           primary_key=True)
