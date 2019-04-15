@@ -180,7 +180,7 @@ class _Maker(object):
         it = None
         try:
             return [depgraph.get(it) if it else depgraph
-                    for it in what]
+                    for it in what]  # noqa
         except TypeError as oops:
             raise TypeError('failed (%s) to instantiate: %s w.r.t. \n%s' % (
                 oops, it, '\n'.join([str(m) for m in modules])))

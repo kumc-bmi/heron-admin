@@ -77,9 +77,9 @@ Once he acknowledges it, he can access the repository:
   >>> facreq.context.start_i2b2()
   Access(John Smith <john.smith@js.example>)
   >>> print(logged())
-  ... # doctest: +NORMALIZE_WHITESPACE
+  ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
   INFO:disclaimer:disclaimer ack:
-  Acknowledgement(project_id=34, record=-8650809471427594162,
+  Acknowledgement(project_id=34, record=...,
     ack=2011-09-02 john.smith /heron-release-xyz,
     timestamp=2011-09-02 00:00:00, user_id=john.smith,
     disclaimer_address=http://example/blog/item/heron-release-xyz)

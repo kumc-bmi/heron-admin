@@ -19,11 +19,12 @@ Paste = "*"
 PasteDeploy = "==2.0.1"
 PasteScript = "==1.7.5"
 # stay on stable
-SQLAlchemy = "==1.2.18"
+SQLAlchemy = "==1.2.15"
 cx-Oracle = "*"
 pyramid_mailer = "*"
 PySimpleSOAP = "*"
 PyMySQL = "*"
+typing = "*"
 
 [requires]
 python_version = "2.7"

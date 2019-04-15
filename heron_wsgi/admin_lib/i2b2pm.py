@@ -141,8 +141,8 @@ I2B2 project; his roles in the above project go away:
   >>> s = dbsrc()
   >>> auth, js3 = pm.authz('john.smith', 'John Smith', 'REDCap_4')
   >>> js = s.query(User).filter_by(user_id = 'john.smith').one()
-  >>> set([role.project_id for role in js.roles])
-  set([u'REDCap_4', u'BlueHeron'])
+  >>> sorted(set([role.project_id for role in js.roles]))
+  [u'BlueHeron', u'REDCap_4']
 
 If he has an ADMIN role when he logs in, the Admin role should not be deleted.
 The ADMIN role is not project specific:

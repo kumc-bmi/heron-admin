@@ -80,13 +80,13 @@ Now note the mapping to the Disclaimer class::
 
   >>> acksproj.add_record('bob', 'http://informatics.kumc.edu/blog/2012/x')
   ... # doctest: +NORMALIZE_WHITESPACE
-  {'ack': '2011-09-02 bob /x', 'timestamp': '2011-09-02 00:00:00',
-   'disclaimer_address': 'http://informatics.kumc.edu/blog/2012/x',
-   'user_id': 'bob', 'acknowledgement_complete': '2'}
+  {'disclaimer_address': 'http://informatics.kumc.edu/blog/2012/x',
+   'ack': '2011-09-02 bob /x', 'acknowledgement_complete': '2',
+   'user_id': 'bob', 'timestamp': '2011-09-02 00:00:00'}
   >>> for ack in s.query(Acknowledgement):
   ...     print(ack)
-  ... # doctest: +NORMALIZE_WHITESPACE
-  Acknowledgement(project_id=34, record=327024216816240890,
+  ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+  Acknowledgement(project_id=34, record=...,
                   ack=2011-09-02 bob /x, timestamp=2011-09-02 00:00:00,
                   user_id=bob,
                   disclaimer_address=http://informatics.kumc.edu/blog/2012/x)

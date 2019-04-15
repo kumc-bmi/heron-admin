@@ -48,7 +48,7 @@ Now there should be no pending notices:
 import logging
 
 import injector
-from injector import inject, provides, singleton
+from injector import inject, provides
 from pyramid.response import Response
 from pyramid_mailer.mailer import Mailer, DummyMailer
 from pyramid_mailer.message import Message
@@ -142,7 +142,7 @@ class DROCNotice(Token):
                         # https://github.com/Pylons/pyramid_mailer/issues/3
                         # https://github.com/dckc/pyramid_mailer/commit
                         #    /8a426bc8b24f491880c2b3a0204f0ee7bae42193
-                        #cc=cc,
+                        # cc=cc,
                         recipients=[inv_mail] + team_mail,
                         html=body)
 

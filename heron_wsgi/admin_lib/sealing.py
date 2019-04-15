@@ -21,7 +21,7 @@ See also:
   * `Sealers and Unsealers on the ERights Wiki`__
 
 __ http://www.erights.org/javadoc/org/erights/e/elib/sealing/package-summary.html
-__ http://wiki.erights.org/wiki/Walnut/Secure_Distributed_Computing/Capability_Patterns#Sealers_and_Unsealers
+__ http://wiki.erights.org/wiki/Walnut/Secure_Distributed_Computing/Capability_Patterns#Sealers_and_Unsealers  # noqa
 
 '''
 
@@ -72,13 +72,13 @@ def makeBrandPair(nickname):
     sealer = EDef(
         seal=makeSealedBox,
         __repr__=lambda: '<%s sealer>' % nickname
-        )
+    )
 
     def _unseal(box):
         shared[0] = noObject
         try:
             box.shareContent()
-        except:
+        except:  # noqa
             raise TypeError
         if (shared[0] is noObject):
             raise TypeError

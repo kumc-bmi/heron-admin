@@ -31,7 +31,7 @@ class Reports(object):
                  self.show_usage_current, heron_policy.PERM_DROC_AUDIT),
                 ('usage_small', 'usage_small', 'report2.html',
                  self.show_small_set_report, heron_policy.PERM_DROC_AUDIT),
-                ):
+        ):
             config.add_route(route_name, mount_point + path)
             config.add_view(impl, route_name=route_name,
                             request_method='GET', renderer=renderer,
