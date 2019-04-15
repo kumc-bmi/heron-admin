@@ -429,7 +429,7 @@ def edit_team(params):
 
     goal = params.get('goal', None)
     if goal == 'Add':
-        for n in params:
+        for n in sorted(params):
             if params[n] == "on" and n.startswith("a_"):
                 uids.append(n[2:])  # hmm... what about dups?
     elif goal == 'Remove':

@@ -46,19 +46,20 @@ class Reports(object):
         >>> context.stats_reporter = MockAggregateUsage()  # Kludge
 
         >>> v = r.show_usage_report(context, req)
-        >>> v
-        ... # doctest: +NORMALIZE_WHITESPACE
-        {'total_number_of_queries': 100,
-         'queries_by_month':
-          [{'y': 2011, 'm': 5, 'users': 8, 'qty': 80},
-           {'y': 2011, 'm': 6, 'users': 0, 'qty': 90}],
-         'query_volume':
-          [{'user_id': 'john.smith', 'last_month': 10, 'last_year': 20,
-            'last_quarter': 20, 'two_weeks': 5,
-            'full_name': 'John Smith', 'all_time': 20}],
-         'roles': {'john.smith':
-                   'Chair of Department of Neurology, Neurology'},
-         'cycle': <type 'itertools.cycle'>}
+        >>> from pprint import pprint
+        >>> pprint(v)
+        {'cycle': <type 'itertools.cycle'>,
+         'queries_by_month': [{'m': 5, 'qty': 80, 'users': 8, 'y': 2011},
+                              {'m': 6, 'qty': 90, 'users': 0, 'y': 2011}],
+         'query_volume': [{'all_time': 20,
+                           'full_name': 'John Smith',
+                           'last_month': 10,
+                           'last_quarter': 20,
+                           'last_year': 20,
+                           'two_weeks': 5,
+                           'user_id': 'john.smith'}],
+         'roles': {'john.smith': 'Chair of Department of Neurology, Neurology'},
+         'total_number_of_queries': 100}
 
 
         Check that this supplies everything the template expects::
