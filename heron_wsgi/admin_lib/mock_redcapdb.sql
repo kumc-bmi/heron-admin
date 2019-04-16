@@ -61,6 +61,14 @@ INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','user_id_1','jill.stud
 INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','approve_kuh','1');
 INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','approve_kupi','1');
 INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','approve_kumc','1');
+-- missing user_id
+INSERT INTO "redcap_data" VALUES(34,1,'3180811818667777','full_name','Prof Fickle');
+INSERT INTO "redcap_data" VALUES(34,1,'3180811818667777','project_title','goofy: Change how diabetes is treated');
+INSERT INTO "redcap_data" VALUES(34,1,'3180811818667777','date_of_expiration','2050-02-27');
+INSERT INTO "redcap_data" VALUES(34,1,'3180811818667777','user_id_1','jill.student');
+INSERT INTO "redcap_data" VALUES(34,1,'3180811818667777','approve_kuh','1');
+INSERT INTO "redcap_data" VALUES(34,1,'3180811818667777','approve_kupi','1');
+INSERT INTO "redcap_data" VALUES(34,1,'3180811818667777','approve_kumc','1');
 CREATE TABLE redcap_surveys_participants (
 	participant_id INTEGER NOT NULL, 
 	survey_id INTEGER, 

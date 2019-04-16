@@ -118,9 +118,14 @@ class DROCNotice(Token):
 
             action = ('approved' if decision == DecisionRecords.YES
                       else 'rejected')
-            investigator, team, detail = dr.decision_detail(record)
-            log.info('Notify %s and team that request %s is %s',
-                     investigator, record, action)
+
+            try:
+                investigator, team, detail = dr.decision_detail(record)
+                log.info('Notify %s and team that request %s is %s',
+                         investigator, record, action)
+            except Exception as oops:
+                log.error('cannot build notice; bad record? %s: %s' % (record, oops))
+                continue
 
             try:
                 log.debug('build_notices team: %s', team)
