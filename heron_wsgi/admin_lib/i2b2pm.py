@@ -166,7 +166,7 @@ import injector
 from injector import inject, provides, singleton
 from sqlalchemy import Column, ForeignKey, and_
 from sqlalchemy import func, orm
-from sqlalchemy.types import String, Date, Enum
+from sqlalchemy.types import String, DateTime, Enum
 from sqlalchemy.ext.declarative import declarative_base
 
 import rtconfig
@@ -273,7 +273,7 @@ class I2B2PM(ocap_file.Token):
         log.debug('generate authorization for: %s', (uid, full_name))
         ds = self._datasrc()
 
-        t = func.now()
+        t = func.current_timestamp()
         auth = str(self._uuidgen.uuid4())
         pw_hash = hexdigest(auth)
 
@@ -365,8 +365,8 @@ class I2B2Account(ocap_file.Token):
 
 
 class Audited(object):
-    change_date = Column(Date)
-    entry_date = Column(Date)
+    change_date = Column(DateTime)
+    entry_date = Column(DateTime)
     changeby_char = Column(String)  # foreign key?
     status_cd = Column(Enum('A', 'D'))
 
@@ -410,7 +410,7 @@ class UserSession(Base, Audited):
     user_id = Column(String,
                      ForeignKey('pm_user_data.user_id'),
                      primary_key=True)
-    expired_date = Column(Date)
+    expired_date = Column(DateTime)
 
     def __repr__(self):
         return "<UserSession(%s, %s)>" % (self.user_id,
