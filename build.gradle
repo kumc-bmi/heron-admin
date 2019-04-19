@@ -105,7 +105,7 @@ task doctests(type: JavaExec) {
 
   main = 'org.python.util.jython'
   environment PYTHONPATH: '.:heron_wsgi:heron_wsgi/admin_lib'
-  args 'rundoctests.py'
+  args 'test/rundoctests.py'
 }
 check.dependsOn doctests
 
