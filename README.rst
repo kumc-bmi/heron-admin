@@ -8,9 +8,30 @@ i2b2__; this code is the regulatory enforcement web interface.
 
 __ https://www.i2b2.org/
 
-:Copyright: Copyright 2010-2015 University of Kansas Medical Center
+:Copyright: Copyright 2010-2019 University of Kansas Medical Center
 
-**todo** administrative interface: POST to re-read config files
+
+Usage
+-----
+
+In production, `extensive configuration`__ is required. To start a
+server in development mode, follow `pyramid norms`__ (with python2.7
+rather than python3)::
+
+  cd heron_admin
+  virtualenv env
+  ./env/bin/pip install -e ".[testing]"
+  # Reset our environment variable for a new virtual environment.
+  export VENV=~/heron_admin/env
+
+  $VENV/bin/pserve development.ini
+
+
+__ https://bmi-work.kumc.edu/work/wiki/GroupOnly/HeronAdmin
+__ https://docs.pylonsproject.org/projects/pyramid/en/1.10-branch/quick_tour.html
+
+
+
 
 Development dependencies
 ------------------------

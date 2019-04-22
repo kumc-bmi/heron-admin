@@ -167,4 +167,5 @@ mod_deps:
 # cx-Oracle==7.1.2
 # python-ldap==3.2.0
 ../requirements.txt: ../Pipfile ../Pipfile.lock
-	pipenv lock --requirements | sed -E -e '/(oracle)|(ldap)/I s/^/#/' >$@
+	# pipenv lock --requirements | sed -E -e '/(oracle)|(ldap)/I s/^/#/' >$@
+	pipenv lock --requirements >$@

@@ -1,0 +1,25 @@
+{
+    "extensions": {
+        "enabled": [
+            "python_venv",
+            "blocks"
+        ]
+    },
+    "core": {
+        "group": "Application/System",
+        "version": "0.7",
+        "requires": ["python-ldap", "python-2.7"],
+        "license": "MIT",
+        "name": "heron-admin",
+        "summary": "HERON i2b2 regulatory interface"
+    },
+    "python_venv": {
+        "name": "heron_admin",
+        "path": "/usr/share/python"
+    },
+    "blocks": {
+        "desc": [
+            "See informatics.kumc.edu"
+        ]
+    }
+}

@@ -1,5 +1,5 @@
 -i https://pypi.org/simple
-#cx-oracle==7.1.2
+cx-oracle==7.1.2
 docopt==0.6.2
 genshi==0.7.1
 hupper==1.6.1
@@ -15,7 +15,7 @@ pymysql==0.9.3
 pyramid-mailer==0.15.1
 pyramid==1.10.4
 pysimplesoap==1.16.2
-#python-ldap==3.2.0
+python-ldap==3.2.0
 repoze.lru==0.7 ; python_version < '3.2'
 repoze.sendmail==4.4.1
 six==1.12.0
