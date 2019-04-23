@@ -106,6 +106,7 @@ from injector import inject, provides, singleton
 from sqlalchemy import orm
 from sqlalchemy.engine.base import Connectable
 from sqlalchemy.orm import session, sessionmaker, exc
+import pkg_resources as pkg
 
 # from this package
 from ddict import DataDict
@@ -176,12 +177,13 @@ class _MockTracBlog(object):
 
 class Acknowledgement(redcapdb.REDCapRecord):
     '''
-    >>> fn = [n for (n, r) in DataDict('acknowledgement').fields()]
+    >>> fn = [n for (n, r) in Acknowledgement.redcap_dd.fields()]
     >>> [fn[i] for i in range(len(Acknowledgement.fields))
     ...  if Acknowledgement.fields[i] != fn[i]]
     []
     '''
-    DataDict  # mark used
+
+    redcap_dd = DataDict.from_csv(pkg.resource_stream(__name__, '../redcap_dd/acknowledgement.csv'))
     fields = ('ack', 'timestamp', 'user_id', 'disclaimer_address')
 
 

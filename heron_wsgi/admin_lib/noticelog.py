@@ -122,6 +122,7 @@ from sqlalchemy.types import Integer, VARCHAR, TIMESTAMP
 from sqlalchemy.schema import ForeignKey
 from sqlalchemy import orm
 from sqlalchemy.sql import select, func, and_
+import pkg_resources as pkg
 
 import rtconfig
 import redcapdb
@@ -149,7 +150,7 @@ class DecisionRecords(Token):
     .. note:: At test time, let's check consistency with the data
               dictionary.
 
-    >>> choices = dict(DataDict('oversight').radio('approve_kuh'))
+    >>> choices = dict(DecisionRecords.redcap_dd.radio('approve_kuh'))
     >>> choices[DecisionRecords.YES]
     'Yes'
     >>> choices[DecisionRecords.NO]
@@ -159,7 +160,8 @@ class DecisionRecords(Token):
 
     '''
 
-    DataDict  # mark used
+    redcap_dd = DataDict.from_csv(pkg.resource_stream(__name__, '../redcap_dd/oversight.csv'))
+
     YES = '1'
     NO = '2'
     institutions = ('kuh', 'kupi', 'kumc')
