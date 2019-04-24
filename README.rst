@@ -14,9 +14,8 @@ __ https://www.i2b2.org/
 Usage
 -----
 
-In production, `extensive configuration`__ is required. To start a
-server in development mode, follow `pyramid norms`__ (with python2.7
-rather than python3)::
+To start a server in development mode, follow `pyramid norms`__ (with
+python2.7 rather than python3)::
 
   cd heron_admin
   virtualenv env
@@ -26,11 +25,11 @@ rather than python3)::
 
   $VENV/bin/pserve development.ini
 
-
-__ https://bmi-work.kumc.edu/work/wiki/GroupOnly/HeronAdmin
 __ https://docs.pylonsproject.org/projects/pyramid/en/1.10-branch/quick_tour.html
 
+In production, more `extensive configuration`__ is required.
 
+__ https://bmi-work.kumc.edu/work/wiki/GroupOnly/HeronAdmin
 
 
 Development dependencies
