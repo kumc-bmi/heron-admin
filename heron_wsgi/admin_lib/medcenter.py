@@ -105,7 +105,6 @@ from injector import inject, provides, singleton
 import rtconfig
 import ldaplib
 import sealing
-import mock_directory
 from notary import makeNotary
 from ocap_file import WebReadable, Path
 
@@ -420,7 +419,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
     '''
 
     @provides(ldaplib.LDAPService)
-    @inject(d=mock_directory.MockDirectory, ts=rtconfig.Clock)
+    @inject(d=ldaplib.MockDirectory, ts=rtconfig.Clock)
     def ldap(self, d, ts):
         return ldaplib.LDAPService(
             ts.now, ttl=2, rt=ldaplib._sample_settings,
@@ -432,7 +431,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
         return rtconfig.MockClock()
 
     @provides(KTrainingFunction)
-    @inject(d=mock_directory.MockDirectory)
+    @inject(d=ldaplib.MockDirectory)
     def training_function(self, d):
         return d.latest_training
 

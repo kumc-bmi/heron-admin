@@ -35,20 +35,42 @@ Sample configuration::
   password=sekret
   url=ldaps://_ldap_host_:636
   userdn=cn=...,ou=...,o=...
+
+The mock directory has a handful of students and faculty::
+
+  >>> d = MockDirectory()
+  >>> [(r['kumcPersonFaculty'], r['cn']) for r in d.records]
+  ... #doctest: +NORMALIZE_WHITESPACE
+  [('Y', 'john.smith'),
+   ('N', 'bill.student'),
+   ('', 'carol.student'),
+   ('N', 'some.one'),
+   ('N', 'big.wig'),
+   ('N', 'jill.student'),
+   ('N', 'koam.rin'),
+   ('Y', 'trouble.maker')]
+
+It supplies HSC training info::
+
+  >>> d.latest_training('john.smith').expired
+  '2012-01-01'
 '''
 
 from __future__ import print_function
 
+from collections import namedtuple
 from datetime import timedelta
+from io import BytesIO
 from pprint import pformat
+import csv
 import logging
 import re
 
+import pkg_resources as pkg
 from injector import inject, provides, singleton
 
 from cache_remote import Cache
 from ocap_file import Path
-import mock_directory
 import rtconfig
 
 CONFIG_SECTION = 'enterprise_directory'
@@ -56,8 +78,6 @@ log = logging.getLogger(__name__)
 
 
 class LDAPService(Cache):
-    '''See :mod:`heron_wsgi.admin_lib.mock_directory` for API details.
-    '''
     def __init__(self, now, ttl, rt, ldap, flags):
         Cache.__init__(self, now)
         self._ttl = timedelta(seconds=ttl)
@@ -144,7 +164,7 @@ class MockLDAP(object):
 
     def __init__(self, records=None):
         if records is None:
-            records = mock_directory.MockDirectory().records
+            records = MockDirectory().records
         self._d = dict([(r['cn'], r) for r in records])
         self._bound = False
 
@@ -194,6 +214,25 @@ _sample_settings = rtconfig.TestTimeOptions(dict(
     userdn='cn=...,ou=...,o=...',
     password='sekret',
     base='ou=...,o=...'))
+
+
+class MockDirectory(object):
+    text_data = pkg.resource_string(__name__, 'mockDirectory.csv')
+    records = list(csv.DictReader(BytesIO(text_data)))
+
+    def __init__(self):
+        self._d = dict([(r['cn'], r) for r in self.records])
+
+    def latest_training(self, cn):
+        expired = self._d[cn]['trainedThru']
+        if not expired:
+            raise LookupError(cn)
+        return Training(cn, expired, expired, 'Human Subjects 101')
+
+
+class Training(namedtuple('Training',
+                          'username expired completed course'.split())):
+    pass
 
 
 class RunTime(rtconfig.IniModule):  # pragma: nocover
