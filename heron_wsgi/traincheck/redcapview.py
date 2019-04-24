@@ -92,7 +92,7 @@ def unpivot(project_id, field_names,
             record=False,
             redcap_data=redcap_data):
     '''
-
+    ISSUE: import from redcapdb?
     '''
     if not field_names:
         raise ValueError(field_names)

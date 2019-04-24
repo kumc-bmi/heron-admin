@@ -14,7 +14,7 @@ Bob follows the system access survey link, so we generate a survey
 invitation hash just for him:
 
     >>> print(saa.invite('bob@js.example'))
-    qTwAVx
+    aqFVbr
 
 ISSUE: REDCap logging?
 
@@ -22,7 +22,7 @@ If he follows the link again, we find the invitation we already made
 for him:
 
     >>> print(saa.invite('bob@js.example'))
-    qTwAVx
+    aqFVbr
 
 He hasn't responded yet:
     >>> saa.responses('bob@js.example')
@@ -32,11 +32,15 @@ He hasn't responded yet:
 
 from __future__ import print_function
 from ConfigParser import SafeConfigParser
+from random import Random as Random_T
 import datetime
 import logging
+from typing import Callable, List, Optional as Opt, TextIO, Tuple
 
 from sqlalchemy import and_, select
+from sqlalchemy.engine import Connection  # type only
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.sql.expression import Executable
 
 import redcapdb
 
@@ -102,7 +106,6 @@ class SecureSurvey(object):
     @classmethod
     def _invitation_q(cls, survey_id, event_id,
                       multi=False):
-        # type: (int) -> Operation
         '''
         :return: participants table, partial query
 
@@ -150,7 +153,7 @@ class SecureSurvey(object):
     def _invite_dml(cls, survey_id, email, nonce, event_id,
                     # not known yet. (per add_participants.php)
                     part_ident=''):
-        # type: (int, str) -> Operation
+        # type: (int, str) -> Executable
         '''
 
         design based on add_participants.php from REDCap 4.14.5
@@ -164,7 +167,7 @@ class SecureSurvey(object):
         VALUES (:survey_id, :event_id, :hash, :participant_email,
            :participant_identifier)
         '''
-        # type: (str, str, str, Nonce, Opt[str]) -> Operation
+        # type: (str, str, str, Nonce, Opt[str]) -> Executable
         pt = redcapdb.redcap_surveys_participants
         return pt.insert().values(
             survey_id=survey_id,
@@ -175,7 +178,7 @@ class SecureSurvey(object):
 
     @classmethod
     def _event_q(cls, survey_id):
-        # type: (int) -> Operation
+        # type: (int) -> Executable
         '''
         >>> print(SecureSurvey._event_q(10))
         ... # doctest: +NORMALIZE_WHITESPACE
@@ -205,7 +208,7 @@ class SecureSurvey(object):
         >>> io = MockIO()
         >>> s = SecureSurvey(None, io.rng, 11)
         >>> [s.generateRandomHash(), s.generateRandomHash()]
-        ['qTwAVx', 'jpMZfX']
+        ['aqFVbr', 'akvfqA']
 
         TODO: increase default to 10 as in redcap 8
         '''
@@ -236,7 +239,7 @@ class SecureSurvey(object):
         ['767', datetime.datetime(2017, 1, 25, 8, 55, 10)]
 
         '''
-        # type: str -> List[Tuple(str, datetime)]
+        # type: (str) -> List[Tuple(str, datetime)]
         # gweaver - https://bmi-work.kumc.edu/work/ticket/5277
         # Customizing this method to always return something, instead of failing.
         retryCount = max_retries
@@ -266,7 +269,7 @@ class SecureSurvey(object):
 
     @classmethod
     def _response_q(cls, email, survey_id, event_id):
-        # type: (str, int, int) -> Operation
+        # type: (str, int, int) -> Executable
         '''
         >>> q = SecureSurvey._response_q('xyz@abc', 12, 7)
         >>> print(q)
@@ -288,12 +291,19 @@ class SecureSurvey(object):
 
 
 class MockIO(object):
-    def __init__(self, configure_logging=False):
-        from random import Random
-        self.rng = Random(1)
+    def __init__(self):
+        # random.Random is not portable between cpython and jython :-/
+        self.rng = self
+        self._rng_state = 7
         self.connect = redcapdb.Mock.engine().connect
-        if configure_logging:
-            logging.basicConfig(level=logging.DEBUG)
+
+    def shuffle(self, items):
+        n = (self._rng_state * 2 + 1) % 101
+        self._rng_state = n
+        n = n % len(items) or len(items)
+        items[:] = [it
+                    for k in range(n)
+                    for it in items[k % n::n]]
 
 
 def _integration_test(argv, io_open, Random, create_engine,

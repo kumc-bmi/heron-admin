@@ -141,8 +141,8 @@ I2B2 project; his roles in the above project go away:
   >>> s = dbsrc()
   >>> auth, js3 = pm.authz('john.smith', 'John Smith', 'REDCap_4')
   >>> js = s.query(User).filter_by(user_id = 'john.smith').one()
-  >>> set([role.project_id for role in js.roles])
-  set([u'REDCap_4', u'BlueHeron'])
+  >>> sorted(set([role.project_id for role in js.roles]))
+  [u'BlueHeron', u'REDCap_4']
 
 If he has an ADMIN role when he logs in, the Admin role should not be deleted.
 The ADMIN role is not project specific:
@@ -153,7 +153,7 @@ The ADMIN role is not project specific:
   >>> auth, js3 = pm.authz('john.smith', 'John Smith', 'REDCap_4')
   >>> js = s.query(User).filter_by(user_id = 'john.smith').one()
   >>> sorted(set([role.user_role_cd for role in js.roles]))
-  ['ADMIN', u'DATA_AGG', u'DATA_DEID', u'DATA_LDS', u'DATA_OBFSC', u'USER']
+  ['ADMIN', 'DATA_AGG', 'DATA_DEID', 'DATA_LDS', 'DATA_OBFSC', 'USER']
   >>> sorted(set([role.project_id for role in js.roles]))
   ['@', u'BlueHeron', u'REDCap_4']
 
@@ -166,13 +166,14 @@ import injector
 from injector import inject, provides, singleton
 from sqlalchemy import Column, ForeignKey, and_
 from sqlalchemy import func, orm
-from sqlalchemy.types import String, Date, Enum
+from sqlalchemy.types import String, DateTime, Enum
 from sqlalchemy.ext.declarative import declarative_base
 
 import rtconfig
 import jndi_util
 import ocap_file
 import i2b2metadata
+from sqlite_mem import _test_engine
 
 CONFIG_SECTION = 'i2b2pm'
 
@@ -272,7 +273,7 @@ class I2B2PM(ocap_file.Token):
         log.debug('generate authorization for: %s', (uid, full_name))
         ds = self._datasrc()
 
-        t = func.now()
+        t = func.current_timestamp()
         auth = str(self._uuidgen.uuid4())
         pw_hash = hexdigest(auth)
 
@@ -293,7 +294,8 @@ class I2B2PM(ocap_file.Token):
             log.info('found: %s', me)
             me.password, me.status_cd, me.change_date = pw_hash, 'A', t
         # http://docs.sqlalchemy.org/en/rel_0_8/orm/query.html?highlight=query.update#sqlalchemy.orm.query.Query.update # noqa
-        ds.query(UserRole).filter(and_(UserRole.user_id == uid,
+        ds.query(UserRole).filter(and_(
+            UserRole.user_id == uid,
             UserRole.user_role_cd.in_(list(roles)))).\
             delete(synchronize_session='fetch')
 
@@ -363,8 +365,8 @@ class I2B2Account(ocap_file.Token):
 
 
 class Audited(object):
-    change_date = Column(Date)
-    entry_date = Column(Date)
+    change_date = Column(DateTime)
+    entry_date = Column(DateTime)
     changeby_char = Column(String)  # foreign key?
     status_cd = Column(Enum('A', 'D'))
 
@@ -391,6 +393,7 @@ class UserRole(Base, Audited):
                      ForeignKey('pm_user_data.user_id'),
                      primary_key=True)
     user_role_cd = Column(Enum('ADMIN', 'MANAGER', 'USER',
+                               'HERON_ANALYSIS',
                                'DATA_OBFSC', 'DATA_AGG', 'DATA_DEID',
                                'DATA_LDS', 'DATA_PROT'),
                           primary_key=True)
@@ -407,7 +410,7 @@ class UserSession(Base, Audited):
     user_id = Column(String,
                      ForeignKey('pm_user_data.user_id'),
                      primary_key=True)
-    expired_date = Column(Date)
+    expired_date = Column(DateTime)
 
     def __repr__(self):
         return "<UserSession(%s, %s)>" % (self.user_id,
@@ -428,22 +431,28 @@ class Project(Base, Audited):
 class RunTime(rtconfig.IniModule):  # pragma: nocover
     jndi_name = 'java:/PMBootStrapDS'
 
+    def __init__(self, ini, uuid, create_engine):
+        rtconfig.IniModule.__init__(self, ini)
+        self.__create_engine = create_engine
+
+        def jdir_access(section):
+            return ini / self.get_options(
+                ['jboss_deploy'], section).jboss_deploy
+
+        self.__jdir = jdir_access
+        self.__uuid = uuid
+
     # abusing Session a bit; this really provides a subclass, not an
     # instance, of Session
-    def sessionmaker(self, jndi, CONFIG):
-        import os
-        from sqlalchemy import create_engine
-
-        rt = rtconfig.RuntimeOptions(['jboss_deploy'])
-        rt.load(self._ini, CONFIG)
-
-        jdir = ocap_file.Readable(rt.jboss_deploy, os.path, os.listdir, open)
-        ctx = jndi_util.JBossContext(jdir, create_engine)
+    def sessionmaker(self, jndi, section):
+        ctx = jndi_util.JBossContext(
+            self.__jdir(section), self.__create_engine)
 
         sm = orm.session.sessionmaker()
 
         def make_session_and_revoke():
             engine = ctx.lookup(jndi)
+            log.info('i2p2pm engine: %s', engine)
             ds = sm(bind=engine)
             revoke_expired_auths(ds)
             return ds
@@ -464,19 +473,18 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
 
     @provides(KUUIDGen)
     def uuid_maker(self):
-        import uuid
-        return uuid
+        return self.__uuid
 
     @provides(KIdentifiedData)
     def identified_data(self):
-        rt = rtconfig.RuntimeOptions(['identified_data'])
-        rt.load(self._ini, CONFIG_SECTION)
+        rt = self.get_options(['identified_data'], CONFIG_SECTION)
         mode = rt.identified_data.lower() in ('1', 'true')
         return mode
 
     @classmethod
-    def mods(cls, ini):
-        return [i2b2metadata.RunTime(ini), cls(ini)]
+    def mods(cls, ini, uuid, create_engine, **kwargs):
+        return [i2b2metadata.RunTime(ini, create_engine),
+                cls(ini, uuid, create_engine)]
 
 
 class Mock(injector.Module, rtconfig.MockMixin):
@@ -485,15 +493,13 @@ class Mock(injector.Module, rtconfig.MockMixin):
     @singleton
     @provides((orm.session.Session, CONFIG_SECTION))
     def pm_sessionmaker(self):
-        from sqlalchemy import create_engine
-
-        engine = create_engine('sqlite://')
+        engine = _test_engine()
         Base.metadata.create_all(engine)
         return orm.session.sessionmaker(engine)
 
     @provides(i2b2metadata.I2B2Metadata)
     def metadata(self):
-            return i2b2metadata.MockMetadata(1)
+        return i2b2metadata.MockMetadata(1)
 
     @provides(KUUIDGen)
     def uuid_maker(self):
@@ -536,31 +542,33 @@ def _mock_i2b2_proj_usage(ds, assignments):
         ds.commit()
 
 
-def _integration_test():  # pragma: nocover
+def _integration_test(argv, stdout, cwd, uuid,
+                      create_engine):  # pragma: nocover
     # python i2b2pm.py badagarla 12,11,53 'Bhargav A'
-    import sys
 
     logging.basicConfig(level=logging.DEBUG)
     salog = logging.getLogger('sqlalchemy.engine.base.Engine')
     salog.setLevel(logging.INFO)
 
-    if '--list' in sys.argv:
-        _list_users()
+    ini = cwd / 'integration-test.ini'
+    if '--list' in argv:
+        _list_users(ini, create_engine, stdout)
         return
 
-    user_id, rc_pids, full_name = sys.argv[1:4]
+    user_id, rc_pids, full_name = argv[1:4]
 
-    (pm, ) = RunTime.make(None, [I2B2PM])
+    [pm] = RunTime.make([I2B2PM],
+                        ini=ini, uuid=uuid, create_engine=create_engine)
     t, _ = pm.i2b2_project(rc_pids.split(','))
-    print "THE PROJECT THAT WAS PICKED: %s" % (t)
-    print pm.authz(user_id, full_name, t)
+    print("THE PROJECT THAT WAS PICKED: %s" % (t))
+    print(pm.authz(user_id, full_name, t))
 
 
-def _list_users():  # pragma: nocover
+def _list_users(ini, create_engine, stdout):  # pragma: nocover
     import csv
-    import sys
-    (sm, ) = RunTime.make(None,
-                          [(orm.session.Session, CONFIG_SECTION)])
+
+    [sm] = RunTime.make([(orm.session.Session, CONFIG_SECTION)],
+                        ini=ini, create_engine=create_engine)
     s = sm()
     # get column names
     # ans = s.execute("select * from pm_user_session "
@@ -573,11 +581,24 @@ def _list_users():  # pragma: nocover
                     "  group by user_id"
                     "  order by user_id")
 
-    out = csv.writer(sys.stdout)
+    out = csv.writer(stdout)
     out.writerow(('last_login', 'login_count', 'user_id'))
     out.writerows([(when.isoformat(), qty, uid)
                    for when, qty, uid in ans.fetchall()])
 
 
 if __name__ == '__main__':  # pragma: nocover
-    _integration_test()
+    def _script():
+        from io import open as io_open
+        from os import listdir
+        from os.path import join as joinpath, exists
+        from sys import argv, stdout
+        import uuid
+
+        from sqlalchemy import create_engine
+
+        cwd = ocap_file.Path('.', open=io_open, joinpath=joinpath,
+                             exists=exists, listdir=listdir)
+
+        _integration_test(argv, stdout, cwd, uuid, create_engine)
+    _script()

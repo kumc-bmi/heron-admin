@@ -1,0 +1,21 @@
+<web-app>
+    <display-name>HERON Admin</display-name>
+    <description>
+      Regulatory enforcement layer for HERON clinical data repository.
+    </description>
+
+    <servlet-mapping>
+        <url-pattern>/*</url-pattern>
+        <servlet-name>heron-admin</servlet-name>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>heron-admin</servlet-name>
+        <servlet-class>com.xhaus.modjy.ModjyJServlet</servlet-class>
+
+        <init-param>
+            <param-name>log_level</param-name>
+            <param-value>debug</param-value>
+        </init-param>
+    </servlet>
+</web-app>

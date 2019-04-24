@@ -3,8 +3,6 @@
 
 import logging
 
-from sqlalchemy import text
-
 log = logging.getLogger(__name__)
 CONFIG_SECTION = 'i2b2md'
 

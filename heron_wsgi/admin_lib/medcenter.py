@@ -13,9 +13,9 @@ records.
 
 Access is logged at the :data:`logging.INFO` level.
 
-  >>> import sys
-  >>> logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-  >>> logging.getLogger('cache_remote').setLevel(level=logging.WARN)
+  >>> logged = rtconfig._printLogs()
+  >>> import cache_remote
+  >>> cache_remote.log.setLevel(level=logging.WARN)
 
 Issuing Notarized Badges
 ------------------------
@@ -65,6 +65,7 @@ Robustness
 ----------
 
   >>> who = m.peer_badge('carol.student')
+  >>> print(logged())
   WARNING:medcenter:missing LDAP attribute kumcPersonFaculty for carol.student
   WARNING:medcenter:missing LDAP attribute kumcPersonJobcode for carol.student
 
@@ -79,9 +80,10 @@ Part of making oversight requests is nominating team members::
 
   >>> m.grant(r1.context, PERM_BROWSER)
   >>> r1.context.browser.lookup('some.one')
+  Some One <some.one@js.example>
+  >>> print(logged())
   WARNING:medcenter:missing LDAP attribute ou for some.one
   WARNING:medcenter:missing LDAP attribute title for some.one
-  Some One <some.one@js.example>
 
   >>> r1.context.browser.search(5, 'john.smith', '', '')
   [John Smith <john.smith@js.example>]
@@ -92,30 +94,29 @@ API
 
 '''
 
+from __future__ import print_function
+
 import json
 import logging
-import sys
 
 import injector
 from injector import inject, provides, singleton
-from sqlalchemy.engine.url import make_url
 
 import rtconfig
 import ldaplib
 import sealing
-import mock_directory
 from notary import makeNotary
-from heron_wsgi.traincheck.traincheck import TrainingRecordsRd
-from ocap_file import WebReadable
+from ocap_file import WebReadable, Path
 
 log = logging.getLogger(__name__)
 
-KTrainingFunction = injector.Key('TrainingFunction')
+TRAINING_SECTION = 'training'
+# Injector keys are not shareable, so...
+KTrainingFunction = (type(lambda: 1), TRAINING_SECTION)
 KExecutives = injector.Key('Executives')
 KTestingFaculty = injector.Key('TestingFaculty')
 KStudyTeamLookup = injector.Key('StudyTeamLookup')
 
-TRAINING_SECTION = 'training'
 PERM_BROWSER = __name__ + '.browse'
 
 
@@ -207,7 +208,7 @@ class MedCenter(object):
         '''
         :param testing_faculty: testing hook for faculty badge.
         '''
-        log.debug('MedCenter.__init__ again?')
+        #@@ log.debug('MedCenter.__init__ again?')
         self._training = trainingfn
         self._testing_faculty = testing_faculty
         self.__executives = executives
@@ -418,7 +419,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
     '''
 
     @provides(ldaplib.LDAPService)
-    @inject(d=mock_directory.MockDirectory, ts=rtconfig.Clock)
+    @inject(d=ldaplib.MockDirectory, ts=rtconfig.Clock)
     def ldap(self, d, ts):
         return ldaplib.LDAPService(
             ts.now, ttl=2, rt=ldaplib._sample_settings,
@@ -430,7 +431,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
         return rtconfig.MockClock()
 
     @provides(KTrainingFunction)
-    @inject(d=mock_directory.MockDirectory)
+    @inject(d=ldaplib.MockDirectory)
     def training_function(self, d):
         return d.latest_training
 
@@ -442,6 +443,12 @@ class Mock(injector.Module, rtconfig.MockMixin):
     def executives(self):
         return ('big.wig',)
 
+    @provides(KStudyTeamLookup)
+    def study_team_lookup(self):
+        def lookup(_):
+            raise KeyError
+        return lookup
+
 
 class RunTime(rtconfig.IniModule):  # pragma: nocover
     '''Configure dependencies of :class:`MedCenter`:
@@ -450,6 +457,16 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
       - :data:`KTestingFaculty` (for faculty testing hook)
 
     '''
+
+    def __init__(self, ini, urlopener, trainingfn):
+        rtconfig.IniModule.__init__(self, ini)
+        self.__urlopener = urlopener
+        self.__trainingfn = trainingfn
+        self.label = '%s(%s, %s, %s)' % (
+            self.__class__.__name__, ini, urlopener, trainingfn)
+
+    def __repr__(self):
+        return self.label
 
     @provides(KExecutives)
     @inject(rt=(rtconfig.Options, ldaplib.CONFIG_SECTION))
@@ -466,36 +483,18 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         return tf
 
     @provides(KTrainingFunction)
-    def training(self, section=TRAINING_SECTION):
-        from sqlalchemy import create_engine
-
-        rt = rtconfig.RuntimeOptions('url'.split())
-        rt.load(self._ini, section)
-
-        u = make_url(rt.url)
-        redcapdb = (None if u.drivername == 'sqlite' else 'redcap')
-
-        # Address connection timeouts using pool_recycle
-        # ref http://docs.sqlalchemy.org/en/rel_1_0/dialects/mysql.html#connection-timeouts  # noqa
-        trainingdb = create_engine(u, pool_recycle=3600)
-        account = lambda: trainingdb.connect(), u.database, redcapdb
-
-        tr = TrainingRecordsRd(account)
-
-        return tr.__getitem__
+    def training(self):
+        return self.__trainingfn
 
     @provides(KStudyTeamLookup)
     @inject(rt=(rtconfig.Options, ldaplib.CONFIG_SECTION))
     def study_team_lookup(self, rt):
         # TODO: share all but urllib2 stuff with Mock
-        import urllib2
 
         if not rt.studylookupaddr:
             raise IOError('missing studylookupaddr')
 
-        byId = WebReadable(rt.studylookupaddr,
-                           urllib2.build_opener(),
-                           urllib2.Request)
+        byId = WebReadable(rt.studylookupaddr, self.__urlopener)
 
         def lookup(studyId):
             sub = byId.subRdFile("?id=" + studyId)
@@ -504,36 +503,63 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         return lookup
 
     @classmethod
-    def mods(cls, ini):
-        return [cls(ini), ldaplib.RunTime(ini)]
-
-
-def _integration_test():  # pragma: no cover
-    logging.basicConfig(level=logging.INFO)
-    (m, ) = RunTime.make(None, [MedCenter])
-
-    if '--search' in sys.argv:
-        cn, sn, givenname = sys.argv[2:5]
-
-        print [10, cn, sn, givenname]
-        print m.search(10, cn, sn, givenname)
-    else:
-        uid = sys.argv[1]
-        req = MockRequest()
-        m.authenticated(uid, req)
-        who = m.idbadge(req.context)
-        print who
-        print "faculty? ", who.is_faculty()
-        print "investigator? ", who.is_investigator()
-        print "training: ", m.latest_training(who)
-
-        print "Once more, to check caching..."
-        req = MockRequest()
-        m.authenticated(uid, req)
-        who = m.idbadge(req.context)
-        print who
-        print "training: ", m.latest_training(who)
+    def mods(cls, ini, timesrc, urlopener, ldap, trainingfn, **kwargs):
+        return [cls(ini, urlopener, trainingfn)] + (
+            ldaplib.RunTime.mods(ini, ldap, timesrc))
 
 
 if __name__ == '__main__':  # pragma: no cover
+    def _integration_test():  # pragma: no cover
+        from io import open as io_open
+        from os.path import join as joinpath, exists
+        from urllib2 import build_opener
+        from datetime import datetime
+        from sys import argv, path as sys_path
+
+        from sqlalchemy import create_engine
+        import ldap
+
+        cwd = Path('.', open=io_open, joinpath=joinpath, exists=exists)
+
+        ini = cwd / 'integration-test.ini'
+
+        if '--traincheck' in argv:
+            sys_path.append('..')
+            import traincheck
+
+            trainingfn = traincheck.from_config(ini, create_engine)
+        else:
+            def trainingfn(who):
+                return '2001-01-01'
+
+        logging.basicConfig(level=logging.INFO)
+
+        [m] = RunTime.make(
+            [MedCenter],
+            timesrc=datetime, urlopener=build_opener(),
+            trainingfn=trainingfn,
+            ini=ini, ldap=ldap)
+
+        if '--search' in argv:
+            cn, sn, givenname = argv[2:5]
+
+            print([10, cn, sn, givenname])
+            print(m.search(10, cn, sn, givenname))
+        else:
+            uid = argv[-1]
+            req = MockRequest()
+            m.authenticated(uid, req)
+            who = m.idbadge(req.context)
+            print(who)
+            print("faculty? ", who.is_faculty())
+            print("investigator? ", who.is_investigator())
+            print("training: ", m.latest_training(who))
+
+            print("Once more, to check caching...")
+            req = MockRequest()
+            m.authenticated(uid, req)
+            who = m.idbadge(req.context)
+            print(who)
+            print("training: ", m.latest_training(who))
+
     _integration_test()

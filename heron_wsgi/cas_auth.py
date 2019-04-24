@@ -101,7 +101,6 @@ Finally, log in again and log out, and then get a challenge::
 '''
 
 # python stdlib 1st, per PEP8
-import itertools
 import logging
 from urllib import urlencode
 
@@ -115,10 +114,10 @@ from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPSeeOther
 from pyramid.authentication import AuthTktAuthenticationPolicy
 from pyramid.session import UnencryptedCookieSessionFactoryConfig
 
-from admin_lib.rtconfig import (Options, TestTimeOptions, RuntimeOptions,
+from admin_lib.rtconfig import (Options, TestTimeOptions,
                                 IniModule)
 from admin_lib.rtconfig import MockMixin
-from admin_lib.ocap_file import edef, Token
+from admin_lib.ocap_file import edef, Token, Path
 from admin_lib.ocap_file import WebReadable
 
 log = logging.getLogger(__name__)
@@ -256,7 +255,7 @@ class Validator(Token):
         uid = lines[1].strip()
 
         hdrs = security.remember(req, uid)
-        #log.debug("new headers: %s", hdrs)
+        # log.debug("new headers: %s", hdrs)
 
         response = HTTPFound(req.path_url)
         response.headers.extend(hdrs)
@@ -345,28 +344,22 @@ class CapabilityStyle(object):
 
 
 class RunTime(IniModule):  # pragma: nocover
-    def __init__(self, ini):
-        self._ini = ini
+    def __init__(self, ini, urlopener):
+        IniModule.__init__(self, ini)
+        self.__urlopener = urlopener
 
     @provides((WebReadable, CONFIG_SECTION))
     @inject(rt=(Options, CONFIG_SECTION))
     def cas_server(self, rt):
-        from urllib2 import build_opener, Request
-
-        return WebReadable(rt.base, build_opener(), Request)
+        return WebReadable(rt.base, self.__urlopener)
 
     @provides((Options, CONFIG_SECTION))
     def opts(self):
-        return RuntimeOptions(['base', 'app_secret']).load(
-            self._ini, CONFIG_SECTION)
+        return self.get_options(['base', 'app_secret'], CONFIG_SECTION)
 
     @classmethod
-    def mods(cls, ini):
-        return [RunTime(ini)]
-
-    @classmethod
-    def depgraph(cls, ini):
-        return injector.Injector(cls.mods(ini))
+    def mods(cls, ini, urlopener, **kwargs):
+        return [cls(ini, urlopener)]
 
 
 class LinesUrlOpener(object):
@@ -397,10 +390,9 @@ class Mock(injector.Module, MockMixin):
     @provides((WebReadable, CONFIG_SECTION))
     @inject(rt=(Options, CONFIG_SECTION))
     def cas_server(self, rt):
-        from urllib2 import Request
         ua = LinesUrlOpener(['yes', 'john.smith'])
 
-        return WebReadable(rt.base, ua, Request)
+        return WebReadable(rt.base, ua)
 
     @classmethod
     def mods(cls):
@@ -456,30 +448,37 @@ def TreasureMap(who, sekret):  # pragma: nocover
     return edef(hunter, location, __repr__)
 
 
-def _integration_test(ini, host='127.0.0.1', port=8123):  # pragma: nocover
-    from pyramid.config import Configurator
-    from paste import httpserver
-
-    #logging.basicConfig(level=logging.DEBUG)
-    logging.basicConfig(level=logging.INFO)
-
-    config = Configurator(settings={'pyramid.debug_routematch': True})
-
-    guide, guard, rt = RunTime.make(
-        ini, [MockIssuer, Validator, (Options, CONFIG_SECTION)])
-
-    CapabilityStyle.setup(config, rt.app_secret, 'logout', 'logout',
-                          guide.authenticated, [guide], guard)
-
-    config.add_route('root', '')
-    config.add_view(MockIssuer.protected_view, route_name='root',
-                    permission=guide.permission)
-
-    app = config.make_wsgi_app()
-    httpserver.serve(app, host, port)
-
-
 if __name__ == '__main__':  # pragma: nocover
-    import sys
-    ini = sys.argv[1]
-    _integration_test(ini)
+    def _integration_test(host='127.0.0.1', port=8123):  # pragma: nocover
+        from sys import argv
+        from os import path
+        from io import open as io_open
+        from urllib2 import build_opener
+
+        from pyramid.config import Configurator
+        from paste import httpserver
+
+        cwd = Path('.', joinpath=path.join, open=io_open)
+        ini = cwd / argv[1]
+
+        logging.basicConfig(level=logging.DEBUG if '--debug' in argv
+                            else logging.INFO)
+
+        config = Configurator(settings={'pyramid.debug_routematch': True})
+
+        guide, guard, rt = RunTime.make(
+            [MockIssuer, Validator, (Options, CONFIG_SECTION)],
+            ini=ini,
+            urlopener=build_opener())
+
+        CapabilityStyle.setup(config, rt.app_secret, 'logout', 'logout',
+                              guide.authenticated, [guide], guard)
+
+        config.add_route('root', '')
+        config.add_view(MockIssuer.protected_view, route_name='root',
+                        permission=guide.permission)
+
+        app = config.make_wsgi_app()
+        httpserver.serve(app, host, port)
+
+    _integration_test()

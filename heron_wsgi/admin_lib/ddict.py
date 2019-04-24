@@ -1,20 +1,16 @@
-class DataDict(object):
-    '''
-    .. todo:: use pkg_resources rather than os to get redcap_dd
-    '''
-    def __init__(self, name,
-                 respath='../redcap_dd/', suffix='.csv'):
-        import pkg_resources
+import csv
 
-        def open_it():
-            return pkg_resources.resource_stream(
-                __name__, respath + name + suffix)
-        self._open = open_it
+
+class DataDict(object):
+    @classmethod
+    def from_csv(cls, fp):
+        return cls(list(csv.DictReader(fp)))
+
+    def __init__(self, rows):
+        self.rows = rows
 
     def fields(self):
-        import csv
-        rows = csv.DictReader(self._open())
-        for row in rows:
+        for row in self.rows:
             yield row["Variable / Field Name"], row
 
     def radio(self, field_name):

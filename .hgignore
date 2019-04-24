@@ -1,4 +1,7 @@
 syntax: glob
+
+.env
+
 *.class
 *~
 target
@@ -34,3 +37,6 @@ man/
 # sphinx build stuff
 devdoc/_build
 .externalToolBuilders/
+.gradle/
+heron_wsgi/admin_lib/.mypy_cache/
+.tox/

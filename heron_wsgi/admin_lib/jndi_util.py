@@ -1,12 +1,12 @@
 '''jndi_util -- just enough jboss JNDI to get an Oracle connection.
 
-.. todo:: consider factoring out of rgate/i2b2hive.py
 '''
 
+from io import BytesIO
 from xml.etree import cElementTree as xml
 import pkg_resources as pkg
 
-from ocap_file import Readable
+from ocap_file import Path
 
 
 class JBossContext(object):
@@ -28,19 +28,20 @@ class JBossContext(object):
 class _MockDeployDir(object):
     ds = 'test-ds.xml'
 
+    ds_text = pkg.resource_string(__name__, ds)
+
     @classmethod
     def make(cls):
-        return Readable('/example',
-                        _MockDeployDir,
-                        lambda path: [cls.ds],
-                        cls.open)
+        return Path('/example',
+                    open=cls.open, joinpath=cls.join, exists=cls.exists,
+                    abspath=cls.abspath, listdir=lambda _: [cls.ds])
 
     @classmethod
-    def open(cls, path):
-        if path != '/example/' + cls.ds:
+    def open(cls, path, **kwargs):
+        if not cls.exists(path):
             raise OSError(2, 'No such file or directory: %s' % path)
 
-        return pkg.resource_stream(__name__, cls.ds)
+        return BytesIO(cls.ds_text)
 
     @staticmethod
     def abspath(p):
@@ -49,6 +50,10 @@ class _MockDeployDir(object):
     @staticmethod
     def join(*pn):
         return '/'.join(pn)
+
+    @classmethod
+    def exists(cls, path):
+        return path == '/example/' + cls.ds
 
 
 def ds_access(jboss_deploy, jndi_name,
@@ -69,7 +74,7 @@ def ds_access(jboss_deploy, jndi_name,
       ...
     KeyError: 'java:/QueryToolBlueHeronDS'
 
-    >>> ds_access(here.subRdFile('does_not_exist'), 'BLUEHERONdata')
+    >>> ds_access(here / 'does_not_exist', 'BLUEHERONdata')
     ... # doctest: +ELLIPSIS
     Traceback (most recent call last):
       ...
@@ -77,10 +82,10 @@ def ds_access(jboss_deploy, jndi_name,
 
     :raises: XMLSyntaxError on failure to parse XML files therein,
     '''
-    for f in jboss_deploy.subRdFiles():
-        if not f.fullPath().endswith('-ds.xml'):
+    for f in jboss_deploy.iterdir():
+        if not str(f).endswith('-ds.xml'):
             continue
-        doc = xml.parse(f.inChannel())
+        doc = xml.parse(f.open(mode='rb'))
         srcs = doc.getroot().findall(ns + 'datasource')
         try:
             pw, url, un = ((cred.find(ns + 'password').text,
@@ -97,4 +102,4 @@ def ds_access(jboss_deploy, jndi_name,
     raise KeyError(jndi_name)
 
 
-_token_usage = Readable
+_token_usage = Path

@@ -36,7 +36,6 @@ AttributeError: 'Keeper' object has no attribute 'secret'
 
 '''
 
-from contextlib import contextmanager
 from posixpath import basename, splitext, join
 from functools import wraps
 

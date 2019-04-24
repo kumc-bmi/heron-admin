@@ -1,0 +1,2 @@
+include *.txt *.ini *.cfg *.rst Pipfile Pipfile.lock
+recursive-include *.ico *.png *.css *.gif *.jpg *.txt *.js *.html *.xml

@@ -5,9 +5,7 @@
 
 __ http://informatics.kumc.edu/work/wiki/HERON#governance
 
-.. For debugging, change .. to >>>.
-.. logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
-  >>> import sys; logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+  >>> logged = rtconfig._printLogs(level=logging.INFO)
 
 View-only access for Qualified Faculty
 ======================================
@@ -22,6 +20,7 @@ __ http://informatics.kumc.edu/work/wiki/HERONTrainingMaterials
 
   >>> hp, mc, oc = Mock.make((HeronRecords, medcenter.MedCenter,
   ...                         OversightCommittee))
+  >>> print(logged())
   INFO:cache_remote:LDAPService@1 cache initialized
   INFO:cache_remote:OversightCommittee@1 cache initialized
   INFO:cache_remote:HeronRecords@1 cache initialized
@@ -39,6 +38,7 @@ human subjects training, so he can access the repository and make
 investigator requests::
 
   >>> facreq = _login('john.smith', mc, hp, PERM_STATUS)
+  >>> print(logged())
   ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ...
   INFO:cache_remote:system access query for ('SAA', 'john.smith@js.example')
@@ -69,18 +69,22 @@ Once he acknowledges it, he can access the repository:
 
   >>> facreq.context.disclaimers.current_disclaimer()
   ... # doctest: +NORMALIZE_WHITESPACE
-  Disclaimer(disclaimer_id=1, url=http://example/blog/item/heron-release-xyz,
-             current=1)
+    Disclaimer(project_id=123, record=1,
+               disclaimer_id=1,
+               url=http://example/blog/item/heron-release-xyz, current=1)
+  >>> _ = logged()
   >>> facreq.context.disclaimers.ack_disclaimer(facreq.context.badge)
   >>> facreq.context.start_i2b2()
-  ... # doctest: +NORMALIZE_WHITESPACE
+  Access(John Smith <john.smith@js.example>)
+  >>> print(logged())
+  ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
   INFO:disclaimer:disclaimer ack:
-  Acknowledgement(ack=2011-09-02 john.smith /heron-release-xyz,
+  Acknowledgement(project_id=34, record=...,
+    ack=2011-09-02 john.smith /heron-release-xyz,
     timestamp=2011-09-02 00:00:00, user_id=john.smith,
     disclaimer_address=http://example/blog/item/heron-release-xyz)
   INFO:i2b2pm:Finding I2B2 project for REDCap pids: []
   INFO:i2b2pm:User REDCap projects are not in HERON
-  Access(John Smith <john.smith@js.example>)
 
 Unforgeable System Access Agreement
 ***********************************
@@ -92,10 +96,11 @@ survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
   >>> facreq = _login('john.smith', mc, hp, PERM_SIGN_SAA)
   >>> facreq.context.sign_saa.ensure_saa_survey().split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
+  ['http://testhost/redcap-host/surveys/',
+   's=aqFVbr&full_name=Smith%2C+John&user_id=john.smith']
+  >>> print(logged())
   INFO:cache_remote:SAA link query for ('SAA', 'john.smith')
   INFO:cache_remote:... cached until 2011-09-02 00:00:16.500000
-  ['http://testhost/redcap-host/surveys/',
-   's=qTwAVx&full_name=Smith%2C+John&user_id=john.smith']
 
 Any CAS authenticated user can sign Data Usage Agreement
 ********************************************************
@@ -111,10 +116,9 @@ survey, using :mod:`heron_wsgi.admin_lib.redcap_connect`::
   >>> facreq = _login('john.smith', mc, hp, PERM_SIGN_DUA)
   >>> facreq.context.sign_dua.ensure_dua_survey().split('?')
   ... # doctest: +NORMALIZE_WHITESPACE
-  INFO:cache_remote:DUA link query for ('DUA', 'john.smith')
-  INFO:cache_remote:... cached until 2011-09-02 00:00:17
   ['http://testhost/redcap-host/surveys/',
-   's=qTwAVx&full_name=Smith%2C+John&user_id=john.smith']
+   's=aqFVbr&full_name=Smith%2C+John&user_id=john.smith']
+  >>> _ = logged()
 
 Sponsored Users
 ===============
@@ -123,6 +127,7 @@ Bill cannot access the HERON repository because he is neither
 faculty not sponsored, nor has he completed human subjects training::
 
   >>> stureq = _login('bill.student', mc, hp, PERM_STATUS)
+  >>> print(logged())
   ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
   INFO:cache_remote:LDAP query for ('(cn=bill.student)', ...
   INFO:cache_remote:Sponsorship query for ('sponsorship', 'bill.student')
@@ -157,6 +162,8 @@ Verify that remote accesses are cached:
     ...
   NoPermission: ...
 
+  >>> _ = logged()
+
 .. note:: We count on sqlalchemy to recover from errors in the connection
    to the database of sponsorship records.
 
@@ -172,10 +179,11 @@ not yet executed the system access agreement::
             droc=None, executive=False,
             expired_training=None, faculty=False, sponsored=True,
             system_access_signed=[]))
+   >>> _ = logged()
 
 This student does have authorization to sign the SAA:
 
-  >>> stu2req = _login('some.one', mc, hp, PERM_SIGN_SAA)
+  >>> stu2req = _login('some.one', mc, hp, PERM_SIGN_SAA); print(logged())
   WARNING:medcenter:missing LDAP attribute ou for some.one
   WARNING:medcenter:missing LDAP attribute title for some.one
   >>> stu2req.context.sign_saa
@@ -184,6 +192,7 @@ This student does have authorization to sign the SAA:
 This student's sponsor is not with KUMC anymore
 
   >>> stureq = _login('jill.student', mc, hp, PERM_STATUS)
+  >>> print(logged())
   ... #doctest: +NORMALIZE_WHITESPACE
   INFO:cache_remote:LDAP query for ('(cn=jill.student)', ('cn', 'givenname',
        'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
@@ -206,6 +215,7 @@ Exception for executives from participating institutions
 Executives don't need sponsorship::
 
   >>> exreq = _login('big.wig', mc, hp, PERM_START_I2B2)
+  >>> print(logged())
   ... # doctest: +NORMALIZE_WHITESPACE
   INFO:cache_remote:LDAP query for ('(cn=big.wig)', ('cn', 'givenname',
        'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
@@ -223,6 +233,7 @@ Faculty and executives can make sponsorship and data usage requests to
 the oversight committee::
 
   >>> facreq = _login('john.smith', mc, hp, PERM_INVESTIGATOR_REQUEST)
+  >>> print(logged())
   ... # doctest: +NORMALIZE_WHITESPACE
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('cn', 'givenname',
        'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
@@ -233,12 +244,7 @@ the oversight committee::
   >>> facreq.context.investigator_request.ensure_oversight_survey(
   ...        ['some.one'], what_for=HeronRecords.DATA_USE).split('&')
   ... # doctest: +NORMALIZE_WHITESPACE
-  INFO:cache_remote:LDAP query for ('(cn=some.one)', ('cn', 'givenname',
-       'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
-  INFO:cache_remote:... cached until 2011-09-02 00:00:09.500000
-  WARNING:medcenter:missing LDAP attribute ou for some.one
-  WARNING:medcenter:missing LDAP attribute title for some.one
-  ['http://testhost/redcap-host/surveys/?s=jpMZfX',
+  ['http://testhost/redcap-host/surveys/?s=akvfqA',
    'full_name=Smith%2C+John',
    'multi=yes',
    'name_etc_1=One%2C+Some%0A%0A',
@@ -250,8 +256,6 @@ the oversight committee::
   >>> exreq = _login('big.wig', mc, hp, PERM_INVESTIGATOR_REQUEST)
   >>> ok = exreq.context.investigator_request.ensure_oversight_survey(
   ...        ['some.one'], what_for=HeronRecords.DATA_USE).split('&')
-  WARNING:medcenter:missing LDAP attribute ou for some.one
-  WARNING:medcenter:missing LDAP attribute title for some.one
 
 
 Oversight Auditing
@@ -260,14 +264,10 @@ Oversight Auditing
 Oversight committee members can get sensitive audit info::
 
   >>> exreq = _login('big.wig', mc, hp, PERM_DROC_AUDIT)
-  ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
-  INFO:cache_remote:LDAP query for ('(cn=big.wig)', ...
 
 Ordinary users cannot, though they can get aggregate usage info::
 
   >>> stureq = _login('bill.student', mc, hp, PERM_STATS_REPORTER)
-  ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
-  INFO:cache_remote:LDAP query for ('(cn=bill.student)', ...
   >>> stureq.context.stats_reporter
   I2B2AggregateUsage()
 
@@ -283,8 +283,6 @@ Mismatch between LDAP email and CAS username
 Email addresses are not limited to correspond to user ids:
 
   >>> reqtm = _login('trouble.maker', mc, hp, PERM_STATUS)
-  ... # doctest: +ELLIPSIS
-  INFO:cache_remote:LDAP query for ('(cn=trouble.maker)', ...
   >>> reqtm.context.badge
   Trouble Maker <tmaker@not.js.example>
 
@@ -303,13 +301,14 @@ from collections import namedtuple
 import injector
 from injector import inject, provides, singleton
 from sqlalchemy import orm
-from sqlalchemy.sql import and_
+from sqlalchemy.engine.base import Connectable
 
-from ocap_file import Token
+from ocap_file import Token, Path
 import rtconfig
 import i2b2pm
 import medcenter
 import redcap_connect
+import redcap_invite
 import redcapdb
 import noticelog
 from noticelog import OVERSIGHT_CONFIG_SECTION
@@ -394,35 +393,34 @@ Status = namedtuple('Status',
 
 
 class HeronRecords(Token, Cache):
-    '''
+    '''In the oversight_project, userid of sponsored users are stored in
+    REDCap fields with names like ... ::
 
-    In the oversight_project, userid of sponsored users are stored in
-    REDCap fields with names like user_id_% and approval decisions are
-    stored in fields with names like approve_%, with a distinct
-    approve_% field for each participating institution.
+    >>> ddict = noticelog.DecisionRecords.redcap_dd
+    >>> [n for (n, etc) in ddict.fields() if n.startswith('user_id_')]
+    ... # doctest: +ELLIPSIS
+    ['user_id_1', 'user_id_2', 'user_id_3', ...]
 
-    >>> from ddict import DataDict
-    >>> ddict = DataDict('oversight')
-    >>> dd_orgs = [n[len('approve_'):] for (n, etc) in ddict.fields()
-    ...            if n.startswith('approve_')]
-    >>> set(dd_orgs) == set(noticelog.DecisionRecords.institutions)
-    True
+    Approval decisions are stored in one field per participating
+    institution::
 
-    >>> len([n for (n, etc) in ddict.fields() if n.startswith('user_id_')]) > 3
-    True
+    >>> sorted(n for (n, etc) in ddict.fields() if n.startswith('approve_'))
+    ['approve_kuh', 'approve_kumc', 'approve_kupi']
+    >>> sorted(noticelog.DecisionRecords.institutions)
+    ['kuh', 'kumc', 'kupi']
 
-
-    >>> uses = ddict.radio('what_for')
-    >>> HeronRecords.oversight_request_purposes == tuple(
-    ...     [ix for (ix, label) in uses])
-    True
+    >>> sorted(ddict.radio('what_for'))
+    ... # doctest: +ELLIPSIS
+    [('1', 'HERON Sponsorship'), ('2', 'Data Use'), ('3', 'ACT Sponsorship ...')]
 
     .. todo:: check expiration date
+
     '''
 
     SPONSORSHIP = '1'
+    ACT_SPONSORSHIP = '3'
     DATA_USE = '2'
-    oversight_request_purposes = (SPONSORSHIP, DATA_USE)
+    oversight_request_purposes = (SPONSORSHIP, DATA_USE, ACT_SPONSORSHIP)
 
     @inject(mc=medcenter.MedCenter,
             pm=i2b2pm.I2B2PM,
@@ -511,9 +509,9 @@ class HeronRecords(Token, Cache):
         # by badge.mail. When those didn't agree, we updated
         # the database to match badge.mail. So now we need
         # to check both.
-        # Cache args have to be hashable, so tuple() rather than list().
         cn_at_domain = '%s@%s' % (badge.cn, self._saa_rc.domain)
-        mailboxes = tuple(set([badge.mail, cn_at_domain]))
+        # Cache args have to be hashable
+        mailboxes = frozenset([badge.mail, cn_at_domain])
 
         system_access_sigs = [sig.completion_time
                               for sig in self._signatures(mailboxes)]
@@ -694,11 +692,9 @@ def team_params(lookup, uids):
     r'''
     >>> import pprint
     >>> (mc, ) = medcenter.Mock.make([medcenter.MedCenter])
-    INFO:cache_remote:LDAPService@2 cache initialized
     >>> pprint.pprint(list(team_params(mc.peer_badge,
     ...                                ['john.smith', 'bill.student'])))
     ... # doctest: +ELLIPSIS
-    INFO:cache_remote:LDAP query for ('(cn=john.smith)', ...
     [('user_id_1', 'john.smith'),
      ('name_etc_1', 'Smith, John\nChair of Department of Neur...'),
      ('user_id_2', 'bill.student'),
@@ -768,16 +764,13 @@ def mock_context(who, depgraph=None):
 
 
 class RunTime(rtconfig.IniModule):  # pragma nocover
-    @singleton
-    @provides(rtconfig.Clock)
-    def _real_time(self):
-        import datetime
-        return datetime.datetime
+    def __init__(self, ini):
+        rtconfig.IniModule.__init__(self, ini)
 
     @singleton
     @provides((redcap_connect.SurveySetup, SAA_CONFIG_SECTION))
     @inject(rng=redcap_connect.KRandom,
-            engine=redcap_connect.KInviteEngine)
+            engine=(Connectable, redcap_invite.CONFIG_SECTION))
     def _rc_saa(self, rng, engine):
         opts = self.get_options(redcap_connect.OPTIONS, SAA_CONFIG_SECTION)
         return redcap_connect.SurveySetup(opts, engine.connect, rng,
@@ -786,7 +779,7 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
     @singleton
     @provides((redcap_connect.SurveySetup, DUA_CONFIG_SECTION))
     @inject(rng=redcap_connect.KRandom,
-            engine=redcap_connect.KInviteEngine)
+            engine=(Connectable, redcap_invite.CONFIG_SECTION))
     def _rc_dua(self, rng, engine):
         opts = self.get_options(redcap_connect.OPTIONS, DUA_CONFIG_SECTION)
         return redcap_connect.SurveySetup(opts, engine.connect, rng,
@@ -795,7 +788,7 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
     @singleton
     @provides((redcap_connect.SurveySetup, OVERSIGHT_CONFIG_SECTION))
     @inject(rng=redcap_connect.KRandom,
-            engine=redcap_connect.KInviteEngine)
+            engine=(Connectable, redcap_invite.CONFIG_SECTION))
     def _rc_oversight(self, rng, engine):
         opts = self.get_options(redcap_connect.OPTIONS + ('project_id',),
                                 OVERSIGHT_CONFIG_SECTION)
@@ -809,36 +802,62 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
         return mc.getInspector()
 
     @classmethod
-    def mods(cls, ini):
-        return ([im for m in
-                 (medcenter,
-                  i2b2pm,
-                  redcap_connect,
-                  disclaimer,
-                  noticelog)
-                 for im in m.RunTime.mods(ini)] + [cls(ini)])
+    def mods(cls, ini, **kwargs):
+        return (
+            [im for mcls in
+             [medcenter.RunTime,
+              i2b2pm.RunTime,
+              redcap_connect.RunTime,
+              disclaimer.RunTime,
+              noticelog.RunTime]
+             for im in mcls.mods(ini=ini, **kwargs)] +
+            [cls(ini)])
 
+    @classmethod
+    def _integration_test(cls, mc, hr, userid):  # pragma nocover
+        req = medcenter.MockRequest()
+        req.remote_user = userid
+        mc.authenticated(userid, req)
+        hr.grant(req.context, PERM_STATUS)
+        print(req.context.status)
 
-def _integration_test():  # pragma nocover
-    import sys
-
-    if '--doctest' in sys.argv:
-        import doctest
-        doctest.testmod()
-
-    logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
-
-    userid = sys.argv[1]
-    req = medcenter.MockRequest()
-    req.remote_user = userid
-    mc, hr = RunTime.make(None, [medcenter.MedCenter, HeronRecords])
-    mc.authenticated(userid, req)
-    hr.grant(req.context, PERM_STATUS)
-    print(req.context.status)
-
-    hr.grant(req.context, PERM_START_I2B2)
-    print(req.context.start_i2b2())
+        hr.grant(req.context, PERM_START_I2B2)
+        print(req.context.start_i2b2())
 
 
 if __name__ == '__main__':  # pragma nocover
-    _integration_test()
+    def _script():
+        from datetime import datetime
+        from io import open as io_open
+        from os import listdir
+        from os.path import join as joinpath
+        from random import Random
+        from sys import argv, stderr, path as sys_path
+        from urllib2 import build_opener
+        import uuid
+
+        from sqlalchemy import create_engine
+        import ldap
+
+        cwd = Path('.', open=io_open, joinpath=joinpath, listdir=listdir)
+        logging.basicConfig(level=logging.DEBUG, stream=stderr)
+
+        sys_path.append('..')
+        import traincheck
+
+        ini = cwd / 'integration-test.ini'
+        trainingfn = traincheck.from_config(ini, create_engine)
+
+        userid = argv[1]
+        mc, hr = RunTime.make([medcenter.MedCenter, HeronRecords],
+                              ini=ini,
+                              rng=Random(),
+                              timesrc=datetime,
+                              uuid=uuid,
+                              urlopener=build_opener(),
+                              trainingfn=trainingfn,
+                              ldap=ldap,
+                              create_engine=create_engine)
+        RunTime._integration_test(mc, hr, userid)
+
+    _script()

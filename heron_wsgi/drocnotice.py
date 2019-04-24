@@ -48,9 +48,9 @@ Now there should be no pending notices:
 import logging
 
 import injector
-from injector import inject, provides, singleton
+from injector import inject, provides
 from pyramid.response import Response
-import pyramid_mailer
+from pyramid_mailer.mailer import Mailer, DummyMailer
 from pyramid_mailer.message import Message
 import sqlalchemy
 from sqlalchemy.sql import func
@@ -76,7 +76,7 @@ class DROCNotice(Token):
 
     @inject(dr=DecisionRecords,
             smaker=(sqlalchemy.orm.session.Session, redcapdb.CONFIG_SECTION),
-            mailer=pyramid_mailer.mailer.Mailer)
+            mailer=Mailer)
     def __init__(self, dr, smaker, mailer):
         self._dr = dr
         self._rf = genshi_render.Factory({})
@@ -118,9 +118,14 @@ class DROCNotice(Token):
 
             action = ('approved' if decision == DecisionRecords.YES
                       else 'rejected')
-            investigator, team, detail = dr.decision_detail(record)
-            log.info('Notify %s and team that request %s is %s',
-                     investigator, record, action)
+
+            try:
+                investigator, team, detail = dr.decision_detail(record)
+                log.info('Notify %s and team that request %s is %s',
+                         investigator, record, action)
+            except Exception as oops:
+                log.error('cannot build notice; bad record? %s: %s' % (record, oops))
+                continue
 
             try:
                 log.debug('build_notices team: %s', team)
@@ -142,7 +147,7 @@ class DROCNotice(Token):
                         # https://github.com/Pylons/pyramid_mailer/issues/3
                         # https://github.com/dckc/pyramid_mailer/commit
                         #    /8a426bc8b24f491880c2b3a0204f0ee7bae42193
-                        #cc=cc,
+                        # cc=cc,
                         recipients=[inv_mail] + team_mail,
                         html=body)
 
@@ -181,14 +186,6 @@ def render_value(investigator, team, decision, detail, heron_home):
                 team=[mem.full_name() for mem in team])
 
 
-class Setup(injector.Module):
-    @singleton
-    @provides(pyramid_mailer.mailer.Mailer)
-    @inject(settings=KMailSettings)
-    def mailer(self, settings):
-        return pyramid_mailer.mailer.Mailer.from_settings(settings)
-
-
 class Mock(injector.Module, rtconfig.MockMixin):
     stuff = [DROCNotice]
 
@@ -196,10 +193,10 @@ class Mock(injector.Module, rtconfig.MockMixin):
     def settings(self):
         return {}
 
-    @provides(pyramid_mailer.mailer.Mailer)
+    @provides(Mailer)
     def mailer(self):
-        return pyramid_mailer.mailer.DummyMailer()
+        return DummyMailer()
 
     @classmethod
     def mods(cls):
-        return [Setup(), cls()] + heron_policy.Mock.mods()
+        return [cls()] + heron_policy.Mock.mods()

@@ -7,7 +7,7 @@ Sponsorship Records
 *******************
 
   >>> dr.sponsorships('some.one')
-  [(u'6373469799195807417', u'1', u'some.one', u'john.smith', u'')]
+  [(u'6373469799195807417', u'1', u'1', u'some.one', u'john.smith', u'')]
 
 Expired sponsorships are filtered out:
 
@@ -17,7 +17,7 @@ Expired sponsorships are filtered out:
 Projects sponsored by an investigator:
 
   >>> dr.sponsorships('john.smith', inv=True)
-  [(u'6373469799195807417', u'1', u'john.smith', u'john.smith', u'')]
+  [(u'6373469799195807417', u'1', u'1', u'john.smith', u'john.smith', u'')]
 
 Sponsorship details:
   >>> dr.about_sponsorships('some.one')  # doctest: +NORMALIZE_WHITESPACE
@@ -38,6 +38,7 @@ What decision notifications are pending?
   >>> ds  # doctest: +NORMALIZE_WHITESPACE
   [(u'-565402122873664774', u'2', 3),
    (u'23180811818680005', u'1', 3),
+   (u'3180811818667777', u'1', 3),
    (u'6373469799195807417', u'1', 3)]
 
 Get oversight details that we might want to use in composing the notification::
@@ -66,7 +67,7 @@ Get oversight details that we might want to use in composing the notification::
     u'project_title': u'Cure Polio',
     u'user_id': u'john.smith',
     u'user_id_1': u'bill.student'})
-  >>> pprint(dr.decision_detail(ds[2][0]))
+  >>> pprint(dr.decision_detail(ds[3][0]))
   (John Smith <john.smith>,
    [Some One <some.one>, ? <carol.student>, ? <koam.rin>],
    {u'approve_kuh': u'1',
@@ -79,7 +80,8 @@ Get oversight details that we might want to use in composing the notification::
     u'user_id': u'john.smith',
     u'user_id_1': u'some.one',
     u'user_id_2': u'carol.student',
-    u'user_id_3': u'koam.rin'})
+    u'user_id_3': u'koam.rin',
+    u'what_for': u'1'})
 
 Get current email addresses of the team:
 
@@ -88,16 +90,16 @@ Get current email addresses of the team:
   >>> dr.team_email(inv.cn, [mem.cn for mem in team])
   ('john.smith@js.example', ['bill.student@js.example'])
 
- >>> record_2 = ds[2][0]
+ >>> record_2 = ds[3][0]
  >>> inv, team, _ = dr.decision_detail(record_2)
  >>> dr.team_email(inv.cn, [mem.cn for mem in team])
  ('john.smith@js.example', ['some.one@js.example', 'carol.student@js.example'])
 
 The following table is used to log notices::
 
-  >>> from sqlalchemy import create_engine
+  >>> from redcapdb import _test_engine
   >>> from sqlalchemy.schema import CreateTable
-  >>> ddl = CreateTable(notice_log, bind=create_engine('sqlite://'))
+  >>> ddl = CreateTable(notice_log, bind=_test_engine())
   >>> print str(ddl).strip()
   ... #doctest: +NORMALIZE_WHITESPACE
   CREATE TABLE notice_log (
@@ -110,6 +112,7 @@ The following table is used to log notices::
 
 '''
 
+from pprint import pformat
 import logging
 from collections import namedtuple
 
@@ -120,21 +123,24 @@ from sqlalchemy.types import Integer, VARCHAR, TIMESTAMP
 from sqlalchemy.schema import ForeignKey
 from sqlalchemy import orm
 from sqlalchemy.sql import select, func, and_
+import pkg_resources as pkg
 
 import rtconfig
 import redcapdb
+from redcap_connect import _test_settings as rc_test_settings
+from ddict import DataDict
 import medcenter
-from ocap_file import Token
+from ocap_file import Token, Path
 
 log = logging.getLogger(__name__)
 OVERSIGHT_CONFIG_SECTION = 'oversight_survey'
 KProjectId = injector.Key('ProjectId')
+KNoticeLogSchema = injector.Key('NoticeLogSchema')
 notice_log = Table('notice_log', redcapdb.Base.metadata,
                    Column('id', Integer, primary_key=True),
                    Column('record', VARCHAR(100),
                           ForeignKey('redcap_data.record')),
                    Column('timestamp', TIMESTAMP()),
-                   schema='droctools',
                    mysql_engine='InnoDB',
                    mysql_collate='utf8_unicode_ci')
 
@@ -145,8 +151,7 @@ class DecisionRecords(Token):
     .. note:: At test time, let's check consistency with the data
               dictionary.
 
-    >>> from ddict import DataDict
-    >>> choices = dict(DataDict('oversight').radio('approve_kuh'))
+    >>> choices = dict(DecisionRecords.redcap_dd.radio('approve_kuh'))
     >>> choices[DecisionRecords.YES]
     'Yes'
     >>> choices[DecisionRecords.NO]
@@ -156,19 +161,24 @@ class DecisionRecords(Token):
 
     '''
 
+    redcap_dd = DataDict.from_csv(pkg.resource_stream(__name__, '../redcap_dd/oversight.csv'))
+
     YES = '1'
     NO = '2'
+    SPONSORSHIP = '1'
     institutions = ('kuh', 'kupi', 'kumc')
 
     @inject(pid=KProjectId,
             smaker=(orm.session.Session, redcapdb.CONFIG_SECTION),
             browser=medcenter.Browser,
+            notice_log_schema=KNoticeLogSchema,
             clock=rtconfig.Clock)
-    def __init__(self, pid, smaker, browser, clock):
+    def __init__(self, pid, smaker, browser, notice_log_schema, clock):
         self._oversight_project_id = pid
         self._browser = browser
         self._smaker = smaker
         self._clock = clock
+        self._notice_log_schema = notice_log_schema
 
     def sponsorships(self, uid, inv=False):
         '''Enumerate current (un-expired) sponsorships by/for uid.
@@ -181,7 +191,8 @@ class DecisionRecords(Token):
         # 1248, 'Every derived table must have its own alias'
         dc = dc.alias('mw')
         q = dc.select(and_(dc.c.candidate == uid,
-                           dc.c.decision == DecisionRecords.YES)).\
+                           dc.c.decision == DecisionRecords.YES,
+                           dc.c.what_for == DecisionRecords.SPONSORSHIP)).\
                                order_by(dc.c.record)
 
         answers = self._smaker().execute(q).fetchall()
@@ -212,11 +223,13 @@ class DecisionRecords(Token):
 
         # decisions without notifications
         if pending:
+            # ISSUE: notice_log is global mutable state
             nl = notice_log
+            nl.schema = self._notice_log_schema
+            # pyflakes doesn't like the == None SQLAlchemy idiom
             dwn = cd.outerjoin(nl).select() \
                                   .with_only_columns(cd.columns)\
                                   .where(nl.c.record == None)  # noqa
-                                  # pyflakes doesn't like this SQLAlchemy idiom
         else:
             dwn = cd
 
@@ -314,12 +327,13 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
       WHERE p.field_name LIKE :field_name_1
 
       >>> print str(cdwho)
-      ...  # doctest: +NORMALIZE_WHITESPACE
-      SELECT cd_record AS record,
-      cd_decision AS decision,
-      who_userid AS candidate,
-      sponsor_userid AS sponsor,
-      expire_dt_exp AS dt_exp
+      ...  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
+      SELECT cdwho.cd_record AS record,
+             cdwho.cd_decision AS decision,
+             cdwho.for_what_for AS what_for,
+             cdwho.who_userid AS candidate,
+             cdwho.sponsor_userid AS sponsor,
+             cdwho.expire_dt_exp AS dt_exp
         FROM
             (SELECT cd.record AS cd_record,
             cd.decision AS cd_decision,
@@ -328,6 +342,8 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
             who.userid AS who_userid,
             sponsor.record AS sponsor_record,
             sponsor.userid AS sponsor_userid,
+            "for".record AS for_record,
+            "for".what_for AS for_what_for,
             expire.record AS expire_record,
             expire.dt_exp AS expire_dt_exp
             FROM
@@ -363,6 +379,15 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
                     WHERE redcap_data.project_id = :project_id_1) AS p
                 WHERE p.field_name = :field_name_3) AS sponsor
             ON sponsor.record = cd.record
+            JOIN
+                (SELECT p.record AS record, p.value AS what_for
+                 FROM (SELECT redcap_data.record AS record,
+                       redcap_data.field_name AS field_name,
+                       redcap_data.value AS value
+                       FROM redcap_data
+                       WHERE redcap_data.project_id = :project_id_1) AS p
+                WHERE p.field_name = :field_name_4) AS "for"
+            ON "for".record = cd.record
             LEFT OUTER JOIN
                 (SELECT p.record AS record,
                 p.value AS dt_exp
@@ -372,7 +397,7 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
                     redcap_data.value AS value
                     FROM redcap_data
                     WHERE redcap_data.project_id = :project_id_1) AS p
-                WHERE p.field_name = :field_name_4) AS expire
+                WHERE p.field_name = :field_name_5) AS expire
             ON expire.record = cd.record) AS cdwho
 
       >>> pprint(cdwho.compile().params)
@@ -380,7 +405,8 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
        u'field_name_1': 'approve_%',
        u'field_name_2': 'user_id_%',
        u'field_name_3': 'user_id',
-       u'field_name_4': 'date_of_expiration',
+       u'field_name_4': 'what_for',
+       u'field_name_5': 'date_of_expiration',
        u'project_id_1': 123}
 
     '''
@@ -406,8 +432,12 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
         proj.c.field_name.like('user_id' if inv else 'user_id_%')).alias('who')
 
     sponsor = select((proj.c.record,
-                        proj.c.value.label('userid'))).where(
+                      proj.c.value.label('userid'))).where(
         proj.c.field_name == 'user_id').alias('sponsor')
+
+    what_for = select((proj.c.record,
+                       proj.c.value.label('what_for'))).where(
+                           proj.c.field_name == 'what_for').alias('for')
 
     dt_exp = select((proj.c.record,
                      proj.c.value.label('dt_exp'))).where(
@@ -417,15 +447,17 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
                       candidate.c.record == decision.c.record).\
                       join(sponsor,
                       sponsor.c.record == decision.c.record).\
+                      join(what_for,
+                           what_for.c.record == decision.c.record).\
                           outerjoin(dt_exp,
                                     dt_exp.c.record == decision.c.record).\
-                                        alias('cdwho').select()
-
-    cdwho = j.with_only_columns((j.c.cd_record.label('record'),
-                                 j.c.cd_decision.label('decision'),
-                                 j.c.who_userid.label('candidate'),
-                                 j.c.sponsor_userid.label('sponsor'),
-                                 j.c.expire_dt_exp.label('dt_exp')))
+                                        alias('cdwho')
+    cdwho = select([j.c.cd_record.label('record'),
+                    j.c.cd_decision.label('decision'),
+                    j.c.for_what_for.label('what_for'),
+                    j.c.who_userid.label('candidate'),
+                    j.c.sponsor_userid.label('sponsor'),
+                    j.c.expire_dt_exp.label('dt_exp')])
 
     return decision, candidate, cdwho
 
@@ -462,16 +494,14 @@ def migrate_decisions(ds, outfp):
 class Mock(injector.Module, rtconfig.MockMixin):
     @provides(KProjectId)
     def project_id(self):
-        import redcap_connect
-        return redcap_connect._test_settings.project_id
+        return rc_test_settings.project_id
 
-    @provides(rtconfig.Clock)
-    def clock(self):
-        return rtconfig.MockClock()
+    @provides(KNoticeLogSchema)
+    def notice_log_schema(self):
+        return None
 
     @classmethod
     def mods(cls):
-        import medcenter
         return redcapdb.Mock.mods() + medcenter.Mock.mods() + [cls()]
 
 
@@ -481,31 +511,49 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
         rt = self.get_options(['project_id'], OVERSIGHT_CONFIG_SECTION)
         return rt.project_id
 
-    @provides(rtconfig.Clock)
-    def real_time(self):
-        import datetime
-        return datetime.datetime
+    @provides(KNoticeLogSchema)
+    def notice_log_schema(self):
+        return 'droctools'
 
     @classmethod
-    def mods(cls, ini):
-        return [im
-                for m in (redcapdb, medcenter)
-                for im in m.RunTime.mods(ini)] + [cls(ini)]
-
-
-def _integration_test():  # pragma nocover
-    import sys
-    (ds, ) = RunTime.make(None, [DecisionRecords])
-
-    if '--migrate' in sys.argv:
-        migrate_decisions(ds, sys.stdout)
-        raise SystemExit(0)
-    elif '--sponsorships' in sys.argv:
-        who = sys.argv[2]
-        print(ds.about_sponsorships(who))
-
-    print("pending notifications:", ds.oversight_decisions())
+    def mods(cls, ini, **kwargs):
+        return (
+            redcapdb.RunTime.mods(ini, **kwargs) +
+            medcenter.RunTime.mods(ini, **kwargs) +
+            [cls(ini)])
 
 
 if __name__ == '__main__':  # pragma nocover
+    def _integration_test():  # pragma nocover
+        from datetime import datetime
+        from io import open as io_open
+        from os.path import join as joinpath, exists as exists
+        from sys import argv, stdout
+
+        from sqlalchemy import create_engine
+
+        cwd = Path('.', open=io_open, joinpath=joinpath, exists=exists)
+        ini = cwd / 'integration-test.ini'
+
+        def lose(*ignore, **kwargs):
+            raise NotImplementedError
+
+        logging.basicConfig(level=logging.INFO)
+
+        [ds] = RunTime.make(
+            [DecisionRecords],
+            ini=ini, timesrc=datetime,
+            create_engine=create_engine,
+            urlopener=lose, ldap=lose, trainingfn=lose)
+
+        if '--migrate' in argv:
+            migrate_decisions(ds, stdout)
+            raise SystemExit(0)
+        elif '--sponsorships' in argv:
+            who = argv[2]
+            print(ds.about_sponsorships(who))
+
+        print("pending notifications:")
+        print(pformat(ds.oversight_decisions()))
+
     _integration_test()

@@ -22,6 +22,7 @@ INSERT INTO "redcap_data" VALUES(123,1,'1','current','1');
 INSERT INTO "redcap_data" VALUES(34,1,'6373469799195807417','user_id','john.smith');
 INSERT INTO "redcap_data" VALUES(34,1,'6373469799195807417','full_name','John Smith');
 INSERT INTO "redcap_data" VALUES(34,1,'6373469799195807417','project_title','Cure Warts');
+INSERT INTO "redcap_data" VALUES(34,1,'6373469799195807417','what_for','1');
 INSERT INTO "redcap_data" VALUES(34,1,'6373469799195807417','date_of_expiration','');
 INSERT INTO "redcap_data" VALUES(34,1,'6373469799195807417','user_id_1','some.one');
 INSERT INTO "redcap_data" VALUES(34,1,'6373469799195807417','name_etc_1','Some One');
@@ -56,11 +57,20 @@ INSERT INTO "redcap_data" VALUES(34,1,'23180811818680005','approve_kumc','1');
 INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','user_id','prof.fickle');
 INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','full_name','Prof Fickle');
 INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','project_title','Change how diabetes is treated');
+INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','what_for','1');
 INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','date_of_expiration','2050-02-27');
 INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','user_id_1','jill.student');
 INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','approve_kuh','1');
 INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','approve_kupi','1');
 INSERT INTO "redcap_data" VALUES(34,1,'93180811818667777','approve_kumc','1');
+-- missing user_id
+INSERT INTO "redcap_data" VALUES(34,1,'3180811818667777','full_name','Prof Fickle');
+INSERT INTO "redcap_data" VALUES(34,1,'3180811818667777','project_title','goofy: Change how diabetes is treated');
+INSERT INTO "redcap_data" VALUES(34,1,'3180811818667777','date_of_expiration','2050-02-27');
+INSERT INTO "redcap_data" VALUES(34,1,'3180811818667777','user_id_1','jill.student');
+INSERT INTO "redcap_data" VALUES(34,1,'3180811818667777','approve_kuh','1');
+INSERT INTO "redcap_data" VALUES(34,1,'3180811818667777','approve_kupi','1');
+INSERT INTO "redcap_data" VALUES(34,1,'3180811818667777','approve_kumc','1');
 CREATE TABLE redcap_surveys_participants (
 	participant_id INTEGER NOT NULL, 
 	survey_id INTEGER, 
@@ -79,8 +89,8 @@ CREATE TABLE redcap_surveys_response (
 	response_id INTEGER NOT NULL, 
 	participant_id INTEGER, 
 	record VARCHAR(100), 
-	first_submit_time DATETIME, 
-	completion_time DATETIME, 
+	first_submit_time DATETIME_CHAR, 
+	completion_time DATETIME_CHAR, 
 	return_code VARCHAR(8), 
 	PRIMARY KEY (response_id)
 );

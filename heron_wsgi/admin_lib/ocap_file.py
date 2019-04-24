@@ -1,5 +1,7 @@
 '''ocap_file -- least-privilege interaction with the filesystem, web
 
+ISSUE: migrating away from Emily interface to pathlib.
+
 Inspired by:
 
   The Sash file object is quite similar to (though different from) the
@@ -26,6 +28,40 @@ __ http://www.hpl.hp.com/techreports/2006/HPL-2006-116.html
 '''
 
 from urlparse import urljoin
+from urllib2 import Request
+
+
+class Path(object):
+    '''Just the parts of the pathlib API that we use.
+
+    :type joinpath: (*str) -> Path
+    :type open: (...) -> Path
+    :type exists: () -> bool
+    :type listdir: (str) -> Iterable[str]
+    '''
+    def __init__(self, here, **ops):
+        '''
+        :param str here:
+        '''
+        self.joinpath = lambda there: Path(ops['joinpath'](here, there), **ops)
+        self.open = lambda **kwargs: ops['open'](here, **kwargs)
+        self.exists = lambda: ops['exists'](here)
+        self.iterdir = lambda: (self / child for child in ops['listdir'](here))
+        self.resolve = lambda: self / ops['abspath'](here)
+        self._path = here
+
+    def __repr__(self):
+        return '{cls}({p})'.format(cls=self.__class__.__name__, p=self._path)
+
+    def __str__(self):
+        return self._path
+
+    def __div__(self, there):
+        '''
+        :param str there:
+        :rtype: Path
+        '''
+        return self.joinpath(there)
 
 
 def Readable(path0, os_path, os_listdir, openf):
@@ -69,16 +105,14 @@ def Readable(path0, os_path, os_listdir, openf):
                 getBytes, fullPath)
 
 
-def WebReadable(base, urlopener, RequestClass):
+def WebReadable(base, urlopener):
     '''Read-only wrapping of urllib2 in the Emily/E least-authority API.
 
     :param base: base URL
     :param urlopener: as from `urllib2.build_opener()`
-    :param RequestClass: e.g. `urllib2.Request`
 
     >>> urlopener = _MockMostPagesOKButSome404('Z')
-    >>> from urllib2 import Request
-    >>> rdweb = WebReadable('http://example/stuff/', urlopener, Request)
+    >>> rdweb = WebReadable('http://example/stuff/', urlopener)
 
     A refinement could fetch content, parse links,
     and enumerate those that point "downward", but
@@ -125,7 +159,7 @@ def WebReadable(base, urlopener, RequestClass):
         return False
 
     def exists():
-        class HeadRequest(RequestClass):
+        class HeadRequest(Request):
             '''
             ack: doshea Jan 15 2010
             How do you send a HEAD HTTP request in Python?
@@ -147,7 +181,7 @@ def WebReadable(base, urlopener, RequestClass):
         there = urljoin(base, path)
         if not there.startswith(base):
             raise LookupError('Path does not lead to a subordinate.')
-        return WebReadable(there, urlopener, RequestClass)
+        return WebReadable(there, urlopener)
 
     def inChannel():
         '''
@@ -166,12 +200,11 @@ def WebReadable(base, urlopener, RequestClass):
                 getBytes, fullPath)
 
 
-def WebPostable(base, urlopener, RequestClass):
+def WebPostable(base, urlopener):
     '''Extend WebReadable with POST support.
 
     >>> urlopener = _MockMostPagesOKButSome404('Z')
-    >>> from urllib2 import Request
-    >>> doweb = WebPostable('http://example/stuff/', urlopener, Request)
+    >>> doweb = WebPostable('http://example/stuff/', urlopener)
 
     >>> doweb.post('stuff').read()
     'you posted: stuff'
@@ -181,7 +214,7 @@ def WebPostable(base, urlopener, RequestClass):
     >>> doweb.subRdFile('rd').fullPath()
     'http://example/stuff/rd'
     '''
-    delegate = WebReadable(base, urlopener, RequestClass)
+    delegate = WebReadable(base, urlopener)
 
     def __repr__():
         return 'WebPostable(...)'
@@ -225,14 +258,14 @@ class Token(object):
 
 
 class Editable(Token):
-    #ro : readable;
-    #subEdFiles : unit -> editable list;
-    #subEdFile : string -> editable;
-    #outChannel : unit -> out_channel;
-    #setBytes : string -> unit;
-    #mkDir : unit -> unit;
-    #createNewFile : unit -> unit;
-    #delete : unit -> unit;
+    # ro : readable;
+    # subEdFiles : unit -> editable list;
+    # subEdFile : string -> editable;
+    # outChannel : unit -> out_channel;
+    # setBytes : string -> unit;
+    # mkDir : unit -> unit;
+    # createNewFile : unit -> unit;
+    # delete : unit -> unit;
     pass
 
 

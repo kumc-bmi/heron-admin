@@ -1,0 +1,126 @@
+/*
+ * This is a general purpose Gradle build.
+ * Learn how to create Gradle builds at https://guides.gradle.org/creating-new-gradle-builds/
+ */
+
+plugins {
+  id 'java'
+  id 'war'
+  id 'org.akhikhl.gretty' version '1.4.2'
+  id "com.github.hierynomus.jython" version "0.8.0"
+}
+
+
+dependencies {
+  compile 'org.python:jython-standalone:2.7.1'
+
+  // https://mvnrepository.com/artifact/org.xerial/sqlite-jdbc
+  compile group: 'org.xerial', name: 'sqlite-jdbc', version: '3.21.0.1'
+
+  testJython ":nose:1.3.7"
+
+  jython ":genshi:0.7.1"
+
+  jython python(":setuptools:6.0.1") {
+    // 6.0.1 was current as of Sep 17, 2014
+    useModuleName = false // copy to root, not to setuptools/
+    // https://github.com/hierynomus/jython-gradle-plugin
+    copy {
+      from "pkg_resources.py"
+    }
+  }
+  
+  jython python(":injector:0.12.0") {
+    useModuleName = false
+    copy {
+      from "injector.py"
+    }
+  }
+
+  jython ":pyramid_mailer:0.15.1"
+  // grumble... no automatic transitive dependencies
+  jython ":pyramid:1.10.4"
+  jython ":Paste:3.0.8"
+  jython ":PasteDeploy:2.0.1"
+  jython ":PasteScript:1.7.5"
+  jython python(":WebOb:1.8.5") {
+    moduleName = "webob"
+    copy {
+      from "src/webob"
+    }
+  }
+  jython python(":repoze.lru:0.7") {
+    moduleName = "repoze"
+  }
+  jython python(":repoze.sendmail:4.4.1") {
+    moduleName = "repoze"
+  }
+  jython ":transaction:2.4.0"
+  jython ":six:1.12.0"
+  jython ":translationstring:1.3"
+  jython ":venusian:1.2.0"
+  jython python(":typing:3.6.6") {
+    useModuleName = false
+    copy {
+      from "python2/typing.py"
+    }
+  }
+  jython python(":zope.deprecation:4.4.0") {
+    moduleName = "zope"
+    copy {
+      from "src/zope"
+    }
+  }
+  jython python(":zope.interface:4.5.0") {
+    moduleName = "zope"
+    copy {
+      from "src/zope"
+    }
+  }
+
+  jython python(":SQLAlchemy:1.2.15") {
+    moduleName = "sqlalchemy"
+    copy {
+      // within SQLAlchemy-0.7.2.tar.gz
+      from "lib/sqlalchemy"
+    }
+  }
+
+  jython python(":JayDeBeApi:1.1.1") {
+    moduleName = "jaydebeapi"
+    copy {
+      from "jaydebeapi"
+    }
+  }
+}
+
+repositories {
+    mavenCentral()
+}
+
+task doctests(type: JavaExec) {
+  classpath = sourceSets.main.runtimeClasspath
+
+  systemProperty "org.sqlite.tmpdir", "/var/tmp" // see below
+
+  main = 'org.python.util.jython'
+  environment PYTHONPATH: '.:heron_wsgi:heron_wsgi/admin_lib'
+  args 'test/rundoctests.py'
+}
+check.dependsOn doctests
+
+
+task testSqliteJdbc(type: JavaExec) {
+  group = 'verification'
+  classpath = sourceSets.main.runtimeClasspath
+
+  // avoid: java.lang.UnsatisfiedLinkError​: ​org.sqlite.core.NativeDB
+  // when /tmp is mounted noexec
+  // see https://github.com/xerial/sqlite-jdbc/issues/97
+  systemProperty "org.sqlite.tmpdir", "/var/tmp"
+
+  workingDir 'heron_wsgi/admin_lib'
+  main = 'org.python.util.jython'
+  args 'jdbc_test.py'
+}
+check.dependsOn testSqliteJdbc

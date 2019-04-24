@@ -14,6 +14,8 @@ Contents:
 .. toctree::
    :maxdepth: 4
 
+   code_quality
+   ocaps
    heron_wsgi
    heron_wsgi.admin_lib
 
