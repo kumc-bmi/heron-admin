@@ -142,6 +142,11 @@ class CheckListView(Token):
         def yn(x):  # genshi attrs
             return {'checked': 'checked'} if x else {}
 
+        sp = req.route_url(self._next_route,
+                           what_for=REDCapLink.for_sponsorship)
+        dup = req.route_url(self._next_route,
+                            what_for=REDCapLink.for_data_use)
+
         parts = dict(affiliate=ctx.badge,
                      trainingCurrent=yn(status.current_training),
                      trainingLast=(status.current_training
@@ -152,20 +157,13 @@ class CheckListView(Token):
                      executive=yn(status.executive),
                      droc=yn(status.droc),
                      sponsored=yn(status.sponsored),
+                     sponsorship_path=sp,
+                     data_use_path=dup,
                      i2b2_login_path=req.route_url('i2b2_login'),
                      logout_path=req.route_url('logout'),
                      saa_path=req.route_url('saa'),
                      saa_public=self._saa.base,
                      dua_path=req.route_url('dua'))
-
-        if ctx.badge.is_investigator():
-            sp = req.route_url(self._next_route,
-                               what_for=REDCapLink.for_sponsorship)
-            dup = req.route_url(self._next_route,
-                                what_for=REDCapLink.for_data_use)
-            parts = dict(parts,
-                         sponsorship_path=sp,
-                         data_use_path=dup)
 
         log.info('GET %s: %s', req.url,
                  [(k, parts.get(k, None)) for k in ('affiliate',
