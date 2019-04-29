@@ -135,11 +135,14 @@ def _printLogs(level=logging.INFO):
 
 
 class RuntimeOptions(Options):  # pragma nocover
+    pserve_vars = {'listen': '*:80'}
+
     def __init__(self, ini, attrs, section):
         p = ConfigParser.SafeConfigParser()
         with ini.open() as stream:
             p.readfp(stream, str(ini))
-        Options.__init__(self, attrs, dict(p.items(section)))
+        Options.__init__(self, attrs, dict(p.items(section,
+                                                   vars=RuntimeOptions.pserve_vars)))
 
 
 class TestTimeOptions(RuntimeOptions):
