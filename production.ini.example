@@ -120,12 +120,14 @@ level=WARN
 
 [i2b2pm]
 #jboss_deploy=/opt/jboss-as-7.1.1.Final/standalone/deployments/
-jboss_deploy=/home/dconnolly/projects/heron-admin/heron_wsgi/admin_lib
+# ISSUE: provide sqlalchemy URL instead?
+jboss_deploy=CFG_JBOSS_DATASOURCES
 identified_data=false
 
 [i2b2md]
 #jboss_deploy=/opt/jboss-as-7.1.1.Final/standalone/deployments/
-jboss_deploy=/home/dconnolly/projects/heron-admin/heron_wsgi/admin_lib
+# ISSUE: provide sqlalchemy URL instead?
+jboss_deploy=CFG_JBOSS_DATASOURCES
 
 [disclaimers]
 project_id=398
