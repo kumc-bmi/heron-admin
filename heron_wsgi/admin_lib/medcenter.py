@@ -38,14 +38,6 @@ A :class:`MedCenter` issues :class:`IDBadge` capabilities::
    >>> bill.is_faculty()
    False
 
-Junk:
-
-  >>> r2.context.remote_user = 123
-  >>> m.grant(r2.context, PERM_BROWSER)
-  Traceback (most recent call last):
-    ...
-  TypeError
-
 
 Human Subjects Training
 -----------------------
@@ -118,6 +110,7 @@ KTestingFaculty = injector.Key('TestingFaculty')
 KStudyTeamLookup = injector.Key('StudyTeamLookup')
 
 PERM_BROWSER = __name__ + '.browse'
+PERM_BADGE = __name__ + '.badge'
 
 
 @singleton
@@ -231,13 +224,11 @@ class MedCenter(object):
         return [cred]
 
     def grant(self, context, permission):
-        if permission is not PERM_BROWSER:
+        if permission not in [PERM_BROWSER, PERM_BADGE]:
             raise TypeError
 
         badge = self.idbadge(context)
-        if not badge.is_investigator():
-            raise TypeError
-
+        context.badge = badge
         context.browser = self._browser
 
     def idbadge(self, context):
@@ -264,6 +255,15 @@ class MedCenter(object):
         info = self._training(badge.cn)
 
         return info
+
+    @classmethod
+    def faculty_check(cls, attrs):
+        try:
+            return (
+                attrs['kumcPersonJobcode'] != MedCenter.excluded_jobcode
+                and attrs['kumcPersonFaculty'] == 'Y')
+        except KeyError:
+            return None
 
 
 class NotFaculty(TypeError):
@@ -306,6 +306,9 @@ class Badge(object):
 
     def sort_name(self):
         return '%s, %s' % (self.sn, self.givenname)
+
+    def faculty_role(self):
+        return MedCenter.faculty_check(self.__attrs)
 
 
 class LDAPBadge(Badge):
@@ -376,12 +379,7 @@ class IDBadge(LDAPBadge):
             log.info('%s considered faculty by testing override.',
                      attrs.get('cn', 'CN???'))
         else:
-            try:
-                self._is_faculty = (
-                    attrs['kumcPersonJobcode'] != MedCenter.excluded_jobcode
-                    and attrs['kumcPersonFaculty'] == 'Y')
-            except KeyError:
-                pass
+            self._is_faculty = MedCenter.faculty_check(attrs)
 
         LDAPBadge.__init__(self, **attrs)
 

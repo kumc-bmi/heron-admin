@@ -175,8 +175,6 @@ class CheckListView(Token):
 
 
 class REDCapLink(Token):
-    # no longer needs to be a class?
-
     for_sponsorship = 'sponsorship'
     for_data_use = 'data_use'
 
@@ -189,7 +187,7 @@ class REDCapLink(Token):
                         permission=heron_policy.PERM_SIGN_DUA)
         config.add_view(self.oversight_redir, route_name=rtd,
                         request_method='GET',
-                        permission=heron_policy.PERM_INVESTIGATOR_REQUEST)
+                        permission=heron_policy.PERM_OVERSIGHT_REQUEST)
 
     def saa_redir(self, context, req):
         '''Redirect to a per-user System Access Agreement REDCap survey.
@@ -232,34 +230,46 @@ class REDCapLink(Token):
         '''Redirect to a per-user sponsorship/data-use REDCap survey.
 
           >>> t, r4 = test_grant_access_with_valid_cas_ticket()
-          >>> r5 = t.get('/team_done/sponsorship', status=302)
+          >>> r5 = t.get('/team_done/sponsorship?investigator=john.smith',
+          ...  status=302)
           >>> dict(r5.headers)['Location'].split('&')
           ... # doctest: +NORMALIZE_WHITESPACE
           ['http://testhost/redcap-host/surveys/?s=aqFVbr',
-           'full_name=Smith%2C+John', 'multi=yes', 'user_id=john.smith',
+           'faculty_email=john.smith%40js.example',
+           'faculty_name=Smith%2C+John',
+           'full_name=Smith%2C+John',
+           'multi=yes', 'request_from_faculty=1', 'user_id=john.smith',
            'what_for=1']
 
-          >>> r6 = t.get('/team_done/data_use', status=302)
+          >>> r6 = t.get('/team_done/data_use?investigator=john.smith',
+          ...     status=302)
           >>> dict(r6.headers)['Location'].split('&')
           ... # doctest: +NORMALIZE_WHITESPACE
           ['http://testhost/redcap-host/surveys/?s=aqFVbr',
-           'full_name=Smith%2C+John', 'multi=yes', 'user_id=john.smith',
+           'faculty_email=john.smith%40js.example',
+           'faculty_name=Smith%2C+John',
+           'full_name=Smith%2C+John',
+           'multi=yes', 'request_from_faculty=1', 'user_id=john.smith',
            'what_for=2']
 
         Hmm... we're doing a POST to the REDCap API inside a GET.
         Kinda iffy, w.r.t. safety and such.
         '''
 
-        investigator_request = context.investigator_request
+        oversight_request = context.oversight_request
         uids = _request_uids(req.GET)
+
+        fac_id = req.GET.get('investigator')
+        if not fac_id:
+            raise IOError('bad request')
 
         what_for = (heron_policy.HeronRecords.DATA_USE
                     if (req.matchdict['what_for']
                         == REDCapLink.for_data_use)
                     else heron_policy.HeronRecords.SPONSORSHIP)
 
-        there = investigator_request.ensure_oversight_survey(
-          uids, what_for)
+        there = oversight_request.ensure_oversight_survey(
+            uids, fac_id, what_for)
         log.info('GET oversight at %s: -> %s', req.url, there)
 
         return HTTPFound(there)
@@ -352,31 +362,50 @@ class TeamBuilder(Token):
     def configure(self, config, route_name):
         config.add_view(self.get, route_name=route_name,
                         request_method='GET', renderer='build_team.html',
-                        permission=medcenter.PERM_BROWSER)
+                        permission=medcenter.PERM_BADGE)
 
     def get(self, context, req, max_search_hits=15):
-        r'''
+        r'''Get team builder page template data.
+
+        If a user follows the sponsorship link, they should get a
+        document::
+
           >>> t, r1 = test_grant_access_with_valid_cas_ticket()
           >>> t.get('/build_team/sponsorship', status=200)
           <Response 200 OK '<!DOCTYPE html>\n<htm'>
+
+        A search for user id `john.smith` includes his name in the
+        response::
+
           >>> c1 = t.get('/build_team/sponsorship?goal=Search&cn=john.smith',
           ...            status=200)
           >>> 'Smith, John' in c1
           True
+
+        Submitting with the Done button takes us to a REDCap form with
+        bits filled in::
+
           >>> done = t.get('/team_done/sponsorship?continue=Done'
-          ...              '&uids=john.smith',
+          ...              '&uids=john.smith&investigator=john.smith',
           ...              status=302)
           >>> dict(done.headers)['Location'].split('&')
           ... # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
           ['http://testhost/redcap-host/surveys/?s=aqFVbr',
-           'full_name=Smith%2C+John', 'multi=yes',
+           'faculty_email=john.smith%40js.example',
+           'faculty_name=Smith%2C+John',
+           'full_name=Smith%2C+John',
+           'multi=yes',
            'name_etc_1=Smith%2C+John%0AChair+...+Neurology%0ANeurology',
+           'request_from_faculty=1',
+           'team_email_1=john.smith%40js.example',
            'user_id=john.smith', 'user_id_1=john.smith', 'what_for=1']
+
         '''
         browser = context.browser
 
         params = req.GET
-        uids, goal = edit_team(params)
+        uids, goal, investigator_id = edit_team(params, req.context.badge)
+
         candidates, studyTeam = [], []
 
         if goal == 'Search':
@@ -400,42 +429,84 @@ class TeamBuilder(Token):
         team = [browser.lookup(n) for n in uids]
         team.sort(key=lambda(a): (a.sn, a.givenname))
 
+        investigator = None
+        if investigator_id:
+            inv_info = browser.lookup(investigator_id)
+            if inv_info.faculty_role():
+                investigator = inv_info
+
         what_for = req.matchdict['what_for']
         log.info('TeamBuilder.get: %d candidates, %d in team',
                  len(candidates), len(team))
         return dict(done_path=req.route_url('team_done', what_for=what_for),
                     what_for=what_for,
+                    investigator=investigator,
                     team=team,
                     uids=' '.join(uids),
                     studyTeam=studyTeam,
+                    faculty_check=medcenter.MedCenter.faculty_check,
                     candidates=candidates)
 
 
-def edit_team(params):
-    r'''
+def edit_team(params, requestor):
+    r'''Compute team resulting from edits
+
+    The team starts with the user who is building the request::
+
+      >>> from admin_lib.notary import makeNotary
+      >>> notary = makeNotary()
+      >>> stu = medcenter.IDBadge(notary,
+      ...    kumcPersonJobcode='Undergrad', kumcPersonFaculty='N',
+      ...    cn='bill.student')
+      >>> edit_team({}, stu)
+      (['bill.student'], '', None)
+
+    If the requestor is faculty, we infer it's the sponsor::
+      >>> fac = medcenter.IDBadge(notary,
+      ...    kumcPersonJobcode='1234', kumcPersonFaculty='Y',
+      ...    cn='john.smith')
+      >>> edit_team({}, fac)
+      (['john.smith'], '', 'john.smith')
+
+    We can add team members::
       >>> edit_team({'a_dconnolly': 'on',
       ...            'a_mconnolly': 'on',
       ...            'goal': 'Add',
-      ...            'uids': 'rwaitman aallen'})
-      (['rwaitman', 'aallen', 'dconnolly', 'mconnolly'], 'Add')
+      ...            'uids': 'rwaitman aallen'}, stu)
+      (['aallen', 'dconnolly', 'mconnolly', 'rwaitman'], 'Add', None)
 
+    And add a sponsor::
+      >>> edit_team({'a_rwaitman': 'on',
+      ...            'goal': 'Add Faculty',
+      ...            'uids': 'rwaitman aallen'}, stu)
+      (['aallen', 'rwaitman'], 'Add Faculty', 'rwaitman')
+
+    Or remove team members::
       >>> edit_team({'r_rwaitman': 'on',
       ...            'goal': 'Remove',
-      ...            'uids': 'rwaitman aallen'})
-      (['aallen'], 'Remove')
+      ...            'uids': 'rwaitman aallen'}, 'u1')
+      (['aallen'], 'Remove', None)
     '''
-    uids = _request_uids(params)
+    uids = _request_uids(params) if params else [requestor.cn]
 
-    goal = params.get('goal', None)
-    if goal == 'Add':
+    fac_choice = (params.get('investigator') if params
+                  else requestor.cn if requestor.is_faculty()
+                  else None)
+
+    goal = params.get('goal', '')
+    if 'Add' in goal:
         for n in sorted(params):
             if params[n] == "on" and n.startswith("a_"):
-                uids.append(n[2:])  # hmm... what about dups?
+                uids.append(n[2:])
+
+                if 'Faculty' in goal:
+                    fac_choice = n[2:]
+
     elif goal == 'Remove':
         for n in params:
             if params[n] == "on" and n.startswith("r_"):
                 del uids[uids.index(n[2:])]
-    return uids, goal
+    return sorted(set(uids)), goal, fac_choice
 
 
 def _request_uids(params):

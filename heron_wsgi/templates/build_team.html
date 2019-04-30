@@ -18,14 +18,20 @@
 <table py:if="people">
   <tr>
     <th>&#160;</th>
-    <th>Name</th><th>User ID</th><th>Title</th><th>Department</th>
+    <th>Name</th><th>Email</th><th>Title</th><th>Department</th>
   </tr>
   <tr py:for="who in people">
     <td><input type="checkbox" name="${pfx}_${who.cn}"
                id="${pfx}_${who.cn}" /></td>
     <td><label for="${pfx}_${who.cn}">${who.sn}, ${who.givenname}</label></td>
-    <td><label for="${pfx}_${who.cn}">${who.cn}</label></td>
-    <td>${who.title}</td><td>${who.ou}</td>
+    <td><label for="${pfx}_${who.cn}">
+        <tt>&lt;${who.mail}&gt;</tt><br />
+        <small>userid: <tt>${who.cn}</tt></small></label></td>
+    <td>
+      ${who.title}<br />
+      <strong py:if="who.faculty_role()">Faculty</strong>
+    </td>
+    <td>${who.ou}</td>
   </tr>
 </table>
 </py:def>
@@ -71,13 +77,24 @@
 <p>Choose up to 10 people per request.</p>
 
 <form py:if="team" method="get" action="">
+<div py:if="investigator">
+  <dl><dt>Faculty Investigator</dt>
+    <dd>
+      ${investigator.givenname} ${investigator.sn} <tt>&lt;${investigator.mail}&gt;</tt><br />
+      ${investigator.title}
+    </dd>
+  </dl>
+</div>
+
+  <h4>Team Members</h4>
 ${peopleTable(team, 'r')}
 <p><input type="submit" name='goal' value="Remove" /></p>
 <input type="hidden" name="uids" value="${uids}" />
 </form>
 
-<form py:if="team" method="get" action="${done_path}">
+<form py:if="team and investigator" method="get" action="${done_path}">
 <input type="hidden" name="uids" value="${uids}" />
+<input type="hidden" name="investigator" value="${investigator.cn}" />
 <p class="doit" style="text-align: center; margin-bottom: 2em">
   <input type="submit" name="continue" value="Done Choosing People" />
 </p>
@@ -106,7 +123,10 @@ ${peopleTable(team, 'r')}
   <hr />
 ${studyTeamTable(studyTeam)}
 ${peopleTable(candidates, 'a')}
-<p><input type="submit" name='goal' value="Add" /></p>
+  <p>
+    <input type="submit" name='goal' value="Add Team Members" />
+    <input type="submit" name='goal' value="Add Faculty Sponsor" />
+  </p>
 <input type="hidden" name="uids" value="${uids}" />
 </form>
 </div>

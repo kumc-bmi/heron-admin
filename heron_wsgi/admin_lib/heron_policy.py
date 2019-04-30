@@ -226,36 +226,60 @@ Executives don't need sponsorship::
   INFO:cache_remote:... cached until 2011-09-02 00:01:04
 
 
-Investigator Requests
-=====================
+Oversight Requests
+==================
 
 Faculty and executives can make sponsorship and data usage requests to
 the oversight committee::
 
-  >>> facreq = _login('john.smith', mc, hp, PERM_INVESTIGATOR_REQUEST)
+  >>> facreq = _login('john.smith', mc, hp, PERM_OVERSIGHT_REQUEST)
   >>> print(logged())
   ... # doctest: +NORMALIZE_WHITESPACE
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('cn', 'givenname',
        'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
   INFO:cache_remote:... cached until 2011-09-02 00:00:09
-  >>> facreq.context.investigator_request
-  InvestigatorRequest(from=john.smith)
+  >>> facreq.context.oversight_request
+  OversightRequest(from=john.smith)
 
-  >>> facreq.context.investigator_request.ensure_oversight_survey(
-  ...        ['some.one'], what_for=HeronRecords.DATA_USE).split('&')
+  >>> facreq.context.oversight_request.ensure_oversight_survey(
+  ...        ['some.one'], 'john.smith',
+  ...        what_for=HeronRecords.DATA_USE).split('&')
   ... # doctest: +NORMALIZE_WHITESPACE
   ['http://testhost/redcap-host/surveys/?s=akvfqA',
+   'faculty_email=john.smith%40js.example', 'faculty_name=Smith%2C+John',
    'full_name=Smith%2C+John',
    'multi=yes',
    'name_etc_1=One%2C+Some%0A%0A',
+   'request_from_faculty=1',
+   'team_email_1=some.one%40js.example',
    'user_id=john.smith',
    'user_id_1=some.one',
    'what_for=2']
 
 
-  >>> exreq = _login('big.wig', mc, hp, PERM_INVESTIGATOR_REQUEST)
-  >>> ok = exreq.context.investigator_request.ensure_oversight_survey(
-  ...        ['some.one'], what_for=HeronRecords.DATA_USE).split('&')
+  >>> exreq = _login('big.wig', mc, hp, PERM_OVERSIGHT_REQUEST)
+  >>> ok = exreq.context.oversight_request.ensure_oversight_survey(
+  ...        ['some.one'], 'big.wig',
+  ...        what_for=HeronRecords.DATA_USE).split('&')
+
+Students can make oversight requests, provided they indicate a faculty
+sponsor:
+
+  >>> stureq = _login('bill.student', mc, hp, PERM_OVERSIGHT_REQUEST)
+  >>> stureq.context.oversight_request.ensure_oversight_survey(
+  ...        ['john.smith', 'bill.student'], 'john.smith',
+  ...        what_for=HeronRecords.SPONSORSHIP).split('&')
+  ... # doctest: +NORMALIZE_WHITESPACE
+  ['http://testhost/redcap-host/surveys/?s=aPo4Bb',
+   'faculty_email=john.smith%40js.example', 'faculty_name=Smith%2C+John',
+   'full_name=Student%2C+Bill', 'multi=yes',
+   'name_etc_1=Smith%2C+John%0AChair+of+Department+of+Neurology%0ANeurology',
+   'name_etc_2=Student%2C+Bill%0AStudent%0AUndergrad',
+   'request_from_faculty=0',
+   'team_email_1=john.smith%40js.example',
+   'team_email_2=bill.student%40js.example',
+   'user_id=bill.student', 'user_id_1=john.smith', 'user_id_2=bill.student',
+   'what_for=1']
 
 
 Oversight Auditing
@@ -289,7 +313,6 @@ Email addresses are not limited to correspond to user ids:
   >>> reqtm.context.status.system_access_signed
   [datetime.datetime(2015, 11, 16, 21, 41, 1)]
 
-
 '''
 
 from __future__ import print_function
@@ -322,7 +345,7 @@ DUA_CONFIG_SECTION = 'dua_survey'
 PERM_STATUS = __name__ + '.status'
 PERM_SIGN_SAA = __name__ + '.sign_saa'
 PERM_SIGN_DUA = __name__ + '.sign_dua'
-PERM_INVESTIGATOR_REQUEST = __name__ + 'investigator_request'
+PERM_OVERSIGHT_REQUEST = __name__ + '.oversight_request'
 PERM_START_I2B2 = __name__ + '.start_i2b2'
 PERM_DROC_AUDIT = __name__ + '.droc_audit'
 PERM_STATS_REPORTER = __name__ + '.stats_reporter'
@@ -479,8 +502,8 @@ class HeronRecords(Token, Cache):
         elif p is PERM_SIGN_DUA:
             context.sign_dua = Affiliate(badge, self._query,
                                          dua_rc=self._dua_rc)
-        elif p is PERM_INVESTIGATOR_REQUEST:
-            context.investigator_request = self._investigator_request(badge)
+        elif p is PERM_OVERSIGHT_REQUEST:
+            context.oversight_request = self._oversight_request(badge)
         elif p is PERM_DROC_AUDIT:
             audit, dr = self.__oc._droc_auditor(badge)
             context.droc_audit = audit
@@ -599,15 +622,12 @@ class HeronRecords(Token, Cache):
                 for row in
                 self._query(('SAA', mail), mkq(mail), 'system access')]
 
-    def _investigator_request(self, badge):
-        log.debug('investigator_request: %s faculty? %s executive? %s',
+    def _oversight_request(self, badge):
+        log.debug('oversight_request: %s faculty? %s executive? %s',
                   badge, badge.is_faculty(), badge.is_executive())
 
-        if not (badge.is_investigator()):
-            raise medcenter.NotFaculty
-
-        return InvestigatorRequest(badge, self._mc._browser,
-                                   self._oversight_rc)
+        return OversightRequest(badge, self._mc._browser,
+                                self._oversight_rc)
 
     def _redcap_rights(self, uid):
         r = redcapdb.redcap_user_rights
@@ -663,7 +683,7 @@ class Affiliate(Token):
         return self.__query(('DUA', badge.cn), _ensure, 'DUA link')
 
 
-class InvestigatorRequest(Token):
+class OversightRequest(Token):
     '''Power to file authenticated oversight requests.
     '''
     def __init__(self, badge, browser, orc):
@@ -674,14 +694,20 @@ class InvestigatorRequest(Token):
     def __repr__(self):
         return '%s(from=%s)' % (self.__class__.__name__, self.__badge.cn)
 
-    def ensure_oversight_survey(self, uids, what_for):
+    def ensure_oversight_survey(self, uids, fac_id, what_for):
         if what_for not in HeronRecords.oversight_request_purposes:
             raise TypeError(what_for)
 
         tp = team_params(self.__browser.lookup, uids)
-
+        fac = self.__browser.lookup(fac_id)
         return self.__orc(
             self.__badge.cn, dict(tp,
+                                  faculty_name='%s, %s' % (
+                                      fac.sn, fac.givenname),
+                                  faculty_email=fac.mail,
+                                  request_from_faculty=(
+                                      '1' if self.__badge.cn == fac_id
+                                      else '0'),
                                   user_id=self.__badge.cn,
                                   full_name=self.__badge.sort_name(),
                                   what_for=what_for,
@@ -696,12 +722,15 @@ def team_params(lookup, uids):
     ...                                ['john.smith', 'bill.student'])))
     ... # doctest: +ELLIPSIS
     [('user_id_1', 'john.smith'),
+     ('team_email_1', 'john.smith@js.example'),
      ('name_etc_1', 'Smith, John\nChair of Department of Neur...'),
      ('user_id_2', 'bill.student'),
+     ('team_email_2', 'bill.student@js.example'),
      ('name_etc_2', 'Student, Bill\nStudent\nUndergrad')]
 
     '''
     nested = [[('user_id_%d' % (i + 1), uid),
+               ('team_email_%d' % (i + 1), a.mail),
                ('name_etc_%d' % (i + 1), '%s, %s\n%s\n%s' % (
                    a.sn, a.givenname, a.title or '', a.ou or ''))]
               for (i, uid, a) in
