@@ -53,7 +53,7 @@ set to our login address::
   >>> def _loc(headers):
   ...    return [v for (n, v) in headers if n.lower() == 'location'][0]
   >>> _loc(r1.headers)
-  'http://example/cas/login?service=http%3A%2F%2Flocalhost%2F'
+  'http://example/cas/login?service=http%3A%2F%2Fheron-service%2F'
 
 The the CAS service redirects back with a ticket::
 
@@ -85,7 +85,7 @@ so we should get a challenge on the next request::
   >>> AuthTktCookieHelper.now = time.time() + 40 * 60
 
   >>> _loc(t.get(r4.request.url, status=303).headers)
-  'http://example/cas/login?service=http%3A%2F%2Flocalhost%2F'
+  'http://example/cas/login?service=http%3A%2F%2Fheron-service%2F'
 
 Finally, log in again and log out, and then get a challenge::
 
@@ -97,7 +97,7 @@ Finally, log in again and log out, and then get a challenge::
 
   >>> r0 = t.get('/', status=303)
   >>> _loc(r0.headers)
-  'http://example/cas/login?service=http%3A%2F%2Flocalhost%2F'
+  'http://example/cas/login?service=http%3A%2F%2Fheron-service%2F'
 '''
 
 # python stdlib 1st, per PEP8
@@ -283,9 +283,9 @@ class Validator(Token):
             return HTTPForbidden()
 
         there = self.__cascap.subRdFile(
-            'login?' + urlencode(dict(service=request.url)))
+            'login?' + urlencode(dict(service=self.service_url)))
         log.info('Validator.redirect to %s (service=%s)',
-                 there.fullPath(), request.url)
+                 there.fullPath(), self.service_url)
         return HTTPSeeOther(there.fullPath())
 
     def logout(self, context, req):
