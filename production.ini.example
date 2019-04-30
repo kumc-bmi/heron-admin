@@ -1,0 +1,195 @@
+###
+# app configuration
+# https://docs.pylonsproject.org/projects/pyramid/en/latest/narr/environment.html
+###
+
+
+[composite:main]
+use = egg:Paste#urlmap
+/ = heron_admin
+/av = av
+
+
+[app:heron_admin]
+use = egg:heron_wsgi
+webapp_ini=%(here)s/production.ini
+admin_ini=%(here)s/production.ini
+
+pyramid.reload_templates = false
+pyramid.debug_authorization = false
+pyramid.debug_notfound = false
+pyramid.debug_routematch = false
+pyramid.default_locale_name = en
+
+retry.attempts = 3
+
+# cf http://docs.pylonsproject.org/projects/pyramid_mailer/dev/#configuration
+mail.host = smtp.kumc.edu
+mail.port = 25
+mail.default_sender = heron-admin@kumc.edu
+# mail.debug = True
+
+
+[app:av]
+use = egg:Paste#static
+document_root = heron_wsgi/htdocs-heron/av/
+
+
+###
+# heron_wsgi config
+###
+
+[cas]
+base=https://cas.kumc.edu/cas/
+app_secret=CRED_CAS_APP_NONCE
+service=CFG_CAS_SERVICE
+
+[i2b2]
+cas_login=https://heron.kumc.edu/i2b2/webclient/
+
+
+###
+# heron_wsgi/admin_lib config
+###
+
+[enterprise_directory]
+url= ldaps://idvauth.kumc.edu:636
+userDn= cn=biostats,ou=authaccounts,o=idvault
+password= CRED_LDAP_BIOSTATS
+base= ou=people,o=idvault
+certfile=/etc/ssl/certs/idvauth.kumc.edu.pem
+
+studylookupaddr=http://127.0.0.1:8080/
+
+# For audit trail of executives, see
+#  http://bmi-work.kumc.edu/work/ticket/321#comment:13
+#  and others such as
+#  https://bmi-work.kumc.edu/work/ticket/4676
+executives=jalbertson tneely jkentner tpeterma cruder lmartin lnorman psanders-hall jwright1 trusconi cwittkop charper mwennberg schandaka
+
+
+[training]
+username = hsr_train_check
+database = hsr_cache
+hostport= CFG_REDCAP_DB_HOSTPORT
+url = mysql+pymysql://%(username)s:%(password)s@%(hostport)s/%(database)s?charset=utf8
+password = CRED_TRAIN_CHECK
+
+
+[redcapdb]
+username=drocredcap
+database=redcap
+password=CRED_DROCREDCAP
+# ssh tunnel
+hostport=CFG_REDCAP_DB_HOSTPORT
+
+# Note well the charset=utf8!
+# cf. #3741 etc.
+engine=mysql+pymysql://%(username)s:%(password)s@%(hostport)s/%(database)s?charset=utf8
+
+[survey_invite]
+database=redcap
+username=survey_invite
+password=CRED_SURVEY_INVITE
+hostport=CFG_REDCAP_DB_HOSTPORT
+engine=mysql+pymysql://%(username)s:%(password)s@%(hostport)s/%(database)s?charset=utf8
+
+[saa_survey]
+api_url=https://redcap.kumc.edu/api/
+survey_url=https://redcap.kumc.edu/surveys/?s=npRuTQ
+domain=kumc.edu
+survey_id=93
+
+[dua_survey]
+domain=kumc.edu
+
+api_url=https://redcap.kumc.edu/api/
+survey_url=https://redcap.kumc.edu/surveys/?s=yYhHFCWa3X
+survey_id=2678
+
+[oversight_survey]
+api_url=https://redcap.kumc.edu/api/
+survey_url=https://redcap.kumc.edu/surveys/
+domain=kumc.edu
+survey_id=94
+project_id=238
+trigger_log=/tmp/oversight_log_dir/
+trigger_url=http://db-proxy-sable/dummy
+level=WARN
+
+
+[i2b2pm]
+#jboss_deploy=/opt/jboss-as-7.1.1.Final/standalone/deployments/
+# ISSUE: provide sqlalchemy URL instead?
+jboss_deploy=CFG_JBOSS_DATASOURCES
+identified_data=false
+
+[i2b2md]
+#jboss_deploy=/opt/jboss-as-7.1.1.Final/standalone/deployments/
+# ISSUE: provide sqlalchemy URL instead?
+jboss_deploy=CFG_JBOSS_DATASOURCES
+
+[disclaimers]
+project_id=398
+
+[disclaimer_acknowledgements]
+token=CRED_DISCLAIMER_ACKS
+project_id=399
+api_url=https://redcap.kumc.edu/api/
+
+
+###
+# wsgi server configuration
+###
+
+[server:main]
+use = egg:waitress#main
+# listen = *:6543
+listen = %(http_listen)s
+url_prefix=/heron/
+
+
+###
+# logging configuration
+# https://docs.pylonsproject.org/projects/pyramid/en/latest/narr/logging.html
+###
+
+[loggers]
+keys = root, heron_wsgi, sqlalchemy
+
+[handlers]
+keys = console
+
+[formatters]
+keys = generic
+
+[logger_root]
+level = WARN
+handlers = console
+
+[logger_heron_wsgi]
+# ISSUE: process to increase / decrease logging level on demand
+# level = WARN
+level = INFO
+# level = DEBUG
+handlers =
+qualname = heron_wsgi
+
+[logger_sqlalchemy]
+level = WARN
+handlers =
+qualname = sqlalchemy.engine
+# "level = INFO" logs SQL queries.
+# "level = DEBUG" logs SQL queries and results.
+# "level = WARN" logs neither.  (Recommended for production systems.)
+
+[handler_console]
+class = StreamHandler
+args = (sys.stderr,)
+level = NOTSET
+formatter = generic
+
+[formatter_generic]
+format = %(asctime)s %(levelname)-5.5s [%(name)s:%(lineno)s][%(threadName)s] %(message)s
+
+# End logging configuration

@@ -53,7 +53,7 @@ set to our login address::
   >>> def _loc(headers):
   ...    return [v for (n, v) in headers if n.lower() == 'location'][0]
   >>> _loc(r1.headers)
-  'http://example/cas/login?service=http%3A%2F%2Flocalhost%2F'
+  'http://example/cas/login?service=http%3A%2F%2Fheron-service%2F'
 
 The the CAS service redirects back with a ticket::
 
@@ -85,7 +85,7 @@ so we should get a challenge on the next request::
   >>> AuthTktCookieHelper.now = time.time() + 40 * 60
 
   >>> _loc(t.get(r4.request.url, status=303).headers)
-  'http://example/cas/login?service=http%3A%2F%2Flocalhost%2F'
+  'http://example/cas/login?service=http%3A%2F%2Fheron-service%2F'
 
 Finally, log in again and log out, and then get a challenge::
 
@@ -97,12 +97,13 @@ Finally, log in again and log out, and then get a challenge::
 
   >>> r0 = t.get('/', status=303)
   >>> _loc(r0.headers)
-  'http://example/cas/login?service=http%3A%2F%2Flocalhost%2F'
+  'http://example/cas/login?service=http%3A%2F%2Fheron-service%2F'
 '''
 
 # python stdlib 1st, per PEP8
 import logging
 from urllib import urlencode
+from urlparse import urlparse
 
 # from pypi
 import injector
@@ -123,6 +124,7 @@ from admin_lib.ocap_file import WebReadable
 log = logging.getLogger(__name__)
 
 CONFIG_SECTION = 'cas'
+KServiceUrl = injector.Key('ServiceUrl')
 
 
 class Issuer(Token):
@@ -157,17 +159,22 @@ class Issuer(Token):
 
 
 class Validator(Token):
-    @inject(cascap=(WebReadable, CONFIG_SECTION))
-    def __init__(self, cascap):
+    @inject(cascap=(WebReadable, CONFIG_SECTION),
+            service_url=KServiceUrl)
+    def __init__(self, cascap, service_url):
         '''
         :param cas_rd: capability to read `/validate`, `/logout` etc.
                        For the examples in the `CAS protocol spec`__,
                        `cas_rd.fullPath()` would be `https://server/cas/'.
+        :param service_url: URL of this service, for redirection
+                            esp. in case of reverse proxies
+
         __ http://www.jasig.org/cas/protocol
 
         '''
         self.__cascap = cascap
         self.__authenticated = None
+        self.service_url = service_url
 
     def __repr__(self):
         return 'Validator(cas_addr=%s)' % self.__cascap.fullPath()
@@ -242,7 +249,7 @@ class Validator(Token):
             return None
 
         valcap = self.__cascap.subRdFile('validate?' + urlencode(
-            dict(service=req.path_url, ticket=t)))
+            dict(service=self.service_url, ticket=t)))
 
         log.info('checkTicket for <%s>: cas validation request: %s',
                  req.url, valcap.fullPath())
@@ -276,9 +283,9 @@ class Validator(Token):
             return HTTPForbidden()
 
         there = self.__cascap.subRdFile(
-            'login?' + urlencode(dict(service=request.url)))
+            'login?' + urlencode(dict(service=self.service_url)))
         log.info('Validator.redirect to %s (service=%s)',
-                 there.fullPath(), request.url)
+                 there.fullPath(), self.service_url)
         return HTTPSeeOther(there.fullPath())
 
     def logout(self, context, req):
@@ -353,9 +360,14 @@ class RunTime(IniModule):  # pragma: nocover
     def cas_server(self, rt):
         return WebReadable(rt.base, self.__urlopener)
 
+    @provides(KServiceUrl)
+    @inject(rt=(Options, CONFIG_SECTION))
+    def service_url(self, rt):
+        return rt.service
+
     @provides((Options, CONFIG_SECTION))
     def opts(self):
-        return self.get_options(['base', 'app_secret'], CONFIG_SECTION)
+        return self.get_options(['base', 'app_secret', 'service'], CONFIG_SECTION)
 
     @classmethod
     def mods(cls, ini, urlopener, **kwargs):
@@ -382,9 +394,12 @@ class LinesResponse(object):
 
 class Mock(injector.Module, MockMixin):
     def configure(self, binder):
+        opts = TestTimeOptions({'base': 'http://example/cas/',
+                                'service_url': 'http://heron-service/',
+                                'app_secret': 'sekrit'})
         binder.bind((Options, CONFIG_SECTION),
-                    to=TestTimeOptions({'base': 'http://example/cas/',
-                                        'app_secret': 'sekrit'}))
+                    to=opts)
+        binder.bind(KServiceUrl, opts.service_url)
         binder.bind(Issuer, MockIssuer)
 
     @provides((WebReadable, CONFIG_SECTION))
@@ -449,7 +464,7 @@ def TreasureMap(who, sekret):  # pragma: nocover
 
 
 if __name__ == '__main__':  # pragma: nocover
-    def _integration_test(host='127.0.0.1', port=8123):  # pragma: nocover
+    def _integration_test():  # pragma: nocover
         from sys import argv
         from os import path
         from io import open as io_open
@@ -479,6 +494,7 @@ if __name__ == '__main__':  # pragma: nocover
                         permission=guide.permission)
 
         app = config.make_wsgi_app()
+        host, port = urlparse(guard.service_url).netloc.split(':')
         httpserver.serve(app, host, port)
 
     _integration_test()
