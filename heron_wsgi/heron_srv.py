@@ -46,7 +46,8 @@ def test_home_page_redirects_to_cas():
 
       >>> t, r1 = test_home_page_redirects_to_cas()
       >>> dict(r1.headers)['Location']
-      'https://example/cas/login?service=http%3A%2F%2Flocalhost%2F'
+      'https://example/cas/login?service=http%3A%2F%2Fheron-service%2F'
+
     '''
     from paste.fixture import TestApp
     t = TestApp(Mock.make([HeronAdminConfig])[0].make_wsgi_app())
