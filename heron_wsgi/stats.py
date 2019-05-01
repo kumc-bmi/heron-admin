@@ -58,7 +58,7 @@ class Reports(object):
                            'last_year': 20,
                            'two_weeks': 5,
                            'user_id': 'john.smith'}],
-         'roles': {'john.smith': 'Chair of Department of Neurology, Neurology'},
+         'roles': {'john.smith': 'Chair of Neurology, Neurology'},
          'total_number_of_queries': 100}
 
 
@@ -66,7 +66,7 @@ class Reports(object):
         >>> import genshi_render
         >>> f = genshi_render.Factory({})
         >>> pg = f(v, dict(renderer_name='report1.html'))
-        >>> 'John Smith' in pg and 'Chair of Department' in pg
+        >>> 'John Smith' in pg and 'Chair of' in pg
         True
 
         '''

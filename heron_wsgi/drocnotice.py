@@ -124,7 +124,7 @@ class DROCNotice(Token):
                 log.info('Notify %s and team that request %s is %s',
                          investigator, record, action)
             except Exception as oops:
-                log.error('cannot build notice; bad record? %s: %s' % (record, oops))
+                log.error('build_notices: bad record? %s: %s' % (record, oops))
                 continue
 
             try:

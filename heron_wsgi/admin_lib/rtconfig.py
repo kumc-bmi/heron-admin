@@ -141,8 +141,8 @@ class RuntimeOptions(Options):  # pragma nocover
         p = ConfigParser.SafeConfigParser()
         with ini.open() as stream:
             p.readfp(stream, str(ini))
-        Options.__init__(self, attrs, dict(p.items(section,
-                                                   vars=RuntimeOptions.pserve_vars)))
+        Options.__init__(self, attrs, dict(p.items(
+            section, vars=RuntimeOptions.pserve_vars)))
 
 
 class TestTimeOptions(RuntimeOptions):

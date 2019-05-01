@@ -367,7 +367,8 @@ class RunTime(IniModule):  # pragma: nocover
 
     @provides((Options, CONFIG_SECTION))
     def opts(self):
-        return self.get_options(['base', 'app_secret', 'service'], CONFIG_SECTION)
+        return self.get_options(['base', 'app_secret', 'service'],
+                                CONFIG_SECTION)
 
     @classmethod
     def mods(cls, ini, urlopener, **kwargs):

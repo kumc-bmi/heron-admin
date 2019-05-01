@@ -2,7 +2,7 @@
 
 based on `Vouching with Notary`__ pattern
 
-__ http://wiki.erights.org/wiki/Walnut/Secure_Distributed_Computing/Capability_Patterns#Vouching_with_Notary.2FInspector
+__ http://wiki.erights.org/wiki/Walnut/Secure_Distributed_Computing/Capability_Patterns#Vouching_with_Notary.2FInspector  # noqa
 
 >>> WidgetInspectionService, getOrderFormFromBob = WidgetInc()
 >>> inspector = WidgetInspectionService.getInspector()

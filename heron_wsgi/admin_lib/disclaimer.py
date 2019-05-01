@@ -183,7 +183,8 @@ class Acknowledgement(redcapdb.REDCapRecord):
     []
     '''
 
-    redcap_dd = DataDict.from_csv(pkg.resource_stream(__name__, '../redcap_dd/acknowledgement.csv'))
+    redcap_dd = DataDict.from_csv(
+        pkg.resource_stream(__name__, '../redcap_dd/acknowledgement.csv'))
     fields = ('ack', 'timestamp', 'user_id', 'disclaimer_address')
 
 

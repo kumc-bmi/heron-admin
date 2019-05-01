@@ -123,7 +123,7 @@ class Browser(object):
       [John Smith <john.smith@js.example>]
 
       >>> hits[0].title
-      'Chair of Department of Neurology'
+      'Chair of Neurology'
 
     .. note:: KUMC uses ou for department::
 

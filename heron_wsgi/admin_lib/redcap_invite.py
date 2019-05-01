@@ -240,8 +240,6 @@ class SecureSurvey(object):
 
         '''
         # type: (str) -> List[Tuple(str, datetime)]
-        # gweaver - https://bmi-work.kumc.edu/work/ticket/5277
-        # Customizing this method to always return something, instead of failing.
         retryCount = max_retries
 
         while retryCount > 0:
@@ -260,7 +258,7 @@ class SecureSurvey(object):
                 return timestamp
 
         if retryCount == 0:
-            log.info('Could not reconnect! Manually supplying event id, and timestamp for {0}'.format(email))
+            log.warn('Connect failed! Making up data for {0}'.format(email))
             eventResponse = (known_record_id, known_sig_time)
 
         # placing tuple in list, to follow the original comment

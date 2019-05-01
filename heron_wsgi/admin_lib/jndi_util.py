@@ -13,7 +13,8 @@ class JBossContext(object):
     '''
     >>> here = _MockDeployDir.make()
 
-    >>> JBossContext(here, lambda url: url).lookup('java:/QueryToolBLUEHERONDS')
+    >>> JBossContext(here, lambda url: url).lookup(
+    ...     'java:/QueryToolBLUEHERONDS')
     'oracle://BLUEHERONdata:xyzpdq@testhost:1521/DB1'
     '''
     def __init__(self, jboss_deploy, create_engine):

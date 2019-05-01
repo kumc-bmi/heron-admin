@@ -252,7 +252,7 @@ class CRS(TableDesign):
     '''CITI Completion Reports
 
     per GetCompletionReportsXML__
-    __ https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?op=GetCompletionReportsXML
+    __ https://webservices.citiprogram.org/SOAP/CITISOAPService.asmx?op=GetCompletionReportsXML  # noqa
 
     >>> CRS._parse('2014-05-06T19:15:48.2-04:00')
     datetime.datetime(2014, 5, 6, 19, 15, 48)

@@ -161,7 +161,8 @@ class DecisionRecords(Token):
 
     '''
 
-    redcap_dd = DataDict.from_csv(pkg.resource_stream(__name__, '../redcap_dd/oversight.csv'))
+    redcap_dd = DataDict.from_csv(
+        pkg.resource_stream(__name__, '../redcap_dd/oversight.csv'))
 
     YES = '1'
     NO = '2'

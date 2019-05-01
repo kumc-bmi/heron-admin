@@ -273,7 +273,7 @@ sponsor:
   ['http://testhost/redcap-host/surveys/?s=aPo4Bb',
    'faculty_email=john.smith%40js.example', 'faculty_name=Smith%2C+John',
    'full_name=Student%2C+Bill', 'multi=yes',
-   'name_etc_1=Smith%2C+John%0AChair+of+Department+of+Neurology%0ANeurology',
+   'name_etc_1=Smith%2C+John%0AChair+of+Neurology%0ANeurology',
    'name_etc_2=Student%2C+Bill%0AStudent%0AUndergrad',
    'request_from_faculty=0',
    'team_email_1=john.smith%40js.example',
@@ -434,7 +434,7 @@ class HeronRecords(Token, Cache):
 
     >>> sorted(ddict.radio('what_for'))
     ... # doctest: +ELLIPSIS
-    [('1', 'HERON Sponsorship'), ('2', 'Data Use'), ('3', 'ACT Sponsorship ...')]
+    [('1', 'HERON Sponsorship'), ('2', 'Data Use'), ('3', 'ACT Sponsor...')]
 
     .. todo:: check expiration date
 
@@ -723,7 +723,7 @@ def team_params(lookup, uids):
     ... # doctest: +ELLIPSIS
     [('user_id_1', 'john.smith'),
      ('team_email_1', 'john.smith@js.example'),
-     ('name_etc_1', 'Smith, John\nChair of Department of Neur...'),
+     ('name_etc_1', 'Smith, John\nChair of Neurology...'),
      ('user_id_2', 'bill.student'),
      ('team_email_2', 'bill.student@js.example'),
      ('name_etc_2', 'Student, Bill\nStudent\nUndergrad')]
