@@ -73,35 +73,27 @@
 </py:def>
 
 <div id="main">
+  <p>
+    Select
+    <py:if test="not investigator">a <strong>faculty sponsor</strong>
+    and any other</py:if>
+    <strong>members of the team</strong> you are requesting to be
+    <py:if test="what_for == 'sponsorship'"><strong>sponsored</strong> for this
+    preparatory-to-research activity.</py:if>
+    <py:if test="what_for == 'data_use'">granted access in
+    this <strong>data request</strong>.</py:if>
+  </p>
 
-<p>Choose up to 10 people per request.</p>
-
-<form py:if="team" method="get" action="">
-<div py:if="investigator">
-  <dl><dt>Faculty Investigator</dt>
-    <dd>
-      ${investigator.givenname} ${investigator.sn} <tt>&lt;${investigator.mail}&gt;</tt><br />
-      ${investigator.title}
-    </dd>
-  </dl>
-</div>
-
-  <h4>Team Members</h4>
-${peopleTable(team, 'r')}
-<p><input type="submit" name='goal' value="Remove" /></p>
-<input type="hidden" name="uids" value="${uids}" />
-</form>
-
-<form py:if="team and investigator" method="get" action="${done_path}">
-<input type="hidden" name="uids" value="${uids}" />
-<input type="hidden" name="investigator" value="${investigator.cn}" />
-<p class="doit" style="text-align: center; margin-bottom: 2em">
-  <input type="submit" name="continue" value="Done Choosing People" />
-</p>
-</form>
+  <ol>
+    <li>Search the directory or look up the IRB study team.</li>
+    <li>From the results, select people to add (or remove).</li>
+    <li>Use <strong>Done Choosing People</strong> to go to a page to fill
+      in other details of your request.</li>
+  </ol>
 
 <form method="get" action="">
-<p>Look up a team member by giving the first letters of their first name, last name, or KUMC id:
+  <h4>Search KUMC Directory for Team Members and Faculty Sponsors</h4>
+<p>Look someone up by giving the first letters of their first name, last name, or KUMC id:
 <p>
 <label>First: <input name='givenname' size="8"/></label>
 <label>Last: <input name='sn' size="15"/></label>
@@ -109,10 +101,12 @@ ${peopleTable(team, 'r')}
 <input type="submit" name='goal' value="Search" />
 </p>
 <input type="hidden" name="uids" value="${uids}" />
+<input py:if="investigator" type="hidden" name="investigator" value="${investigator.cn}" />
 </p>
 </form>
 
 <form method="get" action="">
+  <h4>IRB Protocol Study Team Lookup</h4>
 <p>Look up IRB protocol study team members:</p>
 <label>Study ID: <input name='studyId' size="20"/></label>
 <input type="hidden" name="uids" value="${uids}" />
@@ -128,7 +122,38 @@ ${peopleTable(candidates, 'a')}
     <input type="submit" name='goal' value="Add Faculty Sponsor" />
   </p>
 <input type="hidden" name="uids" value="${uids}" />
+<input py:if="investigator" type="hidden" name="investigator" value="${investigator.cn}" />
 </form>
+
+<form py:if="team" method="get" action="">
+  <h4>Team Members</h4>
+${peopleTable(team, 'r')}
+
+  <div py:if="investigator">
+  <dl><dt>Faculty Sponsor</dt>
+    <dd>
+      ${investigator.givenname} ${investigator.sn} <tt>&lt;${investigator.mail}&gt;</tt><br />
+      ${investigator.title}
+    </dd>
+  </dl>
+</div>
+
+<p><input type="submit" name='goal' value="Remove" /></p>
+<input type="hidden" name="uids" value="${uids}" />
+<input py:if="investigator" type="hidden" name="investigator" value="${investigator.cn}" />
+</form>
+
+<form method="get" action="${done_path}">
+<input type="hidden" name="uids" value="${uids}" />
+<input py:if="investigator" type="hidden" name="investigator" value="${investigator.cn}" />
+
+<p class="doit" style="text-align: center; margin-bottom: 2em">
+  <input
+    py:attrs="{} if (team and investigator) else {'disabled': 'disabled'}"
+    type="submit" name="continue" value="Done Choosing People" />
+</p>
+</form>
+
 </div>
 
 </body>
