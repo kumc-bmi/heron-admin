@@ -45,7 +45,7 @@ app_secret=CRED_CAS_APP_NONCE
 service=CFG_CAS_SERVICE
 
 [i2b2]
-cas_login=https://heron.kumc.edu/i2b2/webclient/
+cas_login=CFG_I2B2_WEBCLIENT
 
 
 ###
