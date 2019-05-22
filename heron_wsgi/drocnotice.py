@@ -139,7 +139,7 @@ class DROCNotice(Token):
                 continue
 
             body = self._rf(render_value(investigator, team, decision, detail,
-                                         req.route_url(self.home)),
+                                         req.route_path(self.home)),
                             dict(renderer_name='drocnotice.html'))
 
             m = Message(subject='HERON access request ' + action,

@@ -111,19 +111,19 @@ class CheckListView(Token):
         >>> pprint(clv.get(facreq.context, facreq))
         ... # doctest: +NORMALIZE_WHITESPACE
         {'affiliate': John Smith <john.smith@js.example>,
-         'data_use_path': 'http://example.com/oversight',
+         'data_use_path': '/oversight',
          'droc': {},
-         'dua_path': 'http://example.com/dua',
+         'dua_path': '/dua',
          'executive': {},
          'faculty': {'checked': 'checked'},
-         'i2b2_login_path': 'http://example.com/i2b2_login',
-         'logout_path': 'http://example.com/logout',
+         'i2b2_login_path': '/i2b2_login',
+         'logout_path': '/logout',
          'repositoryAccess': {'checked': 'checked'},
-         'saa_path': 'http://example.com/saa',
+         'saa_path': '/saa',
          'saa_public': 'http://testhost/redcap-host/surveys/?s=43',
          'signatureOnFile': {'checked': 'checked'},
          'sponsored': {},
-         'sponsorship_path': 'http://example.com/oversight',
+         'sponsorship_path': '/oversight',
          'trainingCurrent': {'checked': 'checked'},
          'trainingLast': Training(username='john.smith',
                                   expired='2012-01-01', completed='2012-01-01',
@@ -134,18 +134,18 @@ class CheckListView(Token):
         >>> hp.grant(execreq.context, heron_policy.PERM_STATUS)
         >>> execparts = clv.get(execreq.context, execreq)
         >>> execparts['sponsorship_path']
-        'http://example.com/oversight'
+        '/oversight'
         >>> execparts['data_use_path']
-        'http://example.com/oversight'
+        '/oversight'
         '''
         status = ctx.status
 
         def yn(x):  # genshi attrs
             return {'checked': 'checked'} if x else {}
 
-        sp = req.route_url(self._next_route,
+        sp = req.route_path(self._next_route,
                            what_for=REDCapLink.for_sponsorship)
-        dup = req.route_url(self._next_route,
+        dup = req.route_path(self._next_route,
                             what_for=REDCapLink.for_data_use)
 
         parts = dict(affiliate=ctx.badge,
@@ -160,11 +160,11 @@ class CheckListView(Token):
                      sponsored=yn(status.sponsored),
                      sponsorship_path=sp,
                      data_use_path=dup,
-                     i2b2_login_path=req.route_url('i2b2_login'),
-                     logout_path=req.route_url('logout'),
-                     saa_path=req.route_url('saa'),
+                     i2b2_login_path=req.route_path('i2b2_login'),
+                     logout_path=req.route_path('logout'),
+                     saa_path=req.route_path('saa'),
                      saa_public=self._saa.base,
-                     dua_path=req.route_url('dua'))
+                     dua_path=req.route_path('dua'))
 
         log.info('GET %s: %s', req.url,
                  [(k, parts.get(k, None)) for k in ('affiliate',
@@ -325,7 +325,7 @@ class RepositoryLogin(Token):
             authz = start_i2b2()
         except KeyError:
             log.info('i2b2_login: redirect to disclaimer')
-            return HTTPSeeOther(req.route_url(self._disclaimer_route))
+            return HTTPSeeOther(req.route_path(self._disclaimer_route))
         except heron_policy.NoPermission as np:
             log.error('i2b2_login: NoPermission')
             return HTTPForbidden(detail=np.message)
@@ -355,7 +355,7 @@ class RepositoryLogin(Token):
             self._acks.add_record(badge.cn, disclaimer.url)
             log.info('POST disclaimer: added %s %s; redirecting to login',
                      badge.cn, disclaimer.url)
-            return HTTPSeeOther(req.route_url(self._login_route))
+            return HTTPSeeOther(req.route_path(self._login_route))
 
 
 class TeamBuilder(Token):
@@ -438,7 +438,7 @@ class TeamBuilder(Token):
         what_for = req.matchdict['what_for']
         log.info('TeamBuilder.get: %d candidates, %d in team',
                  len(candidates), len(team))
-        return dict(done_path=req.route_url('team_done', what_for=what_for),
+        return dict(done_path=req.route_path('team_done', what_for=what_for),
                     what_for=what_for,
                     investigator=investigator,
                     team=team,
