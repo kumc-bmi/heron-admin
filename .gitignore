@@ -1,0 +1,24 @@
+.env
+
+*.class
+*~
+*.pyc
+,*
+
+.tox/
+heron_wsgi.egg-info
+target/
+build/
+dist/
+.gradle/
+# sphinx build stuff
+devdoc/_build
+
+heron_wsgi/htmlcov
+heron_wsgi/.coverage
+.mypy_cache/
+
+# passwords and such for integration testing
+heron_wsgi/integration-test.ini
+heron_wsgi/admin_lib/integration-test.ini
+
