@@ -30,6 +30,7 @@
     <td>
       ${who.title}<br />
       <strong py:if="who.faculty_role()">Faculty</strong>
+      <strong py:if="who.cn in executives">Executive</strong>
     </td>
     <td>${who.ou}</td>
   </tr>

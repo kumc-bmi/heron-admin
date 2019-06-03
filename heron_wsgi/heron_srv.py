@@ -401,10 +401,12 @@ class TeamBuilder(Token):
            'user_id=john.smith', 'user_id_1=john.smith', 'what_for=1']
 
         '''
+        badge = context.badge
         browser = context.browser
+        executives = context.executives
 
         params = req.GET
-        uids, goal, investigator_id = edit_team(params, req.context.badge)
+        uids, goal, investigator_id = edit_team(params, badge, executives)
 
         candidates, studyTeam = [], []
 
@@ -432,7 +434,7 @@ class TeamBuilder(Token):
         investigator = None
         if investigator_id:
             inv_info = browser.lookup(investigator_id)
-            if inv_info.faculty_role():
+            if inv_info.faculty_role() or investigator_id in executives:
                 investigator = inv_info
 
         what_for = req.matchdict['what_for']
@@ -445,10 +447,12 @@ class TeamBuilder(Token):
                     uids=' '.join(uids),
                     studyTeam=studyTeam,
                     faculty_check=medcenter.MedCenter.faculty_check,
+                    executives=executives,
                     candidates=candidates)
 
 
-def edit_team(params, requestor):
+def edit_team(params, requestor,
+              executives=[]):
     r'''Compute team resulting from edits
 
     The team starts with the user who is building the request::
@@ -481,6 +485,12 @@ def edit_team(params, requestor):
       ...            'uids': 'rwaitman aallen'}, stu)
       (['aallen', 'rwaitman'], 'Add Faculty', 'rwaitman')
 
+    And add an executive sponsor::
+      >>> edit_team({'a_bill.student': 'on',
+      ...            'goal': 'Add Faculty',
+      ...            'uids': 'u1'}, stu, ['bill.student'])
+      (['bill.student', 'u1'], 'Add Faculty', 'bill.student')
+
     Or remove team members::
       >>> edit_team({'r_rwaitman': 'on',
       ...            'goal': 'Remove',
@@ -496,7 +506,9 @@ def edit_team(params, requestor):
     uids = _request_uids(params) if params else [requestor.cn]
 
     fac_choice = (params.get('investigator') if params
-                  else requestor.cn if requestor.is_faculty()
+                  else requestor.cn if (
+                          requestor.is_faculty() or
+                          requestor.cn in executives)
                   else None)
 
     goal = params.get('goal', '')
