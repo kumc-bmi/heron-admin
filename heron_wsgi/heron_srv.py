@@ -486,6 +486,12 @@ def edit_team(params, requestor):
       ...            'goal': 'Remove',
       ...            'uids': 'rwaitman aallen'}, 'u1')
       (['aallen'], 'Remove', None)
+
+    Or remove the sponsor::
+      >>> edit_team({'goal': 'Remove', 'r_fac1': 'on',
+      ...            'investigator': 'fac1',
+      ...            'uids': 'fac1 stu1'}, stu)
+      (['stu1'], 'Remove', None)
     '''
     uids = _request_uids(params) if params else [requestor.cn]
 
@@ -505,7 +511,10 @@ def edit_team(params, requestor):
     elif goal == 'Remove':
         for n in params:
             if params[n] == "on" and n.startswith("r_"):
-                del uids[uids.index(n[2:])]
+                uid = n[len("r_"):]
+                del uids[uids.index(uid)]
+                if fac_choice == uid:
+                    fac_choice = None
     return sorted(set(uids)), goal, fac_choice
 
 
