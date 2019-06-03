@@ -110,7 +110,8 @@ class CheckListView(Token):
         >>> from pprint import pprint
         >>> pprint(clv.get(facreq.context, facreq))
         ... # doctest: +NORMALIZE_WHITESPACE
-        {'affiliate': John Smith <john.smith@js.example>,
+        {'act_sponsorship_path': '/oversight',
+         'affiliate': John Smith <john.smith@js.example>,
          'data_use_path': '/oversight',
          'droc': {},
          'dua_path': '/dua',
@@ -145,6 +146,8 @@ class CheckListView(Token):
 
         sp = req.route_path(self._next_route,
                            what_for=REDCapLink.for_sponsorship)
+        asp = req.route_path(self._next_route,
+                             what_for=REDCapLink.for_act_sponsorship)
         dup = req.route_path(self._next_route,
                             what_for=REDCapLink.for_data_use)
 
@@ -159,6 +162,7 @@ class CheckListView(Token):
                      droc=yn(status.droc),
                      sponsored=yn(status.sponsored),
                      sponsorship_path=sp,
+                     act_sponsorship_path=asp,
                      data_use_path=dup,
                      i2b2_login_path=req.route_path('i2b2_login'),
                      logout_path=req.route_path('logout'),
@@ -177,6 +181,7 @@ class CheckListView(Token):
 class REDCapLink(Token):
     for_sponsorship = 'sponsorship'
     for_data_use = 'data_use'
+    for_act_sponsorship = 'act_sponsorship'
 
     def configure(self, config, rsaa, rtd, dua):
         config.add_view(self.saa_redir, route_name=rsaa,
@@ -263,9 +268,11 @@ class REDCapLink(Token):
         if not fac_id:
             raise IOError('bad request')
 
+        label = req.matchdict['what_for']
         what_for = (heron_policy.HeronRecords.DATA_USE
-                    if (req.matchdict['what_for']
-                        == REDCapLink.for_data_use)
+                    if (label == REDCapLink.for_data_use)
+                    else heron_policy.HeronRecords.ACT_SPONSORSHIP
+                    if (label == REDCapLink.for_act_sponsorship)
                     else heron_policy.HeronRecords.SPONSORSHIP)
 
         there = oversight_request.ensure_oversight_survey(
@@ -594,13 +601,15 @@ class HeronAdminConfig(Configurator):
 
         self.add_route('saa', 'saa_survey')
         self.add_route('dua', 'dua_survey')
-        self.add_route('team_done', 'team_done/{what_for:%s|%s}' % (
+        self.add_route('team_done', 'team_done/{what_for:%s|%s|%s}' % (
                 REDCapLink.for_sponsorship,
+                REDCapLink.for_act_sponsorship,
                 REDCapLink.for_data_use))
         rcv.configure(self, 'saa', 'team_done', 'dua')
 
-        self.add_route('oversight', 'build_team/{what_for:%s|%s}' % (
+        self.add_route('oversight', 'build_team/{what_for:%s|%s|%s}' % (
                 REDCapLink.for_sponsorship,
+                REDCapLink.for_act_sponsorship,
                 REDCapLink.for_data_use))
         tb.configure(self, 'oversight')
 
