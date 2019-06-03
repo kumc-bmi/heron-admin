@@ -30,6 +30,7 @@
     <td>
       ${who.title}<br />
       <strong py:if="who.faculty_role()">Faculty</strong>
+      <strong py:if="who.cn in executives">Executive</strong>
     </td>
     <td>${who.ou}</td>
   </tr>
@@ -115,6 +116,7 @@
 
 <form py:if="candidates or studyTeam" method="get" action="">
   <hr />
+  <h4><em>Please Select...</em></h4>
 ${studyTeamTable(studyTeam)}
 ${peopleTable(candidates, 'a')}
   <p>

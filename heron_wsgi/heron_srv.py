@@ -110,7 +110,8 @@ class CheckListView(Token):
         >>> from pprint import pprint
         >>> pprint(clv.get(facreq.context, facreq))
         ... # doctest: +NORMALIZE_WHITESPACE
-        {'affiliate': John Smith <john.smith@js.example>,
+        {'act_sponsorship_path': '/oversight',
+         'affiliate': John Smith <john.smith@js.example>,
          'data_use_path': '/oversight',
          'droc': {},
          'dua_path': '/dua',
@@ -145,6 +146,8 @@ class CheckListView(Token):
 
         sp = req.route_path(self._next_route,
                            what_for=REDCapLink.for_sponsorship)
+        asp = req.route_path(self._next_route,
+                             what_for=REDCapLink.for_act_sponsorship)
         dup = req.route_path(self._next_route,
                             what_for=REDCapLink.for_data_use)
 
@@ -159,6 +162,7 @@ class CheckListView(Token):
                      droc=yn(status.droc),
                      sponsored=yn(status.sponsored),
                      sponsorship_path=sp,
+                     act_sponsorship_path=asp,
                      data_use_path=dup,
                      i2b2_login_path=req.route_path('i2b2_login'),
                      logout_path=req.route_path('logout'),
@@ -177,6 +181,7 @@ class CheckListView(Token):
 class REDCapLink(Token):
     for_sponsorship = 'sponsorship'
     for_data_use = 'data_use'
+    for_act_sponsorship = 'act_sponsorship'
 
     def configure(self, config, rsaa, rtd, dua):
         config.add_view(self.saa_redir, route_name=rsaa,
@@ -263,9 +268,11 @@ class REDCapLink(Token):
         if not fac_id:
             raise IOError('bad request')
 
+        label = req.matchdict['what_for']
         what_for = (heron_policy.HeronRecords.DATA_USE
-                    if (req.matchdict['what_for']
-                        == REDCapLink.for_data_use)
+                    if (label == REDCapLink.for_data_use)
+                    else heron_policy.HeronRecords.ACT_SPONSORSHIP
+                    if (label == REDCapLink.for_act_sponsorship)
                     else heron_policy.HeronRecords.SPONSORSHIP)
 
         there = oversight_request.ensure_oversight_survey(
@@ -401,10 +408,12 @@ class TeamBuilder(Token):
            'user_id=john.smith', 'user_id_1=john.smith', 'what_for=1']
 
         '''
+        badge = context.badge
         browser = context.browser
+        executives = context.executives
 
         params = req.GET
-        uids, goal, investigator_id = edit_team(params, req.context.badge)
+        uids, goal, investigator_id = edit_team(params, badge, executives)
 
         candidates, studyTeam = [], []
 
@@ -432,7 +441,7 @@ class TeamBuilder(Token):
         investigator = None
         if investigator_id:
             inv_info = browser.lookup(investigator_id)
-            if inv_info.faculty_role():
+            if inv_info.faculty_role() or investigator_id in executives:
                 investigator = inv_info
 
         what_for = req.matchdict['what_for']
@@ -445,10 +454,12 @@ class TeamBuilder(Token):
                     uids=' '.join(uids),
                     studyTeam=studyTeam,
                     faculty_check=medcenter.MedCenter.faculty_check,
+                    executives=executives,
                     candidates=candidates)
 
 
-def edit_team(params, requestor):
+def edit_team(params, requestor,
+              executives=[]):
     r'''Compute team resulting from edits
 
     The team starts with the user who is building the request::
@@ -481,16 +492,30 @@ def edit_team(params, requestor):
       ...            'uids': 'rwaitman aallen'}, stu)
       (['aallen', 'rwaitman'], 'Add Faculty', 'rwaitman')
 
+    And add an executive sponsor::
+      >>> edit_team({'a_bill.student': 'on',
+      ...            'goal': 'Add Faculty',
+      ...            'uids': 'u1'}, stu, ['bill.student'])
+      (['bill.student', 'u1'], 'Add Faculty', 'bill.student')
+
     Or remove team members::
       >>> edit_team({'r_rwaitman': 'on',
       ...            'goal': 'Remove',
       ...            'uids': 'rwaitman aallen'}, 'u1')
       (['aallen'], 'Remove', None)
+
+    Or remove the sponsor::
+      >>> edit_team({'goal': 'Remove', 'r_fac1': 'on',
+      ...            'investigator': 'fac1',
+      ...            'uids': 'fac1 stu1'}, stu)
+      (['stu1'], 'Remove', None)
     '''
     uids = _request_uids(params) if params else [requestor.cn]
 
     fac_choice = (params.get('investigator') if params
-                  else requestor.cn if requestor.is_faculty()
+                  else requestor.cn if (
+                          requestor.is_faculty() or
+                          requestor.cn in executives)
                   else None)
 
     goal = params.get('goal', '')
@@ -505,7 +530,10 @@ def edit_team(params, requestor):
     elif goal == 'Remove':
         for n in params:
             if params[n] == "on" and n.startswith("r_"):
-                del uids[uids.index(n[2:])]
+                uid = n[len("r_"):]
+                del uids[uids.index(uid)]
+                if fac_choice == uid:
+                    fac_choice = None
     return sorted(set(uids)), goal, fac_choice
 
 
@@ -573,13 +601,15 @@ class HeronAdminConfig(Configurator):
 
         self.add_route('saa', 'saa_survey')
         self.add_route('dua', 'dua_survey')
-        self.add_route('team_done', 'team_done/{what_for:%s|%s}' % (
+        self.add_route('team_done', 'team_done/{what_for:%s|%s|%s}' % (
                 REDCapLink.for_sponsorship,
+                REDCapLink.for_act_sponsorship,
                 REDCapLink.for_data_use))
         rcv.configure(self, 'saa', 'team_done', 'dua')
 
-        self.add_route('oversight', 'build_team/{what_for:%s|%s}' % (
+        self.add_route('oversight', 'build_team/{what_for:%s|%s|%s}' % (
                 REDCapLink.for_sponsorship,
+                REDCapLink.for_act_sponsorship,
                 REDCapLink.for_data_use))
         tb.configure(self, 'oversight')
 

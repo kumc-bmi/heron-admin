@@ -700,18 +700,18 @@ class OversightRequest(Token):
 
         tp = team_params(self.__browser.lookup, uids)
         fac = self.__browser.lookup(fac_id)
+        from_faculty = self.__badge.cn == fac_id
         return self.__orc(
-            self.__badge.cn, dict(tp,
-                                  faculty_name='%s, %s' % (
-                                      fac.sn, fac.givenname),
-                                  faculty_email=fac.mail,
-                                  request_from_faculty=(
-                                      '1' if self.__badge.cn == fac_id
-                                      else '0'),
-                                  user_id=self.__badge.cn,
-                                  full_name=self.__badge.sort_name(),
-                                  what_for=what_for,
-                                  multi='yes'), multi=True)
+            self.__badge.cn if from_faculty else None,
+            dict(tp,
+                 faculty_name='%s, %s' % (
+                     fac.sn, fac.givenname),
+                 faculty_email=fac.mail,
+                 request_from_faculty='01'[from_faculty],
+                 user_id=self.__badge.cn,
+                 full_name=self.__badge.sort_name(),
+                 what_for=what_for,
+                 multi='yes'), multi=True)
 
 
 def team_params(lookup, uids):

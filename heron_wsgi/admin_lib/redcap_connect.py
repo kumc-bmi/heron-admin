@@ -35,13 +35,18 @@ Fill in some of the fields in the survey, such as `full_name` and `what_for`::
   ['http://testhost/redcap-host/surveys/?s=aqFVbr',
    'full_name=Smith%2C+John',
    'multi=yes', 'user_id=john.smith', 'what_for=2']
+
+Set up a survey to be endorsed by someone else::
+
+  >>> setup(None, {'faculty_email': 'john.smith'})
+  'http://testhost/redcap-host/surveys/?s=43&faculty_email=john.smith'
 '''
 
 from __future__ import print_function
 import logging
 from pprint import pformat
 from urllib import urlencode
-from urlparse import urljoin
+from urlparse import urljoin, urlparse, parse_qs
 
 from injector import singleton, provides, Key
 from sqlalchemy.engine.base import Connectable
@@ -61,19 +66,35 @@ class SurveySetup(object):
         self.__ss = redcap_invite.SecureSurvey(connect, rng, survey_id)
         self.domain = rt.domain
         self.base = rt.survey_url
+        self.anon_code = self._surveycode(rt.survey_url)
         self.survey_id = survey_id
         self.project_id = project_id
 
     def __call__(self, userid, params, multi=False):
-        email = '%s@%s' % (userid, self.domain)
-        surveycode = self.__ss.invite(email, multi)
-        assert surveycode
-        params = urlencode([('s', surveycode)]
-                           + sorted(params.iteritems()))
-        return urljoin(self.base, '?' + params)
+        if userid:
+            email = '%s@%s' % (userid, self.domain)
+            surveycode = self.__ss.invite(email, multi)
+            assert surveycode
+        else:
+            surveycode = self.anon_code
+        param_pairs = [('s', surveycode)] + sorted(params.iteritems())
+        return urljoin(self.base, '?' + urlencode(param_pairs))
 
     def responses(self, email):
         return self.__ss.responses(email)
+
+    @classmethod
+    def _surveycode(cls, url):
+        """Get survey code from survey URL
+
+        >>> SurveySetup._surveycode('http://redcap/?s=abc')
+        'abc'
+
+        Handle any URL:
+        >>> SurveySetup._surveycode('http://redcap/')
+        ''
+        """
+        return (parse_qs(urlparse(url).query).get('s') or [''])[0]
 
 
 _test_settings = rtconfig.TestTimeOptions(dict(
