@@ -55,15 +55,9 @@
   <ul>
     <li><a href="${sponsorship_path}">HERON Sponsorship Request</a>
     </li>
-    <li><a href="${data_use_path}">HERON Data Request</a>
+    <li><a href="${data_use_path}">HERON Data Use or Recruitment Request</a>
     </li>
     <li><a href="${act_sponsorship_path}">ACT SHRINE Sponsorship Request</a>
-    </li>
-    <li py:if="affiliate.is_investigator()" >
-      <a href="https://redcap.kumc.edu/surveys/?s=XdYZugkaqN&amp;principal_investigator=${affiliate.givenname}&amp;principal_investigator_las=${affiliate.sn}&amp;department=${affiliate.ou}&amp;email_address=${affiliate.mail}">Frontiers Participant Registry (RRRC) Request</a>
-    </li>
-    <li py:if = "not affiliate.is_investigator()">
-      <button disabled="disabled">Frontiers Participant Registry (RRRC) Request</button>
     </li>
   </ul>
   </div>
