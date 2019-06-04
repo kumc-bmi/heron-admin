@@ -230,6 +230,7 @@ class MedCenter(object):
         badge = self.idbadge(context)
         context.badge = badge
         context.browser = self._browser
+        context.executives = self.__executives
 
     def idbadge(self, context):
         '''
