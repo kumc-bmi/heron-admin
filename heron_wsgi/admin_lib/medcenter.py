@@ -397,6 +397,16 @@ class IDBadge(LDAPBadge):
         return self.is_faculty() or self.is_executive()
 
 
+class HSCRecords(object):
+    def __init__(self, addr, urlopener):
+        self.__byId = WebReadable(addr, urlopener)
+
+    def lookup(self, studyId):
+        sub = self.__byId.subRdFile("?id=" + studyId)
+        log.info('study team lookup addr: %s', sub)
+        return json.load(sub.inChannel())
+
+
 class AttrDict(dict):
     def __init__(self, *args, **kwargs):
         dict.__init__(self, *args, **kwargs)
@@ -493,13 +503,9 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         if not rt.studylookupaddr:
             raise IOError('missing studylookupaddr')
 
-        byId = WebReadable(rt.studylookupaddr, self.__urlopener)
+        hr = HSCRecords(rt.studylookupaddr, self.__urlopener)
 
-        def lookup(studyId):
-            sub = byId.subRdFile("?id=" + studyId)
-            log.info('study team lookup addr: %s', sub)
-            return json.load(sub.inChannel())
-        return lookup
+        return hr.lookup
 
     @classmethod
     def mods(cls, ini, timesrc, urlopener, ldap, trainingfn, **kwargs):
