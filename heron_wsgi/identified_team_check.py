@@ -1,4 +1,67 @@
 """identified_team_check -- check for IRB OK on identified teams
+
+Suppose we have a HERON oversight request regarding a cure for warts::
+
+    >.. logging.basicConfig(level=logging.DEBUG)
+    >>> io = MockIO()
+    >>> db = redcapdb.Mock.engine()
+    >>> record_id = '6373469799195807417'
+    >>> oreq = OversightRequest(db, record_id, io.oversight_project)
+    >>> research = oreq.get_info()
+    >>> research
+    (34, u'6373469799195807417', u'HSC123', u'Cure Warts')
+
+The request is to give several team members access to data:
+
+    >>> [item.user_id for item in oreq.requested()]
+    [u'some.one', u'carol.student', u'koam.rin']
+
+But not all of them are in the HSC records for this study:
+
+    >>> approved = io.datasrc.lookup(research.hsc_number)
+    >>> [detail['EmailPreferred'] for detail in approved]
+    ['some.one@example']
+
+When we try to pair up the requested team members with the approved
+team members, we note there are some left over:
+
+    >>> compliant = oreq.check_team(approved)
+    >>> [wanted['user_id'] for wanted, ok in compliant if not ok]
+    [u'carol.student', u'koam.rin']
+
+All this is packaged up as a web page view:
+
+    >>> from paste.fixture import TestApp
+    >>> with Configurator() as config:
+    ...     rt1 = OversightRequest.configure_view(
+    ...         config, db, io.oversight_project, io.datasrc)
+    ...     config.add_route(rt1, '/')
+    ...     tapp = TestApp(config.make_wsgi_app())
+
+    >>> r1 = tapp.get('/?record_id=%s' % record_id)
+    >>> print(r1.body)  # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    {
+      "study": { ...
+        "Full Study Title": "Cure Warts"
+      },
+      "team": [ ...
+          {
+            "team_email": "some.one@example", ...
+          },
+          {
+            "EmailPreferred": "some.one@example", ...
+          }
+        ],
+        [
+          {
+            "team_email": "carol.student@example",
+            "user_id": "carol.student", ...
+          },
+          null
+        ], ...
+      ]
+    }
+
 """
 
 from pprint import pformat
@@ -36,6 +99,13 @@ class OversightRequest(object):
         return db, oversight_config.project_id
 
     @classmethod
+    def configure_view(cls, config, db, pid, datasrc,
+                       route_name='check'):
+        view = cls.make_view(db, pid, datasrc)
+        config.add_view(view, route_name=route_name)
+        return route_name
+
+    @classmethod
     def make_view(cls, db, pid, datasrc):
         def view(request):
             try:
@@ -47,13 +117,14 @@ class OversightRequest(object):
             log.info('HERON oversight request %s: %s',
                      record_id, dict(project.items()))
             current = datasrc.lookup(project.hsc_number)
-            req_team, ok, bad = hreq.check_team(current)
-            r2d = lambda r: dict(r.items())  # noqa
-            return Response(json.dumps(dict(
-                requested=map(r2d, req_team),
-                ok=map(r2d, ok),
-                bad=map(r2d, bad),
-            ), indent=2))
+            if not current:
+                raise HTTPBadRequest(
+                    detail='No team found for %s' % project.hsc_number)
+            study = {k: current[0][k]
+                     for k in ['State', 'Date Expiration', 'Full Study Title']}
+            compliant = hreq.check_team(current)
+            return Response(json.dumps(
+                dict(study=study, team=compliant), indent=2))
 
         return view
 
@@ -67,43 +138,81 @@ class OversightRequest(object):
             ['hsc_number', 'project_title'], record=True)
         find_project = select(
             cols, self._constrain(where, cols), from_obj=from_obj)
-        log.debug('find_project:\n\n%s\n\n', find_project)
-        return self.__db.execute(find_project).first()
+        log.debug('find_project %s in %s:\n\n%s\n\n',
+                  self.record, self.pid, find_project)
+        it = self.__db.execute(find_project).first()
+        if it is None:
+            raise IOError(self.record)
+        return it
 
-    def check_team(self, current,
-                   max_members=10):
-        #@@ISSUE: study["State"], study["Date Expiration"]
+    def check_team(self, current):
         approved = [who for who in current
-                    if not who['accountDisabled']]
-        requested, ok, bad = [], [], []
-        user_cols = ['user_id', 'team_email', 'name_etc']
+                    if not who.get('accountDisabled')]
 
-        for ix in range(1, max_members + 1):
-            cols, from_obj, where, _rel = redcapdb.unpivot(
-                ['%s_%s' % (field, ix) for field in user_cols],
-                record=True)
-            find_mem = select(
-                # strip _N off column names
-                cols[:2] + [col.label(name)
-                            for col, name in zip(cols[2:], user_cols)],
-                self._constrain(where, cols), from_obj=from_obj)
-            log.debug('find_mem: %s', find_mem)
-            mem = self.__db.execute(find_mem).first()
-            if not mem or not mem.user_id:
-                break
+        # rows aren't JSON serializable
+        row2dict = lambda row: dict(row.items())  # noqa
 
-            requested.append(mem)
+        def check1(mem):
             for who in approved:
                 # log.debug(pformat([dict(mem.items()),
                 #                    '%s =?= %s',
                 #                    who]))
                 if mem.team_email == who['EmailPreferred']:
-                    ok.append(mem)
-                    break
+                    return row2dict(mem), who
             else:
-                bad.append(mem)
+                return row2dict(mem), None
 
-        return requested, ok, bad
+        return [check1(m) for m in self.requested()]
+
+    def requested(self,
+                  max_members=10):
+
+        rd = redcapdb.redcap_data
+        record_data = select([rd]).where(and_(
+            rd.c.project_id == self.pid,
+            rd.c.record == self.record,
+        )).alias('rec')
+
+        def get1(ix):
+            [uf, tf, nf] = [
+                select([
+                    record_data.c.value.label(field)
+                ]).where(
+                    record_data.c.field_name == '%s_%s' % (field, ix)
+                ).alias('j_' + field)
+                for field in ['user_id', 'team_email', 'name_etc']]
+            find_mem = select(
+                [uf.c.user_id, tf.c.team_email, nf.c.name_etc],
+                from_obj=uf.join(tf, tf.c.team_email > '', isouter=True)
+                .join(nf, nf.c.name_etc > '', isouter=True))
+            log.debug('find_mem: %s', find_mem)
+            return self.__db.execute(find_mem).first()
+
+        requested = []
+        for ix in range(1, max_members + 1):
+            mem = get1(ix)
+            if not mem:
+                break
+            requested.append(mem)
+
+        return requested
+
+
+class MockIO(object):
+    oversight_project = 34
+    record_id = '6373469799195807417'
+
+    @property
+    def datasrc(self):
+        return self
+
+    def lookup(self, hsc_number):
+        return [{
+            'EmailPreferred': 'some.one@example',
+            'State': 'OK',
+            'Date Expiration': '2030-01-01',
+            'Full Study Title': 'Cure Warts',
+        }]
 
 
 class IntegrationTest(object):
@@ -126,10 +235,9 @@ class IntegrationTest(object):
                    host='localhost',
                    port=6543):
         with Configurator() as config:
-            view = OversightRequest.make_view(
-                self.__redcap_db, self.project_id, self.__datasrc)
-            config.add_route('check', '/')
-            config.add_view(view, route_name='check')
+            r1 = OversightRequest.configure_view(
+                config, self.__redcap_db, self.project_id, self.__datasrc)
+            config.add_route(r1, '/')
             app = config.make_wsgi_app()
         server = make_server(host, port, app)
         server.serve_forever()
@@ -151,14 +259,12 @@ class IntegrationTest(object):
         # ISSUE: I don't see the P.I. on the HERON team.
         log.info('current team for %s: %s', project.hsc_number,
                  [member['lastName'] +
-                  ('*' if member['accountDisabled'] else '')
+                  ('*' if member.get('accountDisabled') else '')
                   for member in current])
 
-        req_team, ok, bad = req.check_team(current)
-        log.info('requested team:\n%s',
-                 pformat([dict(row.items()) for row in req_team]))
-        log.info('requested team ok: %s', [row.team_email for row in ok])
-        log.info('requested team bad: %s', [row.team_email for row in bad])
+        team = req.check_team(current)
+        log.info('team as requested, paired with any HSC approved detail:\n%s',
+                 pformat(team))
 
 
 if __name__ == '__main__':
