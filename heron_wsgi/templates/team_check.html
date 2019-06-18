@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:py="http://genshi.edgewall.org/"
+      xmlns:xi="http://www.w3.org/2001/XInclude">
+<xi:include href="kumc_layout.xml" />
+<head>
+  <title>HERON: Study Team Check</title>
+</head>
+<body>
+  <h1>Study Team Check</h1>
+  <div id="main">
+    <dl>
+      <dt>Title</dt><dd>${study['Full Study Title']}</dd>
+      <dt>State</dt><dd>${study['State']}</dd>
+      <dt>Expriration</dt><dd>${study['Date Expiration']}</dd>
+    </dl>
+    <table>
+      <thead>
+        <tr><th>Requested</th><th>Approved</th></tr>
+      </thead>
+      <tbody>
+        <tr py:for="req, hsc in team">
+          <td>
+            ${req['name_etc']}<br />
+            <tt>&lt;${req['team_email']}&gt;</tt><br />
+            <tt>${req['user_id']}</tt><br />
+          </td>
+          <td py:if="hsc">
+            ${hsc['lastName']}, ${hsc['firstName']} <tt>&lt;${hsc['EmailPreferred']}&gt;</tt>
+          </td>
+          <td py:if="not hsc">
+            <strong>NOT APPROVED</strong>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+</div>
+</body>
+</html>

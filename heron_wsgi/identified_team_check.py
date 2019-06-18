@@ -9,7 +9,7 @@ Suppose we have a HERON oversight request regarding a cure for warts::
     >>> oreq = OversightRequest(db, record_id, io.oversight_project)
     >>> research = oreq.get_info()
     >>> research
-    (34, u'6373469799195807417', u'HSC123', u'Cure Warts')
+    (34, u'6373469799195807417', u'123', u'Cure Warts')
 
 The request is to give several team members access to data:
 
@@ -34,44 +34,28 @@ All this is packaged up as a web page view:
     >>> from paste.fixture import TestApp
     >>> with Configurator() as config:
     ...     rt1 = OversightRequest.configure_view(
-    ...         config, db, io.oversight_project, io.datasrc)
+    ...         config, db, io.oversight_project, io.datasrc, renderer='json')
     ...     config.add_route(rt1, '/')
     ...     tapp = TestApp(config.make_wsgi_app())
 
-    >>> r1 = tapp.get('/?record_id=%s' % record_id)
+    >>> r1 = tapp.get('/?record=%s' % record_id)
     >>> print(r1.body)  # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
-    {
-      "study": { ...
-        "Full Study Title": "Cure Warts"
-      },
-      "team": [ ...
-          {
-            "team_email": "some.one@example", ...
-          },
-          {
-            "EmailPreferred": "some.one@example", ...
-          }
-        ],
-        [
-          {
-            "team_email": "carol.student@example",
-            "user_id": "carol.student", ...
-          },
-          null
-        ], ...
-      ]
-    }
-
+    {"study": {... "Full Study Title": "Cure Warts"},
+     "team": [[{"team_email": "some.one@example", ...},
+               {"EmailPreferred": "some.one@example", ...}],
+              [{"team_email": "carol.student@example",
+                "user_id": "carol.student", "name_etc": null},
+               null],
+          ...]}
 """
 
 from pprint import pformat
-import json
 import logging
 
 from pyramid.config import Configurator
 from pyramid.httpexceptions import HTTPBadRequest
-from pyramid.response import Response
 from sqlalchemy import and_, select
+import genshi_render
 
 from admin_lib import heron_policy
 from admin_lib import ldaplib
@@ -100,31 +84,33 @@ class OversightRequest(object):
 
     @classmethod
     def configure_view(cls, config, db, pid, datasrc,
+                       renderer='team_check.html',
                        route_name='check'):
         view = cls.make_view(db, pid, datasrc)
-        config.add_view(view, route_name=route_name)
+        config.add_view(view, route_name=route_name,
+                        request_method='GET', renderer=renderer)
         return route_name
 
     @classmethod
     def make_view(cls, db, pid, datasrc):
         def view(request):
             try:
-                record_id = request.GET.getone('record_id')
+                record_id = request.GET.getone('record')
             except KeyError:
-                raise HTTPBadRequest(detail='Missing record_id')
+                raise HTTPBadRequest(detail='Missing record')
             hreq = cls(db, record_id, pid)
             project = hreq.get_info()
-            log.info('HERON oversight request %s: %s',
-                     record_id, dict(project.items()))
-            current = datasrc.lookup(project.hsc_number)
+            study_id = cls.fmt_hsc_number(project.hsc_number)
+            log.info('HERON oversight request %s: %s: %s',
+                     record_id, study_id, dict(project.items()))
+            current = datasrc.lookup(study_id)
             if not current:
                 raise HTTPBadRequest(
                     detail='No team found for %s' % project.hsc_number)
             study = {k: current[0][k]
                      for k in ['State', 'Date Expiration', 'Full Study Title']}
             compliant = hreq.check_team(current)
-            return Response(json.dumps(
-                dict(study=study, team=compliant), indent=2))
+            return dict(study=study, team=compliant)
 
         return view
 
@@ -141,9 +127,14 @@ class OversightRequest(object):
         log.debug('find_project %s in %s:\n\n%s\n\n',
                   self.record, self.pid, find_project)
         it = self.__db.execute(find_project).first()
+
         if it is None:
             raise IOError(self.record)
         return it
+
+    @classmethod
+    def fmt_hsc_number(cls, digits):
+        return 'STUDY%08d' % int(digits)
 
     def check_team(self, current):
         approved = [who for who in current
@@ -208,6 +199,8 @@ class MockIO(object):
 
     def lookup(self, hsc_number):
         return [{
+            'lastName': 'One',
+            'firstName': 'Some',
             'EmailPreferred': 'some.one@example',
             'State': 'OK',
             'Date Expiration': '2030-01-01',
@@ -235,6 +228,7 @@ class IntegrationTest(object):
                    host='localhost',
                    port=6543):
         with Configurator() as config:
+            config.add_renderer(name='.html', factory=genshi_render.Factory)
             r1 = OversightRequest.configure_view(
                 config, self.__redcap_db, self.project_id, self.__datasrc)
             config.add_route(r1, '/')
@@ -253,9 +247,10 @@ class IntegrationTest(object):
         project = req.get_info()
         log.info('request info: %s', dict(project.items()))
 
-        log.debug('getting team for %s:', project.hsc_number)
+        study_id = OversightRequest.fmt_hsc_number(project.hsc_number)
+        log.debug('getting team for %s / %s:', project.hsc_number, study_id)
 
-        current = self.__datasrc.lookup(project.hsc_number)
+        current = self.__datasrc.lookup(study_id)
         # ISSUE: I don't see the P.I. on the HERON team.
         log.info('current team for %s: %s', project.hsc_number,
                  [member['lastName'] +
@@ -285,7 +280,7 @@ if __name__ == '__main__':
 
         test = IntegrationTest.make(cwd, build_opener(), create_engine)
         if '--serve' in argv:
-            test.run_server(make_server)
+            test.run_server(make_server, host='0.0.0.0')
         else:
             test.main(argv[:])
 
