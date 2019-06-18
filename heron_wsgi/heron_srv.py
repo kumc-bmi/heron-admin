@@ -18,15 +18,18 @@ import pyramid
 from pyramid.config import Configurator
 from pyramid.httpexceptions import HTTPFound, HTTPSeeOther, HTTPForbidden
 from pyramid_mailer.mailer import Mailer
+from sqlalchemy.engine.base import Connectable
 
 # modules in this package
 import cas_auth
 import genshi_render
+import identified_team_check as team_check
 import drocnotice
 import stats
 import perf_reports
 from admin_lib import medcenter
 from admin_lib import heron_policy
+from admin_lib import redcapdb
 from admin_lib import redcap_connect
 from admin_lib import rtconfig
 from admin_lib.rtconfig import Options, TestTimeOptions
@@ -542,6 +545,24 @@ def _request_uids(params):
     return v.split(' ') if v else []
 
 
+class TeamChecker(object):
+    @inject(
+        hsc=medcenter.KStudyTeamRecords,
+        rdb=(Connectable, redcapdb.CONFIG_SECTION),
+        hp_opts=(rtconfig.Options, heron_policy.OVERSIGHT_CONFIG_SECTION),
+    )
+    def __init__(self, hsc, rdb, hp_opts):
+        self.__hsc = hsc
+        self.__db = rdb
+        self.pid = hp_opts.project_id
+        pass
+
+    def configure(self, config, route_name):
+        team_check.OversightRequest.configure_view(
+            config, self.__db, self.pid, self.__hsc,
+            route_name=route_name)
+
+
 def _make_internal_error(req):
     return 1 / 0
 
@@ -575,13 +596,14 @@ class HeronAdminConfig(Configurator):
             rcv=REDCapLink,
             repo=RepositoryLogin,
             tb=TeamBuilder,
+            tc=TeamChecker,
             mc=medcenter.MedCenter,
             hr=heron_policy.HeronRecords,
             dn=drocnotice.DROCNotice,
             report=stats.Reports,
             perf=perf_reports.PerformanceReports)
     def __init__(self, guard, casopts, conf, clv, rcv,
-                 repo, tb, mc, hr, dn, report, perf):
+                 repo, tb, tc, mc, hr, dn, report, perf):
         log.debug('HeronAdminConfig settings: %s', conf)
 
         Configurator.__init__(self, settings=conf)
@@ -612,6 +634,9 @@ class HeronAdminConfig(Configurator):
                 REDCapLink.for_act_sponsorship,
                 REDCapLink.for_data_use))
         tb.configure(self, 'oversight')
+
+        self.add_route('check', 'identified_team_check')
+        tc.configure(self, 'check')
 
         self.add_route('i2b2_login', 'i2b2')
         self.add_route('disclaimer', 'disclaimer')

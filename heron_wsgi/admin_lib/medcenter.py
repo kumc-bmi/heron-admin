@@ -107,7 +107,7 @@ TRAINING_SECTION = 'training'
 KTrainingFunction = (type(lambda: 1), TRAINING_SECTION)
 KExecutives = injector.Key('Executives')
 KTestingFaculty = injector.Key('TestingFaculty')
-KStudyTeamLookup = injector.Key('StudyTeamLookup')
+KStudyTeamRecords = injector.Key('StudyTeamRecords')
 
 PERM_BROWSER = __name__ + '.browse'
 PERM_BADGE = __name__ + '.badge'
@@ -146,10 +146,10 @@ class Browser(object):
 
     '''
     @inject(searchsvc=ldaplib.LDAPService,
-            studyLookup=KStudyTeamLookup)
-    def __init__(self, searchsvc, studyLookup):
+            studyRecords=KStudyTeamRecords)
+    def __init__(self, searchsvc, studyRecords):
         self._svc = searchsvc
-        self._studyLookup = studyLookup
+        self._studyRecords = studyRecords
 
     def directory_attributes(self, name):
         '''Get directory attributes.
@@ -181,7 +181,7 @@ class Browser(object):
                 for dn, ldapattrs in self._search(max_qty, cn, sn, givenname)]
 
     def studyTeam(self, studyId):
-        return self._studyLookup(studyId)
+        return self._studyRecords.lookup(studyId)
 
 
 @singleton
@@ -452,11 +452,12 @@ class Mock(injector.Module, rtconfig.MockMixin):
     def executives(self):
         return ('big.wig',)
 
-    @provides(KStudyTeamLookup)
-    def study_team_lookup(self):
-        def lookup(_):
-            raise KeyError
-        return lookup
+    @provides(KStudyTeamRecords)
+    def study_team_records(self):
+        class R(object):
+            def lookup(self, _):
+                raise KeyError
+        return R()
 
 
 class RunTime(rtconfig.IniModule):  # pragma: nocover
@@ -495,17 +496,15 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     def training(self):
         return self.__trainingfn
 
-    @provides(KStudyTeamLookup)
+    @provides(KStudyTeamRecords)
     @inject(rt=(rtconfig.Options, ldaplib.CONFIG_SECTION))
-    def study_team_lookup(self, rt):
+    def study_team_records(self, rt):
         # TODO: share all but urllib2 stuff with Mock
 
         if not rt.studylookupaddr:
             raise IOError('missing studylookupaddr')
 
-        hr = HSCRecords(rt.studylookupaddr, self.__urlopener)
-
-        return hr.lookup
+        return HSCRecords(rt.studylookupaddr, self.__urlopener)
 
     @classmethod
     def mods(cls, ini, timesrc, urlopener, ldap, trainingfn, **kwargs):

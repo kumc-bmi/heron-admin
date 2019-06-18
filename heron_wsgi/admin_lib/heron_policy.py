@@ -760,6 +760,10 @@ class Mock(injector.Module, rtconfig.MockMixin):
         return redcap_connect.SurveySetup(opts, self.io.connect, self.io.rng,
                                           survey_id=opts.survey_id)
 
+    @provides((rtconfig.Options, OVERSIGHT_CONFIG_SECTION))
+    def _rc_opts(self):
+        return redcap_connect._test_settings
+
     @singleton
     @provides((redcap_connect.SurveySetup, OVERSIGHT_CONFIG_SECTION))
     def _rc_oversight(self):
@@ -814,13 +818,17 @@ class RunTime(rtconfig.IniModule):  # pragma nocover
         return redcap_connect.SurveySetup(opts, engine.connect, rng,
                                           survey_id=opts.survey_id)
 
+    @provides((rtconfig.Options, OVERSIGHT_CONFIG_SECTION))
+    def _rc_opts(self):
+        return self.get_options(redcap_connect.OPTIONS + ('project_id',),
+                                OVERSIGHT_CONFIG_SECTION)
+
     @singleton
     @provides((redcap_connect.SurveySetup, OVERSIGHT_CONFIG_SECTION))
     @inject(rng=redcap_connect.KRandom,
+            opts=(rtconfig.Options, OVERSIGHT_CONFIG_SECTION),
             engine=(Connectable, redcap_invite.CONFIG_SECTION))
-    def _rc_oversight(self, rng, engine):
-        opts = self.get_options(redcap_connect.OPTIONS + ('project_id',),
-                                OVERSIGHT_CONFIG_SECTION)
+    def _rc_oversight(self, rng, engine, opts):
         return redcap_connect.SurveySetup(opts, engine.connect, rng,
                                           survey_id=opts.survey_id,
                                           project_id=opts.project_id)
