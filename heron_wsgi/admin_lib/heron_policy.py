@@ -270,7 +270,7 @@ sponsor:
   ...        ['john.smith', 'bill.student'], 'john.smith',
   ...        what_for=HeronRecords.SPONSORSHIP).split('&')
   ... # doctest: +NORMALIZE_WHITESPACE
-  ['http://testhost/redcap-host/surveys/?s=aPo4Bb',
+  ['http://testhost/redcap-host/surveys/?s=43',
    'faculty_email=john.smith%40js.example', 'faculty_name=Smith%2C+John',
    'full_name=Student%2C+Bill', 'multi=yes',
    'name_etc_1=Smith%2C+John%0AChair+of+Neurology%0ANeurology',
