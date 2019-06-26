@@ -65,7 +65,7 @@ studylookupaddr=http://127.0.0.1:8080/
 #  http://bmi-work.kumc.edu/work/ticket/321#comment:13
 #  and others such as
 #  https://bmi-work.kumc.edu/work/ticket/4676
-executives=jalbertson tneely jkentner tpeterma cruder lmartin lnorman psanders-hall jwright1 trusconi cwittkop charper mwennberg schandaka
+executives=CFG_EXECUTIVES
 
 
 [training]
