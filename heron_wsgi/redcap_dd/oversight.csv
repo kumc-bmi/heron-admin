@@ -1,4 +1,4 @@
-﻿"Variable / Field Name","Form Name","Section Header","Field Type","Field Label","Choices, Calculations, OR Slider Labels","Field Note","Text Validation Type OR Show Slider Number","Text Validation Min","Text Validation Max",Identifier?,"Branching Logic (Show field only if...)","Required Field?","Custom Alignment","Question Number (surveys only)","Matrix Group Name","Matrix Ranking?","Field Annotation"
+"Variable / Field Name","Form Name","Section Header","Field Type","Field Label","Choices, Calculations, OR Slider Labels","Field Note","Text Validation Type OR Show Slider Number","Text Validation Min","Text Validation Max",Identifier?,"Branching Logic (Show field only if...)","Required Field?","Custom Alignment","Question Number (surveys only)","Matrix Group Name","Matrix Ranking?","Field Annotation"
 participant_id,heron_oversight_request,,text,"Participant ID",,,,,,,,,,,,,
 full_name,heron_oversight_request,,text,"Requester Full Name",,,,,,,,,,,,,@READONLY-SURVEY
 user_id,heron_oversight_request,,text,"User ID",,,,,,,,,,,,,@READONLY-SURVEY
