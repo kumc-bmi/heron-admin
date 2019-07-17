@@ -24,7 +24,7 @@ D. My research team members will restrict individual queries to bona fide resear
 
 E. That the research to be conducted is in an area of my research team members' scientific expertise; 
 
-F. Not to identify, or attempt to identify, data contained in the Data Set(s) by any means, including using participating organization's clinical systems (Examples: O2, EPIC, IDX, Siemens) or other information together with the Data Set (Example: voter registration records), or to contact any individual whose identity is discovered through the Data Set. ",,,,,,,"[request_from_faculty] = '1' and [what_for] = '1'",y,,,,,
+F. Not to identify, or attempt to identify, data contained in the Data Set(s) by any means, including using participating organization's clinical systems (Examples: O2, EPIC, IDX, Siemens) or other information together with the Data Set (Example: voter registration records), or to contact any individual whose identity is discovered through the Data Set. ",,,,,,,"[request_from_faculty] = '1' and [what_for] = '1'",,,,,,
 description_sponsor,heron_oversight_request,,notes,"Description of the Preparatory to Research Activities",,,,,,,"[what_for] = '1' or [what_for] = '3'",y,,,,,
 data_use_description,heron_oversight_request,"UNIVERSITY OF KANSAS MEDICAL CENTER HERON DATA USE AGREEMENT
 
@@ -231,7 +231,7 @@ D. My research team members will restrict individual queries to bona fide resear
 
 E. That the research to be conducted is in an area of my research team members' scientific expertise; 
 
-F. Not to identify, or attempt to identify, data contained in the Data Set(s) by any means, including using participating organization's clinical systems (Examples: O2, EPIC, IDX, Siemens) or other information together with the Data Set (Example: voter registration records), or to contact any individual whose identity is discovered through the Data Set. ",,,,,,,"[what_for] = '1'",y,,,,,
+F. Not to identify, or attempt to identify, data contained in the Data Set(s) by any means, including using participating organization's clinical systems (Examples: O2, EPIC, IDX, Siemens) or other information together with the Data Set (Example: voter registration records), or to contact any individual whose identity is discovered through the Data Set. ",,,,,,,"[what_for] = '1'",,,,,,
 data_approval,faculty_approval,,yesno,"Do you agree to oversee the data request and allow data access to the following individuals?
 
 -[name_etc_1]
