@@ -1,10 +1,10 @@
-"Variable / Field Name","Form Name","Section Header","Field Type","Field Label","Choices, Calculations, OR Slider Labels","Field Note","Text Validation Type OR Show Slider Number","Text Validation Min","Text Validation Max",Identifier?,"Branching Logic (Show field only if...)","Required Field?","Custom Alignment","Question Number (surveys only)","Matrix Group Name","Matrix Ranking?","Field Annotation"
+﻿"Variable / Field Name","Form Name","Section Header","Field Type","Field Label","Choices, Calculations, OR Slider Labels","Field Note","Text Validation Type OR Show Slider Number","Text Validation Min","Text Validation Max",Identifier?,"Branching Logic (Show field only if...)","Required Field?","Custom Alignment","Question Number (surveys only)","Matrix Group Name","Matrix Ranking?","Field Annotation"
 participant_id,heron_oversight_request,,text,"Participant ID",,,,,,,,,,,,,
 full_name,heron_oversight_request,,text,"Requester Full Name",,,,,,,,,,,,,@READONLY-SURVEY
 user_id,heron_oversight_request,,text,"User ID",,,,,,,,,,,,,@READONLY-SURVEY
 request_from_faculty,heron_oversight_request,,yesno,"Request is from faculty sponsor?",,,,,,,,y,,,,,@READONLY-SURVEY
 faculty_name,heron_oversight_request,,text,"Sponsoring faculty member's name",,,,,,,"[request_from_faculty] = '0'",y,,,,,@READONLY-SURVEY
-faculty_email,heron_oversight_request,,text,"Sponsoring faculty member's email address",,,,,,,"[request_from_faculty] = '0'",y,,,,,@READONLY-SURVEY
+faculty_email,heron_oversight_request,,text,"Sponsoring faculty member's email address",,,email,,,,"[request_from_faculty] = '0'",y,,,,,@READONLY-SURVEY
 project_title,heron_oversight_request,,text,"Title of the Research: ",,,,,,,,y,,,,,
 date_of_expiration,heron_oversight_request,,text,"Date of expiration",,"* Leave blank if requesting access until the user KUMC account is canceled or leaves KUMC",date_mdy,,,,,,,,,,
 what_for,heron_oversight_request,,radio,"Purpose of request:","1, HERON Sponsorship | 3, ACT Sponsorship (CTSA National query tool- patient counts only) | 2, Data Use","This choice is based on your previous selection.",,,,,,y,,,,,
@@ -177,20 +177,44 @@ team_email_10,heron_oversight_request,,text,"Email #10",,,,,,,"[user_id_9] > ''"
 name_etc_10,heron_oversight_request,,notes,"Name, Title, Department",,,,,,y,"[user_id_10] > ''",,,,,,
 kumc_employee_10,heron_oversight_request,,yesno,"KUMC Employee?",,,,,,,"[user_id_10] > ''",y,,,,,
 affiliation_10,heron_oversight_request,,notes,Affiliation,,"* For non-KUMC employees, include the position and employer for any students or staff who employed by another institution where there may need to be clarification regarding conflict of interest or competitive concerns between their parent institution and KUMC, KUH or UKP.",,,,,"[kumc_employee_10] = '0'",y,,,,,
-working_on,faculty_approval,,yesno,"Are you working on [project_title]?",,,,,,,,y,,,,,
+working_on,faculty_approval,,yesno,"Are you working on: 
+
+Title: [project_title]
+
+Purpose of Request: [what_for]
+
+If request is for data, more information is below: 
+
+Data Use Description: [data_use_description]
+
+Is data identified? [is_identified_data]
+
+If identified, QI or Research: [identified_purpose]
+
+If research, IRB number: [hsc_number]
+
+Recruitment Strategy (if applicable): [recruit_strategy]",,,,,,,,y,,,,,
 sponsorship_approval,faculty_approval,,yesno,"Do you agree to sponsor the following individuals for HERON?
 
-[full_name]
-[user_id_1]
-[user_id_2]
-[user_id_3]
-[user_id_4]
-[user_id_5]
-[user_id_6]
-[user_id_7]
-[user_id_8]
-[user_id_9]
-[user_id_10]",,,,,,,"[what_for] = '1'",y,,,,,
+-[name_etc_1]
+
+-[name_etc_2]
+
+-[name_etc_3]
+
+-[name_etc_4]
+
+-[name_etc_5]
+
+-[name_etc_6]
+
+-[name_etc_7]
+
+-[name_etc_8]
+
+-[name_etc_9]
+
+-[name_etc_10]",,,,,,,"[what_for] = '1'",y,,,,,
 system_usage_users_faculty_2,faculty_approval,,descriptive,"Sponsor Heron System Usage Users 
 
 The individuals identified below shall be referred to hereinafter as the Sponsor's ""Research Team Members"". They will be required to individually sign a HERON System Access Agreement reinforcing their responsibilities when using HERON for prepraratory to research activities. 
@@ -210,17 +234,25 @@ E. That the research to be conducted is in an area of my research team members' 
 F. Not to identify, or attempt to identify, data contained in the Data Set(s) by any means, including using participating organization's clinical systems (Examples: O2, EPIC, IDX, Siemens) or other information together with the Data Set (Example: voter registration records), or to contact any individual whose identity is discovered through the Data Set. ",,,,,,,"[what_for] = '1'",y,,,,,
 data_approval,faculty_approval,,yesno,"Do you agree to oversee the data request and allow data access to the following individuals?
 
-[full_name]
-[user_id_1]
-[user_id_2]
-[user_id_3]
-[user_id_4]
-[user_id_5]
-[user_id_6]
-[user_id_7]
-[user_id_8]
-[user_id_9]
-[user_id_10]",,,,,,,"[what_for] = '2'",y,,,,,
+-[name_etc_1]
+
+-[name_etc_2]
+
+-[name_etc_3]
+
+-[name_etc_4]
+
+-[name_etc_5]
+
+-[name_etc_6]
+
+-[name_etc_7]
+
+-[name_etc_8]
+
+-[name_etc_9]
+
+-[name_etc_10]",,,,,,,"[what_for] = '2'",y,,,,,
 data_use,faculty_approval,,descriptive,"UNIVERSITY OF KANSAS MEDICAL CENTER HERON DATA USE AGREEMENT
 
 I, (""Data Recipient""), acknowledge that as a condition of receiving and using any data component(s) from the University of Kansas Medical Center (KUMC) Healthcare Enterprise Repository for Ontological Narration (""HERON""), I must comply with the terms and conditions of this HERON Data Use Agreement (the ""Agreement""). I understand that the HERON data provided pursuant to this Agreement is a limited data set as defined in section 45 CFR 164.514(e) of HIPAA's Standards for Privacy of Individually Identifiable Health Information, as amended from time to time, and shall be referred to herein as the ""Limited Data Set."" I acknowledge that violation of this Agreement may subject me to sanctions including but not limited to loss of request privileges and/or institutional disciplinary action. 
@@ -288,8 +320,7 @@ D. Third Party Beneficiaries. The University of Kansas Hospital Authority and Ka
 E. Vital status information includes data from the Social Security Death Master File.  Misuse of the Limited Access Death Master File, NTIS, U.S. Department of Commerce data is subject to penalties under provisions of 15 CFR § 1110.200.
 
 By submitting this form, I agree to the foregoing and confirm my electronic signature to this Agreement (as specified in the full name and user id fields). ",,,,,,,"[what_for] = '2'",,,,,,
-faculty_full_name,faculty_approval,,text,"Please write your full name:",,,,,,,,y,,,,,
-faculty_signature,faculty_approval,,file,"If you agree to all of the terms listed above, please sign your name with your mouse or finger:",,,signature,,,,,y,,,,,
+faculty_full_name,faculty_approval,,text,"If you agree to the terms listed above, please write your full name:",,,,,,,,y,,,,,
 text_title,kuh_review,,descriptive,"Title: [project_title]",,,,,,,,,,,,,
 textarea_description,kuh_review,,descriptive,"Description of the Preparatory to Research Activities: [description_sponsor]",,,,,,,[what_for]=1,,,,,,
 textarea_datausedesc,kuh_review,,descriptive,"Description of Data Use Request: [data_use_description]",,,,,,,"[what_for] = '2'",,,,,,
