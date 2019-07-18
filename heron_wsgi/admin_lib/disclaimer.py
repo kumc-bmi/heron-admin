@@ -142,9 +142,17 @@ class Disclaimer(redcapdb.REDCapRecord):
         kludge = StringIO.StringIO(body.replace('&larr;', '').
                                    replace('&rarr;', ''))  # KLUDGE
         elt = ET.parse(kludge).getroot().find('.//*[@id="blog-main"]', )
+        elt = no_pfx(elt)
         headline = elt.findtext('.//*[@class="blog-title"]', )
 
         return ET.tostring(elt), headline
+
+
+def no_pfx(elt):
+    for it in elt.getiterator():
+        if it.tag.startswith('{'):
+            it.tag = it.tag.split('}')[-1]
+    return elt
 
 
 Disclaimer.eav_map()
@@ -152,7 +160,7 @@ Disclaimer.eav_map()
 
 _test_doc = '''
 <!DOCTYPE html>
-<html><head><title>...</title></head>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>...</title></head>
 <body>
 ...
 <div id='blog-main'>
