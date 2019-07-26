@@ -109,8 +109,7 @@ survey_id=2678
 
 [oversight_survey]
 api_url=https://redcap.kumc.edu/api/
-# ISSUE: oversight_survey production survey code
-survey_url=https://redcap.kumc.edu/surveys/?s=MAXXNXYD8W
+survey_url=https://redcap.kumc.edu/surveys/?s=rRYkiH
 domain=kumc.edu
 survey_id=94
 project_id=238
