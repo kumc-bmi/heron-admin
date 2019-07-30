@@ -59,7 +59,7 @@ password= CRED_LDAP_BIOSTATS
 base= ou=people,o=idvault
 certfile=/etc/ssl/certs/idvauth.kumc.edu.pem
 
-studylookupaddr=http://127.0.0.1:8080/
+studylookupaddr=CFG_ECOMPLIANCE_LOOKUP
 
 # For audit trail of executives, see
 #  http://bmi-work.kumc.edu/work/ticket/321#comment:13
