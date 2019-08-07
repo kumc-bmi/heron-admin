@@ -871,10 +871,11 @@ if __name__ == '__main__':  # pragma nocover
         cwd = Path('.', open=io_open, joinpath=joinpath, listdir=listdir)
         logging.basicConfig(level=logging.DEBUG, stream=stderr)
 
-        sys_path.append('./heron_wsgi/')
+        sys_path.append('..')
         import traincheck
 
-        ini = cwd / 'production.ini'
+        # second argument is relative path of config file
+        ini = cwd / argv[2]
         trainingfn = traincheck.from_config(ini, create_engine)
 
         userid = argv[1]
