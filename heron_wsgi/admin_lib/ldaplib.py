@@ -288,17 +288,17 @@ if __name__ == '__main__':  # pragma nocover
         import ldap
 
         logging.basicConfig(level=logging.INFO)
+        cwd = Path('.', open=io_open, joinpath=joinpath, exists=exists)
 
         ldap_query = argv[1]
-        if argv[2:]:
-            attrs = argv[2].split(",")
+        ini = cwd / argv[2]
+        if argv[3:]:
+            attrs = argv[3].split(",")
         else:
             attrs = []
 
-        cwd = Path('.', open=io_open, joinpath=joinpath, exists=exists)
-
         [ls] = RunTime.make([LDAPService],
-                            ini=cwd / 'production.ini',
+                            ini=ini,
                             ldap=ldap, timesrc=datetime)
 
         print(pformat(ls._search(ldap_query, attrs)), file=stdout)
