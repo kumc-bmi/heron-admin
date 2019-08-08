@@ -874,10 +874,10 @@ if __name__ == '__main__':  # pragma nocover
         sys_path.append('..')
         import traincheck
 
-        ini = cwd / 'integration-test.ini'
+        userid, config_fn = argv[1:3]
+        ini = cwd / config_fn
         trainingfn = traincheck.from_config(ini, create_engine)
 
-        userid = argv[1]
         mc, hr = RunTime.make([medcenter.MedCenter, HeronRecords],
                               ini=ini,
                               rng=Random(),
