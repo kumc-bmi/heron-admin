@@ -290,8 +290,8 @@ if __name__ == '__main__':  # pragma nocover
         logging.basicConfig(level=logging.INFO)
         cwd = Path('.', open=io_open, joinpath=joinpath, exists=exists)
 
-        ldap_query = argv[1]
-        ini = cwd / argv[2]
+        ldap_query, config_fn = argv[1:3]
+        ini = cwd / config_fn
         if argv[3:]:
             attrs = argv[3].split(",")
         else:
