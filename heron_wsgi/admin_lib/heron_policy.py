@@ -132,7 +132,7 @@ faculty not sponsored, nor has he completed human subjects training::
   INFO:cache_remote:LDAP query for ('(cn=bill.student)', ...
   INFO:cache_remote:Sponsorship query for ('sponsorship', 'bill.student')
   INFO:heron_policy:not sponsored: bill.student
-  INFO:cache_remote:... cached until 2011-09-03 00:00:02.500000
+  INFO:cache_remote:... cached until 2011-09-02 00:00:03.500000
   INFO:heron_policy:no training on file for: bill.student (Bill Student)
   INFO:cache_remote:system access query for ('SAA', 'bill.student@js.example')
   INFO:cache_remote:... cached until 2011-09-02 00:00:18
@@ -203,7 +203,7 @@ This student's sponsor is not with KUMC anymore
   INFO:cache_remote:... cached until 2011-09-02 00:00:08
   WARNING:heron_policy:Sponsor prof.fickle not at med center anymore.
   INFO:heron_policy:not sponsored: jill.student
-  INFO:cache_remote:... cached until 2011-09-03 00:00:06.500000
+  INFO:cache_remote:... cached until 2011-09-02 00:00:07.500000
   INFO:cache_remote:system access query for ('SAA', 'jill.student@js.example')
   INFO:cache_remote:... cached until 2011-09-02 00:00:22
   INFO:cache_remote:in DROC? query for jill.student
@@ -565,7 +565,7 @@ class HeronRecords(Token, Cache):
 
     def _sponsorship(self, uid,
                      ttl=timedelta(seconds=600)):
-        not_sponsored = timedelta(1), None
+        not_sponsored = timedelta(seconds=1), None
 
         def do_q():
             for ans in self.__dr.sponsorships(uid):
