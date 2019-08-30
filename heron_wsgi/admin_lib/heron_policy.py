@@ -433,8 +433,9 @@ class HeronRecords(Token, Cache):
     ['kuh', 'kumc', 'kupi']
 
     >>> sorted(ddict.radio('what_for'))
-    ... # doctest: +ELLIPSIS
-    [('1', 'HERON Sponsorship'), ('2', 'Data Use'), ('3', 'ACT Sponsor...')]
+    ... # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    [('1', 'HERON Sponsorship'), ('2', 'HERON Data Use'),
+     ('3', 'ACT Sponsor...'), ('4', 'Green HERON ...')]
 
     .. todo:: check expiration date
 
@@ -442,8 +443,10 @@ class HeronRecords(Token, Cache):
 
     SPONSORSHIP = '1'
     ACT_SPONSORSHIP = '3'
+    GREENHERON_USE = '4'
     DATA_USE = '2'
-    oversight_request_purposes = (SPONSORSHIP, DATA_USE, ACT_SPONSORSHIP)
+    oversight_request_purposes = (SPONSORSHIP, DATA_USE,
+                                  ACT_SPONSORSHIP, GREENHERON_USE)
 
     @inject(mc=medcenter.MedCenter,
             pm=i2b2pm.I2B2PM,
