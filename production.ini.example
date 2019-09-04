@@ -109,10 +109,10 @@ survey_id=2678
 
 [oversight_survey]
 api_url=https://redcap.kumc.edu/api/
-survey_url=https://redcap.kumc.edu/surveys/?s=rRYkiH
+survey_url=CFG_REDCAP_OVERSIGHT_SURVEY_URL
 domain=kumc.edu
-survey_id=94
-project_id=238
+survey_id=CFG_REDCAP_OVERSIGHT_SURVEY_ID
+project_id=CFG_REDCAP_OVERSIGHT_PROJECT_ID
 trigger_log=/tmp/oversight_log_dir/
 trigger_url=http://db-proxy-sable/dummy
 level=WARN

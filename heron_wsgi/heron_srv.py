@@ -117,6 +117,7 @@ class CheckListView(Token):
          'dua_path': '/dua',
          'executive': {},
          'faculty': {'checked': 'checked'},
+         'greenheron_use_path': '/oversight',
          'i2b2_login_path': '/i2b2_login',
          'logout_path': '/logout',
          'repositoryAccess': {'checked': 'checked'},
@@ -148,6 +149,8 @@ class CheckListView(Token):
                            what_for=REDCapLink.for_sponsorship)
         asp = req.route_path(self._next_route,
                              what_for=REDCapLink.for_act_sponsorship)
+        ghp = req.route_path(self._next_route,
+                             what_for=REDCapLink.for_greenheron_use)
         dup = req.route_path(self._next_route,
                             what_for=REDCapLink.for_data_use)
 
@@ -163,6 +166,7 @@ class CheckListView(Token):
                      sponsored=yn(status.sponsored),
                      sponsorship_path=sp,
                      act_sponsorship_path=asp,
+                     greenheron_use_path=ghp,
                      data_use_path=dup,
                      i2b2_login_path=req.route_path('i2b2_login'),
                      logout_path=req.route_path('logout'),
@@ -182,6 +186,7 @@ class REDCapLink(Token):
     for_sponsorship = 'sponsorship'
     for_data_use = 'data_use'
     for_act_sponsorship = 'act_sponsorship'
+    for_greenheron_use = 'greenheron_use'
 
     def configure(self, config, rsaa, rtd, dua):
         config.add_view(self.saa_redir, route_name=rsaa,
@@ -271,6 +276,8 @@ class REDCapLink(Token):
         label = req.matchdict['what_for']
         what_for = (heron_policy.HeronRecords.DATA_USE
                     if (label == REDCapLink.for_data_use)
+                    else heron_policy.HeronRecords.GREENHERON_USE
+                    if (label == REDCapLink.for_greenheron_use)
                     else heron_policy.HeronRecords.ACT_SPONSORSHIP
                     if (label == REDCapLink.for_act_sponsorship)
                     else heron_policy.HeronRecords.SPONSORSHIP)
@@ -601,15 +608,17 @@ class HeronAdminConfig(Configurator):
 
         self.add_route('saa', 'saa_survey')
         self.add_route('dua', 'dua_survey')
-        self.add_route('team_done', 'team_done/{what_for:%s|%s|%s}' % (
+        self.add_route('team_done', 'team_done/{what_for:%s|%s|%s|%s}' % (
                 REDCapLink.for_sponsorship,
                 REDCapLink.for_act_sponsorship,
+                REDCapLink.for_greenheron_use,
                 REDCapLink.for_data_use))
         rcv.configure(self, 'saa', 'team_done', 'dua')
 
-        self.add_route('oversight', 'build_team/{what_for:%s|%s|%s}' % (
+        self.add_route('oversight', 'build_team/{what_for:%s|%s|%s|%s}' % (
                 REDCapLink.for_sponsorship,
                 REDCapLink.for_act_sponsorship,
+                REDCapLink.for_greenheron_use,
                 REDCapLink.for_data_use))
         tb.configure(self, 'oversight')
 

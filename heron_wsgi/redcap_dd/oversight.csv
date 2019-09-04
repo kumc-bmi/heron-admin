@@ -7,7 +7,7 @@ faculty_name,heron_oversight_request,,text,"Sponsoring faculty member's name",,,
 faculty_email,heron_oversight_request,,text,"Sponsoring faculty member's email address",,,email,,,,"[request_from_faculty] = '0'",y,,,,,@READONLY-SURVEY
 project_title,heron_oversight_request,,text,"Title of the Research: ",,,,,,,,y,,,,,
 date_of_expiration,heron_oversight_request,,text,"Date of expiration",,"* Leave blank if requesting access until the user KUMC account is canceled or leaves KUMC",date_mdy,,,,,,,,,,
-what_for,heron_oversight_request,,radio,"Purpose of request:","1, HERON Sponsorship | 3, ACT Sponsorship (CTSA National query tool- patient counts only) | 2, Data Use","This choice is based on your previous selection.",,,,,,y,,,,,
+what_for,heron_oversight_request,,radio,"Purpose of request:","1, HERON Sponsorship | 3, ACT Sponsorship (CTSA National query tool- patient counts only) | 2, HERON Data Use | 4, Green HERON Sponsorship and Data Use","This choice is based on your previous selection.",,,,,,y,,,,,
 system_usage_users_faculty,heron_oversight_request,,descriptive,"Sponsor Heron System Usage Users 
 
 The individuals identified below shall be referred to hereinafter as the Sponsor's ""Research Team Members"". They will be required to individually sign a HERON System Access Agreement reinforcing their responsibilities when using HERON for prepraratory to research activities. 
@@ -24,9 +24,12 @@ D. My research team members will restrict individual queries to bona fide resear
 
 E. That the research to be conducted is in an area of my research team members' scientific expertise; 
 
-F. Not to identify, or attempt to identify, data contained in the Data Set(s) by any means, including using participating organization's clinical systems (Examples: O2, EPIC, IDX, Siemens) or other information together with the Data Set (Example: voter registration records), or to contact any individual whose identity is discovered through the Data Set. ",,,,,,,"[request_from_faculty] = '1' and [what_for] = '1'",,,,,,
+F. Not to identify, or attempt to identify, data contained in the Data Set(s) by any means, including using participating organization's clinical systems (Examples: O2, EPIC, IDX, Siemens) or other information together with the Data Set (Example: voter registration records), or to contact any individual whose identity is discovered through the Data Set. ",,,,,,,"[request_from_faculty] = '1' and ([what_for] = '1' or [what_for] = '3')",,,,,,
 description_sponsor,heron_oversight_request,,notes,"Description of the Preparatory to Research Activities",,,,,,,"[what_for] = '1' or [what_for] = '3'",y,,,,,
-data_use_description,heron_oversight_request,"UNIVERSITY OF KANSAS MEDICAL CENTER HERON DATA USE AGREEMENT
+green_access_extract,heron_oversight_request,,radio,"The GREEN HERON analytic server is intended for researchers looking to do extensive research on large data sets. Researchers must have experience analyzing large data sets using R, Oracle SQL, SAS, or Stata.
+
+What specifically do you need related to Green HERON?","1, Green HERON Access | 2, Green HERON Data File Extract | 3, Green HERON Add Software Package | 4, Green HERON Import Data File | 5, Green HERON Other",,,,,,[what_for]='4',,,,,,
+green_export_dt,heron_oversight_request,"UNIVERSITY OF KANSAS MEDICAL CENTER HERON DATA USE AGREEMENT
 
 I, (""Data Recipient""), acknowledge that as a condition of receiving and using any data component(s) from the University of Kansas Medical Center (KUMC) Healthcare Enterprise Repository for Ontological Narration (""HERON""), I must comply with the terms and conditions of this HERON Data Use Agreement (the ""Agreement""). I understand that the HERON data provided pursuant to this Agreement is a limited data set as defined in section 45 CFR 164.514(e) of HIPAA's Standards for Privacy of Individually Identifiable Health Information, as amended from time to time, and shall be referred to herein as the ""Limited Data Set."" I acknowledge that violation of this Agreement may subject me to sanctions including but not limited to loss of request privileges and/or institutional disciplinary action. 
 
@@ -92,15 +95,39 @@ D. Third Party Beneficiaries. The University of Kansas Hospital Authority and Ka
 
 E. Vital status information includes data from the Social Security Death Master File.  Misuse of the Limited Access Death Master File, NTIS, U.S. Department of Commerce data is subject to penalties under provisions of 15 CFR § 1110.200.
 
-By submitting this form, I agree to the foregoing and confirm my electronic signature to this Agreement (as specified in the full name and user id fields). ",notes,"Data Use Description: Please describe details of your study including inclusion, exclusion critieria",,,,,,,"[what_for] = '2'",y,,,,,
-deadline,heron_oversight_request,,text,"Is there an urgent deadline for this request? If so, please enter the deadline otherwise leave blank.",,"Please note: We fulfill all requests within 2-3 weeks. We can not guarantee a quicker turn-around, but will try our best to accommodate your request deadline",date_mdy,,,,,,,,,,
-use_0f_data,heron_oversight_request,,checkbox,"How do you plan to use the data? ","8, Class Project | 1, Grant Proposal | 2, Outcomes Review | 3, Patient Recruitment | 4, Presentation | 5, Publication | 6, Retrospective Chart Review | 7, Other","check all that apply",,,,,"[what_for] = '2'",y,,,,,
+By submitting this form, I agree to the foregoing and confirm my electronic signature to this Agreement (as specified in the full name and user id fields). ",text,"	
+Is there an urgent deadline for this request? If so, please enter the deadline otherwise leave blank.",,"Please note: We fulfill all requests within 1-2 weeks. We can not guarantee a quicker turn-around, but will try our best to accommodate your request deadline",date_mdy,,,,"[green_access_extract]='2' or [green_access_extract]='4'",,,,,,
+green_descrip,heron_oversight_request,,notes,"Please provide a justification for access to GREEN HERON",,,,,,,[green_access_extract]='1',y,,,,,
+data_use_description,heron_oversight_request,,notes,"Data Use Description: Please describe details of your study including inclusion, exclusion critieria",,,,,,,"[what_for] = '2' or [green_access_extract]='1'",y,,,,,
+green_tools,heron_oversight_request,,notes,"What tools do you plan to use to analyze data? Please describe your prior experience with large data sets?",,,,,,,[green_access_extract]='1',,,,,,
+green_export_descr2,heron_oversight_request,,notes,"Please provide a description of your project and justify that the data for export is within the scope of the project",,,,,,,[green_access_extract]='2',y,,,,,
+green_export_file,heron_oversight_request,,text,"Please provide the path to file that will be exported from green heron server",,"e.g. user/home/file-to-export",,,,,[green_access_extract]='2',,,,,,
+green_installs,heron_oversight_request,,notes,"Please describe the software package you would like to install (please also specify the version number).
+
+Please note:  it takes up to a month to add new software packages",,,,,,,[green_access_extract]='3',,,,,,
+green_import_file,heron_oversight_request,,file,"File to Import 
+(file size is limited to 10MB)
+
+For larger files, please submit this form and email heron@kumc.edu for secure file link",,"If you have more than one file to attach/import, zip those files (Details: https://support.microsoft.com/en-us/help/14200/windows-compress-uncompress-zip-files)",,,,,[green_access_extract]='4',,,,,,
+green_import_phi,heron_oversight_request,,radio,"Please confirm that this file does not contain PHI","1, Yes",,,,,,"[green_access_extract] = '4'",y,,,,,
+green_other,heron_oversight_request,,notes,"Please describe your request:",,,,,,,[green_access_extract]='5',,,,,,
+deadline,heron_oversight_request,,text,"Is there an urgent deadline for this request? If so, please enter the deadline otherwise leave blank.",,"Please note: We fulfill all requests within 2-3 weeks. We can not guarantee a quicker turn-around, but will try our best to accommodate your request deadline",date_mdy,,,,"[what_for] = '2'",,,,,,
+use_0f_data,heron_oversight_request,,checkbox,"How do you plan to use the data? ","8, Class Project | 1, Grant Proposal | 2, Outcomes Review | 3, Patient Recruitment | 4, Presentation | 5, Publication | 6, Retrospective Chart Review | 7, Other","check all that apply",,,,,"[what_for] = '2' or [green_access_extract]='1' or [green_access_extract]='2'",y,,,,,
 data_use_other,heron_oversight_request,,text,"Define other",,,,,,,"[use_0f_data(7)] = '1'",,,,,,
-is_identified_data,heron_oversight_request,,yesno,"Are you requesting Identified Data? (i.e. mrns, patient name, contact information, etc)",,,,,,,"[what_for] = '2'",y,,,,,
-identified_purpose,heron_oversight_request,,radio,"Project purpose?","1, Research | 2, Quality Improvement",,,,,,"[is_identified_data] = '1' and [what_for] = '2'",y,,,,,
-hsc_number,heron_oversight_request,,text,"HSC/IRB number",,,integer,,,,"[what_for] = '2' and [is_identified_data] = '1' and [identified_purpose] = '1'",y,,,,,
+is_identified_data,heron_oversight_request,"IRB or Quality Improvement Information",yesno,"Are you requesting Identified Data? (i.e. mrns, patient name, contact information, etc)",,,,,,,"[what_for] = '2'",y,,,,,
+green_irb,heron_oversight_request,,yesno,"Do you have an IRB or QI letter of determination covering this work?",,,,,,,"[green_access_extract] = '1' or [green_access_extract] = '2'",,,,,,
+identified_purpose,heron_oversight_request,,radio,"Project purpose?","1, Research | 2, Quality Improvement",,,,,,"([is_identified_data] = '1' and [what_for] = '2') or [green_irb] = '1'",y,,,,,
+irb_protocol,heron_oversight_request,,file,"Attach IRB protocol",,"* please attach IRB protocol or IRB letter to help the DROC evaluate your request",,,,,"[identified_purpose] = '1'",y,,,,,
+qi_letter,heron_oversight_request,,file,"Attach QI Letter of Determination",,,,,,,"[identified_purpose] = '2'",y,,,,,
+qi_question_1,heron_oversight_request,,text,"What is the problem you are addressing?",,,,,,,"[identified_purpose] = '2'",y,,,,,
+qi_question_2,heron_oversight_request,,text,"What data are needed?",,,,,,,"[identified_purpose] = '2'",y,,,,,
+qi_question3,heron_oversight_request,,text,"Who will receive the results of the analysis?",,,,,,,"[identified_purpose] = '2'",y,,,,,
+qi_question_4,heron_oversight_request,,text,"Who will decide whether or not to implement changes based on your results?",,,,,,,"[identified_purpose] = '2'",y,,,,,
+hsc_number,heron_oversight_request,,text,"HSC/IRB number",,,integer,,,,"[identified_purpose] = '1'",y,,,,,
 retrospective,heron_oversight_request,,radio,"Is this a retrospective study?","1, Yes | 0, No, we will be recruiting patients | 2, No, we need data only",,,,,,"[identified_purpose] = '1'",,,,,,
 flex_irb,heron_oversight_request,,yesno,"Was this study submitted under the flexible IRB review?",,,,,,,"[retrospective] = '1'",,,,,,
+irb_start_date,heron_oversight_request,,text,"Provide the IRB- approved start date for records being accessed (Section E1 of the IRB protocol template):",,,date_mdy,,,,"[retrospective] = '1' and [flex_irb] = '0'",y,,,,,
+irb_end_date,heron_oversight_request,,text,"Provide the IRB approved end date for records being accessed (Section E1 of the IRB protocol template):",,,date_mdy,,,,"[retrospective] = '1' and [flex_irb] = '0'",y,,,,,
 recruit_strategy,heron_oversight_request,"Recruitment Information",checkbox,"For study recruitment, please select which areas you would like to use for recruitment: ","1, Patients From Your Own Clinic (must have a treating relationship with these patients) | 2, Patients From the Pioneers Registry | 3, Patients From another Department (Medical Informatics will help with the approval process)",,,,,,"[retrospective] = '0'",,,,,,
 researcher_affiliation,heron_oversight_request,,text,"What is your departmental or divisional affiliation?",,,,,,,"[recruit_strategy(1)] = '1' or [recruit_strategy(3)] = '1'",,,,,,
 recruit_dept,heron_oversight_request,,checkbox,"What divisions/departments would you like to recruit from? Medical Informatics will assist with the department approval.
@@ -115,19 +142,11 @@ benefit_v3,heron_oversight_request,,notes,"Please describe how this study will a
 compensation_v2,heron_oversight_request,,yesno,"Is compensation available for study participants?",,,,,,,"[recruit_strategy(3)] = '1'",,,,,,
 describe_compensation_v2,heron_oversight_request,,notes,"Please describe the compensation.",,,,,,,"[compensation_v2] = '1'",,,,,,
 recruit_additional_info,heron_oversight_request,,notes,"Please provide any additional information regarding patient recruitment. ",,,,,,,"[retrospective] = '0'",,,,,,
-irb_protocol,heron_oversight_request,"IRB Information",file,"Attach IRB protocol",,"* please attach IRB protocol or IRB letter to help the DROC evaluate your request",,,,,"[what_for] = '2' and [is_identified_data] = '1' and [identified_purpose] = '1'",y,,,,,
-irb_start_date,heron_oversight_request,,text,"Provide the IRB- approved start date for records being accessed (Section E1 of the IRB protocol template):",,,date_mdy,,,,"[retrospective] = '1' and [flex_irb] = '0'",y,,,,,
-irb_end_date,heron_oversight_request,,text,"Provide the IRB approved end date for records being accessed (Section E1 of the IRB protocol template):",,,date_mdy,,,,"[retrospective] = '1' and [flex_irb] = '0'",y,,,,,
-qi_letter,heron_oversight_request,,file,"Attach QI Letter of Determination",,,,,,,"[identified_purpose] = '2' and [what_for] = '2' and [is_identified_data] = '1'",y,,,,,
-qi_question_1,heron_oversight_request,,text,"What is the problem you are addressing?",,,,,,,"[identified_purpose] = '2' and [what_for] = '2' and [is_identified_data] = '1'",y,,,,,
-qi_question_2,heron_oversight_request,,text,"What data are needed?",,,,,,,"[identified_purpose] = '2' and [what_for] = '2' and [is_identified_data] = '1'",y,,,,,
-qi_question3,heron_oversight_request,,text,"Who will receive the results of the analysis?",,,,,,,"[identified_purpose] = '2' and [what_for] = '2' and [is_identified_data] = '1'",y,,,,,
-qi_question_4,heron_oversight_request,,text,"Who will decide whether or not to implement changes based on your results?",,,,,,,"[identified_purpose] = '2' and [what_for] = '2' and [is_identified_data] = '1'",y,,,,,
-saved_search_name_in_heron,heron_oversight_request,,text,"Saved search name in HERON",,,,,,,"[what_for] = '2'",,,,,,
-notes_data,heron_oversight_request,,yesno,"Are you requesting a data set containing physician or flowsheet notes?",,,,,,,"[what_for] = '2'",,,,,,
+saved_search_name_in_heron,heron_oversight_request,"HERON Query Information",text,"Saved search name in HERON",,,,,,,"[what_for] = '2'",,,,,,
+notes_data,heron_oversight_request,"Flowsheet or Physician Notes",yesno,"Are you requesting a data set containing physician or flowsheet notes?",,,,,,,"[what_for] = '2' or [green_access_extract]='2'",y,,,,,
 note_disclaimer,heron_oversight_request,,descriptive,"HERON processes to de-identifying free text notes removes patient information with very high fidelity but may not completely remove provider names or initials. Generally, using free text notes for clinical research is limited to studying patients.  If the intended use of notes is to support studying provider behavior, additional health system review will occur.",,,,,,,"[notes_data] = '1'",,,,,,
-study_provider_question,heron_oversight_request,,yesno,"Are you studying provider behavior?",,,,,,,"[notes_data] = '1'",,,,,,
-notes_purpose,heron_oversight_request,,text,"How do you intend to use the notes data?",,,,,,,"[study_provider_question] = '1'",,,,,,
+study_provider_question,heron_oversight_request,,yesno,"Are you studying provider behavior?",,,,,,,"[notes_data] = '1'",y,,,,,
+notes_purpose,heron_oversight_request,,text,"How do you intend to use the notes data?",,,,,,,"[study_provider_question] = '1'",y,,,,,
 supplemental_documentation,heron_oversight_request,"Supporting Materials",file,"Attach Supplemental documentation (optional)",,"* if you already have prepared documentation on your research and protocol which may assist the DROC in understanding your request, attach it here.",,,,,,,,,,,
 user_id_1,heron_oversight_request,"Review your study team and designate affiliation if they are not KUMC employees.",text,"User Id #1",,,,,,,,y,,,,,
 team_email_1,heron_oversight_request,,text,"Email #1",,,,,,,,y,,,,,
@@ -179,6 +198,7 @@ team_email_10,heron_oversight_request,,text,"Email #10",,,,,,,"[user_id_9] > ''"
 name_etc_10,heron_oversight_request,,notes,"Name, Title, Department",,,,,,y,"[user_id_10] > ''",,,,,,
 kumc_employee_10,heron_oversight_request,,yesno,"KUMC Employee?",,,,,,,"[user_id_10] > ''",y,,,,,
 affiliation_10,heron_oversight_request,,notes,Affiliation,,"* For non-KUMC employees, include the position and employer for any students or staff who employed by another institution where there may need to be clarification regarding conflict of interest or competitive concerns between their parent institution and KUMC, KUH or UKP.",,,,,"[kumc_employee_10] = '0'",y,,,,,
+agree_full_name,heron_oversight_request,"Terms of Agreement",text,"If you agree to the terms listed above and confirm that the details listed above are correct, please write your full name:",,,,,,,,y,,,,,
 working_on,faculty_approval,,yesno,"Are you working on: 
 
 Title: [project_title]
@@ -233,7 +253,7 @@ D. My research team members will restrict individual queries to bona fide resear
 
 E. That the research to be conducted is in an area of my research team members' scientific expertise; 
 
-F. Not to identify, or attempt to identify, data contained in the Data Set(s) by any means, including using participating organization's clinical systems (Examples: O2, EPIC, IDX, Siemens) or other information together with the Data Set (Example: voter registration records), or to contact any individual whose identity is discovered through the Data Set. ",,,,,,,"[what_for] = '1'",,,,,,
+F. Not to identify, or attempt to identify, data contained in the Data Set(s) by any means, including using participating organization's clinical systems (Examples: O2, EPIC, IDX, Siemens) or other information together with the Data Set (Example: voter registration records), or to contact any individual whose identity is discovered through the Data Set. ",,,,,,,"[what_for] = '1' or [what_for] = '3'",,,,,,
 data_approval,faculty_approval,,yesno,"Do you agree to oversee the data request and allow data access to the following individuals?
 
 -[name_etc_1]
