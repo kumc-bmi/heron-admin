@@ -32,7 +32,7 @@ mail.default_sender = heron-admin@kumc.edu
 
 [app:av]
 use = egg:Paste#static
-document_root = heron_wsgi/htdocs-heron/av/
+document_root = heron_wsgi/templates/av/
 
 
 ###

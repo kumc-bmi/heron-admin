@@ -779,21 +779,16 @@ def app_factory(global_config, **settings):
 if __name__ == '__main__':  # pragma nocover
     def _script():
         from sys import argv
-
-        # test usage
+        
         from paste import httpserver
-        # from paste import fileapp
+        #using paste to serve /templates/av/ past the proxy 
         host, port = argv[1:3]
 
         logging.basicConfig(level=logging.DEBUG)
 
-        # In production use, static A/V media files would be
-        # served with apache, but for test purposes, we'll use
-        # paste DirectoryApp
-        # TODO: use paster
-        # app = prefix_router('/av/',
-        #                    fileapp.DirectoryApp(HeronAccessPartsApp.htdocs),
-        #                    )
+        app = prefix_router('/av/',
+                            fileapp.DirectoryApp(HeronAccessPartsApp.htdocs),
+                            )
 
         httpserver.serve(
             app_factory({},
