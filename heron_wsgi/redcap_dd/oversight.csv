@@ -1,10 +1,10 @@
 "Variable / Field Name","Form Name","Section Header","Field Type","Field Label","Choices, Calculations, OR Slider Labels","Field Note","Text Validation Type OR Show Slider Number","Text Validation Min","Text Validation Max",Identifier?,"Branching Logic (Show field only if...)","Required Field?","Custom Alignment","Question Number (surveys only)","Matrix Group Name","Matrix Ranking?","Field Annotation"
 participant_id,heron_oversight_request,,text,"Participant ID",,,,,,,,,,,,,
-full_name,heron_oversight_request,,text,"Requester Full Name",,,,,,,,,,,,,@READONLY-SURVEY
-user_id,heron_oversight_request,,text,"User ID",,,,,,,,,,,,,@READONLY-SURVEY
-request_from_faculty,heron_oversight_request,,yesno,"Request is from faculty sponsor?",,,,,,,,y,,,,,@READONLY-SURVEY
-faculty_name,heron_oversight_request,,text,"Sponsoring faculty member's name",,,,,,,"[request_from_faculty] = '0'",y,,,,,@READONLY-SURVEY
-faculty_email,heron_oversight_request,,text,"Sponsoring faculty member's email address",,,email,,,,"[request_from_faculty] = '0'",y,,,,,@READONLY-SURVEY
+full_name,heron_oversight_request,,text,"Requester Full Name",,,,,,,,,,,,," @READONLY-SURVEY"
+user_id,heron_oversight_request,,text,"User ID",,,,,,,,,,,,," @READONLY-SURVEY"
+request_from_faculty,heron_oversight_request,,yesno,"Request is from faculty sponsor?",,,,,,,,y,,,,," @READONLY-SURVEY"
+faculty_name,heron_oversight_request,,text,"Sponsoring faculty member's name",,,,,,,"[request_from_faculty] = '0'",y,,,,," @READONLY-SURVEY"
+faculty_email,heron_oversight_request,,text,"Sponsoring faculty member's email address",,,email,,,,"[request_from_faculty] = '0'",y,,,,," @READONLY-SURVEY"
 project_title,heron_oversight_request,,text,"Title of the Research: ",,,,,,,,y,,,,,
 date_of_expiration,heron_oversight_request,,text,"Date of expiration",,"* Leave blank if requesting access until the user KUMC account is canceled or leaves KUMC",date_mdy,,,,,,,,,,
 what_for,heron_oversight_request,,radio,"Purpose of request:","1, HERON Sponsorship | 3, ACT Sponsorship (CTSA National query tool- patient counts only) | 2, HERON Data Use | 4, Green HERON Sponsorship and Data Use","This choice is based on your previous selection.",,,,,,y,,,,,
@@ -93,7 +93,7 @@ C. Data Disclaimer. KUMC, the University of Kansas Hospital Authority and Kansas
 
 D. Third Party Beneficiaries. The University of Kansas Hospital Authority and Kansas University Physicians, Inc. are third-party beneficiaries of this Agreement and shall be entitled to enforce any obligation, responsibility or claim of KUMC pursuant to this Agreement. 
 
-E. Vital status information includes data from the Social Security Death Master File.  Misuse of the Limited Access Death Master File, NTIS, U.S. Department of Commerce data is subject to penalties under provisions of 15 CFR ยง 1110.200.
+E. Vital status information includes data from the Social Security Death Master File.  Misuse of the Limited Access Death Master File, NTIS, U.S. Department of Commerce data is subject to penalties under provisions of 15 CFR ง 1110.200.
 
 By submitting this form, I agree to the foregoing and confirm my electronic signature to this Agreement (as specified in the full name and user id fields). ",text,"	
 Is there an urgent deadline for this request? If so, please enter the deadline otherwise leave blank.",,"Please note: We fulfill all requests within 1-2 weeks. We can not guarantee a quicker turn-around, but will try our best to accommodate your request deadline",date_mdy,,,,"[green_access_extract]='2' or [green_access_extract]='4'",,,,,,
@@ -149,52 +149,52 @@ study_provider_question,heron_oversight_request,,yesno,"Are you studying provide
 notes_purpose,heron_oversight_request,,text,"How do you intend to use the notes data?",,,,,,,"[study_provider_question] = '1'",y,,,,,
 supplemental_documentation,heron_oversight_request,"Supporting Materials",file,"Attach Supplemental documentation (optional)",,"* if you already have prepared documentation on your research and protocol which may assist the DROC in understanding your request, attach it here.",,,,,,,,,,,
 user_id_1,heron_oversight_request,"Review your study team and designate affiliation if they are not KUMC employees.",text,"User Id #1",,,,,,,,y,,,,,
-team_email_1,heron_oversight_request,,text,"Email #1",,,,,,,,y,,,,,
+team_email_1,heron_oversight_request,,text,"Email #1",,,email,,,,,y,,,,,
 name_etc_1,heron_oversight_request,,notes,"Name, Title, Department",,,,,,y,,,,,,,
 kumc_employee_1,heron_oversight_request,,yesno,"KUMC Employee?",,,,,,,,y,,,,,
 affiliation_1,heron_oversight_request,,notes,Affiliation,,"* For non-KUMC employees, include the position and employer for any students or staff who employed by another institution where there may need to be clarification regarding conflict of interest or competitive concerns between their parent institution and KUMC, KUH or UKP.",,,,,"[kumc_employee_1] = '0'",y,,,,,
 user_id_2,heron_oversight_request,,text,"User Id #2",,,,,,,"[user_id_1] > ''",,,,,,
-team_email_2,heron_oversight_request,,text,"Email #2",,,,,,,"[user_id_1] > ''",,,,,,
+team_email_2,heron_oversight_request,,text,"Email #2",,,email,,,,"[user_id_1] > ''",,,,,,
 name_etc_2,heron_oversight_request,,notes,"Name, Title, Department",,,,,,y,"[user_id_2] > ''",,,,,,
 kumc_employee_2,heron_oversight_request,,yesno,"KUMC Employee?",,,,,,,"[user_id_2] > ''",y,,,,,
 affiliation_2,heron_oversight_request,,notes,Affiliation,,"* For non-KUMC employees, include the position and employer for any students or staff who employed by another institution where there may need to be clarification regarding conflict of interest or competitive concerns between their parent institution and KUMC, KUH or UKP.",,,,,"[kumc_employee_2] = '0'",y,,,,,
 user_id_3,heron_oversight_request,,text,"User Id #3",,,,,,,"[user_id_2] > ''",,,,,,
-team_email_3,heron_oversight_request,,text,"Email #3",,,,,,,"[user_id_2] > ''",,,,,,
+team_email_3,heron_oversight_request,,text,"Email #3",,,email,,,,"[user_id_2] > ''",,,,,,
 name_etc_3,heron_oversight_request,,notes,"Name, Title, Department",,,,,,y,"[user_id_3] > ''",,,,,,
 kumc_employee_3,heron_oversight_request,,yesno,"KUMC Employee?",,,,,,,"[user_id_3] > ''",y,,,,,
 affiliation_3,heron_oversight_request,,notes,Affiliation,,"* For non-KUMC employees, include the position and employer for any students or staff who employed by another institution where there may need to be clarification regarding conflict of interest or competitive concerns between their parent institution and KUMC, KUH or UKP.",,,,,"[kumc_employee_3] = '0'",y,,,,,
 user_id_4,heron_oversight_request,,text,"User Id #4",,,,,,,"[user_id_3] > ''",,,,,,
-team_email_4,heron_oversight_request,,text,"Email #4",,,,,,,"[user_id_3] > ''",,,,,,
+team_email_4,heron_oversight_request,,text,"Email #4",,,email,,,,"[user_id_3] > ''",,,,,,
 name_etc_4,heron_oversight_request,,notes,"Name, Title, Department",,,,,,y,"[user_id_4] > ''",,,,,,
 kumc_employee_4,heron_oversight_request,,yesno,"KUMC Employee?",,,,,,,"[user_id_4] > ''",y,,,,,
 affiliation_4,heron_oversight_request,,notes,Affiliation,,"* For non-KUMC employees, include the position and employer for any students or staff who employed by another institution where there may need to be clarification regarding conflict of interest or competitive concerns between their parent institution and KUMC, KUH or UKP.",,,,,"[kumc_employee_4] = '0'",y,,,,,
 user_id_5,heron_oversight_request,,text,"User Id #5",,,,,,,"[user_id_4] > ''",,,,,,
-team_email_5,heron_oversight_request,,text,"Email #5",,,,,,,"[user_id_4] > ''",,,,,,
+team_email_5,heron_oversight_request,,text,"Email #5",,,email,,,,"[user_id_4] > ''",,,,,,
 name_etc_5,heron_oversight_request,,notes,"Name, Title, Department",,,,,,y,"[user_id_5] > ''",,,,,,
 kumc_employee_5,heron_oversight_request,,yesno,"KUMC Employee?",,,,,,,"[user_id_5] > ''",y,,,,,
 affiliation_5,heron_oversight_request,,notes,Affiliation,,"* For non-KUMC employees, include the position and employer for any students or staff who employed by another institution where there may need to be clarification regarding conflict of interest or competitive concerns between their parent institution and KUMC, KUH or UKP.",,,,,"[kumc_employee_5] = '0'",y,,,,,
 user_id_6,heron_oversight_request,,text,"User Id #6",,,,,,,"[user_id_5] > ''",,,,,,
-team_email_6,heron_oversight_request,,text,"Email #6",,,,,,,"[user_id_5] > ''",,,,,,
+team_email_6,heron_oversight_request,,text,"Email #6",,,email,,,,"[user_id_5] > ''",,,,,,
 name_etc_6,heron_oversight_request,,notes,"Name, Title, Department",,,,,,y,"[user_id_6] > ''",,,,,,
 kumc_employee_6,heron_oversight_request,,yesno,"KUMC Employee?",,,,,,,"[user_id_6] > ''",y,,,,,
 affiliation_6,heron_oversight_request,,notes,Affiliation,,"* For non-KUMC employees, include the position and employer for any students or staff who employed by another institution where there may need to be clarification regarding conflict of interest or competitive concerns between their parent institution and KUMC, KUH or UKP.",,,,,"[kumc_employee_6] = '0'",y,,,,,
 user_id_7,heron_oversight_request,,text,"User Id #7",,,,,,,"[user_id_6] > ''",,,,,,
-team_email_7,heron_oversight_request,,text,"Email #7",,,,,,,"[user_id_6] > ''",,,,,,
+team_email_7,heron_oversight_request,,text,"Email #7",,,email,,,,"[user_id_6] > ''",,,,,,
 name_etc_7,heron_oversight_request,,notes,"Name, Title, Department",,,,,,y,"[user_id_7] > ''",,,,,,
 kumc_employee_7,heron_oversight_request,,yesno,"KUMC Employee?",,,,,,,"[user_id_7] > ''",y,,,,,
 affiliation_7,heron_oversight_request,,notes,Affiliation,,"* For non-KUMC employees, include the position and employer for any students or staff who employed by another institution where there may need to be clarification regarding conflict of interest or competitive concerns between their parent institution and KUMC, KUH or UKP.",,,,,"[kumc_employee_7] = '0'",y,,,,,
 user_id_8,heron_oversight_request,,text,"User Id #8",,,,,,,"[user_id_7] > ''",,,,,,
-team_email_8,heron_oversight_request,,text,"Email #8",,,,,,,"[user_id_7] > ''",,,,,,
+team_email_8,heron_oversight_request,,text,"Email #8",,,email,,,,"[user_id_7] > ''",,,,,,
 name_etc_8,heron_oversight_request,,notes,"Name, Title, Department",,,,,,y,"[user_id_8] > ''",,,,,,
 kumc_employee_8,heron_oversight_request,,yesno,"KUMC Employee?",,,,,,,"[user_id_8] > ''",y,,,,,
 affiliation_8,heron_oversight_request,,notes,Affiliation,,"* For non-KUMC employees, include the position and employer for any students or staff who employed by another institution where there may need to be clarification regarding conflict of interest or competitive concerns between their parent institution and KUMC, KUH or UKP.",,,,,"[kumc_employee_8] = '0'",y,,,,,
 user_id_9,heron_oversight_request,,text,"User Id #9",,,,,,,"[user_id_8] > ''",,,,,,
-team_email_9,heron_oversight_request,,text,"Email #9",,,,,,,"[user_id_8] > ''",,,,,,
+team_email_9,heron_oversight_request,,text,"Email #9",,,email,,,,"[user_id_8] > ''",,,,,,
 name_etc_9,heron_oversight_request,,notes,"Name, Title, Department",,,,,,y,"[user_id_9] > ''",,,,,,
 kumc_employee_9,heron_oversight_request,,yesno,"KUMC Employee?",,,,,,,"[user_id_9] > ''",y,,,,,
 affiliation_9,heron_oversight_request,,notes,Affiliation,,"* For non-KUMC employees, include the position and employer for any students or staff who employed by another institution where there may need to be clarification regarding conflict of interest or competitive concerns between their parent institution and KUMC, KUH or UKP.",,,,,"[kumc_employee_9] = '0'",y,,,,,
 user_id_10,heron_oversight_request,,text,"User Id #10",,,,,,,"[user_id_9] > ''",,,,,,
-team_email_10,heron_oversight_request,,text,"Email #10",,,,,,,"[user_id_9] > ''",,,,,,
+team_email_10,heron_oversight_request,,text,"Email #10",,,email,,,,"[user_id_9] > ''",,,,,,
 name_etc_10,heron_oversight_request,,notes,"Name, Title, Department",,,,,,y,"[user_id_10] > ''",,,,,,
 kumc_employee_10,heron_oversight_request,,yesno,"KUMC Employee?",,,,,,,"[user_id_10] > ''",y,,,,,
 affiliation_10,heron_oversight_request,,notes,Affiliation,,"* For non-KUMC employees, include the position and employer for any students or staff who employed by another institution where there may need to be clarification regarding conflict of interest or competitive concerns between their parent institution and KUMC, KUH or UKP.",,,,,"[kumc_employee_10] = '0'",y,,,,,
@@ -339,7 +339,7 @@ C. Data Disclaimer. KUMC, the University of Kansas Hospital Authority and Kansas
 
 D. Third Party Beneficiaries. The University of Kansas Hospital Authority and Kansas University Physicians, Inc. are third-party beneficiaries of this Agreement and shall be entitled to enforce any obligation, responsibility or claim of KUMC pursuant to this Agreement. 
 
-E. Vital status information includes data from the Social Security Death Master File.  Misuse of the Limited Access Death Master File, NTIS, U.S. Department of Commerce data is subject to penalties under provisions of 15 CFR ยง 1110.200.
+E. Vital status information includes data from the Social Security Death Master File.  Misuse of the Limited Access Death Master File, NTIS, U.S. Department of Commerce data is subject to penalties under provisions of 15 CFR ง 1110.200.
 
 By submitting this form, I agree to the foregoing and confirm my electronic signature to this Agreement (as specified in the full name and user id fields). ",,,,,,,"[what_for] = '2'",,,,,,
 faculty_full_name,faculty_approval,,text,"If you agree to the terms listed above, please write your full name:",,,,,,,,y,,,,,
@@ -393,7 +393,9 @@ uid8_agree,data_request_details,,sql,"Check for ""[user_id_8]"" in the DUA list 
 uid9_agree,data_request_details,,sql,"Check for ""[user_id_9]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_9 from redcap_data where project_id = 238 and field_name = 'user_id_9') c on c.user_id_9 = a.user_id;",,autocomplete,,,,,,,,,,
 uid10_agree,data_request_details,,sql,"Check for ""[user_id_10]"" in the DUA list of agreed users.","select  a.user_id from (select record, value as user_id from redcap_data where project_id = 4188 and field_name = 'user_id') a  join  (select record from redcap_data where project_id = 4188 and field_name = 'agree' and value = 1) b on a.record = b.record  join  (select distinct value as user_id_10 from redcap_data where project_id = 238 and field_name = 'user_id_10') c on c.user_id_10 = a.user_id;",,autocomplete,,,,,,,,,,
 dua_title_of_project,data_request_fulfillment,,descriptive,"Title: [project_title]",,,,,,,,,,,,,
-dua_type_of_request,data_request_fulfillment,,radio,"Type of request","1, Data Request | 5, PCORnet Data Request | 6, CTSA TIN Data Request | 2, Sponsorship | 3, Not approved/invalid request | 4, Not applicable",,,,,,,,,,,,
+dua_type_of_request,data_request_fulfillment,,radio,"Type of request","1, Data Request | 5, PCORnet Data Request | 6, CTSA TIN Data Request | 7, ACT SHRINE Sponsorship | 2, HERON Sponsorship | 3, Not approved/invalid request | 4, Not applicable",,,,,,,,,,,,
+act_account,data_request_fulfillment,,yesno,"Was an ACT account created? ",,,,,,,"[dua_type_of_request] = '7'",,,,,,
+act_account_date,data_request_fulfillment,,text,"Date ACT SHRINE account created",,,date_mdy,,,,"[act_account] = '1'",,,,,,
 pioneers_yn,data_request_fulfillment,,yesno,"Did this request contain request for Pioneers contact information?",,,,,,,"[dua_type_of_request] = '1'",y,,,,,
 pioneers_type,data_request_fulfillment,,checkbox,"Was Pioneers Community and/or Pioneers Health System data sent?","1, Pioneers Community | 2, Pioneers Health System",,,,,,"[pioneers_yn] = '1'",,,,,,
 pioneers_comm_date_sent,data_request_fulfillment,,text,"Date Pioneers Community Data Sent",,,date_mdy,,,,"[pioneers_type(1)] = '1'",,,,,,
