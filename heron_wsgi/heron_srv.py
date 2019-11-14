@@ -786,10 +786,6 @@ if __name__ == '__main__':  # pragma nocover
 
         logging.basicConfig(level=logging.DEBUG)
 
-        app = prefix_router('/av/',
-                            fileapp.DirectoryApp(HeronAccessPartsApp.htdocs),
-                            )
-
         httpserver.serve(
             app_factory({},
                         webapp_ini='integration-test.ini',
