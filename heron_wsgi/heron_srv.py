@@ -779,9 +779,9 @@ def app_factory(global_config, **settings):
 if __name__ == '__main__':  # pragma nocover
     def _script():
         from sys import argv
-        
+
         from paste import httpserver
-        #using paste to serve /templates/av/ past the proxy 
+        # using paste to serve /templates/av/ past the proxy
         host, port = argv[1:3]
 
         logging.basicConfig(level=logging.DEBUG)
