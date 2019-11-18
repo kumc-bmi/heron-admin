@@ -17,13 +17,13 @@ export PYTHONPATH=heron_wsgi
 pipenv run nosetests --with-doctest heron_wsgi/admin_lib
 
 # $ ls -1 heron_wsgi/*.py | while read py; do echo "    python -m doctest $py"; done
-python -m doctest heron_wsgi/__init__.py
-python -m doctest heron_wsgi/cas_auth.py
-python -m doctest heron_wsgi/drocnotice.py
-python -m doctest heron_wsgi/genshi_render.py
-python -m doctest heron_wsgi/heron_srv.py
-python -m doctest heron_wsgi/perf_reports.py
-python -m doctest heron_wsgi/stats.py
+pipenv run python -m doctest heron_wsgi/__init__.py
+pipenv run python -m doctest heron_wsgi/cas_auth.py
+pipenv run python -m doctest heron_wsgi/drocnotice.py
+pipenv run python -m doctest heron_wsgi/genshi_render.py
+pipenv run python -m doctest heron_wsgi/heron_srv.py
+pipenv run python -m doctest heron_wsgi/perf_reports.py
+pipenv run python -m doctest heron_wsgi/stats.py
 
 # see setup.cfg for coding style info
 pipenv run flake8 heron_wsgi
