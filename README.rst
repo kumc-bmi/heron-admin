@@ -32,10 +32,10 @@ In production, more `extensive configuration`__ is required.
 __ https://bmi-work.kumc.edu/work/wiki/GroupOnly/HeronAdmin
 
 
-Development dependencies
-------------------------
+Testing, Design, Development
+----------------------------
 
-See `setup.py` for details.
+See `setup.py`, `devdoc` for details.
 
 
 Citing HERON

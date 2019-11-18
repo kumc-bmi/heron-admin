@@ -1,8 +1,10 @@
 Code Quality: Style, Testing
 ----------------------------
 
-We use `tox`__, `nose`__ (with `doctest`__), and `flake8`__ to
-automate testing and enforce python community norms for style.
+We aim to use `nose`__ (with `doctest`__), and `flake8`__ to automate
+testing and enforce python community norms for style.  (See
+`../test/runtests.sh` for a work-around for an issue with nose and
+doctest.)
 
 The `import grouping guideline`__ is not enforced mechanically:
 
