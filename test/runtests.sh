@@ -1,9 +1,9 @@
-#/bin/bash
+#!/bin/sh
 
 set -e
 
 # run test from top dir of project
-cd $(dirname $0)/..
+cd "$(dirname "$0")"/..
 
 # ISSUE: doctests with dicts are fragile
 export  PYTHONHASHSEED=100
