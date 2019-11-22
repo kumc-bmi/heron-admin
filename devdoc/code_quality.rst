@@ -20,6 +20,10 @@ __ https://docs.python.org/2.7/library/doctest.html
 __ http://flake8.pycqa.org/en/latest/
 __ https://www.python.org/dev/peps/pep-0008/#imports
 
+`../test/runtests.sh` on a debian-like system requires a few packages::
+
+  apt install python2.7-ldap python2.7-dev libldap2-dev libsasl2-dev pipenv
+  pipenv --site-packages install
 
 Integration Testing
 ...................
