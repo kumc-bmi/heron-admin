@@ -157,6 +157,19 @@ The ADMIN role is not project specific:
   >>> sorted(set([role.project_id for role in js.roles]))
   ['@', u'BlueHeron', u'REDCap_4']
 
+If he has the ADMIN role for a given project, other roles should be left static.
+  >>> s = dbsrc()
+  >>> admin_role = UserRole(user_id='john.smith', project_id='BlueHeron',
+  ...     user_role_cd='ADMIN', status_cd='A')
+  >>> s.add(admin_role)
+  >>> auth, js3 = pm.authz('john.smith', 'John Smith', 'BlueHeron')
+  >>> obfsc_role = s.query(UserRole).filter_by(user_id = 'john.smith', user_role_cd = 'DATA_OBFSC', project_id='BlueHeron').one()
+  >>> s.delete(obfsc_role)
+  >>> auth, js3 = pm.authz('john.smith', 'John Smith', 'BlueHeron')
+  >>> js = s.query(UserRole).filter_by(user_id = 'john.smith', project_id='BlueHeron').all()
+  >>> sorted(set([role.user_role_cd for role in js]))
+  ['ADMIN', 'DATA_AGG', 'DATA_DEID', 'DATA_LDS', 'USER']
+
 """
 
 import logging
@@ -293,21 +306,26 @@ class I2B2PM(ocap_file.Token):
         else:
             log.info('found: %s', me)
             me.password, me.status_cd, me.change_date = pw_hash, 'A', t
-        # http://docs.sqlalchemy.org/en/rel_0_8/orm/query.html?highlight=query.update#sqlalchemy.orm.query.Query.update # noqa
-        ds.query(UserRole).filter(and_(
-            UserRole.user_id == uid,
-            UserRole.user_role_cd.in_(list(roles)))).\
-            delete(synchronize_session='fetch')
 
-        # If a user has permissions to REDCap i2b2 project,
-        # also grant permissions to default project #2111
-        for project in set([project_id, DEFAULT_PID]):
-            for r in roles:
-                myrole = UserRole(user_id=uid, project_id=project,
-                                  user_role_cd=r,
-                                  entry_date=t, change_date=t, status_cd='A')
-                log.info('I2B2PM: adding: %s', myrole)
-                me.roles.append(myrole)
+        admin_role = ds.query(UserRole).filter_by(user_id=uid,
+                                                  user_role_cd='ADMIN').all()
+
+        if not admin_role:
+            # http://docs.sqlalchemy.org/en/rel_0_8/orm/query.html?highlight=query.update#sqlalchemy.orm.query.Query.update # noqa
+            ds.query(UserRole).filter(and_(
+                UserRole.user_id == uid,
+                UserRole.user_role_cd.in_(list(roles)))).\
+                delete(synchronize_session='fetch')
+
+            # If a user has permissions to REDCap i2b2 project,
+            # also grant permissions to default project #2111
+            for project in set([project_id, DEFAULT_PID]):
+                for r in roles:
+                    myrole = UserRole(user_id=uid, project_id=project,
+                                      user_role_cd=r, entry_date=t,
+                                      change_date=t, status_cd='A')
+                    log.info('I2B2PM: adding: %s', myrole)
+                    me.roles.append(myrole)
 
         ds.commit()
         return auth, me
