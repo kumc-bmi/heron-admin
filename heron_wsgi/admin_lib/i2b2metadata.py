@@ -11,6 +11,7 @@ import jndi_util
 import rtconfig
 import ocap_file
 
+
 log = logging.getLogger(__name__)
 
 CONFIG_SECTION_MD = 'i2b2md'
@@ -33,7 +34,7 @@ class I2B2Metadata(ocap_file.Token):
         '''
         mds = self._mdsm()
 
-        pid, schema = schema_for(i2b2_pid)
+        pid, schema = schema_for(i2b2_pid, self.i2b2meta_schema)
         log.info('Updating redcap_terms for %s (%s) with redcap pids: %s',
                  i2b2_pid, schema, rc_pids)
         # http://stackoverflow.com/questions/2179493/
@@ -118,16 +119,30 @@ def insert_for(i2b2meta_schema, pid, schema, rc_pids, cols):
     return sql, params
 
 
-def schema_for(i2b2_pid):
+def flipflop_suffix(i2b2meta_schema):
+    '''Figure flip-flop context from externally provided i2b2meta_schema.
+
+    >>> flipflop_suffix("bhmetadataB2")
+    'b2'
+
+    '''
+
+    suffix = i2b2meta_schema[-2:].lower()
+    assert suffix in ("a1", "b2")
+    return suffix
+
+
+def schema_for(i2b2_pid, i2b2meta_schema):
     '''Build schema name from specially formatted HERON project ID.
 
     See also create_redcap_projects task in heron_build.py
 
-    >>> schema_for("REDCap_24")
-    ('24', 'REDCAPMETADATA24')
+    >>> schema_for("REDCap_24", "bhmetadataB2")
+    ('24', 'REDCAPMETADATA24b2')
     '''
     pid = i2b2_pid.split('_')[1]
-    return pid, 'REDCAPMETADATA' + i2b2_pid.split('_')[1]
+    flipflop = flipflop_suffix(i2b2meta_schema)
+    return pid, 'REDCAPMETADATA' + i2b2_pid.split('_')[1] + flipflop
 
 
 class MockMetadata():
