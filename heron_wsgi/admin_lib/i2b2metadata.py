@@ -71,7 +71,7 @@ class I2B2Metadata(ocap_file.Token):
         from %s.REDCAP_TERMS_ENHANCED
         where c_hlevel = 2
         and c_fullname LIKE
-        '\i2b2\redcap\%\'
+        '\i2b2\redcap\%%\'
         """ % self.i2b2meta_schema)).fetchall()
 
         term_ids = [int(t.c_fullname.split('\\')[3])
