@@ -27,7 +27,7 @@ class I2B2Metadata(ocap_file.Token):
         self._mdsm = metadatasm
         self.i2b2meta_schema = i2b2meta_schema
 
-    def project_terms(i2b2meta_schema, self, i2b2_pid, rc_pids,
+    def project_terms(self, i2b2meta_schema, i2b2_pid, rc_pids,
                       rct_table='REDCAP_TERMS'):
         '''Create heron_terms view in the chosen i2b2 project.
         '''
@@ -83,8 +83,9 @@ class I2B2Metadata(ocap_file.Token):
 
 def insert_for(i2b2meta_schema, pid, schema, rc_pids, cols):
     r"""
-    >>> sql, params = insert_for('24', 'REDCAPMETADATA24', [10, 20, 30],
-    ... ['c1', 'c2'])
+    >>> sql, params = insert_for(
+    ...     'BLUEHERONMETADATA', '24', 'REDCAPMETADATA24', [10, 20, 30],
+    ...     ['c1', 'c2'])
     >>> sorted(params.items())
     [('pid0', 10), ('pid1', 20), ('pid2', 30)]
     >>> print sql  # doctest: +NORMALIZE_WHITESPACE
@@ -170,8 +171,8 @@ class RunTime(rtconfig.IniModule):
         return send_sessionmaker
 
     @provides(Ki2b2meta_schema)
-    @inject(rt=(rtconfig.Options, CONFIG_SECTION_MD))
-    def i2b2meta_schema(self, rt):
+    def i2b2meta_schema(self):
+        rt = self.get_options(['i2b2meta_schema'], CONFIG_SECTION_MD)
         meta_schema = rt.i2b2meta_schema
         log.info('i2b2meta_schema: %s', meta_schema)
         return meta_schema
@@ -205,6 +206,6 @@ if __name__ == '__main__':
                             ini=cwd / 'integration-test.ini',
                             create_engine=create_engine)
         t = md.rc_in_i2b2(rc_pids.split(','))
-        print(md.project_terms(i2b2_pid, t))
+        print(md.project_terms('META', i2b2_pid, t))
 
     _integration_test()

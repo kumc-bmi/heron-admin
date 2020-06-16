@@ -506,9 +506,10 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
 
     @singleton
     @provides(i2b2metadata.I2B2Metadata)
-    @inject(mdsm=(orm.session.Session, i2b2metadata.CONFIG_SECTION_MD))
-    def metadata(self, mdsm):
-        imd = i2b2metadata.I2B2Metadata(mdsm)
+    @inject(mdsm=(orm.session.Session, i2b2metadata.CONFIG_SECTION_MD),
+            meta_schema=i2b2metadata.Ki2b2meta_schema)
+    def metadata(self, mdsm, meta_schema):
+        imd = i2b2metadata.I2B2Metadata(mdsm, meta_schema)
         return imd
 
     @provides(KUUIDGen)
