@@ -68,11 +68,11 @@ class I2B2Metadata(ocap_file.Token):
             return []
 
         terms = mds.execute(text(r"""select c_fullname
-        from blueheronmetadata.REDCAP_TERMS_ENHANCED
+        from %s.REDCAP_TERMS_ENHANCED
         where c_hlevel = 2
         and c_fullname LIKE
         '\i2b2\redcap\%\'
-        """)).fetchall()
+        """ % self.i2b2meta_schema)).fetchall()
 
         term_ids = [int(t.c_fullname.split('\\')[3])
                     for t in terms]
