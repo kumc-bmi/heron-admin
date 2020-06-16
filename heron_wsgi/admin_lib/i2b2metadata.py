@@ -123,12 +123,12 @@ def flipflop_suffix(i2b2meta_schema):
     '''Figure flip-flop context from externally provided i2b2meta_schema.
 
     >>> flipflop_suffix("bhmetadataB2")
-    'b2'
+    'B2'
 
     '''
 
-    suffix = i2b2meta_schema[-2:].lower()
-    assert suffix in ("a1", "b2")
+    suffix = i2b2meta_schema[-2:].upper()
+    assert suffix in ("A1", "B2")
     return suffix
 
 
@@ -138,7 +138,7 @@ def schema_for(i2b2_pid, i2b2meta_schema):
     See also create_redcap_projects task in heron_build.py
 
     >>> schema_for("REDCap_24", "bhmetadataB2")
-    ('24', 'REDCAPMETADATA24b2')
+    ('24', 'REDCAPMETADATA24B2')
     '''
     pid = i2b2_pid.split('_')[1]
     flipflop = flipflop_suffix(i2b2meta_schema)
