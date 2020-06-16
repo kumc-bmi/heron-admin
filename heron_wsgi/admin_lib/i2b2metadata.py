@@ -3,9 +3,10 @@
 '''
 
 import logging
+
 import injector
-from sqlalchemy import text, orm, Table, MetaData
 from injector import inject, provides, singleton
+from sqlalchemy import text, orm, Table, MetaData
 
 import jndi_util
 import rtconfig
