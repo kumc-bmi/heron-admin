@@ -27,7 +27,7 @@ class I2B2Metadata(ocap_file.Token):
         self._mdsm = metadatasm
         self.i2b2meta_schema = i2b2meta_schema
 
-    def project_terms(self, i2b2meta_schema, i2b2_pid, rc_pids,
+    def project_terms(self, i2b2_pid, rc_pids,
                       rct_table='REDCAP_TERMS'):
         '''Create heron_terms view in the chosen i2b2 project.
         '''
