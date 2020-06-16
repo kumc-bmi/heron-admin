@@ -20,7 +20,7 @@ password= ...
 # ssh tunnel
 port=3306
 
-url=mysql+mysqldb://%(username)s:%(password)s@127.0.0.1:%(port)s/%(database)s?charset=utf8
+url=mysql+pymysql://%(username)s:%(password)s@127.0.0.1:%(port)s/%(database)s?charset=utf8
 
 [redcapdb]
 user=....
