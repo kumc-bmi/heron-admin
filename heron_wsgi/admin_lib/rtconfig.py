@@ -185,6 +185,13 @@ class _Maker(object):
             return [depgraph.get(it) if it else depgraph
                     for it in what]  # noqa
         except TypeError as oops:
+            # for debugging:
+            # ack senderle Jul '12 https://stackoverflow.com/a/11415140/7963
+            # import sys
+            # import traceback
+            # ex_type, ex, tb = sys.exc_info()
+            # traceback.print_tb(tb)
+            # import pdb; pdb.set_trace()
             raise TypeError('failed (%s) to instantiate: %s w.r.t. \n%s' % (
                 oops, it, '\n'.join([str(m) for m in modules])))
 

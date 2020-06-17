@@ -3,32 +3,39 @@
 '''
 
 import logging
-from sqlalchemy import text, orm, Table, MetaData
+
+import injector
 from injector import inject, provides, singleton
+from sqlalchemy import text, orm, Table, MetaData
 
 import jndi_util
 import rtconfig
 import ocap_file
 
+
 log = logging.getLogger(__name__)
 
 CONFIG_SECTION_MD = 'i2b2md'
+Ki2b2meta_schema = injector.Key('i2b2meta_schema')
 
 
 class I2B2Metadata(ocap_file.Token):
-    @inject(metadatasm=(orm.session.Session, CONFIG_SECTION_MD))
-    def __init__(self, metadatasm):
+    @inject(metadatasm=(orm.session.Session, CONFIG_SECTION_MD),
+            i2b2meta_schema=Ki2b2meta_schema)
+    def __init__(self, metadatasm, i2b2meta_schema):
         '''
         :param metadatasm: a function that returns an sqlalchemy session
         '''
         self._mdsm = metadatasm
+        self.i2b2meta_schema = i2b2meta_schema
 
-    def project_terms(self, i2b2_pid, rc_pids, rct_table='REDCAP_TERMS'):
+    def project_terms(self, i2b2_pid, rc_pids,
+                      rct_table='REDCAP_TERMS'):
         '''Create heron_terms view in the chosen i2b2 project.
         '''
         mds = self._mdsm()
 
-        pid, schema = schema_for(i2b2_pid)
+        pid, schema = schema_for(i2b2_pid, self.i2b2meta_schema)
         log.info('Updating redcap_terms for %s (%s) with redcap pids: %s',
                  i2b2_pid, schema, rc_pids)
         # http://stackoverflow.com/questions/2179493/
@@ -41,7 +48,8 @@ class I2B2Metadata(ocap_file.Token):
         rct = Table(rct_table, MetaData(), schema=schema, autoload=True,
                     autoload_with=mds.bind)
 
-        insert_cmd, params = insert_for(pid, schema, rc_pids,
+        insert_cmd, params = insert_for(self.i2b2meta_schema, pid, schema,
+                                        rc_pids,
                                         [c.name for c in rct.columns])
 
         log.debug('insert_cmd: %s', insert_cmd)
@@ -62,11 +70,11 @@ class I2B2Metadata(ocap_file.Token):
             return []
 
         terms = mds.execute(text(r"""select c_fullname
-        from blueheronmetadata.REDCAP_TERMS_ENHANCED
+        from %s.REDCAP_TERMS_ENHANCED
         where c_hlevel = 2
         and c_fullname LIKE
-        '\i2b2\redcap\%\'
-        """)).fetchall()
+        '\i2b2\redcap\%%\'
+        """ % self.i2b2meta_schema)).fetchall()
 
         term_ids = [int(t.c_fullname.split('\\')[3])
                     for t in terms]
@@ -75,10 +83,11 @@ class I2B2Metadata(ocap_file.Token):
                 if pid in term_ids]
 
 
-def insert_for(pid, schema, rc_pids, cols):
+def insert_for(i2b2meta_schema, pid, schema, rc_pids, cols):
     r"""
-    >>> sql, params = insert_for('24', 'REDCAPMETADATA24', [10, 20, 30],
-    ... ['c1', 'c2'])
+    >>> sql, params = insert_for(
+    ...     'BLUEHERONMETADATA', '24', 'REDCAPMETADATA24', [10, 20, 30],
+    ...     ['c1', 'c2'])
     >>> sorted(params.items())
     [('pid0', 10), ('pid1', 20), ('pid2', 30)]
     >>> print sql  # doctest: +NORMALIZE_WHITESPACE
@@ -97,29 +106,44 @@ def insert_for(pid, schema, rc_pids, cols):
                    for (ix, p) in enumerate(rc_pids)])
     cv = ','.join(cols)
     clauses = [
-        r"""SELECT %s FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
+        r"""SELECT %s FROM %s.REDCAP_TERMS_ENHANCED
         WHERE C_FULLNAME LIKE ('\i2b2\redcap\' || :%s || '\%%') """ %
-        (cv, pname) for pname in sorted(params.keys())]
+        (cv, i2b2meta_schema, pname) for pname in sorted(params.keys())]
 
     sql = ("INSERT INTO %s.REDCAP_TERMS (%s)\n" % (schema, cv) +
            ' UNION ALL\n'.join([
-               r"""SELECT %s FROM BLUEHERONMETADATA.REDCAP_TERMS_ENHANCED
-               where C_FULLNAME='\i2b2\redcap\' """ % ','.join(cols)] +
+               r"""SELECT %s FROM %s.REDCAP_TERMS_ENHANCED
+               where C_FULLNAME='\i2b2\redcap\' """ % (','.join(cols),
+                                                       i2b2meta_schema)] +
                                clauses))
 
     return sql, params
 
 
-def schema_for(i2b2_pid):
+def flipflop_suffix(i2b2meta_schema):
+    '''Figure flip-flop context from externally provided i2b2meta_schema.
+
+    >>> flipflop_suffix("bhmetadataB2")
+    'B2'
+
+    '''
+
+    suffix = i2b2meta_schema[-2:].upper()
+    assert suffix in ("A1", "B2")
+    return suffix
+
+
+def schema_for(i2b2_pid, i2b2meta_schema):
     '''Build schema name from specially formatted HERON project ID.
 
     See also create_redcap_projects task in heron_build.py
 
-    >>> schema_for("REDCap_24")
-    ('24', 'REDCAPMETADATA24')
+    >>> schema_for("REDCap_24", "bhmetadataB2")
+    ('24', 'REDCAPMETADATA24B2')
     '''
     pid = i2b2_pid.split('_')[1]
-    return pid, 'REDCAPMETADATA' + i2b2_pid.split('_')[1]
+    flipflop = flipflop_suffix(i2b2meta_schema)
+    return pid, 'REDCAPMETADATA' + i2b2_pid.split('_')[1] + flipflop
 
 
 class MockMetadata():
@@ -162,6 +186,13 @@ class RunTime(rtconfig.IniModule):
             return ds
         return send_sessionmaker
 
+    @provides(Ki2b2meta_schema)
+    def i2b2meta_schema(self):
+        rt = self.get_options(['i2b2meta_schema'], CONFIG_SECTION_MD)
+        meta_schema = rt.i2b2meta_schema
+        log.info('i2b2meta_schema: %s', meta_schema)
+        return meta_schema
+
     @classmethod
     def mods(cls, ini, create_engine):
         return [cls(ini=ini, create_engine=create_engine)]
@@ -191,6 +222,6 @@ if __name__ == '__main__':
                             ini=cwd / 'integration-test.ini',
                             create_engine=create_engine)
         t = md.rc_in_i2b2(rc_pids.split(','))
-        print(md.project_terms(i2b2_pid, t))
+        print(md.project_terms('META', i2b2_pid, t))
 
     _integration_test()

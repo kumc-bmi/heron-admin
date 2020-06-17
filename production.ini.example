@@ -128,6 +128,7 @@ identified_data=CFG_ID
 #jboss_deploy=/opt/jboss-as-7.1.1.Final/standalone/deployments/
 # ISSUE: provide sqlalchemy URL instead?
 jboss_deploy=CFG_JBOSS_DATASOURCES
+i2b2meta_schema=CFG_I2B2META_SCHEMA
 
 [disclaimers]
 project_id=398
