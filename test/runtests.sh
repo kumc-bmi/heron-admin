@@ -5,6 +5,8 @@ set -e
 # run test from top dir of project
 cd "$(dirname "$0")"/..
 
+set -x
+
 # ISSUE: doctests with dicts are fragile
 export  PYTHONHASHSEED=100
 # ISSUE: help stats.py find genshi_render.py
@@ -28,8 +30,9 @@ pipenv run python -m doctest heron_wsgi/stats.py
 # see setup.cfg for coding style info
 pipenv run flake8 heron_wsgi
 
+# would be nice, but too unreliable:
 # Detection of Security Vulnerabilities
 # https://pipenv.readthedocs.io/en/latest/advanced/#detection-of-security-vulnerabilities
-pipenv check
+# pipenv check
 
 pipenv run python setup.py sdist
