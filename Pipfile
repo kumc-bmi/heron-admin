@@ -14,14 +14,16 @@ tox = "*"
 # need python2 support
 injector = "==0.12.0"
 pyramid = "*"
-python-ldap = "*"
+# from conda
+python-ldap = "==3.2.0"
 docopt = "*"
 Genshi = "*"
 Paste = "*"
 PasteDeploy = "==2.0.1"
 PasteScript = "==1.7.5"
 SQLAlchemy = ">=1.3.0"
-cx-Oracle = "*"
+# from conda
+cx-Oracle = "==7.2.3"
 pyramid_mailer = "*"
 PySimpleSOAP = "*"
 PyMySQL = "*"
