@@ -13,9 +13,11 @@ import i2b2pm
 
 
 class I2B2Usage(object):
-    @inject(datasrc=(orm.session.Session, i2b2pm.CONFIG_SECTION))
-    def __init__(self, datasrc):
+    @inject(datasrc=(orm.session.Session, i2b2pm.CONFIG_SECTION),
+            i2b2pm_schema=i2b2pm.i2b2pm_schema)
+    def __init__(self, datasrc, i2b2pm_schema):
         self._datasrc = datasrc
+        self.i2b2pm_schema = i2b2pm_schema
 
     def q(self, sql):
         return self._datasrc().execute(sql).fetchall()
@@ -27,14 +29,14 @@ class I2B2AggregateUsage(I2B2Usage):
 
     def current_release(self):
         return self.q('''
-            select project_name from I2B2PM.PM_PROJECT_DATA
+            select project_name from ''' + self.i2b2pm_schema + '''.PM_PROJECT_DATA
             where project_id = 'BlueHeron' ''')[0].project_name
 
     def current_sessions(self):
         return self.q('''
 select pud.full_name, s.user_id, s.entry_date
-from I2B2PM.pm_user_session s
-join i2b2pm.pm_user_data pud
+from .''' + self.i2b2pm_schema + '''pm_user_session s
+join .''' + self.i2b2pm_schema + '''pm_user_data pud
   on s.user_id = pud.user_id
 where s.user_id not like '%SERVICE_ACCOUNT'
 and s.expired_date > sysdate
@@ -119,7 +121,7 @@ group by qqm.user_id) last_year
 
 on last_year.user_id = all_time.user_id
 
-        join i2b2pm.pm_user_data pud
+        join ''' + self.i2b2pm_schema + '''.pm_user_data pud
           on all_time.user_id = pud.user_id
 
 order by nvl(two_weeks.qty, -1) desc, nvl(all_time.qty, -1) desc
@@ -188,7 +190,7 @@ abs(INSTR(qm.request_xml,'<patient_set_coll_id>',1,1) +21
 ,'Timeline' as result_type_description
 
  from BlueHeronData.qt_pdo_query_master qm
-join I2B2PM.pm_user_data ud on qm.user_id=ud.user_id
+join ''' + self.i2b2pm_schema + '''.pm_user_data ud on qm.user_id=ud.user_id
 where qm.create_date>sysdate-14
 ) rqp order by rqp.create_date desc)rqp
 
@@ -214,7 +216,7 @@ class I2B2SensitiveUsage(I2B2Usage):
              , qqm.query_master_id, qqm.name, qqm.create_date
              , qqri.set_size
         from BLUEHERONDATA.qt_query_master qqm
-        join i2b2pm.pm_user_data pud
+        join ''' + self.i2b2pm_schema + '''.pm_user_data pud
           on pud.user_id = qqm.user_id
         join BLUEHERONDATA.qt_query_instance qqi
           on qqm.query_master_id=qqi.query_master_id
@@ -264,8 +266,8 @@ class I2B2SensitiveUsage(I2B2Usage):
     def current_sessions(self):
         return self.q('''
 select ud.full_name, ud.user_id, us.entry_date
-from I2B2PM.pm_user_session us
-join I2B2PM.pm_user_data ud on ud.user_id = us.user_id
+from ''' + self.i2b2pm_schema + '''.pm_user_session us
+join ''' + self.i2b2pm_schema + '''.pm_user_data ud on ud.user_id = us.user_id
 where us.expired_date > sysdate
 and us.user_id not like '%_SERVICE_ACCOUNT'
                       ''')
@@ -279,8 +281,8 @@ select ud.full_name, ud.user_id, us.entry_date
      , st.description status
      , qrt.description result_type
 
-from I2B2PM.pm_user_session us
-join I2B2PM.pm_user_data ud on ud.user_id = us.user_id
+from ''' + self.i2b2pm_schema + '''.pm_user_session us
+join ''' + self.i2b2pm_schema + '''.pm_user_data ud on ud.user_id = us.user_id
 
 left join BlueHeronData.qt_query_master qm
   on ud.user_id = qm.user_id
