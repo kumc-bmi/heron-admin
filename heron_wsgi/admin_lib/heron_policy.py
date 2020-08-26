@@ -537,7 +537,7 @@ class HeronRecords(Token, Cache):
         # to check both.
         cn_at_domain = '%s@%s' % (badge.cn, self._saa_rc.domain)
         # Cache args have to be hashable
-        mailboxes = frozenset([badge.mail, cn_at_domain])
+        mailboxes = frozenset([m for m in [badge.mail, cn_at_domain] if m])
 
         system_access_sigs = [sig.completion_time
                               for sig in self._signatures(mailboxes)]
