@@ -241,14 +241,12 @@ Executives don't need sponsorship::
   >>> exreq = _login('big.wig', mc, hp, PERM_START_I2B2)
   >>> print(logged())
   ... # doctest: +NORMALIZE_WHITESPACE
-  INFO:cache_remote:LDAP query for ('(cn=big.wig)', ('cn', 'givenname',
-       'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
-  INFO:cache_remote:... cached until 2011-09-02 00:00:08.500000
+  INFO:cache_remote:LDAP query for ('(cn=big.wig)', ('cn', 'givenname', 'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
+  INFO:cache_remote:... cached until 2011-09-02 00:00:09
   INFO:cache_remote:system access query for ('SAA', 'big.wig@js.example')
-  INFO:cache_remote:... cached until 2011-09-02 00:00:22.500000
+  INFO:cache_remote:... cached until 2011-09-02 00:00:23
   INFO:cache_remote:in DROC? query for big.wig
-  INFO:cache_remote:... cached until 2011-09-02 00:01:04
-
+  INFO:cache_remote:... cached until 2011-09-02 00:01:04.500000
 
 Oversight Requests
 ==================
@@ -261,7 +259,7 @@ the oversight committee::
   ... # doctest: +NORMALIZE_WHITESPACE
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('cn', 'givenname',
        'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
-  INFO:cache_remote:... cached until 2011-09-02 00:00:09
+  INFO:cache_remote:... cached until 2011-09-02 00:00:09.500000
   >>> facreq.context.oversight_request
   OversightRequest(from=john.smith)
 
