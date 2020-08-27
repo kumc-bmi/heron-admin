@@ -209,6 +209,30 @@ This student's sponsor is not with KUMC anymore
   INFO:cache_remote:in DROC? query for jill.student
   INFO:cache_remote:... cached until 2011-09-02 00:01:03.500000
 
+Ensure things don't go wonky in case of missing email address
+
+  >>> facreq = _login('todd.ryan', mc, hp, PERM_STATUS)
+  >>> print(logged())
+  ... # doctest: +NORMALIZE_WHITESPACE
+    INFO:cache_remote:LDAP query for ('(cn=todd.ryan)', ('cn', 'givenname', 'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
+    INFO:cache_remote:... cached until 2011-09-02 00:00:08.500000
+    WARNING:medcenter:missing LDAP attribute mail for todd.ryan
+    INFO:cache_remote:system access query for ('SAA', 'todd.ryan@js.example')
+    INFO:cache_remote:... cached until 2011-09-02 00:00:22.500000
+    INFO:cache_remote:in DROC? query for todd.ryan
+    INFO:cache_remote:... cached until 2011-09-02 00:01:04
+
+  >>> facreq.context.status  # doctest: +NORMALIZE_WHITESPACE
+  Status(complete=False,
+         current_training=Training(username='todd.ryan',
+                                   expired='2012-01-01',
+                                   completed='2012-01-01',
+                                   course='Human Subjects 101'),
+         droc=None,
+         executive=False,
+         expired_training=None,
+         faculty=True, sponsored=None, system_access_signed=[])
+
 Exception for executives from participating institutions
 =======================================================
 
