@@ -214,7 +214,8 @@ Ensure things don't go wonky in case of missing email address
   >>> facreq = _login('todd.ryan', mc, hp, PERM_STATUS)
   >>> print(logged())
   ... # doctest: +NORMALIZE_WHITESPACE
-    INFO:cache_remote:LDAP query for ('(cn=todd.ryan)', ('cn', 'givenname', 'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
+    INFO:cache_remote:LDAP query for ('(cn=todd.ryan)', ('cn', 'givenname',
+       'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
     INFO:cache_remote:... cached until 2011-09-02 00:00:08.500000
     WARNING:medcenter:missing LDAP attribute mail for todd.ryan
     INFO:cache_remote:system access query for ('SAA', 'todd.ryan@js.example')
@@ -241,7 +242,8 @@ Executives don't need sponsorship::
   >>> exreq = _login('big.wig', mc, hp, PERM_START_I2B2)
   >>> print(logged())
   ... # doctest: +NORMALIZE_WHITESPACE
-  INFO:cache_remote:LDAP query for ('(cn=big.wig)', ('cn', 'givenname', 'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
+  INFO:cache_remote:LDAP query for ('(cn=big.wig)', ('cn', 'givenname',
+       'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
   INFO:cache_remote:... cached until 2011-09-02 00:00:09
   INFO:cache_remote:system access query for ('SAA', 'big.wig@js.example')
   INFO:cache_remote:... cached until 2011-09-02 00:00:23
