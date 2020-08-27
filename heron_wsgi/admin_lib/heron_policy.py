@@ -209,6 +209,31 @@ This student's sponsor is not with KUMC anymore
   INFO:cache_remote:in DROC? query for jill.student
   INFO:cache_remote:... cached until 2011-09-02 00:01:03.500000
 
+Ensure things don't go wonky in case of missing email address
+
+  >>> facreq = _login('todd.ryan', mc, hp, PERM_STATUS)
+  >>> print(logged())
+  ... # doctest: +NORMALIZE_WHITESPACE
+    INFO:cache_remote:LDAP query for ('(cn=todd.ryan)', ('cn', 'givenname',
+       'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
+    INFO:cache_remote:... cached until 2011-09-02 00:00:08.500000
+    WARNING:medcenter:missing LDAP attribute mail for todd.ryan
+    INFO:cache_remote:system access query for ('SAA', 'todd.ryan@js.example')
+    INFO:cache_remote:... cached until 2011-09-02 00:00:22.500000
+    INFO:cache_remote:in DROC? query for todd.ryan
+    INFO:cache_remote:... cached until 2011-09-02 00:01:04
+
+  >>> facreq.context.status  # doctest: +NORMALIZE_WHITESPACE
+  Status(complete=False,
+         current_training=Training(username='todd.ryan',
+                                   expired='2012-01-01',
+                                   completed='2012-01-01',
+                                   course='Human Subjects 101'),
+         droc=None,
+         executive=False,
+         expired_training=None,
+         faculty=True, sponsored=None, system_access_signed=[])
+
 Exception for executives from participating institutions
 =======================================================
 
@@ -219,12 +244,11 @@ Executives don't need sponsorship::
   ... # doctest: +NORMALIZE_WHITESPACE
   INFO:cache_remote:LDAP query for ('(cn=big.wig)', ('cn', 'givenname',
        'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
-  INFO:cache_remote:... cached until 2011-09-02 00:00:08.500000
+  INFO:cache_remote:... cached until 2011-09-02 00:00:09
   INFO:cache_remote:system access query for ('SAA', 'big.wig@js.example')
-  INFO:cache_remote:... cached until 2011-09-02 00:00:22.500000
+  INFO:cache_remote:... cached until 2011-09-02 00:00:23
   INFO:cache_remote:in DROC? query for big.wig
-  INFO:cache_remote:... cached until 2011-09-02 00:01:04
-
+  INFO:cache_remote:... cached until 2011-09-02 00:01:04.500000
 
 Oversight Requests
 ==================
@@ -237,7 +261,7 @@ the oversight committee::
   ... # doctest: +NORMALIZE_WHITESPACE
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('cn', 'givenname',
        'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
-  INFO:cache_remote:... cached until 2011-09-02 00:00:09
+  INFO:cache_remote:... cached until 2011-09-02 00:00:09.500000
   >>> facreq.context.oversight_request
   OversightRequest(from=john.smith)
 
@@ -537,7 +561,7 @@ class HeronRecords(Token, Cache):
         # to check both.
         cn_at_domain = '%s@%s' % (badge.cn, self._saa_rc.domain)
         # Cache args have to be hashable
-        mailboxes = frozenset([badge.mail, cn_at_domain])
+        mailboxes = frozenset([m for m in [badge.mail, cn_at_domain] if m])
 
         system_access_sigs = [sig.completion_time
                               for sig in self._signatures(mailboxes)]
