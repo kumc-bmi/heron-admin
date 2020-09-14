@@ -4,9 +4,9 @@
 
 '''
 
-from sqlalchemy import orm, MetaData
-from sqlalchemy import Table, Column, ForeignKey
-from sqlalchemy.types import Integer, String, DATETIME
+
+from sqlalchemy import orm
+
 from injector import inject
 
 import i2b2pm
@@ -309,55 +309,7 @@ and (qm.query_master_id is null  or (
 ))
 
 order by ud.full_name, qm.create_date
-                      ''')
-
-
-# Hmm... messy...
-# meta = i2b2pm.Base.metadata
-meta = MetaData()
-qm = Table('qt_query_master', meta,
-           Column('query_master_id', Integer, primary_key=True),
-           Column('user_id', String),
-           Column('name', String),
-           Column('request_xml', String),
-           schema='blueherondata').alias('qm')
-
-rt = Table('qt_query_result_type', meta,
-           Column('result_type_id', Integer, primary_key=True),
-           Column('name', String),  # result_type
-           Column('description', String),
-           schema='blueherondata').alias('rt')
-
-qt = Table('qt_query_status_type', meta,
-           Column('status_type_id', Integer, primary_key=True),
-           Column('description', String),
-           schema='blueherondata').alias('qt')
-
-qi = Table('qt_query_instance', meta,
-           Column('query_instance_id', Integer, primary_key=True),
-           Column('query_master_id', Integer,
-                  ForeignKey('qt_query_master.query_master_id')),
-           Column('status_type_id', Integer,
-                  ForeignKey('qt_status_type.status_type_id')),
-           Column('start_date', DATETIME),
-           Column('end_date', DATETIME),
-           Column('message', String),
-           schema='blueherondata').alias('qi')
-
-qri = Table('qt_query_result_instance', meta,
-            Column('query_instance_id', Integer,
-                   ForeignKey('qt_query_instance.query_instance_id')),
-            Column('result_type_id', Integer,
-                   ForeignKey('qt_query_result_type.result_type_id')),
-            Column('set_size', Integer),
-            schema='blueherondata').alias('qri')
-
-s = Table('pm_user_session', meta,
-          Column('session_id', String),
-          Column('user_id', String),
-          Column('entry_date', DATETIME),
-          Column('expired_date', DATETIME),
-          schema='i2b2pm').alias('s')
+                      ''' % self.schemas)
 
 
 def _integration_test():  # pragma: nocover
