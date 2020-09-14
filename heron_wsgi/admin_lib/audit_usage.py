@@ -63,7 +63,7 @@ and s.expired_date > sysdate
                 select extract(year from qqm.create_date) y
                      , extract(month from qqm.create_date) m
                      , qqm.user_id
-                from %(pm)s.qt_query_master qqm
+                from %(crc)s.qt_query_master qqm
                 where qqm.name != 'HERON MONITORING QUERY'
             ) group by y, m
             order by y desc, m desc
