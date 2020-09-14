@@ -123,6 +123,7 @@ level=WARN
 # ISSUE: provide sqlalchemy URL instead?
 jboss_deploy=CFG_JBOSS_DATASOURCES
 identified_data=CFG_ID
+i2b2pm_schema=CFG_I2B2PM_SCHEMA
 
 [i2b2md]
 #jboss_deploy=/opt/jboss-as-7.1.1.Final/standalone/deployments/
