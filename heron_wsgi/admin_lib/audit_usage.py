@@ -12,14 +12,11 @@ from injector import inject
 
 import i2b2pm
 
-Ki2b2crc_schema = injector.Key('i2b2crc_schema')
-Ki2b2pm_schema = injector.Key('i2b2pm_schema')
-
 
 class I2B2Usage(object):
     @inject(datasrc=(orm.session.Session, i2b2pm.CONFIG_SECTION),
-            i2b2crc_schema=Ki2b2crc_schema,
-            i2b2pm_schema=Ki2b2pm_schema)
+            i2b2crc_schema=i2b2pm.Ki2b2crc_schema,
+            i2b2pm_schema=i2b2pm.Ki2b2pm_schema)
     def __init__(self, datasrc, i2b2crc_schema, i2b2pm_schema):
         self._datasrc = datasrc
         self.schemas = dict(pm=i2b2pm_schema, crc=i2b2crc_schema)

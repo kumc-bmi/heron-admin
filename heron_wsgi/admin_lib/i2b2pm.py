@@ -200,6 +200,8 @@ CONFIG_SECTION = 'i2b2pm'
 
 KUUIDGen = injector.Key('UUIDGen')
 KIdentifiedData = injector.Key('IdentifiedData')
+Ki2b2crc_schema = injector.Key('i2b2crc_schema')
+Ki2b2pm_schema = injector.Key('i2b2pm_schema')
 
 DEFAULT_PID = 'BlueHeron'
 
@@ -521,6 +523,16 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         rt = self.get_options(['identified_data'], CONFIG_SECTION)
         mode = rt.identified_data.lower() in ('1', 'true')
         return mode
+
+    @provides(Ki2b2pm_schema)
+    def i2b2pm_schema(self):
+        rt = self.get_options(['i2b2pm_schema'], CONFIG_SECTION)
+        return rt.i2b2pm_schema.upper()
+
+    @provides(Ki2b2crc_schema)
+    def i2b2crc_schema(self):
+        rt = self.get_options(['i2b2crc_schema'], CONFIG_SECTION)
+        return rt.i2b2crc_schema.upper()
 
     @classmethod
     def mods(cls, ini, uuid, create_engine, **kwargs):
