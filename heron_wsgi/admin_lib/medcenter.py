@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 '''medcenter --  academic medical center directory/policy
 =========================================================
 
@@ -329,12 +330,22 @@ class LDAPBadge(Badge):
           ...      'ou': [''],
           ...      'givenname': ['John']})
           John Smith <john.smith@js.example>
+
+          >>> LDAPBadge.from_attrs(
+          ...    { 'cn': ['stu.ex'],
+          ...      'givenname': [u'Stu — bob'.encode('utf-8')],
+          ...      'mail': ['stu@example'] })
+          Stu  bob None <stu@example>
+
         '''
         return cls(**cls._simplify(ldapattrs))
 
     @classmethod
     def _simplify(cls, ldapattrs):
-        d = AttrDict([(n, ldapattrs.get(n, [None])[0])
+        # Please excuse US-centric approach.
+        txt = lambda v: (v.decode('ascii', errors='ignore').encode('ascii')
+                         if type(v) is str else v)
+        d = AttrDict([(n, txt(ldapattrs.get(n, [None])[0]))
                       for n in cls.attributes])
 
         for n in cls.attributes:
