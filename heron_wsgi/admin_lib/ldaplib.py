@@ -49,7 +49,8 @@ The mock directory has a handful of students and faculty::
    ('N', 'jill.student'),
    ('N', 'koam.rin'),
    ('Y', 'trouble.maker'),
-   ('N', 'act.user')]
+   ('N', 'act.user'),
+   ('Y', 'todd.ryan')]
 
 It supplies HSC training info::
 
