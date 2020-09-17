@@ -7,7 +7,6 @@
 
 from sqlalchemy import orm
 
-import injector
 from injector import inject
 
 import i2b2pm
