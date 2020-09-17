@@ -554,6 +554,14 @@ class Mock(injector.Module, rtconfig.MockMixin):
     def metadata(self):
         return i2b2metadata.MockMetadata(1)
 
+    @provides(Ki2b2pm_schema)
+    def i2b2pm_schema(self):
+        return "i2b2_pm"
+
+    @provides(Ki2b2crc_schema)
+    def i2b2crc_schema(self):
+        return "i2b2_crc"
+
     @provides(KUUIDGen)
     def uuid_maker(self):
         class G(object):
