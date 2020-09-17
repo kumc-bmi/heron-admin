@@ -49,7 +49,8 @@ The mock directory has a handful of students and faculty::
    ('N', 'jill.student'),
    ('N', 'koam.rin'),
    ('Y', 'trouble.maker'),
-   ('N', 'act.user')]
+   ('N', 'act.user'),
+   ('Y', 'todd.ryan')]
 
 It supplies HSC training info::
 
@@ -60,6 +61,7 @@ It supplies HSC training info::
 from __future__ import print_function
 
 from collections import namedtuple
+from datetime import datetime
 from datetime import timedelta
 from io import BytesIO
 from pprint import pformat
@@ -67,8 +69,8 @@ import csv
 import logging
 import re
 
-import pkg_resources as pkg
-from injector import inject, provides, singleton
+import pkg_resources as pkg  # type: ignore
+from injector import inject, provides, singleton  # type: ignore
 
 from cache_remote import Cache
 from ocap_file import Path
@@ -77,20 +79,35 @@ import rtconfig
 CONFIG_SECTION = 'enterprise_directory'
 log = logging.getLogger(__name__)
 
+MYPY = False
+if MYPY:
+    import typing as py
+    Result = py.Tuple[str, py.List[py.Dict[str, py.List[str]]]]
+
 
 class LDAPService(Cache):
-    def __init__(self, now, ttl, rt, ldap, flags):
+    def __init__(self,
+                 now,   # type: py.Callable[..., datetime]
+                 ttl,   # type: int
+                 rt,    # type: py.Any
+                 ldap,  # type: py.Any
+                 flags  # type: py.Any
+                 ):
+        # type: (...) -> None
         Cache.__init__(self, now)
         self._ttl = timedelta(seconds=ttl)
+        datetime  # tell flycheck we're using it
         self._rt = rt
         self._ldap = ldap
         self.flags = flags
         self._l = None
 
     def search_cn(self, cn, attrs):
+        # type: (str, py.List[str]) -> py.List[Result]
         return self._search('(cn=%s)' % quote(cn), attrs)
 
     def search_name_clues(self, max_qty, cn, sn, givenname, attrs):
+        # type: (int, str, str, str, py.List[str]) -> py.List[Result]
         clauses = ['(%s=%s*)' % (n, quote(v))
                    for (n, v) in (('cn', cn),
                                   ('sn', sn),
@@ -107,13 +124,15 @@ class LDAPService(Cache):
         return self._search(q, attrs)[:max_qty]
 
     def _search(self, query, attrs):
-        attrs = tuple(sorted(attrs))
-        return self._query((query, attrs),
+        # type: (str, py.List[str]) -> py.List[Result]
+        attrs_t = tuple(sorted(attrs))
+        return self._query((query, attrs_t),
                            lambda: (self._ttl,
                                     self.search_remote(query, attrs)),
                            'LDAP')
 
     def search_remote(self, query, attrs):
+        # type: (str, py.List[str]) -> py.List[Result]
         ds = self._l or self._bind()
         base = self._rt.base
         try:
@@ -124,6 +143,7 @@ class LDAPService(Cache):
         return ans
 
     def _bind(self):
+        # type: () -> py.Any
         rt = self._rt
         ldap = self._ldap
         ldap.set_option(self.flags.OPT_X_TLS_CACERTFILE, rt.certfile)
@@ -232,7 +252,7 @@ class MockDirectory(object):
 
 
 class Training(namedtuple('Training',
-                          'username expired completed course'.split())):
+                          ('username', 'expired', 'completed', 'course'))):
     pass
 
 
@@ -285,7 +305,7 @@ if __name__ == '__main__':  # pragma nocover
         from sys import argv, stdout
         from datetime import datetime
 
-        import ldap
+        import ldap  # type: ignore
 
         logging.basicConfig(level=logging.INFO)
         cwd = Path('.', open=io_open, joinpath=joinpath, exists=exists)

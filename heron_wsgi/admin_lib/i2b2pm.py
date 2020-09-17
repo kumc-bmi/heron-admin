@@ -200,6 +200,8 @@ CONFIG_SECTION = 'i2b2pm'
 
 KUUIDGen = injector.Key('UUIDGen')
 KIdentifiedData = injector.Key('IdentifiedData')
+Ki2b2crc_schema = injector.Key('i2b2crc_schema')
+Ki2b2pm_schema = injector.Key('i2b2pm_schema')
 
 DEFAULT_PID = 'BlueHeron'
 
@@ -522,6 +524,16 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         mode = rt.identified_data.lower() in ('1', 'true')
         return mode
 
+    @provides(Ki2b2pm_schema)
+    def i2b2pm_schema(self):
+        rt = self.get_options(['i2b2pm_schema'], CONFIG_SECTION)
+        return rt.i2b2pm_schema.upper()
+
+    @provides(Ki2b2crc_schema)
+    def i2b2crc_schema(self):
+        rt = self.get_options(['i2b2crc_schema'], CONFIG_SECTION)
+        return rt.i2b2crc_schema.upper()
+
     @classmethod
     def mods(cls, ini, uuid, create_engine, **kwargs):
         return [i2b2metadata.RunTime(ini, create_engine),
@@ -541,6 +553,14 @@ class Mock(injector.Module, rtconfig.MockMixin):
     @provides(i2b2metadata.I2B2Metadata)
     def metadata(self):
         return i2b2metadata.MockMetadata(1)
+
+    @provides(Ki2b2pm_schema)
+    def i2b2pm_schema(self):
+        return "i2b2_pm"
+
+    @provides(Ki2b2crc_schema)
+    def i2b2crc_schema(self):
+        return "i2b2_crc"
 
     @provides(KUUIDGen)
     def uuid_maker(self):

@@ -4,18 +4,21 @@
 
 '''
 
-from sqlalchemy import orm, MetaData
-from sqlalchemy import Table, Column, ForeignKey
-from sqlalchemy.types import Integer, String, DATETIME
+
+from sqlalchemy import orm
+
 from injector import inject
 
 import i2b2pm
 
 
 class I2B2Usage(object):
-    @inject(datasrc=(orm.session.Session, i2b2pm.CONFIG_SECTION))
-    def __init__(self, datasrc):
+    @inject(datasrc=(orm.session.Session, i2b2pm.CONFIG_SECTION),
+            i2b2crc_schema=i2b2pm.Ki2b2crc_schema,
+            i2b2pm_schema=i2b2pm.Ki2b2pm_schema)
+    def __init__(self, datasrc, i2b2crc_schema, i2b2pm_schema):
         self._datasrc = datasrc
+        self.schemas = dict(pm=i2b2pm_schema, crc=i2b2crc_schema)
 
     def q(self, sql):
         return self._datasrc().execute(sql).fetchall()
@@ -27,25 +30,26 @@ class I2B2AggregateUsage(I2B2Usage):
 
     def current_release(self):
         return self.q('''
-            select project_name from I2B2PM.PM_PROJECT_DATA
-            where project_id = 'BlueHeron' ''')[0].project_name
+            select project_name from %(pm)s.PM_PROJECT_DATA
+            where project_id = 'BlueHeron' ''' %
+                     self.schemas)[0].project_name
 
     def current_sessions(self):
         return self.q('''
 select pud.full_name, s.user_id, s.entry_date
-from I2B2PM.pm_user_session s
-join i2b2pm.pm_user_data pud
+from %(pm)s.pm_user_session s
+join %(pm)s.pm_user_data pud
   on s.user_id = pud.user_id
-where s.user_id not like '%SERVICE_ACCOUNT'
+where s.user_id not like '%%SERVICE_ACCOUNT'
 and s.expired_date > sysdate
-''')
+''' % self.schemas)
 
     def total_number_of_queries(self):
         data = self.q('''
             select count(*) as total_number_of_queries
-            from BLUEHERONDATA.qt_query_master qqm
+            from %(crc)s.qt_query_master qqm
             where qqm.name != 'HERON MONITORING QUERY'
-        ''')
+        ''' % self.schemas)
         if len(data) != 1:
             raise ValueError('expected 1 row; got: %s' % len(data))
 
@@ -58,11 +62,11 @@ and s.expired_date > sysdate
                 select extract(year from qqm.create_date) y
                      , extract(month from qqm.create_date) m
                      , qqm.user_id
-                from BLUEHERONDATA.qt_query_master qqm
+                from %(crc)s.qt_query_master qqm
                 where qqm.name != 'HERON MONITORING QUERY'
             ) group by y, m
             order by y desc, m desc
-                      ''')
+                      ''' % self.schemas)
 
     def query_volume(self, recent=False):
         '''overall query volume by user
@@ -75,14 +79,14 @@ select pud.full_name, all_time.user_id
      , last_year.qty last_year
      , all_time.qty all_time from
 (select qqm.user_id, count(*) as qty
-from BLUEHERONDATA.qt_query_master qqm
+from %(crc)s.qt_query_master qqm
 where qqm.name != 'HERON MONITORING QUERY'
 group by qqm.user_id) all_time
 
 left join
 
 (select qqm.user_id, count(*) as qty
-from BLUEHERONDATA.qt_query_master qqm
+from %(crc)s.qt_query_master qqm
 where qqm.create_date >= sysdate - 14
 and qqm.name != 'HERON MONITORING QUERY'
 group by qqm.user_id) two_weeks
@@ -92,7 +96,7 @@ on two_weeks.user_id = all_time.user_id
 left join
 
 (select qqm.user_id, count(*) as qty
-from BLUEHERONDATA.qt_query_master qqm
+from %(crc)s.qt_query_master qqm
 where qqm.create_date >= sysdate - 30
 and qqm.name != 'HERON MONITORING QUERY'
 group by qqm.user_id) last_month
@@ -102,7 +106,7 @@ on last_month.user_id = all_time.user_id
 left join
 
 (select qqm.user_id, count(*) as qty
-from BLUEHERONDATA.qt_query_master qqm
+from %(crc)s.qt_query_master qqm
 where qqm.create_date >= sysdate - 90
 and qqm.name != 'HERON MONITORING QUERY'
 group by qqm.user_id) last_quarter
@@ -112,18 +116,18 @@ on last_quarter.user_id = all_time.user_id
 left join
 
 (select qqm.user_id, count(*) as qty
-from BLUEHERONDATA.qt_query_master qqm
+from %(crc)s.qt_query_master qqm
 where qqm.create_date >= sysdate - 365
 and qqm.name != 'HERON MONITORING QUERY'
 group by qqm.user_id) last_year
 
 on last_year.user_id = all_time.user_id
 
-        join i2b2pm.pm_user_data pud
+        join %(pm)s.pm_user_data pud
           on all_time.user_id = pud.user_id
 
 order by nvl(two_weeks.qty, -1) desc, nvl(all_time.qty, -1) desc
-                      ''')
+                      ''' % self.schemas)
 
     def recent_query_performance(self):
         '''Show recent I2B2 queries.
@@ -148,18 +152,18 @@ select * from(
   rt.description result_type_description
 FROM (
   select * from (
-   select * from blueherondata.qt_query_master qm
+   select * from %(crc)s.qt_query_master qm
    where qm.delete_flag != 'Y' order by qm.create_date desc
    ) ) qm
-JOIN blueherondata.qt_query_instance qi
+JOIN %(crc)s.qt_query_instance qi
 ON qm.query_master_id = qi.query_master_id
 
-left JOIN blueherondata.qt_query_result_instance qri
+left JOIN %(crc)s.qt_query_result_instance qri
 ON qi.query_instance_id = qri.query_instance_id
 
-left JOIN blueherondata.qt_query_result_type rt
+left JOIN %(crc)s.qt_query_result_type rt
 ON rt.result_type_id = qri.result_type_id
-left JOIN blueherondata.qt_query_status_type qt
+left JOIN %(crc)s.qt_query_status_type qt
 ON qt.status_type_id = qi.status_type_id
 where qm.create_date>sysdate-14
 
@@ -167,7 +171,7 @@ UNION ALL
 
 select
  qm.query_master_id
-,(select qri.description from blueherondata.qt_query_result_instance qri
+,(select qri.description from %(crc)s.qt_query_result_instance qri
  where qri.result_instance_id=
  cast(regexp_replace(
 dbms_lob.substr(qm.request_xml,
@@ -187,14 +191,14 @@ abs(INSTR(qm.request_xml,'<patient_set_coll_id>',1,1) +21
 ,9 as result_type_id
 ,'Timeline' as result_type_description
 
- from BlueHeronData.qt_pdo_query_master qm
-join I2B2PM.pm_user_data ud on qm.user_id=ud.user_id
+ from %(crc)s.qt_pdo_query_master qm
+join %(pm)s.pm_user_data ud on qm.user_id=ud.user_id
 where qm.create_date>sysdate-14
 ) rqp order by rqp.create_date desc)rqp
 
 where rownum<=40
 order by rqp.create_date desc
-''')
+''' % self.schemas)
 
 
 class I2B2SensitiveUsage(I2B2Usage):
@@ -213,14 +217,14 @@ class I2B2SensitiveUsage(I2B2Usage):
         select pud.full_name, qqm.user_id
              , qqm.query_master_id, qqm.name, qqm.create_date
              , qqri.set_size
-        from BLUEHERONDATA.qt_query_master qqm
-        join i2b2pm.pm_user_data pud
+        from %(crc)s.qt_query_master qqm
+        join %(pm)s.pm_user_data pud
           on pud.user_id = qqm.user_id
-        join BLUEHERONDATA.qt_query_instance qqi
+        join %(crc)s.qt_query_instance qqi
           on qqm.query_master_id=qqi.query_master_id
-        join BLUEHERONDATA.qt_query_result_instance qqri
+        join %(crc)s.qt_query_result_instance qqri
           on qqi.query_instance_id=qqri.query_instance_id
-        join BLUEHERONDATA.qt_query_result_type qqrt
+        join %(crc)s.qt_query_result_type qqrt
           on qqri.result_type_id=qqrt.result_type_id
         where qqri.result_type_id=1
         %(RECENT)s %(SMALL)s
@@ -241,34 +245,34 @@ class I2B2SensitiveUsage(I2B2Usage):
                as tooltip
              , substr(extract(column_value, '/item/item_key/text()'), 1)
                as item_key
-        from BLUEHERONDATA.QT_QUERY_MASTER qm
+        from %(crc)s.QT_QUERY_MASTER qm
            , table(xmlsequence(extract(sys.XMLType(qm.request_xml),
                       '/qd:query_definition/panel[position()=last()
                       or position()=1]/item',
         'xmlns:qd="http://www.i2b2.org/xsd/cell/crc/psm/querydefinition/1.1/"')
                         ))
         where qm.query_master_id in  ( select qqm.query_master_id
-                      from BLUEHERONDATA.qt_query_master qqm
-                      join BLUEHERONDATA.qt_query_instance qqi
+                      from %(crc)s.qt_query_master qqm
+                      join %(crc)s.qt_query_instance qqi
                         on qqm.query_master_id=qqi.query_master_id
-                      join BLUEHERONDATA.qt_query_result_instance qqri
+                      join %(crc)s.qt_query_result_instance qqri
                         on qqi.query_instance_id=qqri.query_instance_id
-                      join BLUEHERONDATA.qt_query_result_type qqrt
+                      join %(crc)s.qt_query_result_type qqrt
                         on qqri.result_type_id=qqrt.result_type_id
                       where qqri.real_set_size <= 15 and qqri.set_size > 0
                         and qqri.result_type_id=1
                         and qqm.create_date > sysdate - 45)
         order by create_date desc
-        ''')
+        ''' % self.schemas)
 
     def current_sessions(self):
         return self.q('''
 select ud.full_name, ud.user_id, us.entry_date
-from I2B2PM.pm_user_session us
-join I2B2PM.pm_user_data ud on ud.user_id = us.user_id
+from %(pm)s.pm_user_session us
+join %(pm)s.pm_user_data ud on ud.user_id = us.user_id
 where us.expired_date > sysdate
-and us.user_id not like '%_SERVICE_ACCOUNT'
-                      ''')
+and us.user_id not like '%%_SERVICE_ACCOUNT'
+                      ''' % self.schemas)
 
     def current_queries(self):
         return self.q('''
@@ -279,24 +283,24 @@ select ud.full_name, ud.user_id, us.entry_date
      , st.description status
      , qrt.description result_type
 
-from I2B2PM.pm_user_session us
-join I2B2PM.pm_user_data ud on ud.user_id = us.user_id
+from %(pm)s.pm_user_session us
+join %(pm)s.pm_user_data ud on ud.user_id = us.user_id
 
-left join BlueHeronData.qt_query_master qm
+left join %(crc)s.qt_query_master qm
   on ud.user_id = qm.user_id
  and qm.create_date > us.entry_date
-left join BlueHeronData.qt_query_instance qi
+left join %(crc)s.qt_query_instance qi
   on qi.query_master_id = qm.query_master_id
-left join BlueHeronData.qt_query_result_instance qri
+left join %(crc)s.qt_query_result_instance qri
   on qri.query_instance_id = qi.query_instance_id
-left join BLUEHERONDATA.qt_query_status_type st
+left join %(crc)s.qt_query_status_type st
   on st.status_type_id = qi.status_type_id
-left join BLUEHERONDATA.qt_query_result_type qrt
+left join %(crc)s.qt_query_result_type qrt
   on qrt.result_type_id = qri.result_type_id
 
 
 where us.expired_date > sysdate
-and us.user_id not like '%_SERVICE_ACCOUNT'
+and us.user_id not like '%%_SERVICE_ACCOUNT'
 
 and (qm.query_master_id is null  or (
     qi.status_type_id = 5 -- INCOMPLETE
@@ -309,55 +313,7 @@ and (qm.query_master_id is null  or (
 ))
 
 order by ud.full_name, qm.create_date
-                      ''')
-
-
-# Hmm... messy...
-# meta = i2b2pm.Base.metadata
-meta = MetaData()
-qm = Table('qt_query_master', meta,
-           Column('query_master_id', Integer, primary_key=True),
-           Column('user_id', String),
-           Column('name', String),
-           Column('request_xml', String),
-           schema='blueherondata').alias('qm')
-
-rt = Table('qt_query_result_type', meta,
-           Column('result_type_id', Integer, primary_key=True),
-           Column('name', String),  # result_type
-           Column('description', String),
-           schema='blueherondata').alias('rt')
-
-qt = Table('qt_query_status_type', meta,
-           Column('status_type_id', Integer, primary_key=True),
-           Column('description', String),
-           schema='blueherondata').alias('qt')
-
-qi = Table('qt_query_instance', meta,
-           Column('query_instance_id', Integer, primary_key=True),
-           Column('query_master_id', Integer,
-                  ForeignKey('qt_query_master.query_master_id')),
-           Column('status_type_id', Integer,
-                  ForeignKey('qt_status_type.status_type_id')),
-           Column('start_date', DATETIME),
-           Column('end_date', DATETIME),
-           Column('message', String),
-           schema='blueherondata').alias('qi')
-
-qri = Table('qt_query_result_instance', meta,
-            Column('query_instance_id', Integer,
-                   ForeignKey('qt_query_instance.query_instance_id')),
-            Column('result_type_id', Integer,
-                   ForeignKey('qt_query_result_type.result_type_id')),
-            Column('set_size', Integer),
-            schema='blueherondata').alias('qri')
-
-s = Table('pm_user_session', meta,
-          Column('session_id', String),
-          Column('user_id', String),
-          Column('entry_date', DATETIME),
-          Column('expired_date', DATETIME),
-          schema='i2b2pm').alias('s')
+                      ''' % self.schemas)
 
 
 def _integration_test():  # pragma: nocover
