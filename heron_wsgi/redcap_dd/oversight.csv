@@ -135,7 +135,6 @@ workbench_fields,heron_oversight_request,,notes,"For the reporting workbench, wh
 bpa_trigger,heron_oversight_request,,radio,"Are you planning to trigger the best practice advisory alerts at the department level or to specific providers? ","1, Department Level | 2, Specific Providers",,,,,,"[bpa_or_report(2)] = '1'",y,,,,,
 bpa_dept,heron_oversight_request,,notes,"Please specify the departments to trigger the alert for: ",,,,,,,"[bpa_trigger] = '1'",y,,,,,
 bpa_providers,heron_oversight_request,,notes,"Please specify the providers to trigger the alert for: ",,,,,,,"[bpa_trigger] = '2'",y,,,,,
-bpa_targetaudience,heron_oversight_request,,notes,"In broad terms, which clinicians are the target for the best practice advisories? (i.e. cardiology physicians, study team members, etc.)",,,,,,,"[bpa_or_report(2)] = '1'",y,,,,,
 epic_recruit_strategy,heron_oversight_request,"Epic Recruitment Information",checkbox,"For study recruitment, please select which areas you would like to use for recruitment: ","4, All Patients | 1, Patients From Your Own Clinic (must have a treating relationship with these patients) | 2, Patients From the Pioneers Registry | 3, Patients From another Department (Medical Informatics will help with the approval process)",,,,,,"[what_for] = '5' and [retrospective] = '0'",y,,,,,
 epic_researcher_affiliation,heron_oversight_request,,text,"What is your departmental or divisional affiliation?",,,,,,,"[what_for] = '5' and [epic_recruit_strategy(1)] = '1' or [epic_recruit_strategy(3)] = '1'",y,,,,,
 epic_recruit_dept,heron_oversight_request,,checkbox,"What divisions/departments would you like to recruit from? Medical Informatics will assist with the department approval.
@@ -238,8 +237,12 @@ If identified, QI or Research: [identified_purpose]
 
 If research, IRB number: [hsc_number]
 
-Recruitment Strategy (if applicable): [recruit_strategy]",,,,,,,,y,,,,,
-sponsorship_approval,faculty_approval,,yesno,"Do you agree to sponsor the following individuals for HERON?
+Recruitment Strategy (if applicable): [recruit_strategy]",,,,,,,,y,,,,," @HIDDEN"
+working_on_2,faculty_approval,,yesno,"Are you working on: 
+
+Title: [project_title]
+Investigator: [full_name]",,,,,,,,y,,,,,
+sponsorship_approval,faculty_approval,"<div class=""rich-text-field-label""><div class=""rich-text-field-label""> <p style=""text-align: center;""><span style=""color: #0000ff;"">Please review the request form above before proceeding.</span></p> </div></div>",yesno,"Do you agree to sponsor the following individuals for HERON?
 
 -[name_etc_1]
 
@@ -398,7 +401,7 @@ pioneers_notes,pioneers_review,,notes,"Pioneers Review Notes",,,,,,,,,,,,,
 fm_title,family_medicine_review,,descriptive,"Title: [project_title]",,,,,,,,,,,,,
 fm_dua_description,family_medicine_review,,descriptive,"Description of Data Use Request: [data_use_description]",,,,,,,,,,,,,
 fm_full_name,family_medicine_review,,descriptive,"Investigator: [full_name]",,,,,,,,,,,,,
-fm_approval,family_medicine_review,,yesno,"Approve on behalf of family medicine? ",,,,,,,,,,,,,
+fm_approval,family_medicine_review,"<div class=""rich-text-field-label""><div class=""rich-text-field-label""> <p style=""text-align: center;""><span style=""color: #0000ff;"">Please review the request form above before proceeding.</span></p> </div></div>",yesno,"Approve on behalf of family medicine? ",,,,,,,,,,,,,
 fm_notes,family_medicine_review,,notes,"Family Medicine Approval / Denial Notes",,,,,,,,,,,,,
 fm_attachment,family_medicine_review,,file,"Please upload any relevant documentation",,,,,,,,,,,,,
 fm_approver,family_medicine_review,,text,"Name of Family Medicine Representative Approving Request",,,,,,,,,,,,,
@@ -406,7 +409,7 @@ fm_date,family_medicine_review,,text,"Date of Approval",,,date_mdy,,,,,,,,,,
 int_title,internal_medicine_review,,descriptive,"Title: [project_title]",,,,,,,,,,,,,
 int_dua_description,internal_medicine_review,,descriptive,"Description of Data Use Request: [data_use_description]",,,,,,,,,,,,,
 int_full_name,internal_medicine_review,,descriptive,"Investigator: [full_name]",,,,,,,,,,,,,
-int_approval,internal_medicine_review,,yesno,"Approve on behalf of internal medicine? ",,,,,,,,,,,,,
+int_approval,internal_medicine_review,"<div class=""rich-text-field-label""><p style=""text-align: center;""><span style=""color: #0000ff;"">Please review the request form above before proceeding.</span></p></div>",yesno,"Approve on behalf of internal medicine? ",,,,,,,,,,,,,
 int_notes,internal_medicine_review,,notes,"Internal Medicine Approval / Denial Notes",,,,,,,,,,,,,
 int_attachment,internal_medicine_review,,file,"Please upload any relevant documentation",,,,,,,,,,,,,
 int_approver,internal_medicine_review,,text,"Name of Internal Medicine Representative Approving Request",,,,,,,,,,,,,
@@ -414,7 +417,7 @@ int_date,internal_medicine_review,,text,"Date of Approval",,,date_mdy,,,,,,,,,,
 card_title,cardiology_review,,descriptive,"Title: [project_title]",,,,,,,,,,,,,
 card_dua_description,cardiology_review,,descriptive,"Description of Data Use Request: [data_use_description]",,,,,,,,,,,,,
 card_full_name,cardiology_review,,descriptive,"Investigator: [full_name]",,,,,,,,,,,,,
-card_approval,cardiology_review,,yesno,"Approve on behalf of cardiology? ",,,,,,,,,,,,,
+card_approval,cardiology_review,"<div class=""rich-text-field-label""><p style=""text-align: center;""><span style=""color: #0000ff;"">Please review the request form above before proceeding.</span></p></div>",yesno,"Approve on behalf of cardiology? ",,,,,,,,,,,,,
 card_notes,cardiology_review,,notes,"Cardiology Approval / Denial Notes",,,,,,,,,,,,,
 card_attachment,cardiology_review,,file,"Please upload any relevant documentation",,,,,,,,,,,,,
 card_approver,cardiology_review,,text,"Name of Cardiology Representative Approving Request",,,,,,,,,,,,,
@@ -422,7 +425,7 @@ card_date,cardiology_review,,text,"Date of Approval",,,date_mdy,,,,,,,,,,
 neuro_title,neurology_review,,descriptive,"Title: [project_title]",,,,,,,,,,,,,
 neuro_dua_description,neurology_review,,descriptive,"Description of Data Use Request: [data_use_description]",,,,,,,,,,,,,
 neuro_full_name,neurology_review,,descriptive,"Investigator: [full_name]",,,,,,,,,,,,,
-neuro_approval,neurology_review,,yesno,"Approve on behalf of neurology? ",,,,,,,,,,,,,
+neuro_approval,neurology_review,"<div class=""rich-text-field-label""><p style=""text-align: center;""><span style=""color: #0000ff;"">Please review the request form above before proceeding.</span></p></div>",yesno,"Approve on behalf of neurology? ",,,,,,,,,,,,,
 neuro_notes,neurology_review,,notes,"Neurology Approval / Denial Notes",,,,,,,,,,,,,
 neuro_attachment,neurology_review,,file,"Please upload any relevant documentation",,,,,,,,,,,,,
 neuro_approver,neurology_review,,text,"Name of Neurology Representative Approving Request",,,,,,,,,,,,,
@@ -430,7 +433,7 @@ neuro_date,neurology_review,,text,"Date of Approval",,,date_mdy,,,,,,,,,,
 oto_title,otolaryngology_review,,descriptive,"Title: [project_title]",,,,,,,,,,,,,
 oto_dua_description,otolaryngology_review,,descriptive,"Description of Data Use Request: [data_use_description]",,,,,,,,,,,,,
 oto_full_name,otolaryngology_review,,descriptive,"Investigator: [full_name]",,,,,,,,,,,,,
-oto_approval,otolaryngology_review,,yesno,"Approve on behalf of Otolaryngology? ",,,,,,,,,,,,,
+oto_approval,otolaryngology_review,"<div class=""rich-text-field-label""><p style=""text-align: center;""><span style=""color: #0000ff;"">Please review the request form above before proceeding.</span></p></div>",yesno,"Approve on behalf of Otolaryngology? ",,,,,,,,,,,,,
 oto_notes,otolaryngology_review,,notes,"Otolaryngology Approval / Denial Notes",,,,,,,,,,,,,
 oto_attachment,otolaryngology_review,,file,"Please upload any relevant documentation",,,,,,,,,,,,,
 oto_approver,otolaryngology_review,,text,"Name of Otolaryngology Representative Approving Request",,,,,,,,,,,,,
@@ -438,7 +441,7 @@ oto_date,otolaryngology_review,,text,"Date of Approval",,,date_mdy,,,,,,,,,,
 peds_title,pediatrics_review,,descriptive,"Title: [project_title]",,,,,,,,,,,,,
 peds_dua_description,pediatrics_review,,descriptive,"Description of Data Use Request: [data_use_description]",,,,,,,,,,,,,
 peds_full_name,pediatrics_review,,descriptive,"Investigator: [full_name]",,,,,,,,,,,,,
-peds_approval,pediatrics_review,,yesno,"Approve on behalf of Pediatrics? ",,,,,,,,,,,,,
+peds_approval,pediatrics_review,"<div class=""rich-text-field-label""><p style=""text-align: center;""><span style=""color: #0000ff;"">Please review the request form above before proceeding.</span></p></div>",yesno,"Approve on behalf of Pediatrics? ",,,,,,,,,,,,,
 peds_notes,pediatrics_review,,notes,"Pediatrics Approval / Denial Notes",,,,,,,,,,,,,
 peds_attachment,pediatrics_review,,file,"Please upload any relevant documentation",,,,,,,,,,,,,
 peds_approver,pediatrics_review,,text,"Name of Pediatrics Representative Approving Request",,,,,,,,,,,,,
@@ -450,7 +453,7 @@ search,data_request_details,,descriptive,"HERON Search Name: [saved_search_name_
 id_or_deid,data_request_details,,descriptive,"Is the data identified? [is_identified_data]
 ",,,,,,,,,,,,,
 kumc_notes,data_request_details,,descriptive,"Notes from KUMC review: [notes_kumc]",,,,,,,,,,,,,
-extract_by_who,data_request_details,,radio,"Who is pulling the data?","1, Maren | 3, Sravani | 7, Song | 4, Mei | 2, Li | 5, Tamara | 6, Other",,,,,,,,,,,,
+extract_by_who,data_request_details,,radio,"Who is pulling the data?","1, Maren | 8, Ari | 3, Sravani | 7, Song | 4, Mei | 2, Li | 5, Tamara | 6, Other",,,,,,,,,,,,
 request_notes,data_request_details,,notes,"Request Notes",,,,,,,,,,,,,
 extract_other,data_request_details,,text,"If other, who is pulling data? ",,,,,,,"[extract_by_who] = '6'",,,,,,
 pi,data_request_details,,descriptive,"Principal investigator: [user_id]",,,,,,,,,,,,,
