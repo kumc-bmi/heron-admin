@@ -167,7 +167,7 @@ class DecisionRecords(Token):
     YES = '1'
     NO = '2'
     SPONSORSHIP = '1'
-    institutions = ('kuh', 'kupi', 'kumc')
+    institutions = ('kuh', 'kumc')
 
     @inject(pid=KProjectId,
             smaker=(orm.session.Session, redcapdb.CONFIG_SECTION),
