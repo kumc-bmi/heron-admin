@@ -36,10 +36,10 @@ What decision notifications are pending?
 
   >>> ds = dr.oversight_decisions()
   >>> ds  # doctest: +NORMALIZE_WHITESPACE
-  [(u'-565402122873664774', u'2', 3),
-   (u'23180811818680005', u'1', 3),
-   (u'3180811818667777', u'1', 3),
-   (u'6373469799195807417', u'1', 3)]
+  [(u'-565402122873664774', u'2', 2),
+   (u'23180811818680005', u'1', 2),
+   (u'3180811818667777', u'1', 2),
+   (u'6373469799195807417', u'1', 2)]
 
 Get oversight details that we might want to use in composing the notification::
 
@@ -122,7 +122,7 @@ from sqlalchemy import Table, Column
 from sqlalchemy.types import Integer, VARCHAR, TIMESTAMP
 from sqlalchemy.schema import ForeignKey
 from sqlalchemy import orm
-from sqlalchemy.sql import select, func, and_
+from sqlalchemy.sql import select, func, and_, or_
 import pkg_resources as pkg
 
 import rtconfig
@@ -186,7 +186,7 @@ class DecisionRecords(Token):
         :param inv: True=by (i.e. investigator); False=for
         '''
         _d, _c, dc = _sponsor_queries(self._oversight_project_id,
-                                      len(self.institutions), inv)
+                                      self.institutions, inv)
 
         # mysql work-around for
         # 1248, 'Every derived table must have its own alias'
@@ -220,7 +220,7 @@ class DecisionRecords(Token):
         decisions, find decisions where notification has not been sent.
         '''
         cd, who, cdwho = _sponsor_queries(self._oversight_project_id,
-                                          len(self.institutions))
+                                          self.institutions)
 
         # decisions without notifications
         if pending:
@@ -298,7 +298,7 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
     notices are sent. include expirations (and link back to request).
 
       >>> from pprint import pprint
-      >>> decision, candidate, cdwho = _sponsor_queries(123, 3)
+      >>> decision, candidate, cdwho = _sponsor_queries(123, ['kuh', 'kumc'])
 
       >>> print str(decision)
       ...  # doctest: +NORMALIZE_WHITESPACE
@@ -309,12 +309,16 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
                 redcap_data.value AS value
                 FROM redcap_data
                 WHERE redcap_data.project_id = :project_id_1) AS p
-      WHERE p.field_name LIKE :field_name_1 GROUP BY p.record, p.value
+      WHERE p.field_name = :field_name_1
+         OR p.field_name = :field_name_2
+      GROUP BY p.record, p.value
       HAVING count(*) = :count_2
 
       >>> pprint(decision.compile().params)
-      {u'count_2': 3, u'field_name_1': 'approve_%', u'project_id_1': 123}
-
+      {u'count_2': 2,
+       u'field_name_1': 'approve_kuh',
+       u'field_name_2': 'approve_kumc',
+       u'project_id_1': 123}
 
       >>> print str(candidate)
       ...  # doctest: +NORMALIZE_WHITESPACE
@@ -356,7 +360,8 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
                     redcap_data.value AS value
                     FROM redcap_data
                     WHERE redcap_data.project_id = :project_id_1) AS p
-                WHERE p.field_name LIKE :field_name_1 GROUP
+                WHERE p.field_name = :field_name_1
+                   OR p.field_name = :field_name_2 GROUP
                 BY p.record, p.value
                 HAVING count(*) = :count_2) AS cd
             JOIN
@@ -368,7 +373,7 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
                     redcap_data.value AS value
                     FROM redcap_data
                     WHERE redcap_data.project_id = :project_id_1) AS p
-                WHERE p.field_name LIKE :field_name_2) AS who
+                WHERE p.field_name LIKE :field_name_3) AS who
             ON who.record = cd.record
             JOIN
                 (SELECT p.record AS record, p.value AS userid
@@ -378,7 +383,7 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
                     redcap_data.value AS value
                     FROM redcap_data
                     WHERE redcap_data.project_id = :project_id_1) AS p
-                WHERE p.field_name = :field_name_3) AS sponsor
+                WHERE p.field_name = :field_name_4) AS sponsor
             ON sponsor.record = cd.record
             JOIN
                 (SELECT p.record AS record, p.value AS what_for
@@ -387,7 +392,7 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
                        redcap_data.value AS value
                        FROM redcap_data
                        WHERE redcap_data.project_id = :project_id_1) AS p
-                WHERE p.field_name = :field_name_4) AS "for"
+                WHERE p.field_name = :field_name_5) AS "for"
             ON "for".record = cd.record
             LEFT OUTER JOIN
                 (SELECT p.record AS record,
@@ -398,16 +403,17 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
                     redcap_data.value AS value
                     FROM redcap_data
                     WHERE redcap_data.project_id = :project_id_1) AS p
-                WHERE p.field_name = :field_name_5) AS expire
+                WHERE p.field_name = :field_name_6) AS expire
             ON expire.record = cd.record) AS cdwho
 
       >>> pprint(cdwho.compile().params)
-      {u'count_2': 3,
-       u'field_name_1': 'approve_%',
-       u'field_name_2': 'user_id_%',
-       u'field_name_3': 'user_id',
-       u'field_name_4': 'what_for',
-       u'field_name_5': 'date_of_expiration',
+      {u'count_2': 2,
+       u'field_name_1': 'approve_kuh',
+       u'field_name_2': 'approve_kumc',
+       u'field_name_3': 'user_id_%',
+       u'field_name_4': 'user_id',
+       u'field_name_5': 'what_for',
+       u'field_name_6': 'date_of_expiration',
        u'project_id_1': 123}
 
     '''
@@ -422,10 +428,12 @@ def _sponsor_queries(oversight_project_id, parties, inv=False):
     decision = select((proj.c.record,
                        proj.c.value.label('decision'),
                        func.count())).where(
-        proj.c.field_name.like('approve_%')).\
+                           or_(*[
+                               proj.c.field_name == 'approve_' + party
+                               for party in parties])).\
              group_by(proj.c.record,
                       proj.c.value).having(
-                 func.count() == parties).alias('cd')
+                          func.count() == len(parties)).alias('cd')
 
     # todo: consider combining record, event, project_id into one attr
     candidate = select((proj.c.record,

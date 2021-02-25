@@ -454,7 +454,7 @@ class HeronRecords(Token, Cache):
     >>> sorted(n for (n, etc) in ddict.fields() if n.startswith('approve_'))
     ['approve_kuh', 'approve_kumc', 'approve_kupi']
     >>> sorted(noticelog.DecisionRecords.institutions)
-    ['kuh', 'kumc', 'kupi']
+    ['kuh', 'kumc']
 
     >>> sorted(ddict.radio('what_for'))
     ... # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
