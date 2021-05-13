@@ -80,11 +80,6 @@ Part of making oversight requests is nominating team members::
 
   >>> r1.context.browser.search(5, 'john.smith', '', '')
   [John Smith <john.smith@js.example>]
-
-
-API
----
-
 '''
 
 from __future__ import print_function
