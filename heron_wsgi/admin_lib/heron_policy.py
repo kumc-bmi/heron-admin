@@ -201,6 +201,10 @@ This student's sponsor is not with KUMC anymore
   INFO:cache_remote:LDAP query for (u'(cn=prof.fickle)', ('cn', 'givenname',
        'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
   INFO:cache_remote:... cached until 2011-09-02 00:00:08
+  INFO:cache_remote:LDAP query for (u'(mail=prof.fickle@kumc.edu)',
+    ('cn', 'givenname', 'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou',
+     'sn', 'title'))
+  INFO:cache_remote:... cached until 2011-09-02 00:00:08.500000
   WARNING:heron_policy:Sponsor prof.fickle not at med center anymore.
   INFO:heron_policy:not sponsored: jill.student
   INFO:cache_remote:... cached until 2011-09-02 00:00:07.500000

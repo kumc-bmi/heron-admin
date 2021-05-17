@@ -26,6 +26,10 @@ Caching:
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('sn',))
   INFO:cache_remote:... cached until 2011-09-02 00:00:08.500000
 
+Support lookup of cn by kumc mail alias:
+  >>> ds.search_mail('j12s34', ['cn'])
+  [('(mail=j12s34@kumc.edu)', {'cn': ['js123']})]
+
 Sample configuration::
 
   >>> print(_sample_settings.inifmt(CONFIG_SECTION))
@@ -50,7 +54,8 @@ The mock directory has a handful of students and faculty::
    ('N', 'koam.rin'),
    ('Y', 'trouble.maker'),
    ('N', 'act.user'),
-   ('Y', 'todd.ryan')]
+   ('Y', 'todd.ryan'),
+   ('Y', 'js123')]
 
 It supplies HSC training info::
 
@@ -105,6 +110,10 @@ class LDAPService(Cache):
     def search_cn(self, cn, attrs):
         # type: (str, py.List[str]) -> py.List[Result]
         return self._search('(cn=%s)' % quote(cn), attrs)
+
+    def search_mail(self, mail, attrs):
+        # type: (str, py.List[str]) -> py.List[Result]
+        return self._search('(mail=%s@kumc.edu)' % quote(mail), attrs)
 
     def search_name_clues(self, max_qty, cn, sn, givenname, attrs):
         # type: (int, str, str, str, py.List[str]) -> py.List[Result]
@@ -186,7 +195,8 @@ class MockLDAP(object):
     def __init__(self, records=None):
         if records is None:
             records = MockDirectory().records
-        self._d = dict([(r['cn'], r) for r in records])
+        self._cn_dict = dict([(r['cn'], r) for r in records])
+        self._mail_dict = dict([(r['mail'], r) for r in records])
         self._bound = False
 
     def set_option(self, option, invalue):
@@ -202,14 +212,18 @@ class MockLDAP(object):
     def search_s(self, base, scope, q, attrs):
         if not self._bound:
             raise TypeError('not bound')
-
         log.debug('network fetch for %s', q)  # TODO: caching, .info()
         i = self._qid(q)
         try:
-            record = self._d[i]
+            try:
+                record = self._cn_dict[i]
+                result_type = 'cn'
+            except Exception:
+                record = self._mail_dict[i]
+                result_type = 'mail'
         except KeyError:
             return []
-        return [('(cn=%s)' % i,
+        return [('(%s=%s)' % (result_type, i),
                  dict([(a, [record[a]])
                        for a in (attrs or record.keys())
                        if record[a] != '']))]
@@ -224,6 +238,9 @@ class MockLDAP(object):
         'john.smith'
         '''
         m = re.match(r'\(cn=([^*)]+)\*?\)', q)
+        if m:
+            return m.group(1)
+        m = re.match(r'\(mail=([^*)]+)\)', q)
         if m:
             return m.group(1)
         raise ValueError

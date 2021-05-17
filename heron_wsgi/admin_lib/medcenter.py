@@ -40,6 +40,19 @@ A :class:`MedCenter` issues :class:`IDBadge` capabilities::
    False
 
 
+allow lookup by updated kumc mail alias
+---------------------------------------
+
+  >>> r3 = MockRequest()
+  >>> caps = m.authenticated('j12s34', r3)
+  >>> caps
+  [<MedCenter sealed box>]
+  >>> m.grant(r3.context, PERM_BROWSER)
+
+  >>> j_badge = m.idbadge(r3.context)
+  >>> j_badge.full_name()
+  'james smith'
+
 Human Subjects Training
 -----------------------
 
@@ -153,10 +166,12 @@ class Browser(object):
         matches = self._svc.search_cn(name, Badge.attributes)
 
         if len(matches) != 1:  # pragma nocover
-            if len(matches) == 0:
-                raise KeyError(name)
-            else:
-                raise ValueError(name)  # ambiguous
+            matches = self._svc.search_mail(name, Badge.attributes)
+            if len(matches) != 1:
+                if len(matches) == 0:
+                    raise KeyError(name)
+                else:
+                    raise ValueError(name)  # ambiguous
 
         dn, ldapattrs = matches[0]
         return LDAPBadge._simplify(ldapattrs)
