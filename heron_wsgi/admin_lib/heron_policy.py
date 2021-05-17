@@ -220,7 +220,7 @@ Ensure things don't go wonky in case of missing email address
   ... # doctest: +NORMALIZE_WHITESPACE
     INFO:cache_remote:LDAP query for ('(cn=todd.ryan)', ('cn', 'givenname',
        'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
-    INFO:cache_remote:... cached until 2011-09-02 00:00:08.500000
+    INFO:cache_remote:... cached until 2011-09-02 00:00:09
     WARNING:medcenter:missing LDAP attribute mail for todd.ryan
     INFO:cache_remote:system access query for ('SAA', 'todd.ryan@js.example')
     INFO:cache_remote:... cached until 2011-09-02 00:00:22.500000
@@ -248,7 +248,7 @@ Executives don't need sponsorship::
   ... # doctest: +NORMALIZE_WHITESPACE
   INFO:cache_remote:LDAP query for ('(cn=big.wig)', ('cn', 'givenname',
        'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
-  INFO:cache_remote:... cached until 2011-09-02 00:00:09
+  INFO:cache_remote:... cached until 2011-09-02 00:00:09.500000
   INFO:cache_remote:system access query for ('SAA', 'big.wig@js.example')
   INFO:cache_remote:... cached until 2011-09-02 00:00:23
   INFO:cache_remote:in DROC? query for big.wig
@@ -265,7 +265,7 @@ the oversight committee::
   ... # doctest: +NORMALIZE_WHITESPACE
   INFO:cache_remote:LDAP query for ('(cn=john.smith)', ('cn', 'givenname',
        'kumcPersonFaculty', 'kumcPersonJobcode', 'mail', 'ou', 'sn', 'title'))
-  INFO:cache_remote:... cached until 2011-09-02 00:00:09.500000
+  INFO:cache_remote:... cached until 2011-09-02 00:00:10
   >>> facreq.context.oversight_request
   OversightRequest(from=john.smith)
 
