@@ -17,11 +17,18 @@ Usage
 To start a server in development mode, follow `pyramid norms`__ (with
 python2.7 rather than python3)::
 
-  cd heron_admin
+  cd heron-admin
   virtualenv env
   ./env/bin/pip install -e ".[testing]"
   # Reset our environment variable for a new virtual environment.
   export VENV=~/heron_admin/env
+
+ -- if runnig with python3
+  cd heron-admin
+  python3 -m venv env
+  env/bin/pip install --upgrade pip setuptools
+  env/bin/pip install -e . OR ./env/bin/pip install -e ".[testing]"
+  ... more steps to come
 
   $VENV/bin/pserve development.ini
 
