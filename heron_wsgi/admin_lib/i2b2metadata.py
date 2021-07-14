@@ -172,9 +172,7 @@ class RunTime(rtconfig.IniModule):
     @classmethod
     def jboss_context(cls, ini, section, create_engine):
         m = rtconfig.IniModule(ini)
-        rt = m.get_options(['jboss_deploy'], section)
-        jdir = ini / rt.jboss_deploy
-        return jndi_util.JBossContext(jdir, create_engine)
+        return jndi_util.JBossContext(create_engine)
 
     @singleton
     @provides((orm.session.Session, CONFIG_SECTION_MD))
