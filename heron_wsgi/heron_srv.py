@@ -742,6 +742,7 @@ class Mock(injector.Module, rtconfig.MockMixin):
 def app_factory(global_config, **settings):
     from datetime import datetime
     from io import open as io_open
+    from os import environ
     from os import listdir
     from os.path import join as joinpath
     from random import Random
