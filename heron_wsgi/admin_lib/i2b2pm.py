@@ -191,7 +191,6 @@ from sqlalchemy.types import String, DateTime, Enum
 from sqlalchemy.ext.declarative import declarative_base
 
 import rtconfig
-import jndi_util
 import ocap_file
 import i2b2metadata
 from sqlite_mem import _test_engine
@@ -487,13 +486,11 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     # abusing Session a bit; this really provides a subclass, not an
     # instance, of Session
     def sessionmaker(self, jndi, section):
-        ctx = jndi_util.JBossContext(
-            self.__jdir(section), self.__create_engine)
 
         sm = orm.session.sessionmaker()
 
         def make_session_and_revoke():
-            engine = ctx.lookup(jndi)
+            engine = self.get_options(['i2b2pm_url'], CONFIG_SECTION)
             log.info('i2p2pm engine: %s', engine)
             ds = sm(bind=engine)
             revoke_expired_auths(ds)
