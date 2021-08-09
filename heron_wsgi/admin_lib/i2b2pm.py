@@ -475,12 +475,6 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     def __init__(self, ini, uuid, create_engine):
         rtconfig.IniModule.__init__(self, ini)
         self.__create_engine = create_engine
-
-        def jdir_access(section):
-            return ini / self.get_options(
-                ['jboss_deploy'], section).jboss_deploy
-
-        self.__jdir = jdir_access
         self.__uuid = uuid
 
     # abusing Session a bit; this really provides a subclass, not an

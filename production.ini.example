@@ -119,18 +119,14 @@ level=WARN
 
 
 [i2b2pm]
-#jboss_deploy=/opt/jboss-as-7.1.1.Final/standalone/deployments/
-# ISSUE: provide sqlalchemy URL instead?
-jboss_deploy=CFG_JBOSS_DATASOURCES
 identified_data=CFG_ID
 i2b2pm_schema=CFG_I2B2PM_SCHEMA
 i2b2crc_schema=CFG_I2B2CRC_SCHEMA
+i2b2pm_url=CFG_I2B2PM_URL
 
 [i2b2md]
-#jboss_deploy=/opt/jboss-as-7.1.1.Final/standalone/deployments/
-# ISSUE: provide sqlalchemy URL instead?
-jboss_deploy=CFG_JBOSS_DATASOURCES
 i2b2meta_schema=CFG_I2B2META_SCHEMA
+i2b2meta_url=CFG_I2B2META_URL
 
 [disclaimers]
 project_id=398
