@@ -369,14 +369,14 @@ def revoke_expired_auths(ds):
     '''Revoke one-time passwords for all users whose sessions are expired.
     '''
     ds.execute('''
-    update pm_user_data ipud
-    set ipud.password = null
+    update pm_user_data
+    set password = null
     where
-        ipud.user_id not like '%SERVICE_ACCOUNT'
-        and ipud.password is not null and (
+        user_id not like '%SERVICE_ACCOUNT'
+        and password is not null and (
         select max(ipus.expired_date)
         from pm_user_session ipus
-        where ipus.user_id = ipud.user_id) < current_timestamp
+        where ipus.user_id = user_id) < current_timestamp
     ''')
     ds.commit()
 
