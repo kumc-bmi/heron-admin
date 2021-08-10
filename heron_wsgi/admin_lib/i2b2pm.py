@@ -376,7 +376,7 @@ def revoke_expired_auths(ds):
         and ipud.password is not null and (
         select max(ipus.expired_date)
         from pm_user_session ipus
-        where ipus.user_id = ipud.user_id) < sysdate
+        where ipus.user_id = ipud.user_id) < current_timestamp
     ''')
     ds.commit()
 
