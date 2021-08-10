@@ -486,7 +486,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         def make_session_and_revoke():
             engine_opts = self.get_options(['i2b2pm_url'], CONFIG_SECTION)
             log.info('i2p2pm engine: %s', engine_opts.i2b2pm_url)
-            engine=self.__create_engine(engine_opts.i2b2pm_url)
+            engine=self.__create_engine(engine_opts.i2b2pm_url, connect_args={'options': '-csearch_path={}'.format(self.i2b2pm_schema())})
             ds = sm(bind=engine)
             revoke_expired_auths(ds)
             return ds
