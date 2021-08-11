@@ -165,13 +165,15 @@ class RunTime(rtconfig.IniModule):
 
     def __init__(self, ini, create_engine):
         rtconfig.IniModule.__init__(self, ini)
+        self.__create_engine = create_engine
 
     @singleton
     @provides((orm.session.Session, CONFIG_SECTION_MD))
     def md_sessionmaker(self):
         def send_sessionmaker():
             sm = orm.session.sessionmaker()
-            engine = self.get_options(['i2b2meta_url'], CONFIG_SECTION_MD)
+            engine_opts = self.get_options(['i2b2meta_url'], CONFIG_SECTION_MD)
+            engine = self.__create_engine(engine_opts.i2b2meta_url, connect_args={'options': '-csearch_path={}'.format(self.i2b2meta_schema())})
             ds = sm(bind=engine)
             return ds
         return send_sessionmaker
