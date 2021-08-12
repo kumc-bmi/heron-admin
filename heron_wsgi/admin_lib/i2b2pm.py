@@ -239,7 +239,8 @@ class I2B2PM(ocap_file.Token):
         default_pid = DEFAULT_PID
         pms = self._datasrc()
         log.info('Finding I2B2 project for REDCap pids: %s', rc_pids)
-        rc_pids = self._md.rc_in_i2b2(rc_pids)
+        #rc_pids = self._md.rc_in_i2b2(rc_pids)
+        rc_pids = []
         if not rc_pids:
             log.info('User REDCap projects are not in HERON')
             return default_pid, None
@@ -486,7 +487,7 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
         def make_session_and_revoke():
             engine_opts = self.get_options(['i2b2pm_url'], CONFIG_SECTION)
             log.info('i2p2pm engine: %s', engine_opts.i2b2pm_url)
-            engine=self.__create_engine(engine_opts.i2b2pm_url, connect_args={'options': '-csearch_path={}'.format(self.i2b2pm_schema())})
+            engine = self.__create_engine(engine_opts.i2b2pm_url, connect_args={'options': '-csearch_path={}'.format(self.i2b2pm_schema())})
             ds = sm(bind=engine)
             revoke_expired_auths(ds)
             return ds
