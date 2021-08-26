@@ -53,11 +53,11 @@ cas_login=CFG_I2B2_WEBCLIENT
 ###
 
 [enterprise_directory]
-url= ldaps://idvauth.kumc.edu:636
+url= ldaps://auth.kumc.edu:636
 userDn= cn=biostats,ou=authaccounts,o=idvault
 password= CRED_LDAP_BIOSTATS
 base= ou=people,o=idvault
-certfile=/etc/ssl/certs/idvauth.kumc.edu.pem
+certfile=/etc/ssl/certs/auth.kumc.edu.pem
 
 studylookupaddr=CFG_ECOMPLIANCE_LOOKUP
 
