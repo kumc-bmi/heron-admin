@@ -489,7 +489,7 @@ def TrainingRecordsAdmin(acct, exempt_pid,
            "CRS"."dtePassed" AS completed,
            "CRS"."strCompletionReport" AS course
     FROM "CRS"
-    WHERE "CRS"."strGroup" IN (:strGroup_1, :strGroup_2)
+    WHERE "CRS"."strGroup" IN (:strGroup_1, :strGroup_2, strGroup_3)
     AND "CRS"."dteExpiration" IS NOT NULL
 
     >>> print ad.chalk_queries[0]
