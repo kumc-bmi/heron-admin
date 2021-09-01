@@ -26,6 +26,7 @@ pipenv run python -m doctest heron_wsgi/genshi_render.py
 pipenv run python -m doctest heron_wsgi/heron_srv.py
 pipenv run python -m doctest heron_wsgi/perf_reports.py
 pipenv run python -m doctest heron_wsgi/stats.py
+pipenv run python -m doctest heron_wsgi/traincheck/*.py
 
 # see setup.cfg for coding style info
 pipenv run flake8 heron_wsgi
