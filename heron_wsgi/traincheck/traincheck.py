@@ -143,7 +143,7 @@ The courses we're interested in are selected using::
 
     >>> ad = TrainingRecordsAdmin((io._db.connect(), None, None), 0)
     >>> ad.course_groups
-    ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers']
+    ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers', 'CITI Human Subjects Research']
 
 
 '''
@@ -465,7 +465,8 @@ def TrainingRecordsRd(acct):
 def TrainingRecordsAdmin(acct, exempt_pid,
                          course_groups=[
                              'CITI Biomedical Researchers',
-                             'CITI Social Behavioral Researchers'],
+                             'CITI Social Behavioral Researchers',
+                             'CITI Human Subjects Research'],
                          years=3, basis=-6):
     '''Administrative access to training records
 
@@ -488,7 +489,7 @@ def TrainingRecordsAdmin(acct, exempt_pid,
            "CRS"."dtePassed" AS completed,
            "CRS"."strCompletionReport" AS course
     FROM "CRS"
-    WHERE "CRS"."strGroup" IN (:strGroup_1, :strGroup_2)
+    WHERE "CRS"."strGroup" IN (:strGroup_1, :strGroup_2, :strGroup_3)
     AND "CRS"."dteExpiration" IS NOT NULL
 
     >>> print ad.chalk_queries[0]
