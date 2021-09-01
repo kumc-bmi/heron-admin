@@ -143,7 +143,7 @@ The courses we're interested in are selected using::
 
     >>> ad = TrainingRecordsAdmin((io._db.connect(), None, None), 0)
     >>> ad.course_groups
-    ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers']
+    ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers', 'CITI Human Subjects Research']
 
 
 '''
@@ -465,7 +465,8 @@ def TrainingRecordsRd(acct):
 def TrainingRecordsAdmin(acct, exempt_pid,
                          course_groups=[
                              'CITI Biomedical Researchers',
-                             'CITI Social Behavioral Researchers'],
+                             'CITI Social Behavioral Researchers',
+                             'CITI Human Subjects Research'],
                          years=3, basis=-6):
     '''Administrative access to training records
 
