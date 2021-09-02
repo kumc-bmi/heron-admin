@@ -1,4 +1,4 @@
-courses =  ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers', 'CITI Human Subjects Research', 'CITI Biomedical Researchers Refresher Course', 'Human Research Biomedical Research Refresher Course', 'CITI Biomedical Researchers;CITI Biomedical Researchers;2 - Refresher Course', 'CITI  Human Subjects Research / Social Behavioral Researchers / Refresher Course']
+courses = ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers', 'CITI Human Subjects Research', 'CITI Biomedical Researchers Refresher Course', 'Human Research Biomedical Research Refresher Course', 'CITI Biomedical Researchers;CITI Biomedical Researchers;2 - Refresher Course', 'CITI  Human Subjects Research / Social Behavioral Researchers / Refresher Course']
 
 r'''traincheck -- check human subjects training records via CITI
 
