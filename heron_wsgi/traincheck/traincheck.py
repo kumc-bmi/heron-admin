@@ -1,11 +1,3 @@
-courses = ['CITI Biomedical Researchers', 
-'CITI Social Behavioral Researchers', 
-'CITI Human Subjects Research', 
-'CITI Biomedical Researchers Refresher Course', 
-'Human Research Biomedical Research Refresher Course', 
-'CITI Biomedical Researchers;CITI Biomedical Researchers;2 - Refresher Course', 
-'CITI  Human Subjects Research / Social Behavioral Researchers / Refresher Course']
-
 r'''traincheck -- check human subjects training records via CITI
 
 Usage:
@@ -151,7 +143,7 @@ The courses we're interested in are selected using::
 
     >>> ad = TrainingRecordsAdmin((io._db.connect(), None, None), 0)
     >>> ad.course_groups
-   courses
+    ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers', 'CITI Human Subjects Research', 'CITI Biomedical Researchers Refresher Course', 'Human Research Biomedical Research Refresher Course', 'CITI Biomedical Researchers;CITI Biomedical Researchers;2 - Refresher Course', 'CITI  Human Subjects Research / Social Behavioral Researchers / Refresher Course']
 
 
 '''
@@ -439,6 +431,11 @@ class Chalk(TableDesign):
                      schema=db_name,
                      **redcapview.backend_options)
 
+courses = ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers', 
+'CITI Human Subjects Research', 'CITI Biomedical Researchers Refresher Course', 
+'Human Research Biomedical Research Refresher Course', 
+'CITI Biomedical Researchers;CITI Biomedical Researchers;2 - Refresher Course', 
+'CITI  Human Subjects Research / Social Behavioral Researchers / Refresher Course']
 
 @maker
 def TrainingRecordsRd(acct):
@@ -493,9 +490,7 @@ def TrainingRecordsAdmin(acct, exempt_pid,
            "CRS"."dtePassed" AS completed,
            "CRS"."strCompletionReport" AS course
     FROM "CRS"
-    WHERE "CRS"."strGroup" IN (:strGroup_1, :strGroup_2, :strGroup_3, 
-                               :strGroup_4, :strGroup_5, :strGroup_6, 
-                               :strGroup_7)
+    WHERE "CRS"."strGroup" IN (:strGroup_1, :strGroup_2, :strGroup_3, :strGroup_4, :strGroup_5, :strGroup_6, :strGroup_7)
     AND "CRS"."dteExpiration" IS NOT NULL
 
     >>> print ad.chalk_queries[0]
