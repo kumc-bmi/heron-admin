@@ -1,3 +1,5 @@
+courses =  ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers', 'CITI Human Subjects Research', 'CITI Biomedical Researchers Refresher Course', 'Human Research Biomedical Research Refresher Course', 'CITI Biomedical Researchers;CITI Biomedical Researchers;2 - Refresher Course', 'CITI  Human Subjects Research / Social Behavioral Researchers / Refresher Course']
+
 r'''traincheck -- check human subjects training records via CITI
 
 Usage:
@@ -143,7 +145,7 @@ The courses we're interested in are selected using::
 
     >>> ad = TrainingRecordsAdmin((io._db.connect(), None, None), 0)
     >>> ad.course_groups
-    ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers', 'CITI Human Subjects Research']
+   courses
 
 
 '''
@@ -460,13 +462,9 @@ def TrainingRecordsRd(acct):
 
     return [__getitem__], dict(lookup_query=lookup)
 
-
 @maker
 def TrainingRecordsAdmin(acct, exempt_pid,
-                         course_groups=[
-                             'CITI Biomedical Researchers',
-                             'CITI Social Behavioral Researchers',
-                             'CITI Human Subjects Research'],
+                         course_groups=courses,
                          years=3, basis=-6):
     '''Administrative access to training records
 
@@ -489,7 +487,7 @@ def TrainingRecordsAdmin(acct, exempt_pid,
            "CRS"."dtePassed" AS completed,
            "CRS"."strCompletionReport" AS course
     FROM "CRS"
-    WHERE "CRS"."strGroup" IN (:strGroup_1, :strGroup_2, :strGroup_3)
+    WHERE "CRS"."strGroup" IN (:strGroup_1, :strGroup_2, :strGroup_3, :strGroup_4, :strGroup_5, :strGroup_6, :strGroup_7)
     AND "CRS"."dteExpiration" IS NOT NULL
 
     >>> print ad.chalk_queries[0]
