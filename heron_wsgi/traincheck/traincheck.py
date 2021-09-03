@@ -467,9 +467,9 @@ def TrainingRecordsAdmin(acct, exempt_pid,
                              'CITI Biomedical Researchers',
                              'CITI Social Behavioral Researchers',
                              'CITI Human Subjects Research',
-                             'CITI Biomedical Researchers Refresher Course',
-                             'Human Research Biomedical Research Refresher Course',
-                             'CITI Biomedical Researchers;CITI Biomedical Researchers;2 - Refresher Course',
+                             'CITI Biomedical Researchers Refresher Course', # noqa
+                             'Human Research Biomedical Research Refresher Course', # noqa
+                             'CITI Biomedical Researchers;CITI Biomedical Researchers;2 - Refresher Course', # noqa
                              'CITI  Human Subjects Research / Social Behavioral Researchers / Refresher Course'],
                          years=3, basis=-6): # noqa
     '''Administrative access to training records
