@@ -431,7 +431,6 @@ class Chalk(TableDesign):
                      schema=db_name,
                      **redcapview.backend_options)
 
-
 @maker
 def TrainingRecordsRd(acct):
     '''
@@ -459,6 +458,18 @@ def TrainingRecordsRd(acct):
         return record
 
     return [__getitem__], dict(lookup_query=lookup)
+
+courses = ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers', 
+'CITI Human Subjects Research', 'CITI Biomedical Researchers Refresher Course', 
+'Human Research Biomedical Research Refresher Course', 
+'CITI Biomedical Researchers;CITI Biomedical Researchers;2 - Refresher Course', 
+'CITI  Human Subjects Research / Social Behavioral Researchers / Refresher Course']
+
+courses = ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers',
+'CITI Human Subjects Research', 'CITI Biomedical Researchers Refresher Course',
+'Human Research Biomedical Research Refresher Course',
+'CITI Biomedical Researchers;CITI Biomedical Researchers;2 - Refresher Course',
+'CITI  Human Subjects Research / Social Behavioral Researchers / Refresher Course']
 
 
 @maker
