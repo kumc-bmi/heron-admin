@@ -518,7 +518,7 @@ def TrainingRecordsAdmin(acct, exempt_pid,
     UNION ALL
     SELECT "full"."Username", ...
     FROM "HumanSubjectsFull" AS "full" ...
-    ''' # noqa: E501
+    '''  # noqa: E501
     getConn, db_name, redcapdb = acct
     hsr = HSR(db_name)
     crs = hsr.table('CRS')
