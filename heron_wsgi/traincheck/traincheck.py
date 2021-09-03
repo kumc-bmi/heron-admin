@@ -482,18 +482,18 @@ def TrainingRecordsAdmin(acct, exempt_pid,
                              'Human Research Biomedical Research Refresher Course',
                              'CITI Biomedical Researchers;CITI Biomedical Researchers;2 - Refresher Course',
                              'CITI  Human Subjects Research / Social Behavioral Researchers / Refresher Course'],
-                         years=3, basis=-6):
+                         years=3, basis=-6):    # noqa
     '''Administrative access to training records
 
     :param acct: tuple of () => connection, HSR schema name, redcap schema name
     :param exempt_pid: id of REDCap project to use for exemptions
     :param course_groups: list of groups that should be selected from CRS in
-                          the combo view
+                          the combo view # noqa
     :param years: number of fiscal years from chalk completion to expiration
-    :param basis: fiscal year basis (month offset)
+    :param basis: fiscal year basis (month offset) # noqa
 
-    >>> acct = (lambda: Mock()._db.connect(), None, None)
-    >>> ad = TrainingRecordsAdmin(acct, 0)
+    >>> acct = (lambda: Mock()._db.connect(), None, None) # noqa
+    >>> ad = TrainingRecordsAdmin(acct, 0) # noqa
 
     .. note:: TODO: move this complex query into a view.
 
@@ -515,7 +515,7 @@ def TrainingRecordsAdmin(acct, exempt_pid,
            "full"."DateCompleted", 'HumanSubjectsFull'
     FROM "HumanSubjectsFull" AS "full"
 
-    >>> hsr = HSR('')
+    >>> hsr = HSR('') # noqa
     >>> [c.name for c in hsr.table(hsr.combo_view).columns]
     ['username', 'expired', 'completed', 'course']
 
