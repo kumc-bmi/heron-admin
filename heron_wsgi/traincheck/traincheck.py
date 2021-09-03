@@ -465,6 +465,13 @@ courses = ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers',
 'CITI Biomedical Researchers;CITI Biomedical Researchers;2 - Refresher Course', 
 'CITI  Human Subjects Research / Social Behavioral Researchers / Refresher Course']
 
+courses = ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers',
+'CITI Human Subjects Research', 'CITI Biomedical Researchers Refresher Course',
+'Human Research Biomedical Research Refresher Course',
+'CITI Biomedical Researchers;CITI Biomedical Researchers;2 - Refresher Course',
+'CITI  Human Subjects Research / Social Behavioral Researchers / Refresher Course']
+
+
 @maker
 def TrainingRecordsAdmin(acct, exempt_pid,
                          course_groups=courses,
