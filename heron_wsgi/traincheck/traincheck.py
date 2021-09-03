@@ -143,7 +143,7 @@ The courses we're interested in are selected using::
 
     >>> ad = TrainingRecordsAdmin((io._db.connect(), None, None), 0)
     >>> ad.course_groups
-    ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers', 'CITI Human Subjects Research', 'CITI Biomedical Researchers Refresher Course', 'Human Research Biomedical Research Refresher Course', 'CITI Biomedical Researchers;CITI Biomedical Researchers;2 - Refresher Course', 'CITI  Human Subjects Research / Social Behavioral Researchers / Refresher Course']
+    ['CITI Biomedical Researchers', 'CITI Social Behavioral Researchers', 'CITI Human Subjects Research', 'CITI Biomedical Researchers Basic Course', 'CITI Biomedical Researchers Refresher Course', 'Human Research Biomedical Research Refresher Course', 'CITI Biomedical Researchers;CITI Biomedical Researchers;2 - Refresher Course', 'CITI  Human Subjects Research / Social Behavioral Researchers / Refresher Course']
 
 
 '''
