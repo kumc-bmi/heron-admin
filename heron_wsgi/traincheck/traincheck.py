@@ -494,7 +494,7 @@ def TrainingRecordsAdmin(acct, exempt_pid,
            "CRS"."strCompletionReport" AS course
     FROM "CRS"
     WHERE "CRS"."strGroup" IN (:strGroup_1, :strGroup_2, :strGroup_3, :strGroup_4, :strGroup_5, :strGroup_6, :strGroup_7)
-    AND "CRS"."dteExpiration" IS NOT NULL # noqa
+    AND "CRS"."dteExpiration" IS NOT NULL
 
     >>> print ad.chalk_queries[0]
     ... # doctest: +NORMALIZE_WHITESPACE
