@@ -374,6 +374,7 @@ def revoke_expired_auths(ds):
     set password = null
     where
         user_id not like '%SERVICE_ACCOUNT'
+        and user_id != 'jenkins'
         and password is not null and (
         select max(ipus.expired_date)
         from pm_user_session ipus
