@@ -21,6 +21,267 @@
 </py:match>
 
 <py:match path="body" once="true">
+  <div id="kumc_accessibilty_skip">
+      <a href="#maincontent" accesskey="2" name="top" id=
+      "top"><img src=
+      "https://www.kumc.edu/Images/template2009/widgets/spacer.gif"
+      alt="Skip redundant pieces" width="1" height="1" border=
+      "0" /></a>
+  </div>
+  <header class="fix menu-move-hook d-none d-lg-flex fhook" role="banner">
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex">
+                  <a id="main-logo-link" href="https://heron.kumc.edu/heron/" style="font-size:0;">kumc.edu  <img src="https://www.kumc.edu/_dev/logo--kumc-main.png" alt="KU Medical Center logo image"></a>
+                  <div class="col-lg-8 ml-auto d-none d-lg-block">
+                    <ul class="secondary">
+                      <li><a href="https://www.kumc.edu/about/our-campuses.html" title="Our Campuses">Our Campuses</a></li>
+                      <li><a href="https://www.kumc.edu/about/make-a-gift.html" title="Make a Gift">Make a Gift</a></li>
+                    </ul>
+                  </div>
+                </div>
+            </div>
+        </div>
+    </div>
+  </header>
   
+  <main id="main">
+    <div class="tray tray--no-banner">
+      <div class="dots-wrapper light-blue">
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+          
+      <div class="row">
+        <div class="col-12">
+          <div class="center-content">
+            <div class="container"> 
+              <h1>We're sorry, the page you are looking for may have moved</h1>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tray page-builder-container ">
+      <div class="container">
+        <div class="row">
+          <div class="col-12">
+            <h1>Main Content goes here</h1>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-builder" class="page-builder-container" style="display: none;"></div>
+  </main>
+
+  <footer role="contentinfo">
+        <div class="tray tray--flush tray--footer">
+            <div class="background-image-container">
+                <div class="background-image" style="background-image: url('https://www.kumc.edu/Content/img/footer-background.jpg');">
+                </div>
+            </div>
+            <div class="container">
+                <div class="row">
+                    <div class="col-12">
+                            <div class="center-content">
+                                <a class="button button-outline button-outline--gift" href="https://www.kumc.edu/about/make-a-gift.html"><img src="https://www.kumc.edu/Content/img/logos/logo--endowment.png" role="presentation" alt="">Make a Gift<i class="fas fa-chevron-right"></i></a>
+                            </div>
+                                                    <div class="center-content">
+                                <a class="logo logo--footer" href="https://heron.kumc.edu/heron/"><img src="https://www.kumc.edu/_dev/logo--white.png" aria-label="Click to go back to home page." alt="KUMC Logo"></a>
+                            </div>
+                        <div class="address-container">
+                            3901 Rainbow Boulevard, Kansas City, KS 66160 | 
+                                <a href="tel:913-588-5000" style="color:white;">913-588-5000</a>
+                        </div>
+                            <div class="center-content">
+                                        <ul>
+                            <li>
+        <a href="https://www.kumc.edu/about.html" class="site-links" title="About">
+            About
+        </a>
+                            </li>
+                            <li>
+        <a href="https://www.kumc.edu/about/events-calendar.html" class="site-links" title="Calendar">
+            Calendar
+        </a>
+                            </li>
+                            <li>
+        <a href="https://www.kumc.edu/about/news.html" class="site-links" title="News">
+            News
+        </a>
+                            </li>
+                            <li>
+        <a href="https://www.kumc.edu/about/privacy-statement.html" class="site-links" title="Privacy Statement">
+            Privacy Statement
+        </a>
+                            </li>
+                            <li>
+        <a href="https://www.kumc.edu/human-resources/careers.html" class="site-links" title="Careers">
+            Careers
+        </a>
+                            </li>
+
+        </ul>
+
+                            </div>
+                                                    <div class="center-content">
+                                    <ul class="social">
+            <li><a href="https://www.facebook.com/kumedicalcenter" target="_blank"><i class="fab fa-facebook-f"></i><span class="sr-only">Facebook opens in new tab</span></a></li>
+            <li><a href="https://www.twitter.com/kumedcenter" target="_blank"><i class="fab fa-twitter"></i><span class="sr-only">Twitter opens in new tab</span></a></li>
+            <li><a href="https://www.youtube.com/KUMedCenter" target="_blank"><i class="fab fa-youtube"></i><span class="sr-only">YouTube opens in new tab</span></a></li>
+            <li><a href="http://www.instagram.com/kumedcenter" target="_blank"><i class="fab fa-instagram"></i><span class="sr-only">Instagram opens in new tab</span></a></li>
+            <li><a href="https://www.linkedin.com/edu/school?id=18388" target="_blank"><i class="fab fa-linkedin-in"></i><span class="sr-only">LinkedIn opens in new tab</span></a></li>
+    </ul>
+
+                            </div>
+                        <div class="copywright-ps-cs">
+<p>© 2021 The University of Kansas prohibits discrimination on the basis of race, color, ethnicity, religion, sex, national origin, age, ancestry, disability, status as a veteran, sexual orientation, marital status, parental status, gender identity, gender expression, and genetic information in the university's programs and activities. Retaliation is also prohibited by university policy. The following persons have been designated to handle inquiries regarding the nondiscrimination policies and are the Title IX coordinators for their respective campuses: Director of the Office of Institutional Opportunity &amp; Access, <a href="mailto:IOA@ku.edu" title="Email the IOA">IOA@ku.edu</a>, Room 1082, Dole Human Development Center, 1000 Sunnyside Avenue, Lawrence, KS 66045, 785-864-6414, 711 TTY (for the Lawrence, Edwards, Parsons, Yoder, and Topeka campuses); Director, Equal Opportunity Office, Mail Stop 7004, 4330 Shawnee Mission Parkway, Fairway, KS 66205, 913-588-8011, 711 TTY (for the Wichita, Salina, and Kansas City, Kansas medical center campuses).</p>                                    <a href="https://www.kumc.edu/about/privacy-statement.html" title="Privacy Statement">
+            Privacy Statement
+        </a>
+ |         <a href="https://www.kumc.edu/documents/hipaa/KUMCNoticeofPrivacyPractices.pdf" title="Notice of Privacy Practices">
+            Notice of Privacy Practices
+        </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
 </py:match>
 </div>
