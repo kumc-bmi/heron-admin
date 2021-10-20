@@ -30,7 +30,7 @@
       alt="Skip redundant pieces" width="1" height="1" border=
       "0" /></a>
   </div>
-  <header class="fix menu-move-hook d-none d-lg-flex fhook" role="banner">
+  <header class="igx-alt-hook d-none d-lg-block" role="banner">
     <div class="container">
         <div class="row">
             <div class="col-12">
@@ -48,7 +48,18 @@
                     </ul>
                   </div>
                 </div>
-                <nav class="main-nav d-none d-lg-flex" aria-label="Main navigation">                        
+                <nav class="main-nav d-none d-lg-flex" aria-label="Main navigation">
+                    <ul>
+                      <li class="">
+                        <a tabindex="0" class="touch-link" aria-haspopup="true" title="Our Services at Medical Informatics services" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/our-services.html">Our Services</a>
+                      </li>
+                      <li class="">
+                        <a tabindex="0" class="touch-link" aria-haspopup="true" title="Facilities &amp; Resources" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/facilities-and-resources.html">Facilities &amp; Resources</a>
+                      </li>
+                      <li class="">
+                        <a tabindex="0" class="touch-link" aria-haspopup="true" title="About the Medical Informatics division" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/about/faculty-and-staff.html">About</a>
+                      </li>
+                    </ul>
                 </nav>
             </div>
         </div>
@@ -194,25 +205,57 @@
           <span></span>
         </div>
       </div>
-          
-      <div class="row">
-        <div class="col-12">
-          <div class="center-content">
-            <div class="container"> 
-              <h1>We're sorry, the page you are looking for may have moved</h1>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
 
-    <div class="tray page-builder-container ">
-      <div class="container">
-        <div class="row">
-          <div class="col-12">
-            <h1>Main Content goes here</h1>
+    <div class="container">
+      <div class="row">
+          <div class="col-12 col-md-3">
+            <div class="x-up-card">
+              <div class="header">
+                <h3>Use HERON Query and Analysis Tool</h3>
+              </div>
+              <div class="content">
+                <a class="promo-link" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/our-services/heron.html"><i class="fas fa-chevron-right"></i>HERON Introduction</a>
+                <p>
+                  Online Training
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
+          <div class="col-12 col-md-6">
+            <div class="x-up-card">
+              <figure>
+                <div class="_16-9">
+                  <div class="inner">
+                    <div class="inner-img" style="background-image: url('av/220px-Heron_tricol_01.JPG')">
+                    </div>
+                  </div>
+                </div>
+                  <figcaption>photo credit: <a href="https://commons.wikimedia.org/wiki/User:Chrharshaw" title="Read wikimedia">Christopher Harshaw</a>
+                  </figcaption>
+              </figure>
+              <div class="content">
+                <p>
+                  HERON Research Data Repository
+HERON (Healthcare Enterprise Repository for Ontological Narration) is a search discovery tool that allows KUMC faculty members to search de-identified data from various hospital and medical center sources including Epic/O2 (the hospital electronic medical record). By combining the various data sources, researchers can look at the data in new ways not available when viewing data in one source at a time.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-3">
+            <div class="x-up-card">
+              <div class="content">
+                <p>
+                  The HERON Data Use Agreement must be signed by all study team members before extracted data can be released.
+                  <br />
+                  Problems? Questions? Ideas?
+                  Let us know what you think: Gripe/Praise
+                  Citing HERON
+                  Any publication that results from a project utilizing HERON should cite grant support and HERON:
+                </p>
+              </div>
+            </div>
+          </div>
       </div>
     </div>
 
