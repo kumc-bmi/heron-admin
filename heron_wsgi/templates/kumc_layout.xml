@@ -47,10 +47,176 @@
                     </ul>
                   </div>
                 </div>
+                <nav class="main-nav d-none d-lg-flex" aria-label="Main navigation">                        
+                </nav>
             </div>
         </div>
     </div>
   </header>
-    
+
+  <main id="main">
+    <div class="tray tray--no-banner">
+      <div class="dots-wrapper light-blue">
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="dots d-none d-md-block">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+          
+      <div class="row">
+        <div class="col-12">
+          <div class="center-content">
+            <div class="container"> 
+              <h1>We're sorry, the page you are looking for may have moved</h1>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tray page-builder-container ">
+      <div class="container">
+        <div class="row">
+          <div class="col-12">
+            <h1>Main Content goes here</h1>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-builder" class="page-builder-container" style="display: none;"></div>
+  </main>
+
 </py:match>
 </div>
