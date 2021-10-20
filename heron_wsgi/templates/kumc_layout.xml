@@ -4,19 +4,20 @@
    ${select('*')}
   
   <link rel="shortcut icon" href="https://www.kumc.edu/_dev/favicon.ico" />
-  <link href="https://fonts.googleapis.com/css?family=Raleway:300i,400,400i,500,500i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
-  <link type="text/css" rel="stylesheet" href="https://fonts.googleapis.com/css?family=Anton|Muli:300,400,400italic,300italic|Goudy+Bookletter+1911|Oswald&amp;subset=latin,latin-ext" media="all">
-  <link href="https://www.kumc.edu/fontawesome/css/all.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css?family=Noto+Serif&amp;display=swap" rel="stylesheet">
-  <link href="https://www.kumc.edu/Content/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://www.kumc.edu/Content/css/icon-fonts.css" rel="stylesheet">
-  <link href="https://www.kumc.edu/Content/css/jquery-ui.css" rel="stylesheet">
-  <link href="https://www.kumc.edu/Content/css/target-firefox.css" rel="stylesheet">
-  <link href="https://www.kumc.edu/Content/css/main.css" rel="stylesheet">
-  <link href="https://www.kumc.edu/Content/css/igxdev.css" rel="stylesheet">
-  <link href="https://www.kumc.edu/css/kumc-custom.css" rel="stylesheet">
+  <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Raleway:300i,400,400i,500,500i,600,600i,700,700i,800,800i,900,900i" />
+  <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Anton|Muli:300,400,400italic,300italic|Goudy+Bookletter+1911|Oswald&amp;subset=latin,latin-ext" media="all" />
+  <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/fontawesome/css/all.css" />
+  <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Noto+Serif&amp;display=swap" />
+  <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/bootstrap.min.css" />
+  <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/icon-fonts.css" />
+  <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/jquery-ui.css" />
+  <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/target-firefox.css" />
+  <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/main.css" />
+  <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/igxdev.css" />
+  <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/css/kumc-custom.css" />
   <link rel="stylesheet" type="text/css" href="/av/top_btn.css" />
   <script async="async" src="/av/top_btn.js" type="text/javascript"></script>
+ 
 <!-- jquery.showhids.js ? -->
 </py:match>
 
