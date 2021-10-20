@@ -15,6 +15,7 @@
   <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/main.css" />
   <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/igxdev.css" />
   <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/css/kumc-custom.css" />
+  <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/css/template2009/ku-sec.css" />
   <link rel="stylesheet" type="text/css" href="/av/top_btn.css" />
   <script async="async" src="/av/top_btn.js" type="text/javascript"></script>
  
@@ -218,5 +219,84 @@
     <div id="page-builder" class="page-builder-container" style="display: none;"></div>
   </main>
 
+  <footer role="contentinfo">
+        <div class="tray tray--flush tray--footer">
+            <div class="background-image-container">
+                <div class="background-image" style="background-image: url('https://www.kumc.edu/Content/img/footer-background.jpg');">
+                </div>
+            </div>
+            <div class="container">
+                <div class="row">
+                    <div class="col-12">
+                            <div class="center-content">
+                                <a class="button button-outline button-outline--gift" href="https://www.kumc.edu/about/make-a-gift.html">
+                                <img src="https://www.kumc.edu/Content/img/logos/logo--endowment.png" 
+                                  role="presentation" alt="" />Make a Gift<i class="fas fa-chevron-right"></i></a>
+                            </div>
+                            <div class="center-content">
+                                <a class="logo logo--footer" href="https://heron.kumc.edu/heron/">
+                                <img src="https://www.kumc.edu/_dev/logo--white.png" aria-label="Click to go back to home page." alt="KUMC Logo" /></a>
+                            </div>
+                        <div class="address-container">
+                            3901 Rainbow Boulevard, Kansas City, KS 66160 | 
+                                <a href="tel:913-588-5000" style="color:white;">913-588-5000</a>
+                        </div>
+                            <div class="center-content">
+                          <ul>
+                            <li>
+        <a href="https://www.kumc.edu/about.html" class="site-links" title="About">
+            About
+        </a>
+                            </li>
+                            <li>
+        <a href="https://www.kumc.edu/about/events-calendar.html" class="site-links" title="Calendar">
+            Calendar
+        </a>
+                            </li>
+                            <li>
+        <a href="https://www.kumc.edu/about/news.html" class="site-links" title="News">
+            News
+        </a>
+                            </li>
+                            <li>
+        <a href="https://www.kumc.edu/about/privacy-statement.html" class="site-links" title="Privacy Statement">
+            Privacy Statement
+        </a>
+                            </li>
+                            <li>
+        <a href="https://www.kumc.edu/human-resources/careers.html" class="site-links" title="Careers">
+            Careers
+        </a>
+                            </li>
+
+        </ul>
+
+        </div>
+          <div class="center-content">
+            <ul class="social">
+            <li><a href="https://www.facebook.com/kumedicalcenter" target="_blank"><i class="fab fa-facebook-f"></i><span class="sr-only">Facebook opens in new tab</span></a></li>
+            <li><a href="https://www.twitter.com/kumedcenter" target="_blank"><i class="fab fa-twitter"></i><span class="sr-only">Twitter opens in new tab</span></a></li>
+            <li><a href="https://www.youtube.com/KUMedCenter" target="_blank"><i class="fab fa-youtube"></i><span class="sr-only">YouTube opens in new tab</span></a></li>
+            <li><a href="http://www.instagram.com/kumedcenter" target="_blank"><i class="fab fa-instagram"></i><span class="sr-only">Instagram opens in new tab</span></a></li>
+            <li><a href="https://www.linkedin.com/edu/school?id=18388" target="_blank"><i class="fab fa-linkedin-in"></i><span class="sr-only">LinkedIn opens in new tab</span></a></li>
+    </ul>
+
+  </div>
+  <div class="copywright-ps-cs">
+    <p>© 2021 The University of Kansas prohibits discrimination on the basis of race, color, ethnicity, religion, sex, national origin, age, ancestry, disability, status as a veteran, sexual orientation, marital status, parental status, gender identity, gender expression, and genetic information in the university's programs and activities. Retaliation is also prohibited by university policy. The following persons have been designated to handle inquiries regarding the nondiscrimination policies and are the Title IX coordinators for their respective campuses: Director of the Office of Institutional Opportunity &amp; Access, 
+    <a href="mailto:IOA@ku.edu" title="Email the IOA">IOA@ku.edu</a>, Room 1082, Dole Human Development Center, 1000 Sunnyside Avenue, Lawrence, KS 66045, 785-864-6414, 711 TTY (for the Lawrence, Edwards, Parsons, Yoder, and Topeka campuses); Director, Equal Opportunity Office, Mail Stop 7004, 4330 Shawnee Mission Parkway, Fairway, KS 66205, 913-588-8011, 711 TTY (for the Wichita, Salina, and Kansas City, Kansas medical center campuses).</p>                                    
+    <a href="https://www.kumc.edu/about/privacy-statement.html" title="Privacy Statement">
+      Privacy Statement
+    </a>
+ |  <a href="https://www.kumc.edu/documents/hipaa/KUMCNoticeofPrivacyPractices.pdf" title="Notice of Privacy Practices">
+      Notice of Privacy Practices
+    </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
 </py:match>
 </div>
