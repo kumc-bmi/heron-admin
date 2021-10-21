@@ -223,10 +223,10 @@
               </div>
             </div>
           </div>
-          <div class="col-12 col-md-3">
+          <div class="col-11 col-md-3">
             <div class="x-up-card">
               <div class="content">
-                ${select(".//div[@class='col-12 col-md-3']/*|text()")}
+                ${select(".//div[@class='col-11 col-md-3']/*|text()")}
               </div>
             </div>
           </div>
