@@ -23,13 +23,6 @@
 </py:match>
 
 <py:match path="body" once="true">
-  <div id="kumc_accessibilty_skip">
-      <a href="#maincontent" accesskey="2" name="top" id=
-      "top"><img src=
-      "https://www.kumc.edu/Images/template2009/widgets/spacer.gif"
-      alt="Skip redundant pieces" width="1" height="1" border=
-      "0" /></a>
-  </div>
   <header class="fix menu-move-hook d-none d-lg-flex fhook" role="banner">
     <div class="container">
         <div class="row">
