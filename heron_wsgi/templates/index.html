@@ -8,7 +8,7 @@
 </head>
 <!-- todo: consider passing admin_mailbox in from python -->
 <body py:with="admin_mailbox='misupport@kumc.edu'">
-  <div id="menu">
+  <div class="col-12 col-md-3">
   <div class="header png"><h2>Use HERON Query and Analysis Tool</h2>
   <ul>
     <li py:if="'checked' in repositoryAccess">
@@ -82,7 +82,7 @@
   </div>
   </div>
 
-  <div id="main">
+  <div class="col-12 col-md-6">
   <div id="heron-tricol-01" class="photo">
   <!-- @@TODO: get the template to handle this style in the head -->
   <style type="text/css">
@@ -197,7 +197,7 @@
   </div>
   </div>
 
-  <div id="rightnav">
+  <div class="col-12 col-md-3">
     <div class="span-7 last">
       <h3>Login Credentials</h3>
       <form action="${logout_path}" method="post">

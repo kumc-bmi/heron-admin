@@ -211,48 +211,22 @@
       <div class="row">
           <div class="col-12 col-md-3">
             <div class="x-up-card">
-              <div class="header">
-                <h3>Use HERON Query and Analysis Tool</h3>
-              </div>
               <div class="content">
-                <a class="promo-link" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/our-services/heron.html"><i class="fas fa-chevron-right"></i>HERON Introduction</a>
-                <p>
-                  Online Training
-                </p>
+                ${select(".//div[@class='col-12 col-md-3']/*|text()")}
               </div>
             </div>
           </div>
           <div class="col-12 col-md-6">
             <div class="x-up-card">
-              <figure>
-                <div class="_16-9">
-                  <div class="inner">
-                    <div class="inner-img" style="background-image: url('av/220px-Heron_tricol_01.JPG')">
-                    </div>
-                  </div>
-                </div>
-                  <figcaption>photo credit: <a href="https://commons.wikimedia.org/wiki/User:Chrharshaw" title="Read wikimedia">Christopher Harshaw</a>
-                  </figcaption>
-              </figure>
               <div class="content">
-                <p>
-                  HERON Research Data Repository
-HERON (Healthcare Enterprise Repository for Ontological Narration) is a search discovery tool that allows KUMC faculty members to search de-identified data from various hospital and medical center sources including Epic/O2 (the hospital electronic medical record). By combining the various data sources, researchers can look at the data in new ways not available when viewing data in one source at a time.
-                </p>
+                ${select(".//div[@class='col-12 col-md-6']/*|text()")}
               </div>
             </div>
           </div>
           <div class="col-12 col-md-3">
             <div class="x-up-card">
               <div class="content">
-                <p>
-                  The HERON Data Use Agreement must be signed by all study team members before extracted data can be released.
-                  <br />
-                  Problems? Questions? Ideas?
-                  Let us know what you think: Gripe/Praise
-                  Citing HERON
-                  Any publication that results from a project utilizing HERON should cite grant support and HERON:
-                </p>
+                ${select(".//div[@class='col-12 col-md-3']/*|text()")}
               </div>
             </div>
           </div>
