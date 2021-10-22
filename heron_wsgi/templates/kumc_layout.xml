@@ -282,7 +282,7 @@
                                   role="presentation" alt="" />Make a Gift<i class="fas fa-chevron-right"></i></a>
                             </div>
                             <div class="center-content">
-                                <a class="logo logo--footer" href="https://heron.kumc.edu/heron/">
+                                <a class="logo logo--footer" href="https://www.kumc.edu/" target="_blank">
                                 <img src="https://www.kumc.edu/_dev/logo--white.png" aria-label="Click to go back to home page." alt="KUMC Logo" /></a>
                             </div>
                         <div class="address-container">
