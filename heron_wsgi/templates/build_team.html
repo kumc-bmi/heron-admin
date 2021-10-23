@@ -21,6 +21,7 @@
       <table class="table text-wrap" py:if="people">
         <thead>
           <tr>
+            <th scope="col" style="width: 10%;"></th>
             <th scope="col" style="width: 42%;">Name</th>
             <th scope="col" style="width: 44%;">Email</th>
             <th scope="col" style="width: 50%;">Title</th>
@@ -50,10 +51,11 @@
         <table class="table text-wrap">
           <thead>
             <tr>
+              <th scope="col" style="width: 10%;"></th>
               <th scope="col" style="width: 42%;">Name</th>
               <th scope="col" style="width: 44%;">User ID</th>
               <th scope="col" style="width: 50%;">Email</th>
-              <th scope="col" style="width: 35%;">Email</th>
+              <th scope="col" style="width: 35%;">Phone</th>
               <th scope="col" style="width: 100%;">Account Disabled</th>
             </tr>
           </thead>
@@ -95,7 +97,7 @@
 
     <form method="get" action="">
       <div class="header">
-        <h4>Search KUMC Directory for Team Members and Faculty Sponsors</h4>
+        <h5>Search KUMC Directory for Team Members and Faculty Sponsors</h5>
       </div> 
       <p>Look someone up by giving the first letters of their first name, last name, or KUMC id:
       <p>
@@ -111,7 +113,7 @@
 
     <form method="get" action="">
       <div class="header">
-        <h4>IRB Protocol Study Team Lookup</h4>
+        <h5>IRB Protocol Study Team Lookup</h5>
       </div>
       <p>Look up IRB protocol study team members:</p>
       <label>Study ID: <input name='studyId' size="20"/></label>
@@ -122,7 +124,7 @@
     <form py:if="candidates or studyTeam" method="get" action="">
       <hr />
       <div class="header">
-        <h4><em>Please Select...</em></h4>
+        <h5><em>Please Select...</em></h5>
       </div>
       ${studyTeamTable(studyTeam)}
       ${peopleTable(candidates, 'a')}
@@ -136,7 +138,7 @@
 
     <form py:if="team" method="get" action="">
       <div class="header">
-        <h4>Team Members</h4>
+        <h5>Team Members</h5>
       </div>
       ${peopleTable(team, 'r')}
 

@@ -16,7 +16,12 @@
   <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/igxdev.css" />
   <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/css/kumc-custom.css" />
   <script src="https://www.kumc.edu/Content/js/jquery-3.3.1.min.js" type="text/javascript"></script>
+  <script src="https://www.kumc.edu/Content/js/jquery-popper.min.js" type="text/javascript"></script>
+  <script src="https://www.kumc.edu/Content/js/jquery-ui.min.js" type="text/javascript"></script>
   <script src="https://www.kumc.edu/Content/js/jquery-bootstrap.min.js" type="text/javascript"></script>
+  <script src="https://www.kumc.edu/Content/js/jquery-match-height-min.js" type="text/javascript"></script>
+  <script src="https://www.kumc.edu/Content/js/jquery-dataTables.min.js" type="text/javascript"></script>
+  <script src="https://www.kumc.edu/Content/js/jquery-slick-min.js" type="text/javascript"></script>
   <script src="https://www.kumc.edu/Content/js/jquery-main.js" type="text/javascript"></script>
 </py:match>
 
@@ -39,9 +44,11 @@
               </ul>
             </div>
           </div>
-          <a href="https://heron.kumc.edu/heron/"><h1>Heron</h1></a>
           <nav class="main-nav d-none d-lg-flex" aria-label="Main navigation">
             <ul>
+              <li class="">
+                <a tabindex="0" class="touch-link" aria-haspopup="true" title="Heron Home page" href="https://heron.kumc.edu/heron/">Heron</a>
+              </li>
               <li class="">
                 <a tabindex="0" class="touch-link" aria-haspopup="true" title="Our Services at Medical Informatics services" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/our-services.html">Our Services</a>
               </li>
