@@ -198,14 +198,13 @@
       </div>
     </div>
 
-    <div class="parent-section-link">
-      <a href="https://heron.kumc.edu/heron/"><i class="fas fa-arrow-left"></i> Heron </a>
-    </div>
-
     <div class="container">
       <div class="row">
         <div class="news-copy">
           <div class="x-up-card">
+            <div class="parent-section-link">
+              <a href="https://heron.kumc.edu/heron/"><i class="fas fa-arrow-left"></i> Heron </a>
+            </div>
             <div class="content">
                 ${select(".//div[@class='news-copy']/*|text()")}
             </div>
@@ -215,7 +214,7 @@
     </div>
 
     <div id="page-builder" class="page-builder-container" style="display: none;"></div>
-    
+
   </main>
       
   <div class="tray--newsroom-contact">
