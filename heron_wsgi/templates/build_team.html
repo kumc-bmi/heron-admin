@@ -30,7 +30,7 @@
         </thead>
         <tbody>
           <tr py:for="who in people">
-            <td><input type="checkbox" name="${pfx}_${who.cn}" id="${pfx}_${who.cn}" /></td>
+            <td><input style="width: 10; height: 10;" type="checkbox" name="${pfx}_${who.cn}" id="${pfx}_${who.cn}" /></td>
             <td><label for="${pfx}_${who.cn}">${who.sn}, ${who.givenname}</label></td>
             <td><label for="${pfx}_${who.cn}"><tt>&lt;${who.mail}&gt;</tt><br /><small>userid: <tt>${who.cn}</tt></small></label></td>
             <td>${who.title}<br /><strong py:if="who.faculty_role()">Faculty</strong><strong py:if="who.cn in executives">Executive</strong></td>
@@ -63,7 +63,7 @@
             <tr py:for="who in studyTeam">
               <div py:strip="True" py:with="cn=who['EmailPreferred'][:-len('@kumc.edu')] if who['EmailPreferred'].endswith('@kumc.edu') else None">
                 <td>
-                  <input type="checkbox" py:if="cn" name="a_${cn}" id="a_${cn}" title="${cn}" />
+                  <input style="width: 10; height: 10;" type="checkbox" py:if="cn" name="a_${cn}" id="a_${cn}" title="${cn}" />
                   <input py:if="not cn" type="checkbox" disabled="disabled" />
                 </td>
                 <td>${who['lastName']}, ${who['firstName']}</td>
@@ -124,7 +124,7 @@
     <form py:if="candidates or studyTeam" method="get" action="">
       <hr />
       <div class="header">
-        <h5><em>Please Select...</em></h5>
+        <h6><em>Please Select...</em></h6>
       </div>
       ${studyTeamTable(studyTeam)}
       ${peopleTable(candidates, 'a')}
