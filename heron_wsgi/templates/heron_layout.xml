@@ -23,37 +23,41 @@
 <py:match path="body" once="true">
   <header class="fix menu-move-hook d-none d-lg-flex fhook" role="banner">
     <div class="container">
-        <div class="row">
-          <div class="col-12">
-            <div class="d-flex">
-              <a id="main-logo-link" href="https://www.kumc.edu/" target="_blank" style=
-                "font-size:0;">kumc.edu<img src=
-                "https://www.kumc.edu/_dev/logo--kumc-main.png" alt=
-                "KU Medical Center logo image" /></a>
-              <div class="col-lg-8 ml-auto d-none d-lg-block">
-                <ul class="secondary">
-                  <li><a href="https://www.kumc.edu/about/our-campuses.html" title=
-                    "Our Campuses">Our Campuses</a></li>
-                  <li><a href="https://www.kumc.edu/about/make-a-gift.html" title=
-                    "Make a Gift">Make a Gift</a></li>
-                </ul>
-              </div>
-            </div>
-            <nav class="main-nav d-none d-lg-flex" aria-label="Main navigation">
-              <ul>
-                <li class="">
-                  <a tabindex="0" class="touch-link" aria-haspopup="true" title="Our Services at Medical Informatics services" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/our-services.html">Our Services</a>
-                </li>
-                <li class="">
-                  <a tabindex="0" class="touch-link" aria-haspopup="true" title="Facilities &amp; Resources" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/facilities-and-resources.html">Facilities &amp; Resources</a>
-                </li>
-                <li class="">
-                  <a tabindex="0" class="touch-link" aria-haspopup="true" title="About the Medical Informatics division" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/about/faculty-and-staff.html">About</a>
-                </li>
+      <div class="row">
+        <div class="col-12">
+          <div class="d-flex">
+            <a id="main-logo-link" href="https://www.kumc.edu/" target="_blank" style=
+              "font-size:0;">kumc.edu<img src=
+              "https://www.kumc.edu/_dev/logo--kumc-main.png" alt=
+              "KU Medical Center logo image" /></a>
+            <div class="col-lg-8 ml-auto d-none d-lg-block">
+              <ul class="secondary">
+                <li><a href="https://www.kumc.edu/about/our-campuses.html" title=
+                  "Our Campuses">Our Campuses</a></li>
+                <li><a href="https://www.kumc.edu/about/make-a-gift.html" title=
+                  "Make a Gift">Make a Gift</a></li>
               </ul>
-            </nav>
+            </div>
           </div>
+          <a href="https://heron.kumc.edu/heron/"><h1>Heron</h1></a>
+          <nav class="main-nav d-none d-lg-flex" aria-label="Main navigation">
+            <ul>
+              <li class="">
+                <a tabindex="0" class="touch-link" aria-haspopup="true" title="Our Services at Medical Informatics services" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/our-services.html">Our Services</a>
+              </li>
+              <li class="">
+                <a tabindex="0" class="touch-link" aria-haspopup="true" title="Facilities &amp; Resources" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/facilities-and-resources.html">Facilities &amp; Resources</a>
+              </li>
+              <li class="">
+                  <a tabindex="0" class="touch-link" aria-haspopup="true" title="Frontiers" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/our-services/heron/frontiers-and-pioneers-registries.html">Frontiers</a>
+                </li>
+              <li class="">
+                <a tabindex="0" class="touch-link" aria-haspopup="true" title="About the Medical Informatics division" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/about/faculty-and-staff.html">About</a>
+              </li>
+            </ul>
+          </nav>
         </div>
+      </div>
     </div>
   </header>
 
