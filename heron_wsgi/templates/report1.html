@@ -18,59 +18,77 @@
       <li><a href="#by_month">Queries by Month</a></li>
     </ul>
 
-    <div class="header">
-      <h5 id="by_user">Queries by User</h5>
-    </div>
-
-    <div class="table-responsive">
-      <table class="table table-standard" style="width: 100%; margin-left: auto; margin-right: auto;" py:with="cls=cycle(('odd', 'even'))">
-        <thead>
-          <tr>
-            <th>User</th>
-            <th>Two Weeks</th>
-            <th>Last Month</th>
-            <th>Last Quarter</th>
-            <th>Last 365 Days</th>
-            <th>All Time</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- re py:for, see http://genshi.edgewall.org/wiki/Documentation/xml-templates.html#id3 -->
-          <tr py:for="row in query_volume" class="${cls.next()}">
-            <th>${row.full_name}<br />
-                <small>${roles[row.user_id]}</small>
-            </th>
-            <td>${row.two_weeks}</td>
-            <td>${row.last_month}</td>
-            <td>${row.last_quarter}</td>
-            <td>${row.last_year}</td>
-            <td>${row.all_time}</td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="card">
+      <div class="card-header" id="by_user" aria-label="Open Queries by User accordion">
+        <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-7" aria-expanded="false" aria-controls="collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-7">
+          Queries by User
+        </button>
+      </div>
+      <div id="collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-7" class="collapse" aria-labelledby="by_user" data-parent="#accordion-parent">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-standard" style="width: 100%; margin-left: auto; margin-right: auto;" py:with="cls=cycle(('odd', 'even'))">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Two Weeks</th>
+                  <th>Last Month</th>
+                  <th>Last Quarter</th>
+                  <th>Last 365 Days</th>
+                  <th>All Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- re py:for, see http://genshi.edgewall.org/wiki/Documentation/xml-templates.html#id3 -->
+                <tr py:for="row in query_volume" class="${cls.next()}">
+                  <th>${row.full_name}<br />
+                      <small>${roles[row.user_id]}</small>
+                  </th>
+                  <td>${row.two_weeks}</td>
+                  <td>${row.last_month}</td>
+                  <td>${row.last_quarter}</td>
+                  <td>${row.last_year}</td>
+                  <td>${row.all_time}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
     
-    <div class="header">
+    <!-- <div class="header">
       <h5 id="by_month">Queries by Month</h5>
-    </div>
-    
-    <div class="table-responsive">
-      <table class="table table-standard" style="width: 100%; margin-left: auto; margin-right: auto;" py:with="cls=cycle(('odd', 'even'))">
-        <thead>
-          <tr>
-            <th>Year-Month</th>
-            <th>Queries</th>
-            <th>Users</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr py:for="row in queries_by_month" class="${cls.next()}">
-            <th>${'%04d-%02d' % (row.y, row.m)}</th>
-            <td>${row.qty}</td>
-            <td>${row.users}</td>
-          </tr>
-        </tbody>
-      </table>
+    </div> -->
+
+    <div class="card">
+      <div class="card-header" id="by_month" aria-label="Open Queries by Month accordion">
+        <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-8" aria-expanded="false" aria-controls="collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-8">
+          Queries by Month
+        </button>
+      </div>
+      <div id="collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-8" class="collapse" aria-labelledby="by_month" data-parent="#accordion-parent">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-standard" style="width: 100%; margin-left: auto; margin-right: auto;" py:with="cls=cycle(('odd', 'even'))">
+              <thead>
+                <tr>
+                  <th>Year-Month</th>
+                  <th>Queries</th>
+                  <th>Users</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr py:for="row in queries_by_month" class="${cls.next()}">
+                  <th>${'%04d-%02d' % (row.y, row.m)}</th>
+                  <td>${row.qty}</td>
+                  <td>${row.users}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </body>
