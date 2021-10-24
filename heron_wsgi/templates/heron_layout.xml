@@ -8,8 +8,8 @@
   <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Anton|Muli:300,400,400italic,300italic|Goudy+Bookletter+1911|Oswald&amp;subset=latin,latin-ext" media="all" />
   <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/fontawesome/css/all.css" />
   <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Noto+Serif&amp;display=swap" />
-  <!-- <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/bootstrap.min.css" /> -->
-  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.0.1/css/bootstrap.min.css" />
+  <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/bootstrap.min.css" />
+  <!-- <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.0.1/css/bootstrap.min.css" /> -->
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.3/css/dataTables.bootstrap5.min.css" />
   <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/icon-fonts.css" />
   <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/jquery-ui.css" />
