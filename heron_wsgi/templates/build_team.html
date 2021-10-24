@@ -18,7 +18,7 @@
     </div>
     
     <py:def function="peopleTable(people, pfx)">
-      <table class="table text-wrap" py:if="people">
+      <table id="heron_table" class="table table-striped" style="width:100%" py:if="people">
         <thead>
           <tr>
             <th>Select</th>
@@ -37,6 +37,15 @@
             <td>${who.ou}</td>
           </tr>
         </tbody>
+        <tfoot>
+          <tr>
+            <th>Select</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Title</th>
+            <th>Department</th>
+          </tr>
+        </tfoot>
       </table>
     </py:def>
     
@@ -48,7 +57,7 @@
           <br/>Expriation: ${study["Date Expiration"]}
           <br/>State: ${study["State"]}
         </p>
-        <table class="table text-wrap">
+        <table id="example" class="table table-striped" style="width:100%">
           <thead>
             <tr>
               <th>Select</th>
@@ -74,6 +83,16 @@
               </div>
             </tr>
           </tbody>
+          <tfoot>
+            <tr>
+              <th>Select</th>
+              <th>Name</th>
+              <th>User ID</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Account Disabled</th>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </py:def>
