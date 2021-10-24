@@ -2,60 +2,35 @@
 <html xmlns="http://www.w3.org/1999/xhtml"
       xmlns:py="http://genshi.edgewall.org/"
       xmlns:xi="http://www.w3.org/2001/XInclude">
+      <xi:include href="heron_layout.xml" />
 <head>
   <title>HERON: Status Disclaimer</title>
 </head>
 <body>
-<h1>HERON Status Disclaimer</h1>
 
-<div id="col-12 col-md-6">
-<div class="span-20">
+<div class="news-copy">
+  <div class="header">
+    <h1>HERON Status Disclaimer</h1>
+  </div>
 
-<style type='text/css'>
-.main-action { text-align: center }
+  <p>
+    <em>See <cite><a href="${url}">${headline}</a></cite> for the original status update with working links.</em>
+  </p>
 
-blockquote { border: 1px solid #ccc;
-  padding-left: 1em;
-  padding-top: 1em
- }
-/* The links in this copy of the blog item are broken;
- let's make them less of an attractive nuisance. */
-blockquote a { color: inherit }
+  <form method='POST'>
+    <p>Please review the status disclaimer below and acknowledge.</p>
+    <p>
+    <input class="button button-blue btn mt-6" type='submit' value='Acknowledge' />
+    </p>
 
-/* Table border style excerpt from trac.css */
-table.wiki {
- border: 1px solid #ccc;
- border-collapse: collapse;
- border-spacing: 0;
-}
-table.wiki td { border: 1px solid #ccc;  padding: .1em .25em; }
-table.wiki th {
- border: 1px solid #bbb;
- padding: .1em .25em;
- background-color: #f7f7f7;
-}
-</style>
+    <blockquote>
+      ${Markup(content)}
+    </blockquote>
 
-<p><em>See <cite><a href="${url}">${headline}</a></cite> for
-the original status update with working links.</em></p>
-
-
-<form method='POST'>
-<p>Please review the status disclaimer below and acknowledge.</p>
-<p class='main-action'>
-<input type='submit' value='Acknowledge' />
-</p>
-
-<blockquote>
-${Markup(content)}
-</blockquote>
-
-<p class='main-action'>
-<input type='submit' value='Acknowledge' />
-</p>
-</form>
-
-</div>
+    <p>
+    <input class="button button-blue btn mt-6" type='submit' value='Acknowledge' />
+    </p>
+  </form>
 </div>
 
 </body>
