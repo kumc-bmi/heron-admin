@@ -23,7 +23,7 @@
     </div>
     
     <div class="table-responsive">
-      <table class="table text-wrap" py:with="cls=cycle(('odd', 'even'))">
+      <table class="table table-standard" style="width: 100%; margin-left: auto; margin-right: auto;" py:with="cls=cycle(('odd', 'even'))">
         <thead>
           <tr>
             <th>User</th>
@@ -37,9 +37,9 @@
         <tbody>
           <!-- re py:for, see http://genshi.edgewall.org/wiki/Documentation/xml-templates.html#id3 -->
           <tr py:for="row in query_volume" class="${cls.next()}">
-            <th>${row.full_name}<br />
+            <td>${row.full_name}<br />
                 <small>${roles[row.user_id]}</small>
-            </th>
+            </td>
             <td>${row.two_weeks}</td>
             <td>${row.last_month}</td>
             <td>${row.last_quarter}</td>
@@ -55,7 +55,7 @@
     </div>
     
     <div class="table-responsive">
-      <table class="table text-wrap" py:with="cls=cycle(('odd', 'even'))">
+      <table class="table table-standard" style="width: 100%; margin-left: auto; margin-right: auto;" py:with="cls=cycle(('odd', 'even'))">
         <thead>
           <tr>
             <th>Year-Month</th>
