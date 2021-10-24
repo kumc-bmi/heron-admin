@@ -31,6 +31,13 @@
       });
     //]]>
   </script>
+  <script type="text/javascript"> 
+    //<![CDATA[
+      $(document).ready(function() {
+        $('#heron-data-table-2').DataTable();
+      });
+    //]]>
+  </script>
 </py:match>
 
 <py:match path="body" once="true">
