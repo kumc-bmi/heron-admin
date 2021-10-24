@@ -48,7 +48,7 @@
             <h5>Current Sessions</h5>
           </div>
           
-          <table class="table text-wrap">
+          <table id="heron-data-table" class="table text-wrap">
             <thead>
               <tr>
                 <th>Started</th>
@@ -77,7 +77,7 @@
 
           <p>Current release: <strong>${current_release}</strong></p>
 
-          <table class="table text-wrap" py:with="parity=cycle(('odd', 'even'))">
+          <table id="heron-data-table" class="table text-wrap" py:with="parity=cycle(('odd', 'even'))">
             <thead>
               <tr>
                 <th>ID</th>

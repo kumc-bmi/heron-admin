@@ -27,7 +27,7 @@
   <script type="text/javascript"> 
     //<![CDATA[
       $(document).ready(function() {
-        $('#heron_table').DataTable();
+        $('#heron-data-table').DataTable();
       });
     //]]>
   </script>
