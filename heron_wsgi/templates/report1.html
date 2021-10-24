@@ -65,7 +65,7 @@
         </thead>
         <tbody>
           <tr py:for="row in queries_by_month" class="${cls.next()}">
-            <th>${'%04d-%02d' % (row.y, row.m)}</th>
+            <td>${'%04d-%02d' % (row.y, row.m)}</td>
             <td>${row.qty}</td>
             <td>${row.users}</td>
           </tr>
