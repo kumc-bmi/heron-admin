@@ -2,162 +2,172 @@
 <html xmlns="http://www.w3.org/1999/xhtml"
       xmlns:py="http://genshi.edgewall.org/"
       xmlns:xi="http://www.w3.org/2001/XInclude">
-<xi:include href="kumc_layout.xml" />
+  <xi:include href="heron_layout.xml" />
 <head>
   <title>HERON: Build List of People for use in Oversight Request</title>
 </head>
 <body>
-
-<h1>HERON 
- <py:if test="
- what_for=='sponsorship'">Sponsorship:</py:if>
- <py:if test="what_for=='data_use'">Data Use:</py:if>
- Select Team</h1>
-
-<py:def function="peopleTable(people, pfx)">
-<table py:if="people">
-  <tr>
-    <th>&#160;</th>
-    <th>Name</th><th>Email</th><th>Title</th><th>Department</th>
-  </tr>
-  <tr py:for="who in people">
-    <td><input type="checkbox" name="${pfx}_${who.cn}"
-               id="${pfx}_${who.cn}" /></td>
-    <td><label for="${pfx}_${who.cn}">${who.sn}, ${who.givenname}</label></td>
-    <td><label for="${pfx}_${who.cn}">
-        <tt>&lt;${who.mail}&gt;</tt><br />
-        <small>userid: <tt>${who.cn}</tt></small></label></td>
-    <td>
-      ${who.title}<br />
-      <strong py:if="who.faculty_role()">Faculty</strong>
-      <strong py:if="who.cn in executives">Executive</strong>
-    </td>
-    <td>${who.ou}</td>
-  </tr>
-</table>
-</py:def>
-
-<py:def function="studyTeamTable(studyTeam)">
-<div py:if="studyTeam">  
-  <p py:with="study=studyTeam[0]">
-    <strong><cite>${study["Full Study Title"]}</cite></strong>
-    <br/>Study ID: ${study["ID"]}
-    <br/>Expriation: ${study["Date Expiration"]}
-    <br/>State: ${study["State"]}</p>
-  <table>
-  <tr>
-    <th>&#160;</th>
-    <th>Name</th><th>User ID</th>
-    <th>Email</th><th>Phone</th><th>Account Disabled</th>
-  </tr>
-  <tr py:for="who in studyTeam">
-    <div py:strip="True"
-	 py:with="cn=who['EmailPreferred'][:-len('@kumc.edu')] if who['EmailPreferred'].endswith('@kumc.edu') else None">
-    <td>
-      <input type="checkbox" py:if="cn"
-             name="a_${cn}"
-             id="a_${cn}"
-             title="${cn}"
-	     />
-      <input py:if="not cn"
-	     type="checkbox" disabled="disabled"/>
-    </td>
-    <td>${who['lastName']}, ${who['firstName']}</td>
-    <td>${cn}</td>
-    <td>${who['EmailPreferred']}</td>
-    <td>${who['BusinesPhone']}</td>  <!-- sic -->
-    <td>${who['accountDisabled']}</td>
+  <div class="news-copy">
+    <div class="header">
+      <h1>
+        HERON 
+        <py:if test="what_for=='sponsorship'">Sponsorship:</py:if>
+        <py:if test="what_for=='data_use'">Data Use:</py:if>
+        Select Team
+      </h1>
     </div>
-  </tr>
-  </table>
+    
+    <py:def function="peopleTable(people, pfx)">
+      <table id="heron-data-table" class="table text-wrap" style="width:100%" py:if="people">
+        <thead>
+          <tr>
+            <th>Select</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Title</th>
+            <th>Department</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr py:for="who in people">
+            <td><input type="checkbox" name="${pfx}_${who.cn}" id="${pfx}_${who.cn}" /></td>
+            <td><label for="${pfx}_${who.cn}">${who.sn}, ${who.givenname}</label></td>
+            <td><label for="${pfx}_${who.cn}"><code style="color: #2767ff;">${who.mail}</code><br /><small>userid: <code>${who.cn}</code></small></label></td>
+            <td>${who.title}<br /><strong py:if="who.faculty_role()">Faculty</strong><strong py:if="who.cn in executives">Executive</strong></td>
+            <td>${who.ou}</td>
+          </tr>
+        </tbody>
+      </table>
+    </py:def>
+    
+    <py:def function="studyTeamTable(studyTeam)">
+      <div py:if="studyTeam">  
+        <p py:with="study=studyTeam[0]">
+          <strong><cite>${study["Full Study Title"]}</cite></strong>
+          <br/>Study ID: ${study["ID"]}
+          <br/>Expriation: ${study["Date Expiration"]}
+          <br/>State: ${study["State"]}
+        </p>
+        <table id="heron-data-table" class="table text-wrap" style="width:100%">
+          <thead>
+            <tr>
+              <th>Select</th>
+              <th>Name</th>
+              <th>User ID</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Account Disabled</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr py:for="who in studyTeam">
+              <div py:strip="True" py:with="cn=who['EmailPreferred'][:-len('@kumc.edu')] if who['EmailPreferred'].endswith('@kumc.edu') else None">
+                <td>
+                  <input type="checkbox" py:if="cn" name="a_${cn}" id="a_${cn}" title="${cn}" />
+                  <input py:if="not cn" type="checkbox" disabled="disabled" />
+                </td>
+                <td>${who['lastName']}, ${who['firstName']}</td>
+                <td>${cn}</td>
+                <td>${who['EmailPreferred']}</td>
+                <td>${who['BusinesPhone']}</td> <!-- sic -->
+                <td>${who['accountDisabled']}</td>
+              </div>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </py:def>
+
+    <p>
+      Select
+      <py:if test="not investigator">a <strong>faculty sponsor</strong>
+      and any other</py:if>
+      <strong>members of the team</strong> you are requesting to be
+      <py:if test="what_for == 'sponsorship'"><strong>sponsored</strong> for this
+      preparatory-to-research activity.</py:if>
+      <py:if test="what_for == 'data_use'">granted access in
+      this <strong>data request</strong>.</py:if>
+    </p>
+
+    <ol>
+      <li>Search the directory or look up the IRB study team.</li>
+      <li>From the results, select people to add (or remove).</li>
+      <li>Use <strong>Done Choosing People</strong> to go to a page to fill in other details of your request.</li>
+    </ol>
+
+    <form method="get" action="">
+      <div class="header">
+        <h5>Search KUMC Directory for Team Members and Faculty Sponsors</h5>
+      </div> 
+      <p>Look someone up by giving the first letters of their first name, last name, or KUMC id:
+      <p>
+      <label>First: <input name='givenname' size="8"/></label>
+      <label>Last: <input name='sn' size="15"/></label>
+      <label>ID: <input name='cn' size="10"/></label>
+      <input class="button button-blue btn mt-6" type="submit" name='goal' value="Search" />
+      </p>
+      <input type="hidden" name="uids" value="${uids}" />
+      <input py:if="investigator" type="hidden" name="investigator" value="${investigator.cn}" />
+      </p>
+    </form>
+
+    <form method="get" action="">
+      <div class="header">
+        <h5>IRB Protocol Study Team Lookup</h5>
+      </div>
+      <p>Look up IRB protocol study team members:</p>
+      <label>Study ID: <input name='studyId' size="20"/></label>
+      <input type="hidden" name="uids" value="${uids}" />
+      <input class="button button-blue btn mt-6" type="submit" name='goal' value="Lookup" />
+    </form>
+
+    <form py:if="candidates or studyTeam" method="get" action="">
+      <hr />
+      <div class="header">
+        <h6><em>Please Select...</em></h6>
+      </div>
+      ${studyTeamTable(studyTeam)}
+      ${peopleTable(candidates, 'a')}
+      <p>
+        <input class="button button-blue btn mt-6" type="submit" name='goal' value="Add Team Members" />
+        <input class="button button-blue btn mt-6" type="submit" name='goal' value="Add Faculty Sponsor" />
+      </p>
+      <input type="hidden" name="uids" value="${uids}" />
+      <input py:if="investigator" type="hidden" name="investigator" value="${investigator.cn}" />
+    </form>
+
+    <form py:if="team" method="get" action="">
+      <div class="header">
+        <h5>Team Members</h5>
+      </div>
+      ${peopleTable(team, 'r')}
+
+      <div py:if="investigator">
+        <dl><dt>Faculty Sponsor</dt>
+          <dd>
+            ${investigator.givenname} ${investigator.sn} <code style="color: #2767ff;">${investigator.mail}</code><br />
+            ${investigator.title}
+          </dd>
+        </dl>
+      </div>
+
+      <p><input class="button button-blue btn mt-6" type="submit" name='goal' value="Remove" /></p>
+      <input type="hidden" name="uids" value="${uids}" />
+      <input py:if="investigator" type="hidden" name="investigator" value="${investigator.cn}" />
+    </form>
+
+    <form method="get" action="${done_path}">
+      <input type="hidden" name="uids" value="${uids}" />
+      <input py:if="investigator" type="hidden" name="investigator" value="${investigator.cn}" />
+
+      <p class="doit" style="text-align: center; margin-bottom: 2em">
+        <input
+          py:attrs="{} if (team and investigator) else {'disabled': 'disabled'}"
+          class="button button-blue btn mt-6" type="submit" name="continue" value="Done Choosing People" />
+      </p>
+    </form>
+
   </div>
-</py:def>
-
-<div id="main">
-  <p>
-    Select
-    <py:if test="not investigator">a <strong>faculty sponsor</strong>
-    and any other</py:if>
-    <strong>members of the team</strong> you are requesting to be
-    <py:if test="what_for == 'sponsorship'"><strong>sponsored</strong> for this
-    preparatory-to-research activity.</py:if>
-    <py:if test="what_for == 'data_use'">granted access in
-    this <strong>data request</strong>.</py:if>
-  </p>
-
-  <ol>
-    <li>Search the directory or look up the IRB study team.</li>
-    <li>From the results, select people to add (or remove).</li>
-    <li>Use <strong>Done Choosing People</strong> to go to a page to fill
-      in other details of your request.</li>
-  </ol>
-
-<form method="get" action="">
-  <h4>Search KUMC Directory for Team Members and Faculty Sponsors</h4>
-<p>Look someone up by giving the first letters of their first name, last name, or KUMC id:
-<p>
-<label>First: <input name='givenname' size="8"/></label>
-<label>Last: <input name='sn' size="15"/></label>
-<label>ID: <input name='cn' size="10"/></label>
-<input type="submit" name='goal' value="Search" />
-</p>
-<input type="hidden" name="uids" value="${uids}" />
-<input py:if="investigator" type="hidden" name="investigator" value="${investigator.cn}" />
-</p>
-</form>
-
-<form method="get" action="">
-  <h4>IRB Protocol Study Team Lookup</h4>
-<p>Look up IRB protocol study team members:</p>
-<label>Study ID: <input name='studyId' size="20"/></label>
-<input type="hidden" name="uids" value="${uids}" />
-<input type="submit" name='goal' value="Lookup" />
-</form>
-
-<form py:if="candidates or studyTeam" method="get" action="">
-  <hr />
-  <h4><em>Please Select...</em></h4>
-${studyTeamTable(studyTeam)}
-${peopleTable(candidates, 'a')}
-  <p>
-    <input type="submit" name='goal' value="Add Team Members" />
-    <input type="submit" name='goal' value="Add Faculty Sponsor" />
-  </p>
-<input type="hidden" name="uids" value="${uids}" />
-<input py:if="investigator" type="hidden" name="investigator" value="${investigator.cn}" />
-</form>
-
-<form py:if="team" method="get" action="">
-  <h4>Team Members</h4>
-${peopleTable(team, 'r')}
-
-  <div py:if="investigator">
-  <dl><dt>Faculty Sponsor</dt>
-    <dd>
-      ${investigator.givenname} ${investigator.sn} <tt>&lt;${investigator.mail}&gt;</tt><br />
-      ${investigator.title}
-    </dd>
-  </dl>
-</div>
-
-<p><input type="submit" name='goal' value="Remove" /></p>
-<input type="hidden" name="uids" value="${uids}" />
-<input py:if="investigator" type="hidden" name="investigator" value="${investigator.cn}" />
-</form>
-
-<form method="get" action="${done_path}">
-<input type="hidden" name="uids" value="${uids}" />
-<input py:if="investigator" type="hidden" name="investigator" value="${investigator.cn}" />
-
-<p class="doit" style="text-align: center; margin-bottom: 2em">
-  <input
-    py:attrs="{} if (team and investigator) else {'disabled': 'disabled'}"
-    type="submit" name="continue" value="Done Choosing People" />
-</p>
-</form>
-
-</div>
-
 </body>
 </html>
 
