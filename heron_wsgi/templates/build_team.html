@@ -101,14 +101,17 @@
       </div> 
       <p>Look someone up by giving the first letters of their first name, last name, or KUMC id:
       <p>
-        <div style="display:flex; flex-direction: row; justify-content: center; align-items: center">
-          <label>First: <input name='givenname' size="8"/></label>
-          <label>Last: <input name='sn' size="15"/></label>
-          <label>ID: <input name='cn' size="10"/></label>
+        <div style="display:flex; flex-direction: row; justify-content: left; align-items: left">
+          <label>First:</label>
+          <input name='givenname' size="8"/>
+          <label>Last:</label>
+          <input name='sn' size="15"/>
+          <label>ID:</label>
+          <input name='cn' size="10"/>
           <input class="button button-blue btn mt-6" type="submit" name='goal' value="Search" />
         </div>
       </p>
-        <div style="display:flex; flex-direction: row; justify-content: center; align-items: center">
+        <div style="display:flex; flex-direction: row; justify-content: left; align-items: left">
           <input type="hidden" name="uids" value="${uids}" />
           <input py:if="investigator" type="hidden" name="investigator" value="${investigator.cn}" />
         </div>
@@ -120,8 +123,9 @@
         <h5>IRB Protocol Study Team Lookup</h5>
       </div>
       <p>Look up IRB protocol study team members:</p>
-        <div style="display:flex; flex-direction: row; justify-content: center; align-items: center">
-          <label>Study ID: <input name='studyId' size="20"/></label>
+        <div style="display:flex; flex-direction: row; justify-content: left; align-items: left">
+          <label>Study ID:</label>
+          <input name='studyId' size="20"/>
           <input type="hidden" name="uids" value="${uids}" />
           <input class="button button-blue btn mt-6" type="submit" name='goal' value="Lookup" />
         </div>
@@ -166,7 +170,7 @@
       <input type="hidden" name="uids" value="${uids}" />
       <input py:if="investigator" type="hidden" name="investigator" value="${investigator.cn}" />
 
-      <p class="doit" style="text-align: center; margin-bottom: 2em">
+      <p class="doit" style="text-align: left; margin-bottom: 2em">
         <input
           py:attrs="{} if (team and investigator) else {'disabled': 'disabled'}"
           class="button button-blue btn mt-6" type="submit" name="continue" value="Done Choosing People" />
