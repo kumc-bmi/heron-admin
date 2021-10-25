@@ -101,7 +101,7 @@
                 <td>${q.user_id}</td>
                 <td>${len(q.request_xml.split('&lt;panel>')) - 1}</td>
                 <td>${len(q.request_xml.split('&lt;item>')) - 1}</td>
-                <td>${q.elapsed}</td>
+                <td><code>${q.elapsed}</code></td>
                 <td>${'*' * int(1 + log(1 + q.elapsed.seconds, 2))}</td>
               </tr>
             </tbody>
