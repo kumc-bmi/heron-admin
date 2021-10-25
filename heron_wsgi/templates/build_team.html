@@ -108,7 +108,7 @@
           <input style="border-radius: 2px; width:20%; height:30px; margin-right:6px;" name='sn' />
           <label style="padding-right:6px;">ID:</label>
           <input style="border-radius: 2px; width:10%; height:30px; margin-right:6px" name='cn' />
-          <input class="button button-blue btn mt-6" style="height:30px" type="submit" name='goal' value="Search" />
+          <input style="height:30px" type="submit" name='goal' value="Search" />
         </div>
       </p>
         <div style="display:flex; flex-direction: row; justify-content: left; align-items: left">
@@ -127,7 +127,7 @@
           <label style="padding-right:6px;">Study ID:</label>
           <input style="border-radius: 2px; width:10%; height:30px; margin-right:6px" name='studyId' />
           <input style="border-radius: 2px; width:20%; height:30px; margin-right:6px;" type="hidden" name="uids" value="${uids}" />
-          <input class="button button-blue btn mt-6" style="height:30px" type="submit" name='goal' value="Lookup" />
+          <input style="height:30px" type="submit" name='goal' value="Lookup" />
         </div>
     </form>
 
@@ -139,8 +139,8 @@
       ${studyTeamTable(studyTeam)}
       ${peopleTable(candidates, 'a')}
       <p>
-        <input class="button button-blue btn mt-6" style="height:30px" type="submit" name='goal' value="Add Team Members" />
-        <input class="button button-blue btn mt-6" style="height:30px" type="submit" name='goal' value="Add Faculty Sponsor" />
+        <input style="height:30px" type="submit" name='goal' value="Add Team Members" />
+        <input style="height:30px" type="submit" name='goal' value="Add Faculty Sponsor" />
       </p>
       <input type="hidden" name="uids" value="${uids}" />
       <input py:if="investigator" type="hidden" name="investigator" value="${investigator.cn}" />
@@ -161,7 +161,7 @@
         </dl>
       </div>
 
-      <p><input class="button button-blue btn mt-6" style="height:30px" type="submit" name='goal' value="Remove" /></p>
+      <p><input class="button button-blue btn mt-6" type="submit" name='goal' value="Remove" /></p>
       <input type="hidden" name="uids" value="${uids}" />
       <input py:if="investigator" type="hidden" name="investigator" value="${investigator.cn}" />
     </form>
