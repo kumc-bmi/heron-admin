@@ -103,17 +103,17 @@
       <p>
         <div style="display:flex; flex-direction: row; justify-content: left; align-items: left">
           <label style="padding-right:10px;">First:</label>
-          <input style="border-radius: 2px; width:20%; height:30px; padding-right:10px;" name='givenname' />
+          <input style="border-radius: 2px; width:20%; height:30px; margin-right:10px;" name='givenname' />
           <label style="padding-right:10px;">Last:</label>
-          <input style="border-radius: 2px; width:20%; height:30px; padding-right:10px;" name='sn' />
+          <input style="border-radius: 2px; width:20%; height:30px; margin-right:10px;" name='sn' />
           <label style="padding-right:10px;">ID:</label>
           <input style="border-radius: 2px; width:10%; height:30px; padding-right:10px" name='cn' />
           <input class="button button-blue btn mt-6" type="submit" name='goal' value="Search" />
         </div>
       </p>
         <div style="display:flex; flex-direction: row; justify-content: left; align-items: left">
-          <input style="border-radius: 2px; width:20%; height:30px; padding-right:10px;" type="hidden" name="uids" value="${uids}" />
-          <input py:if="investigator" style="border-radius: 2px; width:20%; height:30px; padding-right:10px;" type="hidden" name="investigator" value="${investigator.cn}" />
+          <input style="border-radius: 2px; width:20%; height:30px; margin-right:10px;" type="hidden" name="uids" value="${uids}" />
+          <input py:if="investigator" style="border-radius: 2px; width:20%; height:30px; margin-right:10px;" type="hidden" name="investigator" value="${investigator.cn}" />
         </div>
       </p>
     </form>
@@ -125,8 +125,8 @@
       <p>Look up IRB protocol study team members:</p>
         <div style="display:flex; flex-direction: row; justify-content: left; align-items: left">
           <label style="padding-right:10px;">Study ID:</label>
-          <input style="border-radius: 2px; width:10%; height:30px; padding-right:10px" name='studyId' />
-          <input style="border-radius: 2px; width:20%; height:30px; padding-right:10px;" type="hidden" name="uids" value="${uids}" />
+          <input style="border-radius: 2px; width:10%; height:30px; margin-right:10px" name='studyId' />
+          <input style="border-radius: 2px; width:20%; height:30px; margin-right:10px;" type="hidden" name="uids" value="${uids}" />
           <input class="button button-blue btn mt-6" type="submit" name='goal' value="Lookup" />
         </div>
     </form>
