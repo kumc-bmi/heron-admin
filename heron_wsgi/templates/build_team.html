@@ -102,18 +102,18 @@
       <p>Look someone up by giving the first letters of their first name, last name, or KUMC id:
       <p>
         <div style="display:flex; flex-direction: row; justify-content: left; align-items: left">
-          <label>First:</label>
-          <input name='givenname' size="8"/>
-          <label>Last:</label>
-          <input name='sn' size="15"/>
-          <label>ID:</label>
-          <input name='cn' size="10"/>
+          <label style="padding-right:3px;">First:</label>
+          <input style="border-radius: 2px; width:20%; height:10px; padding-right:3px;" name='givenname' />
+          <label style="padding-right:3px;">Last:</label>
+          <input style="border-radius: 2px; width:20%; height:10px; padding-right:3px;" name='sn' />
+          <label style="padding-right:3px;">ID:</label>
+          <input style="border-radius: 2px; width:10%" name='cn' />
           <input class="button button-blue btn mt-6" type="submit" name='goal' value="Search" />
         </div>
       </p>
         <div style="display:flex; flex-direction: row; justify-content: left; align-items: left">
-          <input type="hidden" name="uids" value="${uids}" />
-          <input py:if="investigator" type="hidden" name="investigator" value="${investigator.cn}" />
+          <input style="border-radius: 2px; width:20%; height:10px; padding-right:3px;" type="hidden" name="uids" value="${uids}" />
+          <input py:if="investigator" style="border-radius: 2px; width:20%; height:10px; padding-right:3px;" type="hidden" name="investigator" value="${investigator.cn}" />
         </div>
       </p>
     </form>
@@ -124,9 +124,9 @@
       </div>
       <p>Look up IRB protocol study team members:</p>
         <div style="display:flex; flex-direction: row; justify-content: left; align-items: left">
-          <label>Study ID:</label>
+          <label style="padding-right:3px;">Study ID:</label>
           <input name='studyId' size="20"/>
-          <input type="hidden" name="uids" value="${uids}" />
+          <input style="border-radius: 2px; width:20%; height:10px; padding-right:3px;" type="hidden" name="uids" value="${uids}" />
           <input class="button button-blue btn mt-6" type="submit" name='goal' value="Lookup" />
         </div>
     </form>
@@ -170,7 +170,7 @@
       <input type="hidden" name="uids" value="${uids}" />
       <input py:if="investigator" type="hidden" name="investigator" value="${investigator.cn}" />
 
-      <p class="doit" style="text-align: left; margin-bottom: 2em">
+      <p class="doit" style="text-align: center; margin-bottom: 2em">
         <input
           py:attrs="{} if (team and investigator) else {'disabled': 'disabled'}"
           class="button button-blue btn mt-6" type="submit" name="continue" value="Done Choosing People" />
