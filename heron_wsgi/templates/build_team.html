@@ -102,18 +102,18 @@
       <p>Look someone up by giving the first letters of their first name, last name, or KUMC id:
       <p>
         <div style="display:flex; flex-direction: row; justify-content: left; align-items: left">
-          <label style="padding-right:3px;">First:</label>
-          <input style="border-radius: 2px; width:20%; height:10px; padding-right:3px;" name='givenname' />
-          <label style="padding-right:3px;">Last:</label>
-          <input style="border-radius: 2px; width:20%; height:10px; padding-right:3px;" name='sn' />
-          <label style="padding-right:3px;">ID:</label>
-          <input style="border-radius: 2px; width:10%" name='cn' />
+          <label style="padding-right:10px;">First:</label>
+          <input style="border-radius: 2px; width:20%; height:30px; padding-right:10px;" name='givenname' />
+          <label style="padding-right:10px;">Last:</label>
+          <input style="border-radius: 2px; width:20%; height:30px; padding-right:10px;" name='sn' />
+          <label style="padding-right:10px;">ID:</label>
+          <input style="border-radius: 2px; width:10%; height:30px; padding-right:10px" name='cn' />
           <input class="button button-blue btn mt-6" type="submit" name='goal' value="Search" />
         </div>
       </p>
         <div style="display:flex; flex-direction: row; justify-content: left; align-items: left">
-          <input style="border-radius: 2px; width:20%; height:10px; padding-right:3px;" type="hidden" name="uids" value="${uids}" />
-          <input py:if="investigator" style="border-radius: 2px; width:20%; height:10px; padding-right:3px;" type="hidden" name="investigator" value="${investigator.cn}" />
+          <input style="border-radius: 2px; width:20%; height:30px; padding-right:10px;" type="hidden" name="uids" value="${uids}" />
+          <input py:if="investigator" style="border-radius: 2px; width:20%; height:30px; padding-right:10px;" type="hidden" name="investigator" value="${investigator.cn}" />
         </div>
       </p>
     </form>
@@ -124,9 +124,9 @@
       </div>
       <p>Look up IRB protocol study team members:</p>
         <div style="display:flex; flex-direction: row; justify-content: left; align-items: left">
-          <label style="padding-right:3px;">Study ID:</label>
-          <input name='studyId' size="20"/>
-          <input style="border-radius: 2px; width:20%; height:10px; padding-right:3px;" type="hidden" name="uids" value="${uids}" />
+          <label style="padding-right:10px;">Study ID:</label>
+          <input style="border-radius: 2px; width:10%; height:30px; padding-right:10px" name='studyId' />
+          <input style="border-radius: 2px; width:20%; height:30px; padding-right:10px;" type="hidden" name="uids" value="${uids}" />
           <input class="button button-blue btn mt-6" type="submit" name='goal' value="Lookup" />
         </div>
     </form>
