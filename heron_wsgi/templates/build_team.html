@@ -32,7 +32,7 @@
           <tr py:for="who in people">
             <td><input type="checkbox" name="${pfx}_${who.cn}" id="${pfx}_${who.cn}" /></td>
             <td><label for="${pfx}_${who.cn}">${who.sn}, ${who.givenname}</label></td>
-            <td><label for="${pfx}_${who.cn}"><tt>${who.mail}</tt><br /><small>userid: <tt>${who.cn}</tt></small></label></td>
+            <td><label for="${pfx}_${who.cn}"><code style="color: #2767ff;">${who.mail}</code><br /><small>userid: <code>${who.cn}</code></small></label></td>
             <td>${who.title}<br /><strong py:if="who.faculty_role()">Faculty</strong><strong py:if="who.cn in executives">Executive</strong></td>
             <td>${who.ou}</td>
           </tr>
@@ -145,7 +145,7 @@
       <div py:if="investigator">
         <dl><dt>Faculty Sponsor</dt>
           <dd>
-            ${investigator.givenname} ${investigator.sn} <tt>${investigator.mail}</tt><br />
+            ${investigator.givenname} ${investigator.sn} <code style="color: #2767ff;">${investigator.mail}</code><br />
             ${investigator.title}
           </dd>
         </dl>
