@@ -2,82 +2,49 @@
 <html xmlns="http://www.w3.org/1999/xhtml"
   xmlns:py="http://genshi.edgewall.org/"
   xmlns:xi="http://www.w3.org/2001/XInclude">
-<xi:include href="kumc_layout.xml" />
+  <xi:include href="heron_layout.xml" />
 <head>
-<title>HERON Current Status
-</title>
-<style type="text/css">
-table { width: 85% }
-.stats td { text-align: right }
-.stats thead th { text-align: center }
-
-/*
- * cribbed from Project 03 in
- * Eric Meyer on Css: Mastering the Language of Web Design
- * New Riders 2002
- * http://more.ericmeyeroncss.com/projects/03/
- */
-
-.stats th, td { padding: 0 0.5em;
-  border-bottom: 1px solid #DDD;}
-
-.amt, .ref {font: small Verdana, "Andale Mono", Courier, "Courier New", 
-  monospace;}
-
-.stats thead th {vertical-align: bottom; border: 1px solid gray;
-  border-width: 0 1px 1px 0;
-  white-space: normal;}
-.stats tfoot th {vertical-align: bottom; border: 1px solid gray;
-  border-width: 1px 0px 1px 0px;
-  white-space: normal;}
-.stats tfoot td { border-width: 1px 1px 0px 0px; border: 1px solid gray;
-       font-weight: bold}
-.stats th {border-right: 1px solid gray; border-bottom-style: dotted;
-  white-space: nowrap;}
-
-td {letter-spacing: -1px;}
-
-
-/*  media="screen" */
-table tr.odd * {background: #EEE;}
-tr.odd *, tr.even * {border-bottom: 1px solid #EEE;}
-td {border-right: 1px solid #CCC;}
-</style>
+  <title>HERON Current Status</title>
 </head>
 <body>
 
-<h1>HERON Current Status</h1>
+  <div class="news-copy"></div>
+    <div class="header">
+      <h1>HERON Current Status</h1>
+    </div>
 
-<div id="main">
-<h1 id="by_user">Current User Sessions and Queries</h1>
-<table class="stats" py:with="cls=cycle(('odd', 'even'))">
-<thead>
- <tr>
-  <th>User</th>
-  <th>Logged In</th>
-  <th>Query</th>
-  <th>Result Type</th>
-  <th>Created</th>
-  <th>Batch</th>
-  <th>Status</th>
- </tr>
-</thead>
-<tbody>
-  <!-- re py:for, see http://genshi.edgewall.org/wiki/Documentation/xml-templates.html#id3 -->
-  <tr py:for="row in queries" class="${cls.next()}">
-    <th>${row.full_name}</th>
-    <td>${row.entry_date}</td>
-    <td>${row.name}</td>
-    <td>${row.result_type}</td>
-    <td>${row.create_date}</td>
-    <td>${row.batch_mode}</td>
-    <td>${row.status}</td>
-  </tr>
-</tbody>
-</table>
+    <div class="header">
+      <h1 id="by_user">
+        Current User Sessions and Queries
+      </h1>
+    </div>
 
-
-</div>
+    <table id="heron-data-table" class="table text-wrap" py:with="cls=cycle(('odd', 'even'))">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Logged In</th>
+          <th>Query</th>
+          <th>Result Type</th>
+          <th>Created</th>
+          <th>Batch</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- re py:for, see http://genshi.edgewall.org/wiki/Documentation/xml-templates.html#id3 -->
+        <tr py:for="row in queries" class="${cls.next()}">
+          <td>${row.full_name}</td>
+          <td>${row.entry_date}</td>
+          <td>${row.name}</td>
+          <td>${row.result_type}</td>
+          <td>${row.create_date}</td>
+          <td>${row.batch_mode}</td>
+          <td>${row.status}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
 </body>
 </html>

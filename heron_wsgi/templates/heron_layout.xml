@@ -2,13 +2,14 @@
       xmlns:py="http://genshi.edgewall.org/">
 <py:match path="head" once="true">
    ${select('*')}
-  
+
   <link rel="shortcut icon" href="https://www.kumc.edu/_dev/favicon.ico" />
   <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Raleway:300i,400,400i,500,500i,600,600i,700,700i,800,800i,900,900i" />
   <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Anton|Muli:300,400,400italic,300italic|Goudy+Bookletter+1911|Oswald&amp;subset=latin,latin-ext" media="all" />
   <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/fontawesome/css/all.css" />
   <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Noto+Serif&amp;display=swap" />
   <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/bootstrap.min.css" />
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.3/css/dataTables.bootstrap5.min.css" />
   <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/icon-fonts.css" />
   <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/jquery-ui.css" />
   <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/target-firefox.css" />
@@ -23,49 +24,62 @@
   <script src="https://www.kumc.edu/Content/js/jquery-dataTables.min.js" type="text/javascript"></script>
   <script src="https://www.kumc.edu/Content/js/jquery-slick-min.js" type="text/javascript"></script>
   <script src="https://www.kumc.edu/Content/js/jquery-main.js" type="text/javascript"></script>
-<!-- jquery.showhids.js ? -->
+  <script type="text/javascript"> 
+    //<![CDATA[
+      $(document).ready(function() {
+        $('#heron-data-table').DataTable();
+      });
+    //]]>
+  </script>
+  <script type="text/javascript"> 
+    //<![CDATA[
+      $(document).ready(function() {
+        $('#heron-data-table-2').DataTable();
+      });
+    //]]>
+  </script>
 </py:match>
 
 <py:match path="body" once="true">
   <header class="fix menu-move-hook d-none d-lg-flex fhook" role="banner">
     <div class="container">
-        <div class="row">
-          <div class="col-12">
-            <div class="d-flex">
-              <a id="main-logo-link" href="https://www.kumc.edu/" target="_blank" style=
-                "font-size:0;">kumc.edu<img src=
-                "https://www.kumc.edu/_dev/logo--kumc-main.png" alt=
-                "KU Medical Center logo image" /></a>
-              <div class="col-lg-8 ml-auto d-none d-lg-block">
-                <ul class="secondary">
-                  <li><a href="https://www.kumc.edu/about/our-campuses.html" title=
-                    "Our Campuses">Our Campuses</a></li>
-                  <li><a href="https://www.kumc.edu/about/make-a-gift.html" title=
-                    "Make a Gift">Make a Gift</a></li>
-                </ul>
-              </div>
+      <div class="row">
+        <div class="col-12">
+          <div class="d-flex">
+            <a id="main-logo-link" href="https://www.kumc.edu/" target="_blank" style=
+              "font-size:0;">kumc.edu<img src=
+              "https://www.kumc.edu/_dev/logo--kumc-main.png" alt=
+              "KU Medical Center logo image" /></a>
+            <div class="col-lg-8 ml-auto d-none d-lg-block">
+              <ul class="secondary">
+                <li><a href="https://www.kumc.edu/about/our-campuses.html" title=
+                  "Our Campuses">Our Campuses</a></li>
+                <li><a href="https://www.kumc.edu/about/make-a-gift.html" title=
+                  "Make a Gift">Make a Gift</a></li>
+              </ul>
             </div>
-            <nav class="main-nav d-none d-lg-flex" aria-label="Main navigation">
-              <ul>
-                <li class="">
-                  <a tabindex="0" class="touch-link" aria-haspopup="true" title="Heron Home page" href="https://heron.kumc.edu/heron/">Heron</a>
-                </li>
-                <li class="">
-                  <a tabindex="0" class="touch-link" aria-haspopup="true" title="Our Services at Medical Informatics services" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/our-services.html">Our Services</a>
-                </li>
-                <li class="">
-                  <a tabindex="0" class="touch-link" aria-haspopup="true" title="Facilities &amp; Resources" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/facilities-and-resources.html">Facilities &amp; Resources</a>
-                </li>
-                <li class="">
+          </div>
+          <nav class="main-nav d-none d-lg-flex" aria-label="Main navigation">
+            <ul>
+              <li class="">
+                <a tabindex="0" class="touch-link" aria-haspopup="true" title="Heron Home page" href="https://heron.kumc.edu/heron/">Heron</a>
+              </li>
+              <li class="">
+                <a tabindex="0" class="touch-link" aria-haspopup="true" title="Our Services at Medical Informatics services" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/our-services.html">Our Services</a>
+              </li>
+              <li class="">
+                <a tabindex="0" class="touch-link" aria-haspopup="true" title="Facilities &amp; Resources" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/facilities-and-resources.html">Facilities &amp; Resources</a>
+              </li>
+              <li class="">
                   <a tabindex="0" class="touch-link" aria-haspopup="true" title="Frontiers" href="https://www.kufrontiers.org/">Frontiers</a>
                 </li>
-                <li class="">
-                  <a tabindex="0" class="touch-link" aria-haspopup="true" title="About the Medical Informatics division" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/about/faculty-and-staff.html">About</a>
-                </li>
-              </ul>
-            </nav>
-          </div>
+              <li class="">
+                <a tabindex="0" class="touch-link" aria-haspopup="true" title="About the Medical Informatics division" href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/about/faculty-and-staff.html">About</a>
+              </li>
+            </ul>
+          </nav>
         </div>
+      </div>
     </div>
   </header>
 
@@ -212,33 +226,23 @@
 
     <div class="container">
       <div class="row">
-          <div class="col-12 col-md-3">
-            <div class="x-up-card">
-              <div class="content">
-                ${select(".//div[@class='col-12 col-md-3']/*|text()")}
-              </div>
+        <div class="news-copy">
+          <div class="x-up-card">
+            <div class="parent-section-link">
+              <a href="https://heron.kumc.edu/heron/" style="font-weight: bolder;"><i class="fas fa-arrow-left"></i> Heron </a>
+            </div>
+            <div class="content">
+                ${select(".//div[@class='news-copy']/*|text()")}
             </div>
           </div>
-          <div class="col-12 col-md-6">
-            <div class="x-up-card">
-              <div class="content">
-                ${select(".//div[@class='col-12 col-md-6']/*|text()")}
-              </div>
-            </div>
-          </div>
-          <div class="col-11 col-md-3">
-            <div class="x-up-card">
-              <div class="content">
-                ${select(".//div[@class='col-11 col-md-3']/*|text()")}
-              </div>
-            </div>
-          </div>
+        </div>
       </div>
     </div>
 
     <div id="page-builder" class="page-builder-container" style="display: none;"></div>
-  </main>
 
+  </main>
+      
   <div class="tray--newsroom-contact">
     <div class="container">
       <div class="row">
@@ -326,6 +330,6 @@
       </div>
     </div>
   </footer>
-    
+
 </py:match>
 </div>

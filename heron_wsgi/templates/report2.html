@@ -2,100 +2,106 @@
 <html xmlns="http://www.w3.org/1999/xhtml"
   xmlns:py="http://genshi.edgewall.org/"
   xmlns:xi="http://www.w3.org/2001/XInclude">
-<xi:include href="kumc_layout.xml" />
+  <xi:include href="heron_layout.xml" />
 <head>
-<title>HERON Usage: Small Result Sets
-</title></head>
+  <title>HERON Usage: Small Result Sets</title>
+</head>
 <body>
 
-<h1>HERON Usage: Small Result Sets</h1>
+  <div class="news-copy">
+    <div class="header">
+      <h1>HERON Usage: Small Result Sets</h1>
+    </div>
 
-<div id="main">
+    <div class="header">
+      <h5>Summary</h5>
+    </div>
 
-<h2>Summary</h2>
+    <p>
+      <em>In the past 45 days, the following queriesfor patient sets had small (&lt;= 15) result sets:</em>
+    </p>
 
-<p><em>In the past 45 days, the following queries
-for patient sets had small (&lt;= 15) result sets:</em></p>
-<table>
-<thead>
- <tr>
-  <th>User</th>
-  <th>Date</th>
-  <th>Query</th>
-  <th>Size</th>
- </tr>
-</thead>
-<tbody>
-  <tr py:for="row in summary">
-    <td>${row.full_name}</td>
-    <td>${row.create_date}</td>
-    <td>
-      <a href="#qm_${row.query_master_id}">#${row.query_master_id}
-      ${row.name}</a></td>
-    <td>${row.set_size}</td>
-  </tr>
-</tbody>
-</table>
+    <table id="heron-data-table" class="table table-standard" style="width: 100%; margin-left: auto; margin-right: auto;">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Date</th>
+          <th>Query</th>
+          <th>Size</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr py:for="row in summary">
+          <td>${row.full_name}</td>
+          <td>${row.create_date}</td>
+          <td>
+            <a href="#qm_${row.query_master_id}">#${row.query_master_id}
+            ${row.name}</a></td>
+          <td>${row.set_size}</td>
+        </tr>
+      </tbody>
+    </table>
 
-<div class="detail">
+    <div class="header">
+      <h5>Query Details</h5>
+    </div>  
+    
+    <p>
+      <em>Hover over term names for more context.</em>
+    </p>
+    
+    <div py:for="qid, gen in detail">
+      <div py:with="rows = list(gen)" py:strip="True">
+        <div class="header">
+          <h5 id="qm_${qid}">
+            Query #${qid} ${rows[0].query_name} by ${rows[0].user_id}
+          </h5>
+        </div> 
 
-<h2>Query Details</h2>
-<p><em>Hover over term names for more context.</em></p>
-<div py:for="qid, gen in detail">
-  <div py:with="rows = list(gen)" py:strip="True">
-    <h3 id="qm_${qid}">
-     Query #${qid} ${rows[0].query_name} by ${rows[0].user_id}</h3>
+        <p>Query terms:</p>
+        <ul>
+          <li py:for="c in rows">
+            <abbr title="${c.tooltip}">${c.item_name}</abbr>
+          </li>
+        </ul>
 
-    <p>Query terms:</p>
-    <ul>
-      <li py:for="c in rows">
-        <abbr title="${c.tooltip}">${c.item_name}</abbr>
-      </li>
-    </ul>
-
-    <div py:with="sponsored_in, sponsor_of = sponsorships[rows[0].user_id]"
-	 py:strip="True">
-      <div py:if="sponsored_in">
-	<p>${rows[0].user_id} is sponsored in these projects:</p>
-	<ul>
-	  <li py:for="record, inv, title, description in sponsored_in">
-	    #${record} <a href="#project_${record}">${title}</a>
-	    sponsored by <strong>${inv.full_name()}</strong>
-	  </li>
-	  </ul>
-      </div>
-      <div py:if="sponsor_of">
-	<p>${rows[0].user_id} is the investigator in these projects:</p>
-	<ul>
-	  <li py:for="record, inv, title, description in sponsor_of">
-	    #${record} <a href="#project_${record}">${title}</a>
-	    sponsored by <strong>${inv.full_name()}</strong>
-	  </li>
-	  </ul>
+        <div py:with="sponsored_in, sponsor_of = sponsorships[rows[0].user_id]" py:strip="True">
+          <div py:if="sponsored_in">
+            <p>${rows[0].user_id} is sponsored in these projects:</p>
+            <ul>
+              <li py:for="record, inv, title, description in sponsored_in">
+                #${record} <a href="#project_${record}">${title}</a>
+                sponsored by <strong>${inv.full_name()}</strong>
+              </li>
+            </ul>
+          </div>
+          <div py:if="sponsor_of">
+            <p>${rows[0].user_id} is the investigator in these projects:</p>
+            <ul>
+              <li py:for="record, inv, title, description in sponsor_of">
+                #${record} <a href="#project_${record}">${title}</a>
+                sponsored by <strong>${inv.full_name()}</strong>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
+
+    <div>
+      <div class="header">
+        <h5>Project Details</h5>
+      </div>
+
+      <p><em>from <a href="https://redcap.kumc.edu/redcap_v4.7.0/Reports/report.php?pid=238&amp;query_id=4" target="_blank"> HERON Oversight Data </a></em></p>
+      <ul>
+        <li py:for="record, (inv, title, description) in projects" id="project_${record}">
+          <strong>#${record}</strong>: <cite>${title}</cite>
+          <br />sponsored by <strong>${inv.full_name()}</strong>
+          <blockquote>${description}</blockquote>
+        </li>
+      </ul>
+    </div>
   </div>
-</div>
-
-</div>
-
-<div><h2>Project Details</h2>
-
-  <p><em>from <a href=
-  "https://redcap.kumc.edu/redcap_v4.7.0/Reports/report.php?pid=238&amp;query_id=4"
-  >HERON Oversight Data</a></em></p>
-
-  <ul>
-    <li py:for="record, (inv, title, description) in projects"
-        id="project_${record}">
-      <strong>#${record}</strong>: <cite>${title}</cite>
-      <br />sponsored by <strong>${inv.full_name()}</strong>
-      <blockquote>${description}</blockquote>
-    </li>
-  </ul>
-</div>
-
-</div>
-
 </body>
 </html>
