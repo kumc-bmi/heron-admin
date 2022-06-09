@@ -8,203 +8,278 @@
 </head>
 <!-- todo: consider passing admin_mailbox in from python -->
 <body py:with="admin_mailbox='misupport@kumc.edu'">
-  <div id="menu">
-  <div class="header png"><h2>Use HERON Query and Analysis Tool</h2>
-  <ul>
-    <li py:if="'checked' in repositoryAccess">
-      <a href="${i2b2_login_path}"
-        ><font size = "4">Start HERON Search</font></a>
-    </li>
-    <li py:if="'checked' not in repositoryAccess">
-      <button disabled="disabled"
-        ><font size = "4">Start HERON Search</font></button>
-    </li>
-  </ul>
+  <div class="col-12 col-md-3">
+    <div class="header">
+      <h5>Use HERON Query and Analysis Tool</h5>
+    </div>
+
+    <div py:if="'checked' in repositoryAccess">
+      <a  class="promo-link" style="font-weight: bolder; color: #e8000d;" href="${i2b2_login_path}"><i class="fas fa-angle-double-right" style="color: #0051ba;"></i>Start HERON Search</a>
+    </div>
+    
+    <div py:if="'checked' not in repositoryAccess">
+      <button disabled="disabled">
+        Start HERON Search
+      </button>
+    </div>
+    
+    <div class="header">
+      <h5>Online Training</h5>
+    </div>
+
+    <a class="promo-link" href="https://www.kumc.edu/research-informatics/heron.html" target = "_blank" title ="HERON Introduction"><i class="fas fa-chevron-right"></i>HERON Introduction</a>
+    <br />
+    <a class="promo-link" href="https://www.kumc.edu/research-informatics/heron/faqs.html" target = "_blank" title = "HERON FAQ"><i class="fas fa-chevron-right"></i>HERON FAQs</a>
+    <br />
+    <a class="promo-link" href="https://www.youtube.com/user/KUMedicalInformatics/videos" target = "_blank" title = "HERON training videos"><i class="fas fa-chevron-right"></i>HERON Training Videos</a>
+    <br />
+    <a class="promo-link" href="https://www.kumc.edu/documents/research-informatics/HERON%20Guide_20170616.pdf" target = "_blank" title = "HERON Guide"><i class="fas fa-chevron-right"></i>HERON Guide</a>
+    <br />
+    <a class="promo-link" href="https://www.kumc.edu/research-informatics/heron/data-request-process.html" target = "_blank" title = "Requesting Data"><i class="fas fa-chevron-right"></i>Data Request Process</a>
+    <br />
+    <a class="promo-link" href="https://www.kumc.edu/research-informatics/heron/understanding-free-text-notes.html" target = "_blank" title = "Receiving Data"><i class="fas fa-chevron-right"></i>Understanding HERON Data</a>
+    <br />
+    <a class="promo-link" href="https://www.kumc.edu/research-informatics/heron/frontiers-and-pioneers-registries.html" target = "_blank" title = "Recruitment Registries"><i class="fas fa-chevron-right"></i>Frontiers and Pioneers Participant Recruitment Registry Information</a>
+
+    <div class="header">
+      <h5>In-Person Training</h5>
+    </div>
+
+    <a class="promo-link" href="https://redcap.kumc.edu/surveys/?s=L72oqA" target = "_blank" ><i class="fas fa-chevron-right"></i>Lunch and Learn Clinic</a>
+    <br />
+    <a class="promo-link" href="https://redcap.kumc.edu/surveys/?s=3DHDJMKN4A" target = "_blank"><i class="fas fa-chevron-right"></i>Office Hours</a>
+
+    <div class="header">
+      <h5>Regulatory Requests</h5>
+    </div>
+
+    <a class="promo-link" href="${sponsorship_path}"><i class="fas fa-chevron-right"></i>HERON Sponsorship Request</a>
+    <br />
+    <a class="promo-link" href="${data_use_path}"><i class="fas fa-chevron-right"></i>HERON Data Use or Recruitment Request</a>
+    <br />
+    <a class="promo-link" href="${greenheron_use_path}"><i class="fas fa-chevron-right"></i>Green HERON Sponsorship or Data Use Request</a>
+    <br />
+
+    <div py:if="droc">
+      <div class="header">
+        <h5>Oversight</h5>
+      </div>
+        <a class="promo-link" href="https://redcap.kumc.edu/redcap_v4.7.0/index.php?pid=238"><i class="fas fa-chevron-right"></i>DROC Review Forms</a>
+        <br />
+        <a class="promo-link" href="reports/usage_small"><i class="fas fa-chevron-right"></i>Usage Audit Report</a>
+    </div>
+    
+    <div class="header">
+      <h5>Other Tools</h5>
+    </div>
+    
+    <a class="promo-link" href="reports/usage"><i class="fas fa-chevron-right"></i>HERON Usage Report</a>
+    <br />
+    <a class="promo-link" href="reports/performance"><i class="fas fa-chevron-right"></i>Current HERON Users and Recent Query Performance</a>
+    <br />
+    <a class="promo-link" href="https://redcap.kumc.edu/" target = "_blank" title = "REDCap"><i class="fas fa-chevron-right"></i>REDCap</a>
+    
   </div>
 
-  <div class="header png"><h3>Online Training</h3>
-  <ul>
-	<li><a href="http://www.kumc.edu/ea-mi/medical-informatics/heron.html" target = "_blank" title ="HERON Introduction">HERON Introduction</a>
-    </li>
-	<li><a href="http://www.kumc.edu/ea-mi/medical-informatics/heron/faqs.html" target = "_blank" title = "HERON FAQ">HERON FAQs</a>
-	</li>
-	<li><a href="http://www.kumc.edu/ea-mi/medical-informatics/heron/heron-training-videos.html" target = "_blank" title = "HERON training videos">HERON Training Videos</a>
-	</li>
-	<li><a href="http://www.kumc.edu/ea-mi/medical-informatics/heron/heron-manual.html" target = "_blank" title = "HERON Guide">HERON Guide</a>
-	</li>
-	<li><a href="http://www.kumc.edu/ea-mi/medical-informatics/heron/requesting-data.html" target = "_blank" title = "Requesting Data">Data Request Process</a>
-	</li>
-	<li><a href="http://www.kumc.edu/ea-mi/medical-informatics/heron/receiving-data.html" target = "_blank" title = "Receiving Data">Understanding HERON Data</a>
-	</li>
-	<li><a href="http://www.kumc.edu/ea-mi/medical-informatics/heron/frontierspioneers-registries.html" target = "_blank" title = "Recruitment Registries">Frontiers and Pioneers Participant Recruitment Registry Information</a>
-	</li>
-  </ul>
-  </div>
+  <div class="col-12 col-md-6">
+    <div class="header">
+      <h1>HERON Research Data Repository</h1>
+    </div>
+    <div class="image-outer-wrapper image-outer-wrapper--right">
+      <div class="image-wrapper img-width-hook" style="width: 300px;">
+        <img src="av/220px-Heron_tricol_01.JPG" alt="" />
+      </div>
+      <span class="caption" style="width: 250px;">
+        photo credit: <a href="https://commons.wikimedia.org/wiki/User:Chrharshaw" target = "_blank" title = "wikimedia">Christopher Harshaw</a>
+      </span>
+    </div>
+    <div class="news-copy">
+      <div class="container">
+        <p>
+          HERON (Healthcare Enterprise Repository for Ontological Narration) is a search discovery tool that allows KUMC faculty members to search de-identified data 
+          from various hospital and medical center sources including Epic/O2 (the hospital electronic medical record). By combining the various data sources, researchers 
+          can look at the data in new ways not available when viewing data in one source at a time.
+        </p>
+      </div>
+    </div>
+    <div class="accordion" id="accordion-parent">
+      <div class="card">
+        <div class="card-header" id="heading-1" aria-label="Open Reasons to use HERON accordion">
+          <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-1" aria-expanded="false" aria-controls="collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-1">
+            Reasons to use HERON
+          </button>
+        </div>
+        <div id="collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-1" class="collapse" aria-labelledby="heading-1" data-parent="#accordion-parent">
+          <div class="card-body">
+            <ol>
+              <li>Search HERON to find the number of KUMC patients who meet inclusion/exclusion criteria
+                <ul>
+                  <li>Useful for grant applications and feasibility counts</li>
+                </ul>
+              </li>
+              <li>Request de-identified datasets
+                <ul> 
+                  <li>No IRB approval needed</li>
+                </ul>
+              </li>
+              <li>Request identified datasets
+                <ul> 
+                  <li>Will require IRB approval or QI letter of determination from the IRB </li>
+                </ul>
+              </li>
+              <li>Receive data on patients in a research study
+                <ul>
+                  <li>Please contact <a href ="mailto:ocriosupport@kumc.edu" target = "_top" title = "email heron-admin">ocriosupport@kumc.edu</a> to learn how to get data elements on a specific list of MRNs</li>
+                </ul>
+              </li>
+              <li>Receive contact information for patients in FRONTIERS registry who are eligible for your study </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header" id="heading-2" aria-label="Open Accessing HERON accordion">
+          <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-2" aria-expanded="false" aria-controls="collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-2">
+            Accessing HERON
+          </button>
+        </div>
+        <div id="collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-2" class="collapse" aria-labelledby="heading-2" data-parent="#accordion-parent">
+          <div class="card-body">
+            <p>Check mark(s) missing in the upper right corner under "Login Credentials" indicate a missing requirement. The requirements to access HERON are as follows:</p>
+            <ol>
+              <li>You are a qualified KUMC faculty member or sponsored by a KUMC faculty member.</li>
+              <li>You are up-to-date on your Human Subjects Training.</li>
+              <li>You have signed the system access agreement.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
   
-    <div class="header png"><h3>In-Person Training</h3>
-  <ul>
-	<li><a href="https://redcap.kumc.edu/surveys/?s=L72oqA" target = "_blank" >Lunch and Learn Clinic</a>
-	</li>
-	<li><a href="https://redcap.kumc.edu/surveys/?s=3DHDJMKN4A" target = "_blank">Office Hours</a>
-	</li>
-  </ul>
-  </div>
-
-  <div class="header png">
-    <h3>Regulatory Requests</h3>
-  <ul>
-    <li><a href="${sponsorship_path}">HERON Sponsorship Request</a>
-    </li>
-    <li><a href="${data_use_path}">HERON Data Use or Recruitment Request</a>
-    </li>
-    <li><a href="${greenheron_use_path}">Green HERON Sponsorship or Data Use Request</a>
-    </li>
-  </ul>
-  </div>
+      <div class="card">
+        <div class="card-header" id="heading-3" aria-label="Open HERON Sponsorship Process accordion">
+          <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-3" aria-expanded="false" aria-controls="collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-3">
+            HERON Sponsorship Process
+          </button>
+        </div>
+        <div id="collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-3" class="collapse" aria-labelledby="heading-3" data-parent="#accordion-parent">
+          <div class="card-body">
+            <p> Faculty members are automatically sponsored for HERON. Non-faculty researchers will need to have a sponsorship request submitted and approved by a faculty member. </p>
+            <p><span style="text-decoration: underline;">Faculty member sponsoring non-faculty:</span></p>
+              <ul>
+                <li>Click "HERON Sponsorship Request" under Regulatory Requests.</li>
+                <li>Enter the first / last name or username for sponsoree(s).</li>
+                <li>Select "done choosing people".</li>
+                <li>Complete the following form and click submit.</li>
+              </ul>
+            <p><span style="text-decoration: underline;">Non-faculty member requesting sponsorship:</span></p>
+              <ul>
+                <li>Click "HERON Sponsorship Request" under Regulatory Requests.</li>
+                <li>Enter the first / last name or username for faculty sponsor and any other sponsorees.</li>
+                <li>Select "done choosing people".</li>
+                <li>Complete the following form and click submit.</li>
+              </ul>
+            <p>Sponsorship requests take approximately one week to be approved. Once approved, users can begin searching HERON. More detailed instructions are found on our 
+            <a href = "https://www.youtube.com/user/KUMedicalInformatics/videos" title ="Sponsorship">HERON Training Pages</a>. </p>
+          </div>
+        </div>
+      </div>
   
-  <div py:if="droc" class="header png"><h3>Oversight</h3>
-  <ul>
-    <li><a href="https://redcap.kumc.edu/redcap_v4.7.0/index.php?pid=238">DROC Review Forms</a></li>
-    <li><a href="reports/usage_small">Usage Audit Report</a></li>
-  </ul>
-  </div>
+      <div class="card">
+        <div class="card-header" id="heading-4" aria-label="Open HERON Data Request Process accordion">
+          <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-4" aria-expanded="false" aria-controls="collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-4">
+            HERON Data Request Process
+          </button>
+        </div>
+        <div id="collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-4" class="collapse" aria-labelledby="heading-4" data-parent="#accordion-parent">
+          <div class="card-body">
+            <p>After completing a HERON query, users may request identified or de-identified data. Identified data requires IRB approval or a QI letter of determination from the IRB.
+            Faculty or non-faculty members may create the query. However, non-faculty members will need a faculty sponsor.</p>
+            <ol>
+              <li>Click on "HERON Data Request" under Regulatory Requests</li>
+              <li>Enter the id(s) for all individuals needing access to the HERON data</li>
+              <li>Add all individuals and click "done choosing people"</li>
+              <li>Complete the following form and click submit</li>
+            </ol>
+            <p>Data requests take approximately two weeks for approval and the release of data to the study team. All individuals needing access to the data must sign the <a href="https://heron.kumc.edu/heron/dua_survey">data use agreement</a> prior to release of data. 
+            More detailed instructions are found on our <a href = "https://www.youtube.com/user/KUMedicalInformatics/videos" target = "_blank" title = "Requesting Data">HERON Training Pages</a>. </p>
+          </div>
+        </div>
+      </div>
   
-  <div class="header png"><h3>Other Tools</h3>
-  <ul>
-    <li>
-      <a href="reports/usage">HERON Usage Report</a>
-    </li>
-    <li>
-      <a href="reports/performance">Current HERON Users and Recent Query Performance</a>
-    </li>
-    <li><a href="https://redcap.kumc.edu/" target = "_blank" title = "REDCap">REDCap</a></li>
-  </ul>
-  </div>
-  </div>
-
-  <div id="main">
-  <div id="heron-tricol-01" class="photo">
-  <!-- @@TODO: get the template to handle this style in the head -->
-  <style type="text/css">
-    .photo {text-align: center; margin-bottom: 1em }
-    .doit {text-align: center }
-    .warn {color: red }
-  </style>
-
-  </div>
-
-  <h1>HERON Research Data Repository</h1>
-
-  <!-- TODO: why does this para turn blue? -->
-
-  <table cellpadding = "30">
-  <tr>
-  <td valign = "top">
-    <p>
-      HERON (Healthcare Enterprise Repository for Ontological Narration) is a search discovery tool that allows KUMC faculty members to search de-identified data 
-      from various hospital and medical center sources including Epic/O2 (the hospital electronic medical record). By combining the various data sources, researchers 
-      can look at the data in new ways not available when viewing data in one source at a time.
-    </p>    
-  </td>
-  <td align = "center" valign = "top">
-  <img src="av/220px-Heron_tricol_01.JPG" alt="" />
-  <br /><small>photo credit:
-  <a href="https://commons.wikimedia.org/wiki/User:Chrharshaw" title = "wikimedia">Christopher Harshaw</a></small>
-  </td>
-  </tr>
-  </table> 
-
+      <div class="card">
+        <div class="card-header" id="heading-5" aria-label="Open More Information accordion">
+          <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-5" aria-expanded="false" aria-controls="collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-5">
+            More Information
+          </button>
+        </div>
+        <div id="collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-5" class="collapse" aria-labelledby="heading-5" data-parent="#accordion-parent">
+          <div class="card-body">
+            <ul>
+              <li>KUMC participates in the <a href = "https://www.gpcnetwork.org/" target = "_blank"> Greater Plains Collaborative (GPC) </a> which is a network of 12 leading medical centers in 8 states. The network brings together data on over 16 million patients. Investigators from KUMC are able to request data from participating sites. </li>
+              <li>Patient recruitment is possible through the <a href = "https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics/our-services/heron/frontiers-and-pioneers-registries.html" target = "_blank" title = "Recruitment Registries"> Frontiers and Pioneers Research Registries</a>.</li>
+              <li>HERON data has been cited in several <a href="http://frontiersresearch.org/frontiers/node/452" target = "blank">publications</a>.</li>
+              <li>HERON is supported in part by funds from CTSA Award #UL1TR000001 and Patient-Centered Outcomes Research Institute (PCORI) Program Award #CDRN-1306-04631.</li>
+            </ul>
+          
+            <div>
+              <p><span style="text-decoration: underline;"><em><strong>I need help... what do I do?</strong></em></span></p>
+              <ul>
+                <li><strong>Introduction to REDCap and HERON: </strong>Beginner Training Clinics Tuesdays 12pm-1pm CST. Click <a href="https://redcap.kumc.edu/surveys/?s=L72oqA%20">here</a> to sign up.<em> This is an introduction for new users or users needing a refresher</em></li>
+                <li><strong>For questions or help with projects:</strong> REDCap &amp; HERON Office Hours, Monday &amp; Wednesday 4pm-5pm CST, Friday 9am-10am CST. Click <a href="https://redcap.kumc.edu/surveys/?s=3DHDJMKN4A">here</a> to sign up.<em> This is not a beginner course; 15-20 min appointment to assist with specific questions</em></li>
+                <li><strong>For support by email:</strong> Contact MI Support at <a href="mailto:ocriosupport@kumc.edu">ocriosupport@kumc.edu</a></li>
+                <li><strong>For project development by MI:</strong> Contact MI Support at <a href="mailto:ocriosupport@kumc.edu">ocriosupport@kumc.edu</a><em> Funding is required</em></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-header" id="heading-6" aria-label="Open Citing HERON accordion">
+          <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-6" aria-expanded="false" aria-controls="collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-6">
+            Citing HERON
+          </button>
+        </div>
+        <div id="collapse-9e6ce07f1b734e228e3988cfaa8fe1e8-6" class="collapse" aria-labelledby="heading-6" data-parent="#accordion-parent">
+          <div class="card-body">
+            <p>Any publication that results from a project utilizing HERON should cite grant support and HERON:</p>
+            <ul class="links">
+              <li><cite><a href = "http://www.kufrontiers.org/about/citing-frontiers.html" target = "_blank" title = "CTSA Citation">CTSA Award # UL1TR002366</a></cite> </li>
+              <li><cite><a href="http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3243191/" target="_blank">
+                Expressing observations from electronic medical record flowsheets in an i2b2 based clinical data repository to support research and quality improvement.</a></cite><br/>
+                Waitman LR1, Warren JJ, Manos EL, Connolly DW.<br/>
+                AMIA Annu Symp Proc. 2011;2011:1454-63. Epub 2011 Oct 22.
+              </li>
+              <li><cite><a href="http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3000779/" target = "_blank">Serving the enterprise and beyond with informatics for integrating biology and the bedside (i2b2).</a></cite><br/>
+                Murphy SN, Weber G, Mendis M, Gainer V, Chueh HC, Churchill S, Kohane I.<br/>
+                J Am Med Inform Assoc. 2010 Mar-Apr;17(2):124-30. doi: 10.1136/jamia.2009.000893.
+              </li>
+            </ul>
+            <p>Publications referencing HERON and the Greater Plains Collaborative (GPC) should also cite the GPC:</p>
   
-  <div><h2>Reasons to use HERON</h2>
-  <style>
-  ol.nomargin{margin:0 0 -1em 0em;}
-  li.nomargin{margin:0 0 0em 3em;}
-  ul.nomargin{margin:0.5em 0 -0.5em 0em;}
-  </style>
-  <ol class = "nomargin">
-	<li class = "nomargin">Search HERON to find the number of KUMC patients who meet inclusion/exclusion criteria
-		<ul class = "nomargin"><li class = "nomargin">Useful for grant applications and feasibility counts</li></ul></li>
-	<li class = "nomargin">Request de-identified datasets
-		<ul class = "nomargin"> <li class = "nomargin">No IRB approval needed </li></ul></li>
-	<li class = "nomargin">Request identified datasets
-		<ul class = "nomargin"> <li class = "nomargin">Will require IRB approval or QI letter of determination from the IRB </li></ul></li>
-	<li class = "nomargin">Receive data on patients in a research study
-		<ul class = "nomargin"><li class = "nomargin">Please contact <a href ="mailto:misupport@kumc.edu" target = "_top" title = "email heron-admin">misupport@kumc.edu</a> to learn how to get data elements on a specific list of MRNs</li></ul></li>
-	<li class = "nomargin">Receive contact information for patients in FRONTIERS registry who are eligible for your study </li>
-  </ol>
-	</div>
-
- 
-  <div><h2>Accessing HERON</h2>
-  <p>Check mark(s) missing in the upper right corner under "Login Credentials" indicate a missing requirement. The requirements to access HERON are as follows:</p>
-  <ol>
-  <li>You are a qualified KUMC faculty member or sponsored by a KUMC faculty member.</li>
-  <li>You are up-to-date on your Human Subjects Training.</li>
-  <li>You have signed the system access agreement.</li>
-  </ol>
-	  </div>
-
-  <div><h2>HERON Sponsorship Process</h2>
-	<p> Faculty members are automatically sponsored for HERON. Non-faculty researchers will need to have a sponsorship request submitted and approved by a faculty member. </p>
-  <p><span style="text-decoration: underline;">Faculty member sponsoring non-faculty:</span></p>
-    <ul>
-      <li>Click "HERON Sponsorship Request" under Regulatory Requests.</li>
-      <li>Enter the first / last name or username for sponsoree(s).</li>
-      <li>Select "done choosing people".</li>
-      <li>Complete the following form and click submit.</li>
-    </ul>
-  <p><span style="text-decoration: underline;">Non-faculty member requesting sponsorship:</span></p>
-    <ul>
-      <li>Click "HERON Sponsorship Request" under Regulatory Requests.</li>
-      <li>Enter the first / last name or username for faculty sponsor and any other sponsorees.</li>
-      <li>Select "done choosing people".</li>
-      <li>Complete the following form and click submit.</li>
-    </ul>
-	<p>Sponsorship requests take approximately one week to be approved. Once approved, users can begin searching HERON. More detailed instructions are found on our 
-	<a href = "http://www.kumc.edu/ea-mi/medical-informatics/heron/sponsorship.html" title ="Sponsorship">HERON Training Pages</a>. </p>
-  </div>
-  
-  <div><h2>HERON Data Request Process</h2>
-  <p>After completing a HERON query, users may request identified or de-identified data. Identified data requires IRB approval or a QI letter of determination from the IRB.
-  Faculty or non-faculty members may create the query. However, non-faculty members will need a faculty sponsor.</p>
-  <ol>
-  <li>Click on "HERON Data Request" under Regulatory Requests</li>
-  <li>Enter the id(s) for all individuals needing access to the HERON data</li>
-  <li>Add all individuals and click "done choosing people"</li>
-  <li>Complete the following form and click submit</li>
-  </ol>
-	<p>Data requests take approximately two weeks for approval and the release of data to the study team. All individuals needing access to the data must sign the <a href="https://heron.kumc.edu/heron/dua_survey">data use agreement</a> prior to release of data. 
-	More detailed instructions are found on our <a href = "http://www.kumc.edu/ea-mi/medical-informatics/heron/requesting-data.html" target = "_blank" title = "Requesting Data">HERON Training Pages</a>. </p>
-  </div>
-  
-  <div><h2>More Information</h2>
-    <ul>
-      <li>KUMC participates in the <a href = "https://www.gpcnetwork.org/" target = "_blank"> Greater Plains Collaborative (GPC) </a> which is a network of 12 leading medical centers in 8 states. The network brings together data on over 16 million patients. Investigators from KUMC are able to request data from participating sites. </li>
-      <li>Patient recruitment is possible through the <a href = "http://www.kumc.edu/ea-mi/medical-informatics/heron/frontierspioneers-registries.html" target = "_blank" title = "Recruitment Registries"> Frontiers and Pioneers Research Registries</a>.</li>
-      <li>HERON data has been cited in several <a href="http://frontiersresearch.org/frontiers/node/452" target = "blank">publications</a>.</li>
-      <li>HERON is supported in part by funds from CTSA Award #UL1TR000001 and Patient-Centered Outcomes Research Institute (PCORI) Program Award #CDRN-1306-04631.</li>
-    </ul>
-  </div>
-  
-  <div>
-    <p><span style="text-decoration: underline;"><em><strong>I need help... what do I do?</strong></em></span></p>
-    <ul>
-      <li><strong>Introduction to REDCap and HERON: </strong>Beginner Training Clinics Tuesdays 12pm-1pm CST. Click <a href="https://redcap.kumc.edu/surveys/?s=L72oqA%20">here</a> to sign up.<em> This is an introduction for new users or users needing a refresher</em></li>
-      <li><strong>For questions or help with projects:</strong> REDCap &amp; HERON Office Hours, Monday &amp; Wednesday 4pm-5pm CST, Friday 9am-10am CST. Click <a href="https://redcap.kumc.edu/surveys/?s=3DHDJMKN4A">here</a> to sign up.<em> This is not a beginner course; 15-20 min appointment to assist with specific questions</em></li>
-      <li><strong>For support by email:</strong> Contact MI Support at <a href="mailto:misupport@kumc.edu">misupport@kumc.edu</a></li>
-      <li><strong>For project development by MI:</strong> Contact MI Support at <a href="mailto:misupport@kumc.edu">misupport@kumc.edu</a><em> Funding is required</em></li>
-    </ul>
-  </div>
+            <ul>
+              <li><cite><a href="http://www.ncbi.nlm.nih.gov/pmc/articles/PMC4078294/" target = "_blank">
+                The Greater Plains Collaborative: a PCORnet Clinical Research Data Network</a></cite><br/>
+              Lemuel R Waitman, Lauren S Aaronson, Prakash M Nadkarni, Daniel W Connolly, James R Campbell<br/>
+              J Am Med Inform Assoc 2014;21:637-641 doi:10.1136/amiajnl-2014-002756
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div id="rightnav">
-    <div class="span-7 last">
-      <h3>Login Credentials</h3>
-      <form action="${logout_path}" method="post">
-	<p>${affiliate.givenname} ${affiliate.sn} (<code>${affiliate.cn}</code>)
-	<input type="submit" value="logout" />
-	</p>
-      </form>
+  <div class="col-11 col-md-3">
+    <div class="header">
+      <h5>Login Credentials</h5>
+    </div>
+
+    <form action="${logout_path}" method="post">
+      <p>${affiliate.givenname} ${affiliate.sn} (<code>${affiliate.cn}</code>)
+      <input class="button button-blue btn mt-6" type="submit" value="logout" />
+      </p>
+    </form>
 
     <ol>
       <li>
@@ -224,89 +299,56 @@
           </label>
         </div>
       </li>
-
       <li>
         <label>
           <input type="checkbox" disabled="disabled" py:attrs="trainingCurrent" />
         <a
-        href="https://kumed.sharepoint.com/sites/mykumc/compliance/Pages/CITI-Training-FAQs.aspx"
-        >Human subjects training</a> is complete and current?</label>
+        href="https://kumed.sharepoint.com/sites/mykumc/compliance/Pages/CITI-Training-FAQs.aspx" target = "_blank">Human subjects training</a> is complete and current?</label>
           <a py:if="not trainingCurrent" href="#training-records">*</a>
       </li>
 
       <li>
-	<label>
-	  <input type="checkbox" disabled="disabled" py:attrs="signatureOnFile" />
-	  Signed <a href="${saa_path if not signatureOnFile else saa_public}"
-	  >system access agreement</a>?
-	</label>
+      <label>
+        <input type="checkbox" disabled="disabled" py:attrs="signatureOnFile" />
+        Signed <a href="${saa_path if not signatureOnFile else saa_public}" target="_blank">system access agreement</a>?
+      </label>
       </li>
     </ol>
 
-    <div>
-      <h3>Human Subjects Training</h3>
-      <p py:if="trainingLast">
-        Our records show <cite>${trainingLast.course}</cite>
-        completed ${trainingLast.completed};
-        <span py:if="trainingCurrent">
-          <br />expires  ${trainingLast.expired}.</span>
-        <strong class="warn" py:if="not trainingCurrent">
-          <br />expired  ${trainingLast.expired}.</strong>
-      </p>
-      <p py:if="not trainingCurrent">
-      <em id="training-records">*If you believe there is an error in your training records, please contact <a href="mailto:${admin_mailbox}?subject=HSC%20training%20records"
-      >${admin_mailbox}</a>.</em>
-      </p>
+    <div class="header">
+      <h5>Human Subjects Training</h5>
     </div>
 
-  <div class="header png">
-    <h3>Data Use Agreement</h3>
-  </div>
-  <div class="content png">
-    <p>The <a href="${dua_path}">HERON Data Use Agreement</a> must be signed by all study team members before extracted data can be released.</p>
-  </div>
+    <p py:if="trainingLast">
+      Our records show <cite>${trainingLast.course}</cite>
+      completed ${trainingLast.completed};
+      <span py:if="trainingCurrent">
+        <br />expires  ${trainingLast.expired}.</span>
+      <strong class="warn" py:if="not trainingCurrent">
+        <br />expired  ${trainingLast.expired}.</strong>
+    </p>
+    <p py:if="not trainingCurrent">
+    <em id="training-records">
+      *If you believe there is an error in your training records, please contact 
+      <a href="mailto:${admin_mailbox}?subject=HSC%20training%20records">${admin_mailbox}</a>.
+    </em>
+    </p>
+  
+    <div class="header">
+      <h5>Data Use Agreement</h5>
+    </div>
 
-  <div class="header png">
-    <h3>Problems? Questions? Ideas?</h3>
-  </div>
-  <div class="content png">
+    <p>The <a href="${dua_path}" target="_blank">HERON Data Use Agreement</a> must be signed by all study team members before extracted data can be released.</p>
+
+    <div class="header">
+      <h5>Problems? Questions? Ideas?</h5>
+    </div>
+
     <ul>
-      <li>Let us know what you think: <a href="https://redcap.kumc.edu/surveys/?s=3SBkPg&amp;tool=1">Gripe/Praise</a></li>
+      <li>Let us know what you think: <a href="https://redcap.kumc.edu/surveys/?s=3SBkPg&amp;tool=1" target="_blank">Gripe/Praise</a></li>
     </ul>
-  </div>
 
   </div>
-      <div class="header png">
-        <h3>Citing HERON</h3>
-      </div>
-      <div class="content png">
-	  <p>Any publication that results from a project utilizing HERON should cite grant support and HERON:</p>
-        <ul class="links">
-		<li><cite><a href = "http://www.kufrontiers.org/about/citing-frontiers.html" title = "CTSA Citation">CTSA Award # UL1TR002366</a></cite> </li>
-	<li><cite><a href="http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3243191/">
-    Expressing observations from electronic medical record flowsheets in an i2b2 based clinical data repository to support research and quality improvement.</a></cite><br/>
-  Waitman LR1, Warren JJ, Manos EL, Connolly DW.<br/>
-  AMIA Annu Symp Proc. 2011;2011:1454-63. Epub 2011 Oct 22.
-  </li>
-
-  <li><cite><a href="http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3000779/">
-    Serving the enterprise and beyond with informatics for integrating biology and the bedside (i2b2).
-  </a></cite><br/>
-  Murphy SN, Weber G, Mendis M, Gainer V, Chueh HC, Churchill S, Kohane I.<br/>
-  J Am Med Inform Assoc. 2010 Mar-Apr;17(2):124-30. doi: 10.1136/jamia.2009.000893.
-  </li>
-  </ul>
-  <p>Publications referencing HERON and the Greater Plains Collaborative (GPC) should also cite the GPC:</p>
-
-  <ul>
-  <li><cite><a href="http://www.ncbi.nlm.nih.gov/pmc/articles/PMC4078294/">
-    The Greater Plains Collaborative: a PCORnet Clinical Research Data Network</a></cite><br/>
-  Lemuel R Waitman, Lauren S Aaronson, Prakash M Nadkarni, Daniel W Connolly, James R Campbell<br/>
-  J Am Med Inform Assoc 2014;21:637-641 doi:10.1136/amiajnl-2014-002756
-  </li>
-  </ul> 
-      </div>
-    </div>
 
 </body>
 </html>

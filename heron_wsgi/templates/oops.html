@@ -2,25 +2,32 @@
 <html xmlns="http://www.w3.org/1999/xhtml"
       xmlns:py="http://genshi.edgewall.org/"
       xmlns:xi="http://www.w3.org/2001/XInclude">
+      <xi:include href="heron_layout.xml" />
 <!-- <xi:include href="kumc_layout.xml" /> -->
 <head>
   <title>HERON: Oops!</title>
 </head>
 <!-- todo: factor admin_mailbox out of templates -->
 <body py:with="admin_mailbox='heron-admin@kumc.edu'">
- 
-<h1>Oops! Please try refreshing your browser!</h1>
- 
-<!-- todo: factor feedback survey address out of templates -->
-<p>If the problem persists, please submit this <a href=
-"https://redcap.kumc.edu/surveys/?s=3SBkPg&amp;tool=1&amp;problem=HERON+web+site+crash:${error_info}"
->problem report</a> to notify our team of the issue. The details in the report will help our team fix the error. </p>
- 
-<hr />
-<address>
-The HERON Team <a href="mailto:${admin_mailbox}">${admin_mailbox}</a><br />
-<a href="http://informatics.kumc.edu">Division of Medical Informatics</a>,<br />
-<a href="http://www.kumc.edu/miea.html">KUMC Center for Medical Informatics and Enterprise Analytics</a>,<br />
-</address>
+  <div class="news-copy">
+    <div class="header">
+      <h1>Oops! Please try refreshing your browser!</h1>
+    </div>
+    
+    <div class="tray _call-out-tray _call-out-tray--blue tray--flush">
+      <div class="call-out-content">
+        <!-- todo: factor feedback survey address out of templates -->
+        <p>
+          If the problem persists, please submit this 
+          <a href="https://redcap.kumc.edu/surveys/?s=3SBkPg&amp;tool=1&amp;problem=HERON+web+site+crash:${error_info}" target="_blank">problem report</a> 
+          to notify our team of the issue. The details in the report will help our team fix the error.
+        </p>
+      
+        The HERON Team <a href="mailto:${admin_mailbox}">${admin_mailbox}</a><br />
+        <a href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics.html">Division of Medical Informatics</a>,<br />
+        <a href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics.html">KUMC Center for Medical Informatics and Enterprise Analytics</a>,<br />
+      </div>
+    </div>
+  </div>
 </body>
 </html>
