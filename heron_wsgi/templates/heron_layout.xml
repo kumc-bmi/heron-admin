@@ -230,7 +230,7 @@
         <div class="news-copy">
           <div class="x-up-card">
             <div class="parent-section-link">
-              <a href="https://heron.kumc.edu/heron/" style="font-weight: bolder;"><i class="fa-arrow-left"></i> Heron </a>
+              <a href="https://heron.kumc.edu/heron/" style="font-weight: bolder;"><i class="fa-solid fa-arrow-left"></i> Heron </a>
             </div>
             <div class="content">
                 ${select(".//div[@class='news-copy']/*|text()")}
@@ -274,7 +274,7 @@
         <div class="col-10 col-md-6">
           <ul class="newsroom-links">
             <li><a href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics.html" target="_blank" title="Medical Informatics Division">
-              Medical Informatics Division&nbsp;<i class="fa-chevron-right"></i></a>
+              Medical Informatics Division&nbsp;<i class="fa-solid fa-chevron-right"></i></a>
             </li>
           </ul>
         </div>
@@ -293,7 +293,7 @@
           <div class="col-12">
             <div class="center-content">
               <a class="button button-outline button-outline--gift" href="https://www.kumc.edu/about/make-a-gift.html">
-              <img src="https://www.kumc.edu/Content/img/logos/logo--endowment.png" role="presentation" alt="" />Make a Gift<i class="fa-chevron-right"></i></a>
+              <img src="https://www.kumc.edu/Content/img/logos/logo--endowment.png" role="presentation" alt="" />Make a Gift<i class="fa-solid fa-chevron-right"></i></a>
             </div>
             <div class="center-content">
               <a class="logo logo--footer" href="https://www.kumc.edu/" target="_blank">
@@ -313,11 +313,11 @@
             </div>
             <div class="center-content">
               <ul class="social">
-                <li><a href="https://www.facebook.com/kumedicalcenter" target="_blank"><i class="fab fa-facebook-f"></i><span class="sr-only">Facebook opens in new tab</span></a></li>
-                <li><a href="https://www.twitter.com/kumedcenter" target="_blank"><i class="fab fa-twitter"></i><span class="sr-only">Twitter opens in new tab</span></a></li>
-                <li><a href="https://www.youtube.com/KUMedCenter" target="_blank"><i class="fab fa-youtube"></i><span class="sr-only">YouTube opens in new tab</span></a></li>
-                <li><a href="http://www.instagram.com/kumedcenter" target="_blank"><i class="fab fa-instagram"></i><span class="sr-only">Instagram opens in new tab</span></a></li>
-                <li><a href="https://www.linkedin.com/edu/school?id=18388" target="_blank"><i class="fab fa-linkedin-in"></i><span class="sr-only">LinkedIn opens in new tab</span></a></li>
+                <li><a href="https://www.facebook.com/kumedicalcenter" target="_blank"><i class="fa-brands fa-facebook-f"></i><span class="sr-only">Facebook opens in new tab</span></a></li>
+                <li><a href="https://www.twitter.com/kumedcenter" target="_blank"><i class="fa-brands fa-twitter"></i><span class="sr-only">Twitter opens in new tab</span></a></li>
+                <li><a href="https://www.youtube.com/KUMedCenter" target="_blank"><i class="fa-brands fa-youtube"></i><span class="sr-only">YouTube opens in new tab</span></a></li>
+                <li><a href="http://www.instagram.com/kumedcenter" target="_blank"><i class="fa-brands fa-instagram"></i><span class="sr-only">Instagram opens in new tab</span></a></li>
+                <li><a href="https://www.linkedin.com/edu/school?id=18388" target="_blank"><i class="fa-brands fa-linkedin-in"></i><span class="sr-only">LinkedIn opens in new tab</span></a></li>
               </ul>
             </div>
             <div class="copywright-ps-cs">
