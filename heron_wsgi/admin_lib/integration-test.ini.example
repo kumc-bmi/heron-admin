@@ -72,7 +72,5 @@ project_id=...
 api_url=https://redcap.kumc.edu/api/
 
 [i2b2pm]
-jboss_deploy=/usr/local/jboss/deploy/
 
 [i2b2md]
-jboss_deploy=/usr/local/jboss/deploy/
