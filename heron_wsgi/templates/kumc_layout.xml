@@ -269,7 +269,7 @@
         <div class="col-10 col-md-6">
           <ul class="newsroom-links">
             <li><a href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics.html" target="_blank" title="Medical Informatics Division">
-              Medical Informatics Division&nbsp;<i class="fas fa-chevron-right"></i></a>
+              Medical Informatics Division&nbsp;<i class="fa-chevron-right"></i></a>
             </li>
           </ul>
         </div>
@@ -288,7 +288,7 @@
           <div class="col-12">
             <div class="center-content">
               <a class="button button-outline button-outline--gift" href="https://www.kumc.edu/about/make-a-gift.html">
-              <img src="https://www.kumc.edu/Content/img/logos/logo--endowment.png" role="presentation" alt="" />Make a Gift<i class="fas fa-chevron-right"></i></a>
+              <img src="https://www.kumc.edu/Content/img/logos/logo--endowment.png" role="presentation" alt="" />Make a Gift<i class="fa-chevron-right"></i></a>
             </div>
             <div class="center-content">
               <a class="logo logo--footer" href="https://www.kumc.edu/" target="_blank">
