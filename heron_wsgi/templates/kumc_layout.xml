@@ -6,9 +6,7 @@
   <link rel="shortcut icon" href="https://www.kumc.edu/_dev/favicon.ico" />
   <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Raleway:300i,400,400i,500,500i,600,600i,700,700i,800,800i,900,900i" />
   <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Anton|Muli:300,400,400italic,300italic|Goudy+Bookletter+1911|Oswald&amp;subset=latin,latin-ext" media="all" />
-  <link rel="stylesheet" type="text/css" href="./assets/fontawesome/css/all.css" />
-  <link rel="stylesheet" href="./assets/fontawesome/css/solid.css" />
-  <link rel="stylesheet" href="./assets/fontawesome/css/brands.css" />
+  <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/fontawesome/css/all.css" />
   <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Noto+Serif&amp;display=swap" />
   <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/bootstrap.min.css" />
   <link rel="stylesheet" type="text/css" href="https://www.kumc.edu/Content/css/icon-fonts.css" />
@@ -271,7 +269,7 @@
         <div class="col-10 col-md-6">
           <ul class="newsroom-links">
             <li><a href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics.html" target="_blank" title="Medical Informatics Division">
-              Medical Informatics Division&nbsp;<i class="fa-solid fa-chevron-right"></i></a>
+              Medical Informatics Division&nbsp;<i class="fas fa-chevron-right"></i></a>
             </li>
           </ul>
         </div>
@@ -290,7 +288,7 @@
           <div class="col-12">
             <div class="center-content">
               <a class="button button-outline button-outline--gift" href="https://www.kumc.edu/about/make-a-gift.html">
-              <img src="https://www.kumc.edu/Content/img/logos/logo--endowment.png" role="presentation" alt="" />Make a Gift<i class="fa-solid fa-chevron-right"></i></a>
+              <img src="https://www.kumc.edu/Content/img/logos/logo--endowment.png" role="presentation" alt="" />Make a Gift<i class="fas fa-chevron-right"></i></a>
             </div>
             <div class="center-content">
               <a class="logo logo--footer" href="https://www.kumc.edu/" target="_blank">
@@ -310,11 +308,11 @@
             </div>
             <div class="center-content">
               <ul class="social">
-                <li><a href="https://www.facebook.com/kumedicalcenter" target="_blank"><i class="fa-brands fa-facebook-f"></i><span class="sr-only">Facebook opens in new tab</span></a></li>
-                <li><a href="https://www.twitter.com/kumedcenter" target="_blank"><i class="fa-brands fa-twitter"></i><span class="sr-only">Twitter opens in new tab</span></a></li>
-                <li><a href="https://www.youtube.com/KUMedCenter" target="_blank"><i class="fa-brands fa-youtube"></i><span class="sr-only">YouTube opens in new tab</span></a></li>
-                <li><a href="http://www.instagram.com/kumedcenter" target="_blank"><i class="fa-brands fa-instagram"></i><span class="sr-only">Instagram opens in new tab</span></a></li>
-                <li><a href="https://www.linkedin.com/edu/school?id=18388" target="_blank"><i class="fa-brands fa-linkedin-in"></i><span class="sr-only">LinkedIn opens in new tab</span></a></li>
+                <li><a href="https://www.facebook.com/kumedicalcenter" target="_blank"><i class="fab fa-facebook-f"></i><span class="sr-only">Facebook opens in new tab</span></a></li>
+                <li><a href="https://www.twitter.com/kumedcenter" target="_blank"><i class="fab fa-twitter"></i><span class="sr-only">Twitter opens in new tab</span></a></li>
+                <li><a href="https://www.youtube.com/KUMedCenter" target="_blank"><i class="fab fa-youtube"></i><span class="sr-only">YouTube opens in new tab</span></a></li>
+                <li><a href="http://www.instagram.com/kumedcenter" target="_blank"><i class="fab fa-instagram"></i><span class="sr-only">Instagram opens in new tab</span></a></li>
+                <li><a href="https://www.linkedin.com/edu/school?id=18388" target="_blank"><i class="fab fa-linkedin-in"></i><span class="sr-only">LinkedIn opens in new tab</span></a></li>
               </ul>
             </div>
             <div class="copywright-ps-cs">
