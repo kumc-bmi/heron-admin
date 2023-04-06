@@ -64,7 +64,7 @@ and s.expired_date > current_date
                      , qqm.user_id
                 from %(crc)s.qt_query_master qqm
                 where qqm.name != 'HERON MONITORING QUERY'
-            ) group by y, m
+            ) t  group by y, m
             order by y desc, m desc
                       ''' % self.schemas)
 
