@@ -41,7 +41,7 @@ from %(pm)s.pm_user_session s
 join %(pm)s.pm_user_data pud
   on s.user_id = pud.user_id
 where s.user_id not like '%%SERVICE_ACCOUNT'
-and s.expired_date > sysdate
+and s.expired_date > current_date
 ''' % self.schemas)
 
     def total_number_of_queries(self):
@@ -87,7 +87,7 @@ left join
 
 (select qqm.user_id, count(*) as qty
 from %(crc)s.qt_query_master qqm
-where qqm.create_date >= sysdate - 14
+where qqm.create_date >= current_date - 14
 and qqm.name != 'HERON MONITORING QUERY'
 group by qqm.user_id) two_weeks
 
@@ -97,7 +97,7 @@ left join
 
 (select qqm.user_id, count(*) as qty
 from %(crc)s.qt_query_master qqm
-where qqm.create_date >= sysdate - 30
+where qqm.create_date >= current_date - 30
 and qqm.name != 'HERON MONITORING QUERY'
 group by qqm.user_id) last_month
 
@@ -107,7 +107,7 @@ left join
 
 (select qqm.user_id, count(*) as qty
 from %(crc)s.qt_query_master qqm
-where qqm.create_date >= sysdate - 90
+where qqm.create_date >= current_date - 90
 and qqm.name != 'HERON MONITORING QUERY'
 group by qqm.user_id) last_quarter
 
@@ -117,7 +117,7 @@ left join
 
 (select qqm.user_id, count(*) as qty
 from %(crc)s.qt_query_master qqm
-where qqm.create_date >= sysdate - 365
+where qqm.create_date >= current_date - 365
 and qqm.name != 'HERON MONITORING QUERY'
 group by qqm.user_id) last_year
 
@@ -165,7 +165,7 @@ left JOIN %(crc)s.qt_query_result_type rt
 ON rt.result_type_id = qri.result_type_id
 left JOIN %(crc)s.qt_query_status_type qt
 ON qt.status_type_id = qi.status_type_id
-where qm.create_date>sysdate-14
+where qm.create_date>current_date-14
 
 UNION ALL
 
@@ -193,7 +193,7 @@ abs(INSTR(qm.request_xml,'<patient_set_coll_id>',1,1) +21
 
  from %(crc)s.qt_pdo_query_master qm
 join %(pm)s.pm_user_data ud on qm.user_id=ud.user_id
-where qm.create_date>sysdate-14
+where qm.create_date>current_date-14
 ) rqp order by rqp.create_date desc)rqp
 
 where rownum<=40
@@ -208,7 +208,7 @@ class I2B2SensitiveUsage(I2B2Usage):
     def patient_set_queries(self, recent=False, small=False):
         '''Queries that returned set sizes less than 10
         '''
-        r = ('and qqm.create_date > sysdate - 45'
+        r = ('and qqm.create_date > current_date - 45'
              if recent else '')
         s = ('and qqri.real_set_size <= 15 and qqri.set_size > 0'
              if small else '')
@@ -261,7 +261,7 @@ class I2B2SensitiveUsage(I2B2Usage):
                         on qqri.result_type_id=qqrt.result_type_id
                       where qqri.real_set_size <= 15 and qqri.set_size > 0
                         and qqri.result_type_id=1
-                        and qqm.create_date > sysdate - 45)
+                        and qqm.create_date > current_date - 45)
         order by create_date desc
         ''' % self.schemas)
 
@@ -270,7 +270,7 @@ class I2B2SensitiveUsage(I2B2Usage):
 select ud.full_name, ud.user_id, us.entry_date
 from %(pm)s.pm_user_session us
 join %(pm)s.pm_user_data ud on ud.user_id = us.user_id
-where us.expired_date > sysdate
+where us.expired_date > current_date
 and us.user_id not like '%%_SERVICE_ACCOUNT'
                       ''' % self.schemas)
 
@@ -299,7 +299,7 @@ left join %(crc)s.qt_query_result_type qrt
   on qrt.result_type_id = qri.result_type_id
 
 
-where us.expired_date > sysdate
+where us.expired_date > current_date
 and us.user_id not like '%%_SERVICE_ACCOUNT'
 
 and (qm.query_master_id is null  or (
