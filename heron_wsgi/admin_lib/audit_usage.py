@@ -126,7 +126,7 @@ on last_year.user_id = all_time.user_id
         join %(pm)s.pm_user_data pud
           on all_time.user_id = pud.user_id
 
-order by nvl(two_weeks.qty, -1) desc, nvl(all_time.qty, -1) desc
+order by coalesce(two_weeks.qty, -1) desc, coalesce(all_time.qty, -1) desc
                       ''' % self.schemas)
 
     def recent_query_performance(self):
