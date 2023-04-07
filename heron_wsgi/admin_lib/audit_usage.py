@@ -229,7 +229,7 @@ class I2B2SensitiveUsage(I2B2Usage):
         where qqri.result_type_id=1
         %(RECENT)s %(SMALL)s
         order by substr(qqm.user_id, 2), create_date desc
-        ''' % dict(RECENT=r, SMALL=s))
+        ''' % dict(RECENT=r, SMALL=s, crc=self.schemas['crc']))
 
     def small_set_concepts(self):
         '''concepts used by users who ran query patient set which is less
