@@ -140,7 +140,7 @@ order by coalesce(two_weeks.qty, -1) desc, coalesce(all_time.qty, -1) desc
 select * from(
   select * from (
   select qm.query_master_id, qm.name, qm.user_id, qt.name as status,
-  nvl(cast(qi.end_date as timestamp),
+  coalesce(cast(qi.end_date as timestamp),
       -- round to nearest second by converting to date and back
       cast(cast(current_timestamp as date) as timestamp))
   - cast(qm.create_date as timestamp) elapsed,
@@ -154,7 +154,7 @@ FROM (
   select * from (
    select * from %(crc)s.qt_query_master qm
    where qm.delete_flag != 'Y' order by qm.create_date desc
-   ) ) qm
+   ) t ) qm
 JOIN %(crc)s.qt_query_instance qi
 ON qm.query_master_id = qi.query_master_id
 
@@ -174,12 +174,12 @@ select
 ,(select qri.description from %(crc)s.qt_query_result_instance qri
  where qri.result_instance_id=
  cast(regexp_replace(
-dbms_lob.substr(qm.request_xml,
-abs(INSTR(qm.request_xml,'<patient_set_coll_id>',1,1) +21
--INSTR(qm.request_xml,'</patient_set_coll_id>',1,1))
-,instr(qm.request_xml,'<patient_set_coll_id>',1,1)+21
+substr(qm.request_xml,
+abs(STRPOS(qm.request_xml,'<patient_set_coll_id>') +21
+-STRPOS(qm.request_xml,'</patient_set_coll_id>'))
+,STRPOS(qm.request_xml,'<patient_set_coll_id>')+21
 )
-, '[^0-9]+', '') as number))  as name
+, '[^0-9]+', '') as numeric))  as name
 ,qm.user_id
 ,'COMPLETED' as status
 ,cast(cast(qm.create_date as date) as timestamp)
@@ -196,8 +196,8 @@ join %(pm)s.pm_user_data ud on qm.user_id=ud.user_id
 where qm.create_date>current_date-14
 ) rqp order by rqp.create_date desc)rqp
 
-where rownum<=40
 order by rqp.create_date desc
+limit 40
 ''' % self.schemas)
 
 
