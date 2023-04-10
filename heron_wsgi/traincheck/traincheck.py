@@ -365,6 +365,7 @@ class MEMBERS(TableDesign):
         <strSSOCustomAttrib1 />
         <strSSOCustomAttrib2>a</strSSOCustomAttrib2>
         <strEmployeeNum />
+        <ORCIDid />
       </MEMBERS>
     '''
 
