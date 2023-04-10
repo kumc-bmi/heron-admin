@@ -239,18 +239,19 @@ class I2B2SensitiveUsage(I2B2Usage):
              , qm.query_master_id
              , create_date
              , name as query_name
-             , substr(extract(column_value, '/item/item_name/text()'), 1)
-               as item_name
-             , substr(extract(column_value, '/item/tooltip/text()'), 1)
-               as tooltip
-             , substr(extract(column_value, '/item/item_key/text()'), 1)
-               as item_key
+             ,(xpath('/ns4:query_definition/panel/item/item_name/text()'
+				        , qm.request_xml::xml
+            	  ,ARRAY[ARRAY['ns4', 'http://www.i2b2.org/xsd/cell/crc/psm/querydefinition/1.1/']]))[1]::text
+                as item_name
+             ,(xpath('/ns4:query_definition/panel/item/tooltip/text()'
+				        , qm.request_xml::xml
+            	  ,ARRAY[ARRAY['ns4', 'http://www.i2b2.org/xsd/cell/crc/psm/querydefinition/1.1/']]))[1]::text
+                as tooltip
+             ,(xpath('/ns4:query_definition/panel/item/item_key/text()'
+				        , qm.request_xml::xml
+            	  ,ARRAY[ARRAY['ns4', 'http://www.i2b2.org/xsd/cell/crc/psm/querydefinition/1.1/']]))[1]::text
+                as item_key
         from %(crc)s.QT_QUERY_MASTER qm
-           , table(xmlsequence(extract(sys.XMLType(qm.request_xml),
-                      '/qd:query_definition/panel[position()=last()
-                      or position()=1]/item',
-        'xmlns:qd="http://www.i2b2.org/xsd/cell/crc/psm/querydefinition/1.1/"')
-                        ))
         where qm.query_master_id in  ( select qqm.query_master_id
                       from %(crc)s.qt_query_master qqm
                       join %(crc)s.qt_query_instance qqi
