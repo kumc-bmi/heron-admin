@@ -41,7 +41,7 @@ from %(pm)s.pm_user_session s
 join %(pm)s.pm_user_data pud
   on s.user_id = pud.user_id
 where s.user_id not like '%%SERVICE_ACCOUNT'
-and s.expired_date > sysdate
+and s.expired_date > current_date
 ''' % self.schemas)
 
     def total_number_of_queries(self):
@@ -64,7 +64,7 @@ and s.expired_date > sysdate
                      , qqm.user_id
                 from %(crc)s.qt_query_master qqm
                 where qqm.name != 'HERON MONITORING QUERY'
-            ) group by y, m
+            ) t  group by y, m
             order by y desc, m desc
                       ''' % self.schemas)
 
@@ -87,7 +87,7 @@ left join
 
 (select qqm.user_id, count(*) as qty
 from %(crc)s.qt_query_master qqm
-where qqm.create_date >= sysdate - 14
+where qqm.create_date >= current_date - 14
 and qqm.name != 'HERON MONITORING QUERY'
 group by qqm.user_id) two_weeks
 
@@ -97,7 +97,7 @@ left join
 
 (select qqm.user_id, count(*) as qty
 from %(crc)s.qt_query_master qqm
-where qqm.create_date >= sysdate - 30
+where qqm.create_date >= current_date - 30
 and qqm.name != 'HERON MONITORING QUERY'
 group by qqm.user_id) last_month
 
@@ -107,7 +107,7 @@ left join
 
 (select qqm.user_id, count(*) as qty
 from %(crc)s.qt_query_master qqm
-where qqm.create_date >= sysdate - 90
+where qqm.create_date >= current_date - 90
 and qqm.name != 'HERON MONITORING QUERY'
 group by qqm.user_id) last_quarter
 
@@ -117,7 +117,7 @@ left join
 
 (select qqm.user_id, count(*) as qty
 from %(crc)s.qt_query_master qqm
-where qqm.create_date >= sysdate - 365
+where qqm.create_date >= current_date - 365
 and qqm.name != 'HERON MONITORING QUERY'
 group by qqm.user_id) last_year
 
@@ -126,7 +126,7 @@ on last_year.user_id = all_time.user_id
         join %(pm)s.pm_user_data pud
           on all_time.user_id = pud.user_id
 
-order by nvl(two_weeks.qty, -1) desc, nvl(all_time.qty, -1) desc
+order by coalesce(two_weeks.qty, -1) desc, coalesce(all_time.qty, -1) desc
                       ''' % self.schemas)
 
     def recent_query_performance(self):
@@ -140,7 +140,7 @@ order by nvl(two_weeks.qty, -1) desc, nvl(all_time.qty, -1) desc
 select * from(
   select * from (
   select qm.query_master_id, qm.name, qm.user_id, qt.name as status,
-  nvl(cast(qi.end_date as timestamp),
+  coalesce(cast(qi.end_date as timestamp),
       -- round to nearest second by converting to date and back
       cast(cast(current_timestamp as date) as timestamp))
   - cast(qm.create_date as timestamp) elapsed,
@@ -154,7 +154,7 @@ FROM (
   select * from (
    select * from %(crc)s.qt_query_master qm
    where qm.delete_flag != 'Y' order by qm.create_date desc
-   ) ) qm
+   ) t ) qm
 JOIN %(crc)s.qt_query_instance qi
 ON qm.query_master_id = qi.query_master_id
 
@@ -165,7 +165,7 @@ left JOIN %(crc)s.qt_query_result_type rt
 ON rt.result_type_id = qri.result_type_id
 left JOIN %(crc)s.qt_query_status_type qt
 ON qt.status_type_id = qi.status_type_id
-where qm.create_date>sysdate-14
+where qm.create_date>current_date-14
 
 UNION ALL
 
@@ -174,12 +174,12 @@ select
 ,(select qri.description from %(crc)s.qt_query_result_instance qri
  where qri.result_instance_id=
  cast(regexp_replace(
-dbms_lob.substr(qm.request_xml,
-abs(INSTR(qm.request_xml,'<patient_set_coll_id>',1,1) +21
--INSTR(qm.request_xml,'</patient_set_coll_id>',1,1))
-,instr(qm.request_xml,'<patient_set_coll_id>',1,1)+21
+substr(qm.request_xml,
+abs(STRPOS(qm.request_xml,'<patient_set_coll_id>') +21
+-STRPOS(qm.request_xml,'</patient_set_coll_id>'))
+,STRPOS(qm.request_xml,'<patient_set_coll_id>')+21
 )
-, '[^0-9]+', '') as number))  as name
+, '[^0-9]+', '') as numeric))  as name
 ,qm.user_id
 ,'COMPLETED' as status
 ,cast(cast(qm.create_date as date) as timestamp)
@@ -193,11 +193,11 @@ abs(INSTR(qm.request_xml,'<patient_set_coll_id>',1,1) +21
 
  from %(crc)s.qt_pdo_query_master qm
 join %(pm)s.pm_user_data ud on qm.user_id=ud.user_id
-where qm.create_date>sysdate-14
+where qm.create_date>current_date-14
 ) rqp order by rqp.create_date desc)rqp
 
-where rownum<=40
 order by rqp.create_date desc
+limit 40
 ''' % self.schemas)
 
 
@@ -208,7 +208,7 @@ class I2B2SensitiveUsage(I2B2Usage):
     def patient_set_queries(self, recent=False, small=False):
         '''Queries that returned set sizes less than 10
         '''
-        r = ('and qqm.create_date > sysdate - 45'
+        r = ('and qqm.create_date > current_date - 45'
              if recent else '')
         s = ('and qqri.real_set_size <= 15 and qqri.set_size > 0'
              if small else '')
@@ -229,7 +229,7 @@ class I2B2SensitiveUsage(I2B2Usage):
         where qqri.result_type_id=1
         %(RECENT)s %(SMALL)s
         order by substr(qqm.user_id, 2), create_date desc
-        ''' % dict(RECENT=r, SMALL=s))
+        ''' % dict(RECENT=r, SMALL=s, crc=self.schemas['crc'], pm=self.schemas['pm']))
 
     def small_set_concepts(self):
         '''concepts used by users who ran query patient set which is less
@@ -239,18 +239,19 @@ class I2B2SensitiveUsage(I2B2Usage):
              , qm.query_master_id
              , create_date
              , name as query_name
-             , substr(extract(column_value, '/item/item_name/text()'), 1)
-               as item_name
-             , substr(extract(column_value, '/item/tooltip/text()'), 1)
-               as tooltip
-             , substr(extract(column_value, '/item/item_key/text()'), 1)
-               as item_key
+             ,(xpath('/ns4:query_definition/panel/item/item_name/text()'
+				        , qm.request_xml::xml
+            	  ,ARRAY[ARRAY['ns4', 'http://www.i2b2.org/xsd/cell/crc/psm/querydefinition/1.1/']]))[1]::text
+                as item_name
+             ,(xpath('/ns4:query_definition/panel/item/tooltip/text()'
+				        , qm.request_xml::xml
+            	  ,ARRAY[ARRAY['ns4', 'http://www.i2b2.org/xsd/cell/crc/psm/querydefinition/1.1/']]))[1]::text
+                as tooltip
+             ,(xpath('/ns4:query_definition/panel/item/item_key/text()'
+				        , qm.request_xml::xml
+            	  ,ARRAY[ARRAY['ns4', 'http://www.i2b2.org/xsd/cell/crc/psm/querydefinition/1.1/']]))[1]::text
+                as item_key
         from %(crc)s.QT_QUERY_MASTER qm
-           , table(xmlsequence(extract(sys.XMLType(qm.request_xml),
-                      '/qd:query_definition/panel[position()=last()
-                      or position()=1]/item',
-        'xmlns:qd="http://www.i2b2.org/xsd/cell/crc/psm/querydefinition/1.1/"')
-                        ))
         where qm.query_master_id in  ( select qqm.query_master_id
                       from %(crc)s.qt_query_master qqm
                       join %(crc)s.qt_query_instance qqi
@@ -261,7 +262,7 @@ class I2B2SensitiveUsage(I2B2Usage):
                         on qqri.result_type_id=qqrt.result_type_id
                       where qqri.real_set_size <= 15 and qqri.set_size > 0
                         and qqri.result_type_id=1
-                        and qqm.create_date > sysdate - 45)
+                        and qqm.create_date > current_date - 45)
         order by create_date desc
         ''' % self.schemas)
 
@@ -270,7 +271,7 @@ class I2B2SensitiveUsage(I2B2Usage):
 select ud.full_name, ud.user_id, us.entry_date
 from %(pm)s.pm_user_session us
 join %(pm)s.pm_user_data ud on ud.user_id = us.user_id
-where us.expired_date > sysdate
+where us.expired_date > current_date
 and us.user_id not like '%%_SERVICE_ACCOUNT'
                       ''' % self.schemas)
 
@@ -299,7 +300,7 @@ left join %(crc)s.qt_query_result_type qrt
   on qrt.result_type_id = qri.result_type_id
 
 
-where us.expired_date > sysdate
+where us.expired_date > current_date
 and us.user_id not like '%%_SERVICE_ACCOUNT'
 
 and (qm.query_master_id is null  or (
