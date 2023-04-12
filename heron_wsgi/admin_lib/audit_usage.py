@@ -193,7 +193,7 @@ substr(qm.request_xml
 
  from %(crc)s.qt_pdo_query_master qm
 join %(pm)s.pm_user_data ud on qm.user_id=ud.user_id
-where qm.create_date>current_date-99914
+where qm.create_date>current_date-14
 ) rqp order by rqp.create_date desc)rqp
 
 order by rqp.create_date desc
