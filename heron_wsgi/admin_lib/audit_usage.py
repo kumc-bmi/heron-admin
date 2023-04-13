@@ -174,10 +174,10 @@ select
 ,(select qri.description from %(crc)s.qt_query_result_instance qri
  where qri.result_instance_id=
  cast(regexp_replace(
-substr(qm.request_xml,
-abs(STRPOS(qm.request_xml,'<patient_set_coll_id>') +21
--STRPOS(qm.request_xml,'</patient_set_coll_id>'))
+substr(qm.request_xml
 ,STRPOS(qm.request_xml,'<patient_set_coll_id>')+21
+,abs(STRPOS(qm.request_xml,'<patient_set_coll_id>') +21
+  -STRPOS(qm.request_xml,'</patient_set_coll_id>'))
 )
 , '[^0-9]+', '') as numeric))  as name
 ,qm.user_id
