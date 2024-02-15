@@ -53,11 +53,11 @@ cas_login={{get_cfg('i2b2_webclient')}}
 ###
 
 [enterprise_directory]
-url= ldaps://auth.kumc.edu:636
+url= ldaps://ldapauth.kumc.edu:636
 userDn= cn=biostats,ou=authaccounts,o=idvault
 password={{get_cfg('ldap_biostats_pass')}}
 base= ou=people,o=idvault
-certfile=/etc/ssl/certs/auth.kumc.edu.pem
+certfile=/etc/ssl/certs/ldapauth.kumc.edu.pem
 
 studylookupaddr={{get_cfg('ecompliance_lookup')}}
 
