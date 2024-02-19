@@ -41,11 +41,11 @@ document_root = heron_wsgi/templates/av/
 
 [cas]
 base=https://cas.kumc.edu/cas/
-app_secret=CRED_CAS_APP_NONCE
-service=CFG_CAS_SERVICE
+app_secret={{cas_app_nonce}}
+service={{cas_service}}
 
 [i2b2]
-cas_login=CFG_I2B2_WEBCLIENT
+cas_login={{i2b2_webclient}}
 
 
 ###
@@ -55,33 +55,32 @@ cas_login=CFG_I2B2_WEBCLIENT
 [enterprise_directory]
 url= ldaps://auth.kumc.edu:636
 userDn= cn=biostats,ou=authaccounts,o=idvault
-password= CRED_LDAP_BIOSTATS
+password={{ldap_biostats_pass}}
 base= ou=people,o=idvault
 certfile=/etc/ssl/certs/auth.kumc.edu.pem
 
-studylookupaddr=CFG_ECOMPLIANCE_LOOKUP
+studylookupaddr={{ecompliance_lookup}}
 
 # For audit trail of executives, see
 #  http://bmi-work.kumc.edu/work/ticket/321#comment:13
 #  and others such as
 #  https://bmi-work.kumc.edu/work/ticket/4676
-executives=CFG_EXECUTIVES
+executives={{executives}}
 
 
 [training]
 username = hsr_train_check
 database = hsr_cache
-hostport= CFG_REDCAP_DB_HOSTPORT
+password ={{train_check_pass}}
+hostport={{redcap_db_hostport}}
 url = mysql+pymysql://%(username)s:%(password)s@%(hostport)s/%(database)s?charset=utf8
-password = CRED_TRAIN_CHECK
 
 
 [redcapdb]
 username=drocredcap
 database=redcap
-password=CRED_DROCREDCAP
-# ssh tunnel
-hostport=CFG_REDCAP_DB_HOSTPORT
+password={{drocredcap_pass}}
+hostport={{redcap_db_hostport}}
 
 # Note well the charset=utf8!
 # cf. #3741 etc.
@@ -90,8 +89,8 @@ engine=mysql+pymysql://%(username)s:%(password)s@%(hostport)s/%(database)s?chars
 [survey_invite]
 database=redcap
 username=survey_invite
-password=CRED_SURVEY_INVITE
-hostport=CFG_REDCAP_DB_HOSTPORT
+password={{survey_invite_pass}}
+hostport={{redcap_db_hostport}}
 engine=mysql+pymysql://%(username)s:%(password)s@%(hostport)s/%(database)s?charset=utf8
 
 [saa_survey]
@@ -109,30 +108,29 @@ survey_id=2678
 
 [oversight_survey]
 api_url=https://redcap.kumc.edu/api/
-survey_url=CFG_REDCAP_OVERSIGHT_SURVEY_URL
+survey_url={{redcap_oversight_survey_url}}
 domain=kumc.edu
-survey_id=CFG_REDCAP_OVERSIGHT_SURVEY_ID
-project_id=CFG_REDCAP_OVERSIGHT_PROJECT_ID
+survey_id={{redcap_oversight_survey_id}}
+project_id={{redcap_oversight_survey_project_id}}
 trigger_log=/tmp/oversight_log_dir/
 trigger_url=http://db-proxy-sable/dummy
 level=WARN
 
-
 [i2b2pm]
-identified_data=CFG_ID
-i2b2pm_schema=CFG_I2B2PM_SCHEMA
-i2b2crc_schema=CFG_I2B2CRC_SCHEMA
-i2b2pm_url=CFG_I2B2_URL
+identified_data={{id}}
+i2b2pm_schema={{i2b2pm_schema}}
+i2b2crc_schema={{i2b2crc_schema}}
+i2b2pm_url={{i2b2_url}}
 
 [i2b2md]
-i2b2meta_schema=CFG_I2B2META_SCHEMA
-i2b2meta_url=CFG_I2B2_URL
+i2b2meta_schema={{i2b2meta_schema}}
+i2b2meta_url={{i2b2_url}}
 
 [disclaimers]
 project_id=398
 
 [disclaimer_acknowledgements]
-token=CRED_DISCLAIMER_ACKS
+token={{disclaimer_acks_token}}
 project_id=399
 api_url=https://redcap.kumc.edu/api/
 
