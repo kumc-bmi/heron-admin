@@ -41,11 +41,11 @@ document_root = heron_wsgi/templates/av/
 
 [cas]
 base=https://cas.kumc.edu/cas/
-app_secret={{cas_app_nonce}}
-service={{cas_service}}
+app_secret={{get_cfg(cas_app_nonce)}}
+service={{get_cfg(cas_service)}}
 
 [i2b2]
-cas_login={{i2b2_webclient}}
+cas_login={{get_cfg(i2b2_webclient)}}
 
 
 ###
@@ -55,32 +55,32 @@ cas_login={{i2b2_webclient}}
 [enterprise_directory]
 url= ldaps://auth.kumc.edu:636
 userDn= cn=biostats,ou=authaccounts,o=idvault
-password={{ldap_biostats_pass}}
+password={{get_cfg(ldap_biostats_pass)}}
 base= ou=people,o=idvault
 certfile=/etc/ssl/certs/auth.kumc.edu.pem
 
-studylookupaddr={{ecompliance_lookup}}
+studylookupaddr={{get_cfg(ecompliance_lookup)}}
 
 # For audit trail of executives, see
 #  http://bmi-work.kumc.edu/work/ticket/321#comment:13
 #  and others such as
 #  https://bmi-work.kumc.edu/work/ticket/4676
-executives={{executives}}
+executives={{get_cfg(executives)}}
 
 
 [training]
 username = hsr_train_check
 database = hsr_cache
-password ={{train_check_pass}}
-hostport={{redcap_db_hostport}}
+password ={{get_cfg(train_check_pass)}}
+hostport={{get_cfg(redcap_db_hostport)}}
 url = mysql+pymysql://%(username)s:%(password)s@%(hostport)s/%(database)s?charset=utf8
 
 
 [redcapdb]
 username=drocredcap
 database=redcap
-password={{drocredcap_pass}}
-hostport={{redcap_db_hostport}}
+password={{get_cfg(drocredcap_pass)}}
+hostport={{get_cfg(redcap_db_hostport)}}
 
 # Note well the charset=utf8!
 # cf. #3741 etc.
@@ -89,8 +89,8 @@ engine=mysql+pymysql://%(username)s:%(password)s@%(hostport)s/%(database)s?chars
 [survey_invite]
 database=redcap
 username=survey_invite
-password={{survey_invite_pass}}
-hostport={{redcap_db_hostport}}
+password={{get_cfg(survey_invite_pass)}}
+hostport={{get_cfg(redcap_db_hostport)}}
 engine=mysql+pymysql://%(username)s:%(password)s@%(hostport)s/%(database)s?charset=utf8
 
 [saa_survey]
@@ -108,29 +108,29 @@ survey_id=2678
 
 [oversight_survey]
 api_url=https://redcap.kumc.edu/api/
-survey_url={{redcap_oversight_survey_url}}
+survey_url={{get_cfg(redcap_oversight_survey_url)}}
 domain=kumc.edu
-survey_id={{redcap_oversight_survey_id}}
-project_id={{redcap_oversight_survey_project_id}}
+survey_id={{get_cfg(redcap_oversight_survey_id)}}
+project_id={{get_cfg(redcap_oversight_survey_project_id)}}
 trigger_log=/tmp/oversight_log_dir/
 trigger_url=http://db-proxy-sable/dummy
 level=WARN
 
 [i2b2pm]
-identified_data={{id}}
-i2b2pm_schema={{i2b2pm_schema}}
-i2b2crc_schema={{i2b2crc_schema}}
-i2b2pm_url={{i2b2_url}}
+identified_data={{get_cfg(id)}}
+i2b2pm_schema={{get_cfg(i2b2pm_schema)}}
+i2b2crc_schema={{get_cfg(i2b2crc_schema)}}
+i2b2pm_url={{get_cfg(i2b2_url)}}
 
 [i2b2md]
-i2b2meta_schema={{i2b2meta_schema}}
-i2b2meta_url={{i2b2_url}}
+i2b2meta_schema={{get_cfg(i2b2meta_schema)}}
+i2b2meta_url={{get_cfg(i2b2_url)}}
 
 [disclaimers]
 project_id=398
 
 [disclaimer_acknowledgements]
-token={{disclaimer_acks_token}}
+token={{get_cfg(disclaimer_acks_token)}}
 project_id=399
 api_url=https://redcap.kumc.edu/api/
 
