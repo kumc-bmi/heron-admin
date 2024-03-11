@@ -120,11 +120,11 @@ level=WARN
 identified_data={{get_cfg('id')}}
 i2b2pm_schema={{get_cfg('i2b2pm_schema')}}
 i2b2crc_schema={{get_cfg('i2b2crc_schema')}}
-i2b2pm_url={{get_cfg('i2b2_url')}}
+i2b2pm_url=postgresql://{{get_cfg('i2b2_user')}}:{{get_cfg('i2b2_pass')}}@{{get_cfg('PGHOST')}}:5432/{{get_cfg('PGDATABASE')}}
 
 [i2b2md]
 i2b2meta_schema={{get_cfg('i2b2meta_schema')}}
-i2b2meta_url={{get_cfg('i2b2_url')}}
+i2b2meta_url=postgresql://{{get_cfg('i2b2_user')}}:{{get_cfg('i2b2_pass')}}@{{get_cfg('PGHOST')}}:5432/{{get_cfg('PGDATABASE')}}
 
 [disclaimers]
 project_id=398
