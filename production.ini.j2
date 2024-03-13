@@ -53,7 +53,7 @@ cas_login={{get_cfg('i2b2_webclient')}}
 ###
 
 [enterprise_directory]
-url= ldaps://ldapauth.kumc.edu:636
+url= {{get_cfg('ldap_uri')}}
 userDn= cn=biostats,ou=authaccounts,o=idvault
 password={{get_cfg('ldap_biostats_pass')}}
 base= ou=people,o=idvault
