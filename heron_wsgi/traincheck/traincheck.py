@@ -164,13 +164,6 @@ import redcapview
 
 VARCHAR120 = String(120)
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-log = logging.getLogger(__name__)
-
-
 def main(stdout, access):
     cli = access()
 
@@ -727,6 +720,12 @@ R3,S,RS3@example,J1,8/4/2013 0:00,rs3
 
 
 if __name__ == '__main__':
+    logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    log = logging.getLogger(__name__)
+    
     def _privileged_main():
         from __builtin__ import open as openf
         from os import environ
