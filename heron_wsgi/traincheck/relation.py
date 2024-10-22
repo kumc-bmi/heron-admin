@@ -46,20 +46,20 @@ def docToRecords(relation_doc,
       ...
     StopIteration
     '''
-    print("relation_doc", relation_doc)
+    log.info("relation_doc", relation_doc)
     exemplar = iter(relation_doc).next()
-    print("exemplar", exemplar)
+    log.info("exemplar", exemplar)
     relation_name = exemplar.tag
-    print("relation_name", relation_name)
+    log.info("relation_name", relation_name)
     if not cols:
         cols = [child.tag for child in exemplar]
     R = namedtuple(relation_name, cols)
-    print("R", R)
+    log.info("R", R)
     default = R(*[None] * len(cols))
-    print("default", default)
+    log.info("default", default)
     def record(elt):
         bindings = [(child.tag, child.text) for child in elt]
-        print("bindings", bindings)
+        log.info("bindings", bindings)
         return default._replace(**dict(bindings))
 
     return (record(child) for child in relation_doc)
