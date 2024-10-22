@@ -159,10 +159,124 @@ from sqlalchemy.engine.url import make_url
 
 from lalib import maker
 from sqlaview import CreateView, DropView, fyears_after
-import relation
+#import relation
 import redcapview
 
 VARCHAR120 = String(120)
+
+
+from collections import namedtuple
+import csv
+import logging
+import xml.etree.ElementTree as ET
+
+log = logging.getLogger(__name__)
+
+
+def readRecords(fp):
+    '''Read CSV into named tuples.
+
+    The header is used to define a namedtuple class.
+    '''
+    reader = csv.reader(fp)
+    header = reader.next()
+    R = namedtuple('R', header)
+    return [R(*row) for row in reader]
+
+
+def docToRecords(relation_doc,
+                 cols=None):
+    r'''Given a record-oriented XML document, generate namedtuple per record.
+
+    >>> markup = """
+    ... <NewDataSet>
+    ...   <CRS>
+    ...     <MemberID>123</MemberID>
+    ...     <intScore>96</intScore>
+    ...   </CRS>
+    ...   <CRS>
+    ...     <MemberID>124</MemberID>
+    ...     <intScore>91</intScore>
+    ...   </CRS>
+    ... </NewDataSet>
+    ... """
+
+    >>> doc = ET.fromstring(markup)
+    >>> list(docToRecords(doc))
+    [CRS(MemberID='123', intScore='96'), CRS(MemberID='124', intScore='91')]
+
+    >>> docToRecords(ET.fromstring('<doc/>'))
+    Traceback (most recent call last):
+      ...
+    StopIteration
+    '''
+    log.info("relation_doc: %s", relation_doc)
+    exemplar = iter(relation_doc).next()
+    log.info("exemplar: %s", exemplar)
+    relation_name = exemplar.tag
+    log.info("relation_name: %s", relation_name)
+    if not cols:
+        cols = [child.tag for child in exemplar]
+    R = namedtuple(relation_name, cols)
+    log.info("R: %s", R)
+    default = R(*[None] * len(cols))
+    log.info("default: %s", default)
+    def record(elt):
+        bindings = [(child.tag, child.text) for child in elt]
+        log.info("bindings: %s", bindings)
+        return default._replace(**dict(bindings))
+
+    return (record(child) for child in relation_doc)
+
+
+def mock_xml_records(template, qty):
+    n = [10]
+
+    def num():
+        n[0] += 17
+        return n[0]
+
+    def ymd():
+        n[0] += 29
+        if n[0] % 7 == 0:
+            return None
+        return '%04d-%02d-%02dT12:34:56' % (
+            2000, n[0] % 12 + 1, (n[0] * 3) % 26 + 1)
+
+    def mdy():
+        n[0] += 29
+        return '%02d/%02d/%02d' % (
+            n[0] % 12 + 1, (n[0] * 3) % 26 + 1, 11)
+
+    def txt(tag):
+        n[0] += 13
+        return (
+            # Please excuse the abstraction leak...
+            'Human Subjects Research'
+            if tag == 'strCompletionReport' and n[0] % 3
+            else 'CITI Biomedical Researchers'
+            if tag == 'strGroup' and n[0] % 3
+            else 's' * (n[0] % 5) + 't' * (n[0] % 7))
+
+    def record_markup():
+        record = ET.fromstring(template)
+        for field in record:
+            if field.text == '12345':
+                field.text = str(num())
+            elif field.text == '2014-05-06T19:15:48':
+                field.text = ymd()
+            elif field.text == '09/09/14':
+                field.text = mdy()
+            else:
+                field.text = txt(field.tag)
+
+        return ET.tostring(record)
+
+    return ("<NewDataSet>"
+            + '\n'.join(record_markup()
+                        for _ in range(qty))
+            + "</NewDataSet>")
+
 
 def main(stdout, access):
     logging.basicConfig(
@@ -170,7 +284,7 @@ def main(stdout, access):
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     log = logging.getLogger(__name__)
-    
+
     cli = access()
 
     mkTRA = lambda: TrainingRecordsAdmin(cli.account('--dbadmin'), cli.exempt)
@@ -302,8 +416,8 @@ class CRS(TableDesign):
     def record_ok(cls, record):
         r"""Filter non-numeric StudentID
 
-        >>> markup = relation.mock_xml_records(CRS.markup, 2)
-        >>> r = relation.docToRecords(XML(markup)).next()
+        >>> markup = mock_xml_records(CRS.markup, 2)
+        >>> r = docToRecords(XML(markup)).next()
         >>> CRS.record_ok(r)
         True
         >>> CRS.record_ok(r._replace(StudentID='OT-1234'))
@@ -410,7 +524,7 @@ class Chalk(TableDesign):
     '''Chalk back-fill data
 
         >>> with Mock().openf('i.csv') as infp:
-        ...     records = relation.readRecords(infp)
+        ...     records = readRecords(infp)
         >>> records[0].CompleteDate
         '8/4/2012 0:00'
 
@@ -548,7 +662,7 @@ def TrainingRecordsAdmin(acct, exempt_pid,
     def docRecords(_, doc):
         name = iter(doc).next().tag
         tdef = hsr.table(name)
-        records = relation.docToRecords(doc, [c.name for c in tdef.columns])
+        records = docToRecords(doc, [c.name for c in tdef.columns])
         return name, records
 
     def init(_):
@@ -617,7 +731,7 @@ def CLI(argv, environ, openf, create_engine, SoapClient):
 
     def getRecords(_, opt):
         with openf(opts[opt]) as infp:
-            return relation.readRecords(infp)
+            return readRecords(infp)
 
     def account(_, opt):
         env_key = opts[opt]
@@ -711,17 +825,17 @@ R3,S,RS3@example,J1,8/4/2013 0:00,rs3
 
     def GetCompletionReportsXML(self, usr, pwd):
         self._check(usr, pwd)
-        xml = relation.mock_xml_records(CRS.markup, 5)
+        xml = mock_xml_records(CRS.markup, 5)
         return dict(GetCompletionReportsXMLResult=xml)
 
     def GetGradeBooksXML(self, usr, pwd):
         self._check(usr, pwd)
-        xml = relation.mock_xml_records(GRADEBOOK.markup, 3)
+        xml = mock_xml_records(GRADEBOOK.markup, 3)
         return dict(GetGradeBooksXMLResult=xml)
 
     def GetMembersXML(self, usr, pwd):
         self._check(usr, pwd)
-        xml = relation.mock_xml_records(MEMBERS.markup, 4)
+        xml = mock_xml_records(MEMBERS.markup, 4)
         return dict(GetMembersXMLResult=xml)
 
 
