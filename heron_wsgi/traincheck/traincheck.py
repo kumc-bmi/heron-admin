@@ -163,6 +163,11 @@ import relation
 import redcapview
 
 VARCHAR120 = String(120)
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 log = logging.getLogger(__name__)
 
 
