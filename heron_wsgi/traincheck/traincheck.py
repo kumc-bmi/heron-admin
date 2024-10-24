@@ -354,6 +354,8 @@ class MEMBERS(TableDesign):
         <strUsernameII>a</strUsernameII>
         <strInstUsername>a</strInstUsername>
         <strInstEmail>a</strInstEmail>
+        <strMemberEmail>a</strMemberEmail>
+        <ORCIDiD>a</ORCIDiD>
         <dteAdded>09/09/14</dteAdded>
         <dteAffiliated>09/09/14</dteAffiliated>
         <dteLastLogin>09/09/14</dteLastLogin>
