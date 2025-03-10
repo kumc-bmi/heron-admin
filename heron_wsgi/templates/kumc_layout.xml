@@ -51,7 +51,7 @@
                   <a tabindex="0" class="touch-link" aria-haspopup="true" title="Heron Home page" href="https://heron.kumc.edu/heron/">Heron</a>
                 </li>
                 <li class="">
-                  <a tabindex="0" class="touch-link" aria-haspopup="true" title="Our Services at Medical Informatics services" href="https://www.kumc.edu/research-informatics/our-services.html">Our Services</a>
+                  <a tabindex="0" class="touch-link" aria-haspopup="true" title="Our Services at Research Informatics services" href="https://www.kumc.edu/research-informatics/our-services.html">Our Services</a>
                 </li>
                 <li class="">
                   <a tabindex="0" class="touch-link" aria-haspopup="true" title="Facilities &amp; Resources" href="https://www.kumc.edu/research-informatics/our-services/resources-and-tools.html">Facilities &amp; Resources</a>
@@ -60,7 +60,7 @@
                   <a tabindex="0" class="touch-link" aria-haspopup="true" title="Frontiers" href="https://www.kufrontiers.org/">Frontiers</a>
                 </li>
                 <li class="">
-                  <a tabindex="0" class="touch-link" aria-haspopup="true" title="About the Medical Informatics division" href="https://www.kumc.edu/research-informatics/about.html">About</a>
+                  <a tabindex="0" class="touch-link" aria-haspopup="true" title="About the Research Informatics division" href="https://www.kumc.edu/research-informatics/about.html">About</a>
                 </li>
               </ul>
             </nav>
@@ -246,7 +246,7 @@
           <div class="newsroom-bar-wrapper">
             <div class="newsroom-bar">
               <div class="newsroom-contact-bar">
-                <div class="h4">Medical Informatics Division</div>
+                <div class="h4">Research Informatics Division</div>
               </div>
             </div>
           </div>
@@ -257,7 +257,7 @@
           <div class="address">
             <p>University of Kansas Medical Center<br />
               Internal Medicine<br />
-              Medical Informatics Division<br />
+              Research Informatics Division<br />
               Mailstop 3065<br />
               Student Center, 3001C<br />
               3901 Rainbow Boulevard<br />
@@ -268,8 +268,8 @@
         </div>
         <div class="col-10 col-md-6">
           <ul class="newsroom-links">
-            <li><a href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics.html" target="_blank" title="Medical Informatics Division">
-              Medical Informatics Division&nbsp;<i class="fas fa-chevron-right"></i></a>
+            <li><a href="https://www.kumc.edu/school-of-medicine/academics/departments/internal-medicine/divisions/medical-informatics.html" target="_blank" title="Research Informatics Division">
+              Research Informatics Division&nbsp;<i class="fas fa-chevron-right"></i></a>
             </li>
           </ul>
         </div>
