@@ -13,7 +13,6 @@ MODULES= \
 	admin_lib/heron_policy.py \
 	admin_lib/i2b2pm.py \
 	admin_lib/__init__.py \
-	admin_lib/jndi_util.py \
 	admin_lib/ldaplib.py \
 	admin_lib/medcenter.py \
 	admin_lib/migrate_approvals.py \

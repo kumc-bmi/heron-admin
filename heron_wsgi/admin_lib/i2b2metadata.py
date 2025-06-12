@@ -8,7 +8,6 @@ import injector
 from injector import inject, provides, singleton
 from sqlalchemy import text, orm, Table, MetaData
 
-import jndi_util
 import rtconfig
 import ocap_file
 
@@ -166,22 +165,15 @@ class RunTime(rtconfig.IniModule):
 
     def __init__(self, ini, create_engine):
         rtconfig.IniModule.__init__(self, ini)
-        self.__ctx = RunTime.jboss_context(
-            ini, CONFIG_SECTION_MD, create_engine)
-
-    @classmethod
-    def jboss_context(cls, ini, section, create_engine):
-        m = rtconfig.IniModule(ini)
-        rt = m.get_options(['jboss_deploy'], section)
-        jdir = ini / rt.jboss_deploy
-        return jndi_util.JBossContext(jdir, create_engine)
+        self.__create_engine = create_engine
 
     @singleton
     @provides((orm.session.Session, CONFIG_SECTION_MD))
     def md_sessionmaker(self):
         def send_sessionmaker():
             sm = orm.session.sessionmaker()
-            engine = self.__ctx.lookup(self.jndi_name_md)
+            engine_opts = self.get_options(['i2b2meta_url'], CONFIG_SECTION_MD)
+            engine = self.__create_engine(engine_opts.i2b2meta_url, connect_args={'options': '-csearch_path={}'.format(self.i2b2meta_schema())})
             ds = sm(bind=engine)
             return ds
         return send_sessionmaker

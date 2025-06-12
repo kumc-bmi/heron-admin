@@ -191,7 +191,6 @@ from sqlalchemy.types import String, DateTime, Enum
 from sqlalchemy.ext.declarative import declarative_base
 
 import rtconfig
-import jndi_util
 import ocap_file
 import i2b2metadata
 from sqlite_mem import _test_engine
@@ -240,7 +239,8 @@ class I2B2PM(ocap_file.Token):
         default_pid = DEFAULT_PID
         pms = self._datasrc()
         log.info('Finding I2B2 project for REDCap pids: %s', rc_pids)
-        rc_pids = self._md.rc_in_i2b2(rc_pids)
+        #rc_pids = self._md.rc_in_i2b2(rc_pids)
+        rc_pids = []
         if not rc_pids:
             log.info('User REDCap projects are not in HERON')
             return default_pid, None
@@ -370,14 +370,15 @@ def revoke_expired_auths(ds):
     '''Revoke one-time passwords for all users whose sessions are expired.
     '''
     ds.execute('''
-    update pm_user_data ipud
-    set ipud.password = null
+    update pm_user_data
+    set password = null
     where
-        ipud.user_id not like '%SERVICE_ACCOUNT'
-        and ipud.password is not null and (
+        user_id not like '%SERVICE_ACCOUNT'
+        and user_id != 'jenkins'
+        and password is not null and (
         select max(ipus.expired_date)
         from pm_user_session ipus
-        where ipus.user_id = ipud.user_id) < sysdate
+        where ipus.user_id = user_id) < current_timestamp
     ''')
     ds.commit()
 
@@ -476,25 +477,18 @@ class RunTime(rtconfig.IniModule):  # pragma: nocover
     def __init__(self, ini, uuid, create_engine):
         rtconfig.IniModule.__init__(self, ini)
         self.__create_engine = create_engine
-
-        def jdir_access(section):
-            return ini / self.get_options(
-                ['jboss_deploy'], section).jboss_deploy
-
-        self.__jdir = jdir_access
         self.__uuid = uuid
 
     # abusing Session a bit; this really provides a subclass, not an
     # instance, of Session
     def sessionmaker(self, jndi, section):
-        ctx = jndi_util.JBossContext(
-            self.__jdir(section), self.__create_engine)
 
         sm = orm.session.sessionmaker()
 
         def make_session_and_revoke():
-            engine = ctx.lookup(jndi)
-            log.info('i2p2pm engine: %s', engine)
+            engine_opts = self.get_options(['i2b2pm_url'], CONFIG_SECTION)
+            log.info('i2p2pm engine: %s', engine_opts.i2b2pm_url)
+            engine = self.__create_engine(engine_opts.i2b2pm_url, connect_args={'options': '-csearch_path={}'.format(self.i2b2pm_schema())})
             ds = sm(bind=engine)
             revoke_expired_auths(ds)
             return ds
